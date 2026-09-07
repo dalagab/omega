@@ -24,6 +24,18 @@ internal sealed class PluginInstallCoordinator
     }
 
     /// <summary>
+    /// Prepares one selected repository without mutating any plugin. Transaction execution uses
+    /// this for the all-sources prepare phase before the first install/update begins.
+    /// </summary>
+    public Task<string?> PrepareRepositoryAsync(
+        MarketplacePlugin plugin,
+        RepositorySource? source,
+        CancellationToken cancellationToken = default)
+        => plugin.SourceIsOfficial
+            ? Task.FromResult<string?>(null)
+            : EnsureRepositoryReadyAsync(plugin, source, cancellationToken);
+
+    /// <summary>
     /// Installs one explicitly selected repository variant through Dalamud.
     /// </summary>
     public async Task<InstallResult> InstallAsync(

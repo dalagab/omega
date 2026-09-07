@@ -13,7 +13,7 @@ internal static class MarketplaceLayoutRules
     public const float CollectionRowHeight = 88f;
     public const float ProductCollectionRowHeight = 36f;
     public const float ProductCollectionImpactLineHeight = 21f;
-    public const float InstallSourceRowHeight = 98f;
+    public const float InstallSourceRowHeight = 58f;
     public const float RowRightPadding = 12f;
 
     public static float CenterY(float containerHeight, float itemHeight)

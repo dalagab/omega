@@ -40,6 +40,7 @@ internal static partial class RegressionCases
             True(snapshot.DefinitionsRevision is not null, "catalog snapshot always exposes a frozen Definitions Revision field");
             True(snapshot.SecurityRevision is not null, "catalog snapshot always exposes a troubleshooting Security Revision field");
             True(snapshot.EvidenceRevision is not null, "catalog snapshot always exposes a troubleshooting Evidence Revision field");
+            True(snapshot.DependencyGraphRevision is not null, "catalog snapshot always exposes a dependency graph revision field");
         }
         finally
         {
@@ -90,6 +91,10 @@ internal static partial class RegressionCases
             Equal(string.Empty, snapshot.DefinitionsRevision, "legacy catalog without Definitions revision metadata remains readable");
             Equal(string.Empty, snapshot.SecurityRevision, "legacy catalog without security revision metadata remains readable");
             Equal(string.Empty, snapshot.EvidenceRevision, "legacy catalog without evidence revision metadata remains readable");
+            Equal(string.Empty, snapshot.DependencyGraphRevision, "legacy catalog without dependency graph metadata remains readable");
+            Equal(0, store.ReadDependenciesForVariant(1).Count, "legacy catalog without dependency tables has an empty variant dependency graph");
+            Equal(0, store.ReadDependentsForProvider(1).Count, "legacy catalog without dependency tables has an empty reverse dependency graph");
+            True(store.ReadDependencyProvider("LegacyPlugin") is null, "legacy catalog without provider summaries remains readable");
             Equal(0, snapshot.ChangelogEntryCount, "legacy catalog without changelog table remains readable");
         }
         finally
@@ -97,6 +102,96 @@ internal static partial class RegressionCases
             if (Directory.Exists(temp)) Directory.Delete(temp, true);
         }
     }
+
+
+    internal static void TestNormalizedPluginDependencyGraphContract()
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "omega-plugin-dependencies-regression-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            var dbPath = Path.Combine(temp, SqliteCatalogStore.DatabaseFileName);
+            var store = new SqliteCatalogStore(dbPath);
+            using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}"))
+            {
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE catalog_meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+                    INSERT INTO catalog_meta VALUES('dependency_graph_revision','plugin-deps-v1-test');
+                    CREATE TABLE plugin_dependencies (
+                        consumer_variant_id INTEGER NOT NULL,
+                        consumer_plugin_id INTEGER NOT NULL,
+                        consumer_internal_name TEXT NOT NULL,
+                        consumer_version TEXT NOT NULL,
+                        provider_plugin_id INTEGER NOT NULL,
+                        provider_internal_name TEXT NOT NULL,
+                        relationship TEXT NOT NULL,
+                        version_constraint TEXT NOT NULL,
+                        resolved_version TEXT NOT NULL,
+                        resolution_status TEXT NOT NULL,
+                        version_status TEXT NOT NULL,
+                        confidence TEXT NOT NULL,
+                        source_kind TEXT NOT NULL,
+                        origins_json TEXT NOT NULL,
+                        install_eligible INTEGER NOT NULL,
+                        PRIMARY KEY(consumer_variant_id,provider_internal_name,relationship,version_constraint)
+                    );
+                    CREATE TABLE plugin_dependency_providers (
+                        provider_plugin_id INTEGER NOT NULL,
+                        provider_internal_name TEXT PRIMARY KEY,
+                        required_by_count INTEGER NOT NULL,
+                        recommended_by_count INTEGER NOT NULL,
+                        optional_by_count INTEGER NOT NULL,
+                        total_dependent_plugins INTEGER NOT NULL
+                    );
+                    INSERT INTO plugin_dependencies VALUES
+                        (101,11,'ConsumerA','1.0.0.0',22,'ProviderB','required','>=2.0','2.4.0','resolved','compatible','High','external-plugin','["manifest","source"]',1),
+                        (102,12,'ConsumerC','3.0.0.0',22,'ProviderB','recommended','','2.4.0','resolved','compatible','Medium','plugin','["manifest"]',1),
+                        (103,13,'ConsumerIPC','1.0.0.0',22,'ProviderB','required','','','resolved','compatible','High','ipc','["ipc"]',1);
+                    INSERT INTO plugin_dependency_providers VALUES(22,'ProviderB',1,1,0,2);
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            var variant = store.ReadDependenciesForVariant(101);
+            Equal(1, variant.Count, "normalized variant dependency is readable");
+            Equal("ProviderB", variant[0].ProviderInternalName, "normalized provider identity is preserved");
+            Equal(PluginDependencyRelationship.Required, variant[0].Relationship, "required relationship is parsed");
+            True(variant[0].InstallEligible, "install eligibility is preserved");
+            Equal(2, variant[0].Origins.Count, "dependency origins are parsed");
+
+            var consumer = store.ReadDependenciesForPlugin(11);
+            Equal(1, consumer.Count, "consumer plugin dependency lookup is readable");
+
+            var reverse = store.ReadDependentsForProvider(22);
+            Equal(2, reverse.Count, "reverse dependency lookup excludes IPC authority rows");
+            True(reverse.All(x => !x.SourceKind.Equals("ipc", StringComparison.OrdinalIgnoreCase)),
+                "IPC never enters normalized package-manager dependency reads");
+
+            var provider = store.ReadDependencyProvider("ProviderB");
+            True(provider is not null, "provider summary is readable by stable internal name");
+            Equal(1, provider!.RequiredByCount, "provider required-by count is preserved");
+            Equal(2, provider.TotalDependentPlugins, "provider total dependent count is preserved");
+        }
+        finally
+        {
+            if (Directory.Exists(temp)) Directory.Delete(temp, true);
+        }
+
+        var ui = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Dependencies.cs"));
+        Contains(ui, "catalog.GetDependenciesForVariant", "Requires UI uses normalized consumer-variant package authority");
+        Contains(ui, "catalog.GetDependentsForProvider", "Required by UI uses normalized reverse dependency authority");
+        Contains(ui, "IPC relationships are security/integration observations, not package-install dependencies.",
+            "IPC remains explicitly separate from package dependencies");
+        DoesNotContain(ui, "Required IPC provider. Install separately.", "IPC is no longer presented as package-install authority");
+
+        var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
+        DoesNotContain(install, "DrawRequiredProviderInstallWarning", "single-plugin install no longer blocks on inferred IPC providers");
+        Contains(install, "SecurityDependencies (including IPC observations) remain presentation-only",
+            "install flow documents the package-authority boundary");
+    }
+
 
     internal static void TestCatalogBundleImport()
     {
@@ -108,6 +203,12 @@ internal static partial class RegressionCases
         Contains(source, "runtime_plugin_variants", "runtime reads normalized SQLite view");
         Contains(source, "catalogPluginIdProjection", "runtime imports stable SQLite plugin identity for cross-repository Discover counting");
         Contains(source, "CatalogPluginId = GetLong(reader, 61)", "runtime variants retain their canonical database plugin id");
+        Contains(source, "catalogVariantIdProjection", "runtime imports exact SQLite variant identity for dependency authority");
+        Contains(source, "CatalogVariantId = GetLong(reader, 66)", "runtime variants retain their exact database variant id");
+        Contains(source, "dependency_graph_revision", "runtime reads the normalized dependency graph revision");
+        Contains(source, "plugin_dependencies", "runtime can query normalized package dependency edges");
+        Contains(source, "plugin_dependency_providers", "runtime can query normalized reverse dependency summaries");
+        Contains(source, "IsNormalizedPluginDependencySourceKind", "runtime excludes IPC and non-plugin components from package authority");
         Contains(source, "ValidateRuntimeSnapshot(candidate)", "downloaded database is fully readable before it can replace the last-known-good catalog");
         Contains(source, "ReadChangelogEntryCount", "runtime reads embedded catalog changelog identity without requiring a second format");
         Contains(source, "TableExists(connection, \"plugin_search\")", "new Definitions can use the compact logical search projection while older databases retain runtime fallback");

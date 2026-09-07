@@ -42,6 +42,37 @@ internal sealed partial class MarketplaceWindow
         ImGui.TextWrapped("Dalamud will uninstall this plugin.");
         ImGui.TextDisabled("Plugin configuration/data is not deleted by this action.");
 
+        var requiredDependents = GetInstalledRequiredDependents(plugin);
+        if (requiredDependents.Length > 0)
+        {
+            ImGui.Spacing();
+            ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.88f));
+            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
+            ImGui.BeginChild("uninstall-required-dependents", new Vector2(0f, Ui(Math.Min(156f, 72f + requiredDependents.Length * 22f))), true);
+            ImGui.TextColored(new Vector4(0.98f, 0.37f, 0.31f, 1f),
+                requiredDependents.Length == 1
+                    ? "This plugin is required by an installed plugin."
+                    : $"This plugin is required by {requiredDependents.Length} installed plugins.");
+            foreach (var dependent in requiredDependents.Take(4))
+                ImGui.TextWrapped($"• {dependent}");
+            if (requiredDependents.Length > 4)
+                ImGui.TextDisabled($"…and {requiredDependents.Length - 4} more");
+            ImGui.EndChild();
+            ImGui.PopStyleColor(2);
+            ImGui.TextDisabled("Omega will not silently break required dependents. Remove or change those plugins first.");
+            if (ImGui.Button("View dependent", Ui(150f, 32f)))
+            {
+                var target = catalog.GetVariants(requiredDependents[0]).FirstOrDefault();
+                if (target is not null)
+                {
+                    CloseUninstallConfirmation();
+                    OpenPluginDetails(target);
+                    ImGui.EndPopup();
+                    return;
+                }
+            }
+        }
+
         var namedMemberships = GetPluginDirectControlState(plugin.InternalName).Memberships
             .Where(x => !x.Collection.IsDefault)
             .OrderBy(x => CollectionDisplayName(x.Collection), StringComparer.OrdinalIgnoreCase)
@@ -74,7 +105,9 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
 
         var canUninstall = uninstallTask is null &&
+                           installTransactionTask is null &&
                            collectionOperationTask is null &&
+                           requiredDependents.Length == 0 &&
                            !plugin.InternalName.Equals(Plugin.PluginInterface.InternalName, StringComparison.OrdinalIgnoreCase);
         if (!canUninstall)
             ImGui.BeginDisabled();
@@ -161,7 +194,22 @@ internal sealed partial class MarketplaceWindow
 
         try
         {
-            operationMessage = uninstallTask.GetAwaiter().GetResult().Message;
+            var result = uninstallTask.GetAwaiter().GetResult();
+            operationMessage = result.Message;
+            if (result.Outcome is UninstallOutcome.Uninstalled or UninstallOutcome.NotInstalled)
+            {
+                if (!string.IsNullOrWhiteSpace(uninstallingInternalName))
+                {
+                    libraryLedger.MarkRootRemoved(uninstallingInternalName);
+                    libraryLedger.ForgetRemoved(uninstallingInternalName);
+                }
+                pendingOrphanDependencies = installTransactions.FindDependencyOwnedOrphans().ToArray();
+                if (pendingOrphanDependencies.Length > 0)
+                {
+                    orphanCleanupPopupOpen = true;
+                    requestOrphanCleanupPopup = true;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -170,12 +218,119 @@ internal sealed partial class MarketplaceWindow
         }
         finally
         {
-            // Startup apps are an on-demand snapshot. If an uninstall completed while the page
-            // was open, discard that snapshot so the next draw reflects Dalamud's current list.
             startupAppsSnapshot = null;
             uninstallTask = null;
             uninstallingInternalName = string.Empty;
         }
     }
+
+    private string[] GetInstalledRequiredDependents(MarketplacePlugin provider)
+    {
+        var installed = Plugin.PluginInterface.InstalledPlugins
+            .Where(x => x is not null && !x.Manifest.ScheduledForDeletion && !string.IsNullOrWhiteSpace(x.InternalName))
+            .GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+        var identity = provider.CatalogPluginId;
+        var edges = identity > 0
+            ? catalog.GetDependentsForProvider(identity)
+            : catalog.GetDependentsForProvider(provider.InternalName);
+        return edges
+            .Where(x => x.Relationship == PluginDependencyRelationship.Required)
+            .Where(x => installed.TryGetValue(x.ConsumerInternalName, out var consumer) &&
+                        (string.IsNullOrWhiteSpace(x.ConsumerVersion) ||
+                         consumer.Version is null ||
+                         Version.TryParse(x.ConsumerVersion, out var expected) && expected.CompareTo(consumer.Version) == 0))
+            .Select(x => x.ConsumerInternalName)
+            .Where(x => !string.IsNullOrWhiteSpace(x) && !x.Equals(provider.InternalName, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private void DrawOrphanCleanupModal()
+    {
+        if (!orphanCleanupPopupOpen || pendingOrphanDependencies.Length == 0)
+            return;
+        var keepOpen = orphanCleanupPopupOpen;
+        ImGui.SetNextWindowSize(UiModalSize(560f, 0f), ImGuiCond.Appearing);
+        if (!ImGui.BeginPopupModal("Unused dependencies###DalagabOmegaOrphanCleanup", ref keepOpen,
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            orphanCleanupPopupOpen = keepOpen;
+            return;
+        }
+
+        if (DrawOmegaModalHeader("Unused dependencies", "orphan-cleanup"))
+        {
+            orphanCleanupPopupOpen = false;
+            pendingOrphanDependencies = [];
+            ImGui.CloseCurrentPopup();
+            ImGui.EndPopup();
+            return;
+        }
+
+        ImGui.TextWrapped("These plugins were installed by Omega only as dependencies and are no longer required by an installed root plugin.");
+        ImGui.TextDisabled("Nothing is removed automatically.");
+        ImGui.Spacing();
+        foreach (var dependency in pendingOrphanDependencies)
+        {
+            ImGui.Bullet();
+            ImGui.SameLine();
+            ImGui.TextUnformatted(dependency);
+            ImGui.SameLine(0f, Ui(8f));
+            ImGui.TextDisabled("No longer required");
+        }
+        ImGui.Spacing();
+        var busy = orphanRemovalTask is not null;
+        if (busy)
+            ImGui.BeginDisabled();
+        if (ImGui.Button("Remove unused dependencies", Ui(220f, 36f)) && !busy)
+        {
+            orphanRemovalTask = installTransactions.RemoveUnusedDependenciesAsync(pendingOrphanDependencies);
+            operationMessage = "Removing unused dependency-owned plugins…";
+        }
+        if (busy)
+            ImGui.EndDisabled();
+        ImGui.SameLine();
+        if (ImGui.Button("Keep", Ui(100f, 36f)))
+        {
+            orphanCleanupPopupOpen = false;
+            pendingOrphanDependencies = [];
+            ImGui.CloseCurrentPopup();
+        }
+
+        orphanCleanupPopupOpen = keepOpen && orphanCleanupPopupOpen;
+        ImGui.EndPopup();
+    }
+
+    private void CompleteOrphanRemovalTaskIfReady()
+    {
+        if (orphanRemovalTask is null || !orphanRemovalTask.IsCompleted)
+            return;
+        try
+        {
+            var result = orphanRemovalTask.GetAwaiter().GetResult();
+            operationMessage = result.Skipped.Count == 0
+                ? $"Removed {result.Removed} unused dependenc{(result.Removed == 1 ? "y" : "ies")}."
+                : $"Removed {result.Removed}; kept {result.Skipped.Count} because they became required or were no longer dependency-owned.";
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning(ex, "Omega unused-dependency removal failed.");
+            operationMessage = $"Could not remove unused dependencies: {ex.GetBaseException().Message}";
+        }
+        finally
+        {
+            orphanRemovalTask = null;
+            pendingOrphanDependencies = installTransactions.FindDependencyOwnedOrphans().ToArray();
+            if (pendingOrphanDependencies.Length == 0)
+            {
+                orphanCleanupPopupOpen = false;
+                ImGui.CloseCurrentPopup();
+            }
+            startupAppsSnapshot = null;
+        }
+    }
+
 
 }

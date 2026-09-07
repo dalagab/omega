@@ -38,12 +38,36 @@ internal static class MarketplacePresentationRules
     }
 
     public static IReadOnlyList<string> PresentationImages(MarketplacePlugin plugin)
-        => plugin.ImageUrls
-            .Concat(plugin.OmegaWebsiteImageUrls)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(5)
-            .ToArray();
+    {
+        var iconIdentity = NormalizeImageIdentity(plugin.IconUrl);
+        var bannerIdentity = NormalizeImageIdentity(plugin.OmegaBannerUrl);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+
+        foreach (var candidate in plugin.ImageUrls.Concat(plugin.OmegaWebsiteImageUrls))
+        {
+            if (!TryNormalizePresentableImage(candidate, out var identity))
+                continue;
+
+            // The product hero already owns the package icon and Omega banner. Showing either of
+            // them again as a project screenshot makes the screenshot strip look like duplicate
+            // artwork rather than actual project imagery.
+            if ((!string.IsNullOrWhiteSpace(iconIdentity) && identity.Equals(iconIdentity, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(bannerIdentity) && identity.Equals(bannerIdentity, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (!seen.Add(identity))
+                continue;
+
+            result.Add(candidate.Trim());
+            if (result.Count >= 5)
+                break;
+        }
+
+        return result;
+    }
 
     public static int RichnessScore(MarketplacePlugin plugin)
     {
@@ -74,6 +98,43 @@ internal static class MarketplacePresentationRules
         if (native.Length >= 120 || website.Length == 0)
             return native;
         return website.Length > native.Length ? website : native;
+    }
+
+    private static bool TryNormalizePresentableImage(string? value, out string identity)
+    {
+        identity = NormalizeImageIdentity(value);
+        if (string.IsNullOrWhiteSpace(identity))
+            return false;
+
+        return Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) &&
+               (uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeImageIdentity(string? value)
+    {
+        if (!Uri.TryCreate((value ?? string.Empty).Trim(), UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        {
+            return string.Empty;
+        }
+
+        var host = uri.Host.ToLowerInvariant();
+        var path = uri.AbsolutePath;
+        if (host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 5 && parts[2].Equals("blob", StringComparison.OrdinalIgnoreCase))
+            {
+                host = "raw.githubusercontent.com";
+                path = $"/{parts[0]}/{parts[1]}/{parts[3]}/{string.Join("/", parts.Skip(4))}";
+            }
+        }
+
+        if (host.Equals("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+            path = path.Replace("/refs/heads/", "/", StringComparison.OrdinalIgnoreCase);
+
+        return $"{host}{Uri.UnescapeDataString(path).TrimEnd('/')}";
     }
 
     private static string Identity(MarketplacePlugin plugin)

@@ -14,6 +14,16 @@ internal sealed partial class MarketplaceWindow
 
     private void TryStartSelectedInstall(MarketplacePlugin plugin)
     {
+        if (!PendingDependencyPlanAllowsSinglePluginExecution(plugin))
+        {
+            installRiskPopupOpen = false;
+            installPermissionPopupOpen = false;
+            installPlanPopupOpen = true;
+            requestInstallPlanPopup = true;
+            ImGui.CloseCurrentPopup();
+            return;
+        }
+
         var reviewedPlugin = catalog.HydrateVariant(plugin);
         var concerns = MarketplacePermissionRules.FindBlockedCapabilities(reviewedPlugin, configuration);
         if (concerns.Count == 0)
@@ -139,10 +149,15 @@ internal sealed partial class MarketplaceWindow
         pendingInstallPermissionAcknowledgementChecked = false;
         pendingInstallPermissionSourceUrl = string.Empty;
         ImGui.CloseCurrentPopup();
-        if (pendingInstall is not null)
+        if (pendingInstall is null)
+            return;
+        if (pendingInstallPlan is not null)
         {
-            installPopupOpen = true;
-            requestInstallPopup = true;
+            installPlanPopupOpen = true;
+            requestInstallPlanPopup = true;
+            return;
         }
+        installPopupOpen = true;
+        requestInstallPopup = true;
     }
 }

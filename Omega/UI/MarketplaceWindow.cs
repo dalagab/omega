@@ -100,6 +100,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly MarketplaceCatalogService catalog;
     private readonly CatalogUpdateCoordinator updates;
     private readonly PluginInstallCoordinator installer;
+    private readonly PluginInstallTransactionCoordinator installTransactions;
     private readonly DalamudRepositoryBridge repositoryBridge;
     private readonly RepositoryRemediationService repositoryRemediation;
     private readonly DalamudProfileBridge profileBridge;
@@ -110,6 +111,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly OmegaSelfUpdateService selfUpdates;
     private readonly StartupHealthService startupHealth;
     private readonly Action behaviorConfigurationChanged;
+    private readonly Action disableOmegaAfterEulaDecline;
     private readonly FileDialogManager fileDialogs = new();
     private readonly ISharedImmediateTexture? omegaIconTexture;
     private readonly ISharedImmediateTexture? sigmascopeBannerTexture;
@@ -147,6 +149,8 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private string pendingInstallSourceUrl = string.Empty;
     private Task<InstallResult>? installTask;
     private string installingInternalName = string.Empty;
+    private Task<PluginInstallTransactionResult>? installTransactionTask;
+    private string installTransactionRootInternalName = string.Empty;
     private MarketplacePlugin? pendingUpdate;
     private string pendingUpdatePreviousSourceUrl = string.Empty;
     private bool pendingUpdateSourceAcknowledgementChecked;
@@ -163,6 +167,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private int updateAllCompleted;
     private int updateAllFailed;
     private int updateAllSkippedMigrations;
+    private int updateAllSkippedDependencyTransactions;
     private MarketplacePlugin? pendingUninstall;
     private Task<UninstallResult>? uninstallTask;
     private string uninstallingInternalName = string.Empty;
@@ -181,15 +186,21 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private bool settingsOpen;
     private bool aboutOpen;
     private bool installPopupOpen;
+    private bool installPlanPopupOpen;
     private bool installRiskPopupOpen;
     private bool updateMigrationPopupOpen;
     private bool uninstallPopupOpen;
     private bool addSourceOpen;
     private bool requestInstallPopup;
+    private bool requestInstallPlanPopup;
     private bool requestInstallRiskPopup;
     private bool requestUpdateMigrationPopup;
     private bool requestUpdateChangelogPopup;
     private bool requestUninstallPopup;
+    private bool orphanCleanupPopupOpen;
+    private bool requestOrphanCleanupPopup;
+    private string[] pendingOrphanDependencies = [];
+    private Task<PluginDependencyAutoremoveResult>? orphanRemovalTask;
     private bool requestSettingsPopup;
     private bool requestAboutPopup;
     private bool requestTagsPopup;
@@ -213,6 +224,11 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private int? repositoryApiSelectionAnchor;
     private string pendingInstallRiskSourceUrl = string.Empty;
     private bool pendingInstallRiskAcknowledgementChecked;
+    private PluginInstallPlan? pendingInstallPlan;
+    private string pendingInstallPlanRootSourceUrl = string.Empty;
+    private bool pendingInstallPlanFromUpdate;
+    private readonly HashSet<string> pendingInstallExplicitDependencies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> pendingInstallTransactionReviewSources = new(StringComparer.OrdinalIgnoreCase);
     private string newRepositoryUrl = string.Empty;
 
     private Task<RepositoryBridgeResult>? repositoryTask;
@@ -273,6 +289,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         MarketplaceCatalogService catalog,
         CatalogUpdateCoordinator updates,
         PluginInstallCoordinator installer,
+        PluginInstallTransactionCoordinator installTransactions,
         DalamudRepositoryBridge repositoryBridge,
         RepositoryRemediationService repositoryRemediation,
         DalamudProfileBridge profileBridge,
@@ -286,16 +303,20 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         string sigmascopeBannerPath,
         string fallbackIconPath,
         string eulaPath,
-        Action behaviorConfigurationChanged)
+        Action behaviorConfigurationChanged,
+        Action disableOmegaAfterEulaDecline)
         : base("Omega###DalagabOmegaMain")
     {
         this.configuration = configuration;
-        tutorialOpen = !configuration.TutorialCompleted;
+        // Do not consume the first-run tutorial popup behind the required EULA. Existing users
+        // who already accepted the agreement can still resume an unfinished tour immediately.
+        tutorialOpen = configuration.EulaAccepted && !configuration.TutorialCompleted;
         requestTutorialPopup = tutorialOpen;
         RestorePersistedUpdateFailures();
         this.catalog = catalog;
         this.updates = updates;
         this.installer = installer;
+        this.installTransactions = installTransactions;
         this.repositoryBridge = repositoryBridge;
         this.repositoryRemediation = repositoryRemediation;
         this.profileBridge = profileBridge;
@@ -306,6 +327,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         this.selfUpdates = selfUpdates;
         this.startupHealth = startupHealth;
         this.behaviorConfigurationChanged = behaviorConfigurationChanged;
+        this.disableOmegaAfterEulaDecline = disableOmegaAfterEulaDecline;
         omegaIconTexture = File.Exists(omegaIconPath) ? Plugin.TextureProvider.GetFromFile(omegaIconPath) : null;
         sigmascopeBannerTexture = File.Exists(sigmascopeBannerPath) ? Plugin.TextureProvider.GetFromFile(sigmascopeBannerPath) : null;
         this.fallbackIconPath = fallbackIconPath;
@@ -331,9 +353,11 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     public override void Draw()
     {
         CompleteInstallTaskIfReady();
+        CompleteInstallTransactionTaskIfReady();
         CompleteUpdateTaskIfReady();
         CompleteUpdateAllDefinitionsTaskIfReady();
         CompleteUninstallTaskIfReady();
+        CompleteOrphanRemovalTaskIfReady();
         CompleteRepositoryTaskIfReady();
         CompleteRepositoryRemediationIfReady();
         CompleteCollectionOperationIfReady();
@@ -410,11 +434,13 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         OpenRequestedPopups();
         DrawTutorialModal();
         DrawInstallModal(currentApi, versionInfo.Version);
+        DrawInstallPlanModal(currentApi, versionInfo.Version);
         DrawInstallRiskReviewModal(currentApi, versionInfo.Version);
         DrawInstallPermissionModal(currentApi, versionInfo.Version);
         DrawUpdateMigrationModal(currentApi, versionInfo.Version);
         DrawUpdateChangelogModal();
         DrawUninstallModal();
+        DrawOrphanCleanupModal();
         DrawSettingsModal();
         DrawAboutModal();
         DrawEulaReviewModal();
@@ -433,6 +459,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Choose repository###DalagabOmegaInstall");
             requestInstallPopup = false;
+        }
+
+        if (requestInstallPlanPopup)
+        {
+            ImGui.OpenPopup(InstallPlanPopupId);
+            requestInstallPlanPopup = false;
         }
 
         if (requestInstallRiskPopup)
@@ -469,6 +501,12 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         {
             ImGui.OpenPopup("Uninstall plugin###DalagabOmegaUninstall");
             requestUninstallPopup = false;
+        }
+
+        if (requestOrphanCleanupPopup)
+        {
+            ImGui.OpenPopup("Unused dependencies###DalagabOmegaOrphanCleanup");
+            requestOrphanCleanupPopup = false;
         }
 
         if (requestSettingsPopup)

@@ -15,12 +15,20 @@ internal enum MarketplaceReadmeBlockKind
     Rule,
 }
 
-internal sealed record MarketplaceReadmeBlock(MarketplaceReadmeBlockKind Kind, string Text, int Level = 0);
+internal sealed record MarketplaceReadmeLink(string Label, string Url);
+
+internal sealed record MarketplaceReadmeBlock(
+    MarketplaceReadmeBlockKind Kind,
+    string Text,
+    int Level = 0,
+    IReadOnlyList<MarketplaceReadmeLink>? Links = null);
 
 /// <summary>
 /// Converts the bounded public README copy into safe presentation blocks.
 /// Markdown and common embedded HTML are interpreted for readability; executable HTML,
-/// scripts, forms, images and arbitrary raw links are never executed by the client.
+/// scripts, forms and arbitrary raw markup are never executed by the client.
+/// Safe HTTPS links are retained as explicit presentation actions instead of being rendered
+/// as raw markdown syntax.
 /// </summary>
 internal static partial class MarketplaceReadmeMarkup
 {
@@ -29,6 +37,9 @@ internal static partial class MarketplaceReadmeMarkup
 
     [GeneratedRegex(@"<(script|style|iframe|object|embed|form)\b[^>]*>.*?</\1\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex DangerousHtmlBlockRegex();
+
+    [GeneratedRegex("<a\\b[^>]*href\\s*=\\s*[\"'](https://[^\"']+)[\"'][^>]*>(.*?)</a\\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex HtmlHttpsAnchorRegex();
 
     [GeneratedRegex(@"<a\b[^>]*>(.*?)</a\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex HtmlAnchorRegex();
@@ -39,7 +50,7 @@ internal static partial class MarketplaceReadmeMarkup
     [GeneratedRegex(@"<blockquote\b[^>]*>(.*?)</blockquote\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex HtmlBlockquoteRegex();
 
-    [GeneratedRegex(@"<img\b[^>]*(?:alt=[""']([^""']*)[""'])?[^>]*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    [GeneratedRegex("<img\\b[^>]*(?:alt=[\"']([^\"']*)[\"'])?[^>]*>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex HtmlImageRegex();
 
     [GeneratedRegex(@"<br\s*/?>", RegexOptions.IgnoreCase)]
@@ -69,7 +80,9 @@ internal static partial class MarketplaceReadmeMarkup
     [GeneratedRegex(@"!\[([^\]]*)\]\([^)]*\)")]
     private static partial Regex MarkdownImageRegex();
 
-    [GeneratedRegex(@"\[([^\]]+)\]\([^)]*\)")]
+    // Negative look-behind keeps markdown image targets out of the clickable-link set.
+    // Empty labels are accepted because some upstream READMEs use [](https://...) for badge links.
+    [GeneratedRegex(@"(?<!!)\[([^\]]*)\]\((https://[^)\s]+)\)", RegexOptions.IgnoreCase)]
     private static partial Regex MarkdownLinkRegex();
 
     [GeneratedRegex(@"^#{1,6}\s+")]
@@ -103,9 +116,10 @@ internal static partial class MarketplaceReadmeMarkup
         {
             if (paragraph.Length == 0)
                 return;
-            var value = CleanInline(paragraph.ToString());
-            if (!string.IsNullOrWhiteSpace(value))
-                blocks.Add(new MarketplaceReadmeBlock(MarketplaceReadmeBlockKind.Paragraph, value));
+            var raw = paragraph.ToString();
+            var value = CleanInline(raw);
+            if (!string.IsNullOrWhiteSpace(value) || ExtractLinks(raw).Count > 0)
+                blocks.Add(CreateTextBlock(MarketplaceReadmeBlockKind.Paragraph, raw));
             paragraph.Clear();
         }
 
@@ -151,27 +165,33 @@ internal static partial class MarketplaceReadmeMarkup
                 if (trimmed.Length > level && char.IsWhiteSpace(trimmed[level]))
                 {
                     FlushParagraph();
-                    blocks.Add(new MarketplaceReadmeBlock(MarketplaceReadmeBlockKind.Heading, CleanInline(MarkdownHeadingPrefixRegex().Replace(trimmed, string.Empty)), level));
+                    var heading = MarkdownHeadingPrefixRegex().Replace(trimmed, string.Empty);
+                    blocks.Add(CreateTextBlock(MarketplaceReadmeBlockKind.Heading, heading, level));
                     continue;
                 }
             }
             if (trimmed.StartsWith('>'))
             {
                 FlushParagraph();
-                blocks.Add(new MarketplaceReadmeBlock(MarketplaceReadmeBlockKind.Quote, CleanInline(trimmed.TrimStart('>', ' '))));
+                blocks.Add(CreateTextBlock(MarketplaceReadmeBlockKind.Quote, trimmed.TrimStart('>', ' ')));
                 continue;
             }
             if (MarkdownBulletRegex().IsMatch(line))
             {
                 FlushParagraph();
-                blocks.Add(new MarketplaceReadmeBlock(MarketplaceReadmeBlockKind.Bullet, CleanInline(MarkdownBulletRegex().Replace(line, string.Empty))));
+                blocks.Add(CreateTextBlock(
+                    MarketplaceReadmeBlockKind.Bullet,
+                    MarkdownBulletRegex().Replace(line, string.Empty)));
                 continue;
             }
             if (MarkdownNumberedRegex().IsMatch(line))
             {
                 FlushParagraph();
                 var marker = line.TrimStart().TakeWhile(ch => char.IsDigit(ch)).Aggregate(new StringBuilder(), (builder, ch) => builder.Append(ch)).ToString();
-                blocks.Add(new MarketplaceReadmeBlock(MarketplaceReadmeBlockKind.Numbered, CleanInline(MarkdownNumberedRegex().Replace(line, string.Empty)), int.TryParse(marker, out var number) ? number : 0));
+                blocks.Add(CreateTextBlock(
+                    MarketplaceReadmeBlockKind.Numbered,
+                    MarkdownNumberedRegex().Replace(line, string.Empty),
+                    int.TryParse(marker, out var number) ? number : 0));
                 continue;
             }
 
@@ -227,6 +247,11 @@ internal static partial class MarketplaceReadmeMarkup
         text = HtmlPreRegex().Replace(text, match => $"\n```\n{RemainingHtmlRegex().Replace(match.Groups[1].Value, string.Empty)}\n```\n");
         text = HtmlBlockquoteRegex().Replace(text, match => $"\n> {RemainingHtmlRegex().Replace(match.Groups[1].Value, string.Empty)}\n");
         text = HtmlHeadingRegex().Replace(text, match => $"\n{new string('#', int.Parse(match.Groups[1].Value))} {match.Groups[2].Value}\n");
+        text = HtmlHttpsAnchorRegex().Replace(text, match =>
+        {
+            var label = RemainingHtmlRegex().Replace(match.Groups[2].Value, string.Empty).Trim();
+            return $"[{label}]({match.Groups[1].Value})";
+        });
         text = HtmlAnchorRegex().Replace(text, "$1");
         text = HtmlImageRegex().Replace(text, match => string.IsNullOrWhiteSpace(match.Groups[1].Value) ? string.Empty : match.Groups[1].Value);
         text = HtmlBreakRegex().Replace(text, "\n");
@@ -239,14 +264,65 @@ internal static partial class MarketplaceReadmeMarkup
         return ExcessBlankLinesRegex().Replace(text, "\n\n").Trim();
     }
 
+    private static MarketplaceReadmeBlock CreateTextBlock(
+        MarketplaceReadmeBlockKind kind,
+        string raw,
+        int level = 0)
+        => new(kind, CleanInline(raw), level, ExtractLinks(raw));
+
+    private static IReadOnlyList<MarketplaceReadmeLink> ExtractLinks(string input)
+    {
+        var result = new List<MarketplaceReadmeLink>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in MarkdownLinkRegex().Matches(input ?? string.Empty))
+        {
+            var url = match.Groups[2].Value.Trim();
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                !seen.Add(url))
+            {
+                continue;
+            }
+
+            result.Add(new MarketplaceReadmeLink(LinkLabel(match.Groups[1].Value, uri), url));
+            if (result.Count >= 6)
+                break;
+        }
+        return result;
+    }
+
     private static string CleanInline(string input)
     {
         var text = MarkdownImageRegex().Replace(input, "$1");
-        text = MarkdownLinkRegex().Replace(text, "$1");
+        text = MarkdownLinkRegex().Replace(text, match =>
+        {
+            var url = match.Groups[2].Value;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                return match.Groups[1].Value;
+            return LinkLabel(match.Groups[1].Value, uri);
+        });
         text = text.Replace("**", string.Empty, StringComparison.Ordinal)
             .Replace("__", string.Empty, StringComparison.Ordinal)
             .Replace("`", string.Empty, StringComparison.Ordinal)
             .Replace("~~", string.Empty, StringComparison.Ordinal);
         return string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Trim();
+    }
+
+    private static string LinkLabel(string rawLabel, Uri uri)
+    {
+        var label = (rawLabel ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(label))
+            return label;
+
+        if (uri.Host.Equals("discord.gg", StringComparison.OrdinalIgnoreCase) ||
+            uri.Host.EndsWith("discord.com", StringComparison.OrdinalIgnoreCase))
+            return "Discord";
+        if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+            return "GitHub";
+
+        var host = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+            ? uri.Host[4..]
+            : uri.Host;
+        return string.IsNullOrWhiteSpace(host) ? "Open link" : host;
     }
 }

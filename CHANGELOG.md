@@ -1,5 +1,66 @@
 ## [Unreleased]
 
+## [0.20.35] - 2026-09-07
+
+- Update the OMEGA-3 regression contract to match the dependency-aware Update All review wording introduced in 0.20.34; production transaction and migration behavior is unchanged.
+
+## [0.20.34] - 2026-09-07
+
+- Execute validated normalized dependency plans through an OMEGA-3 transaction coordinator: prepare every required repository before package mutation, revalidate frozen catalog/dependency revisions and selected variants, then install/update leaf-first through Dalamud.
+- Extend the local Library ledger with sticky manual/dependency ownership and root requester edges; successful root updates reconcile released dependencies instead of leaving stale ownership behind.
+- Add conservative partial-failure rollback for only newly auto-installed dependency packages; pre-existing plugins and updates are never destructively rolled back.
+- Protect required providers from one-click uninstall using the normalized reverse dependency graph and offer explicit `Remove unused dependencies` cleanup for dependency-owned orphans without silent deletion.
+- Route dependency-changing plugin updates through the same resolver and transaction preview used for installs.
+- Rank repository selection and cross-repository migration by provenance before version/chronology: current source first where applicable, then known providers, then a feed published by the plugin/source-project owner, then other community mirrors; known divergent sources remain reviewed fallbacks instead of winning because they are newer.
+- Keep SigmaScope/security observations orthogonal to package solvability while retaining the existing orange/red repository acknowledgement gates inside the transaction preview.
+
+## [0.20.33] - 2026-09-07
+
+- Read normalized dependency graph data through disposable SQLite copies so Windows catalog replacement/reset and regression cleanup cannot be blocked by transient native SQLite handles.
+
+- Fix the OMEGA-2 build by using a compile-time string literal for the optional `PluginInstallWarning.InternalName` positional-record parameter instead of `string.Empty`.
+- Retain the 0.20.31 recursive dependency resolver, immutable install plan, optional/recommended selection, and transaction preview unchanged.
+
+## [0.20.31] - 2026-09-07
+
+- Add a deterministic recursive package-dependency resolver that consumes only normalized required + install-eligible catalog edges; IPC/security observations never enter automatic package closure.
+- Add conservative version-constraint parsing/intersection, deterministic provider-source selection, compatibility checks, missing-provider/conflict reporting, and required-cycle detection.
+- Freeze immutable install plans with catalog/dependency revisions, selected variants/sources/versions, leaf-first operation ordering, stable plan IDs, and stale-plan invalidation before any lifecycle action.
+- Add a package-manager transaction preview with locked required dependencies, explicitly selectable recommended/optional relationships, repository review status, orthogonal security summaries, and change/install/update/keep counts.
+- Preserve the existing single-plugin Dalamud install path when every required dependency is already satisfied; multi-plugin transaction execution remains deliberately disabled until the transaction-coordinator pass.
+
+## [0.20.30] - 2026-09-07
+
+- Consume the catalog's normalized `plugin_dependencies` and `plugin_dependency_providers` tables with graceful fallback for older Definitions databases.
+- Carry exact catalog variant identity into marketplace plugins so package dependencies remain consumer-variant scoped, while stable plugin identity remains the provider key.
+- Add package-authoritative Requires and Required by product UI for required, recommended, optional, and observed normalized relationships.
+- Keep SigmaScope `SecurityDependencies` as presentation-only evidence and move IPC relationships into a separate Integrations section; IPC no longer blocks or triggers package installation.
+- Read and expose `dependency_graph_revision` so later immutable install plans can be invalidated when package authority changes.
+- Add regression coverage for dependency database reads, reverse lookups, provider summaries, older databases without dependency tables, and defensive exclusion of IPC from normalized package-manager reads.
+
+## [0.20.29] - 2026-09-07
+
+- Disable and unload Omega through Dalamud when the first-use EULA is declined, including persistent profile/dev-plugin state so declining does not leave the plugin running behind a dark modal overlay.
+- Remove the decorative Omega mark from the EULA title bar while leaving shared modal chrome unchanged elsewhere.
+- Give the EULA risk summary enough vertical room for wrapped warning copy instead of letting it overflow its bordered panel.
+- Move Omega GitHub and Discord destinations to compact footer icons and remove the redundant accepted-once footer sentence.
+
+## [0.20.28] - 2026-09-07
+
+- Load project screenshots and animated/large project media only from an open plugin product page, and only when each media card enters the visible project-image strip; normal marketplace icons and banners keep their tighter cache path.
+- Classify likely heavy/animated project media from URL/content metadata and keep the larger project-media allowance isolated from ordinary artwork.
+- Reformat the first-use EULA into readable sections, bullets, numbered acceptance terms and emphasized risk callouts instead of a wall of plain text.
+- Require users to reach the end of the EULA before Accept can be enabled, while retaining the existing first-use reading delay and fail-closed missing-document behavior.
+- Start the guided Omega tutorial immediately after first-use EULA acceptance, and avoid consuming the tutorial popup request behind the EULA gate.
+
+## [0.20.27] - 2026-09-07
+
+- Replace the tall repository chooser with a compact source list that keeps the preferred package first and uses green, orange, and red status indicators for ready, acknowledgement, and package-divergence states.
+- Add a small store-style final install confirmation with the selected source, package status, community Discord action, explicit acknowledgement when needed, and a single final Install action.
+- Add Settings > Community > Local data reset, completed safely on the next Omega reload, to remove Omega configuration, acknowledgements, catalog/image caches, and local ledgers without touching installed plugins or their configuration.
+- Filter package icons and Omega banners out of Project images, allow bounded larger project screenshots/animations, distinguish failed image loads from pending loads, and retry failed image fetches after a bounded cooldown.
+- Preserve safe HTTPS links from plugin README/changelog markup and render them as readable clickable actions instead of exposing raw Markdown syntax.
+
 ## [0.20.26] - 2026-09-06
 
 - Add an opt-out integration that routes clicks on Dalamud's own plugin-updates-available notification into Omega > Updates while leaving Dalamud's Update/Open installer action buttons intact.

@@ -14,36 +14,41 @@ internal sealed partial class MarketplaceWindow
     private const float OmegaModalHeaderHeight = 42f;
     private const float OmegaModalMarkSize = 20f;
 
-    private bool DrawOmegaModalHeader(string title, string id, bool allowClose = true)
+    private bool DrawOmegaModalHeader(string title, string id, bool allowClose = true, bool showMark = true)
     {
         var closeClicked = false;
         ImGui.BeginChild($"omega-modal-header-{id}", new Vector2(0f, Ui(OmegaModalHeaderHeight)), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        var iconY = (Ui(OmegaModalHeaderHeight) - Ui(OmegaModalMarkSize)) * 0.5f;
-        ImGui.SetCursorPos(new Vector2(Ui(2f), iconY));
-        var iconMin = ImGui.GetCursorScreenPos();
-        ImGui.Dummy(Ui(OmegaModalMarkSize, OmegaModalMarkSize));
-        var texture = omegaIconTexture?.GetWrapOrDefault();
-        if (texture is not null)
-            ImGui.GetWindowDrawList().AddImage(texture.Handle, iconMin, iconMin + Ui(OmegaModalMarkSize, OmegaModalMarkSize));
-        else
+        var titleX = Ui(2f);
+        if (showMark)
         {
-            const string glyph = "Ω";
-            var glyphSize = ImGui.CalcTextSize(glyph);
-            ImGui.GetWindowDrawList().AddText(
-                iconMin + new Vector2((Ui(OmegaModalMarkSize) - glyphSize.X) * 0.5f, (Ui(OmegaModalMarkSize) - glyphSize.Y) * 0.5f),
-                ImGui.GetColorU32(ImGuiCol.Text),
-                glyph);
+            var iconY = (Ui(OmegaModalHeaderHeight) - Ui(OmegaModalMarkSize)) * 0.5f;
+            ImGui.SetCursorPos(new Vector2(Ui(2f), iconY));
+            var iconMin = ImGui.GetCursorScreenPos();
+            ImGui.Dummy(Ui(OmegaModalMarkSize, OmegaModalMarkSize));
+            var texture = omegaIconTexture?.GetWrapOrDefault();
+            if (texture is not null)
+                ImGui.GetWindowDrawList().AddImage(texture.Handle, iconMin, iconMin + Ui(OmegaModalMarkSize, OmegaModalMarkSize));
+            else
+            {
+                const string glyph = "Ω";
+                var glyphSize = ImGui.CalcTextSize(glyph);
+                ImGui.GetWindowDrawList().AddText(
+                    iconMin + new Vector2((Ui(OmegaModalMarkSize) - glyphSize.X) * 0.5f, (Ui(OmegaModalMarkSize) - glyphSize.Y) * 0.5f),
+                    ImGui.GetColorU32(ImGuiCol.Text),
+                    glyph);
+            }
+            titleX = Ui(OmegaModalMarkSize + 14f);
         }
 
-        ImGui.SetCursorPos(new Vector2(Ui(OmegaModalMarkSize + 14f), (Ui(OmegaModalHeaderHeight) - ImGui.GetTextLineHeight()) * 0.5f));
+        ImGui.SetCursorPos(new Vector2(titleX, (Ui(OmegaModalHeaderHeight) - ImGui.GetTextLineHeight()) * 0.5f));
         ImGui.TextUnformatted(title);
 
         if (allowClose)
         {
             ImGui.SetCursorPos(new Vector2(
-                Math.Max(Ui(OmegaModalMarkSize + 120f), ImGui.GetWindowWidth() - Ui(AppBarControlSize) - Ui(2f)),
+                Math.Max(titleX + Ui(120f), ImGui.GetWindowWidth() - Ui(AppBarControlSize) - Ui(2f)),
                 (Ui(OmegaModalHeaderHeight) - Ui(AppBarControlSize)) * 0.5f));
             closeClicked = DrawApplicationIconButton(FontAwesomeIcon.Times, $"modal-{id}-close", $"Close {title}", true);
         }

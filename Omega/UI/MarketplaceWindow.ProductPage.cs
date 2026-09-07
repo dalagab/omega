@@ -438,7 +438,7 @@ internal sealed partial class MarketplaceWindow
             if (offeredUpdate is not null && updateCandidate is not null)
             {
                 var migration = IsRepositoryMigration(installedPlugin, updateCandidate);
-                var updateBusy = updateTask is not null;
+                var updateBusy = updateTask is not null || installTransactionTask is not null;
                 var hasPreviousFailure = updateFailures.ContainsKey(plugin.InternalName);
                 var label = updatingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase)
                     ? "Updating…"
@@ -484,9 +484,22 @@ internal sealed partial class MarketplaceWindow
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip("Omega cannot uninstall itself while it is running. Use Dalamud to remove Omega.");
             }
-            else if (DrawProductUninstallButton("Uninstall", $"product-uninstall-{plugin.InternalName}", enabled: uninstallTask is null))
+            else if (DrawProductUninstallButton("Uninstall", $"product-uninstall-{plugin.InternalName}", enabled: uninstallTask is null && installTransactionTask is null))
             {
                 OpenUninstallConfirmation(plugin);
+            }
+
+            var ownership = libraryLedger.GetOwnership(plugin.InternalName);
+            if (ownership.IsDependencyOwned)
+            {
+                ImGui.SameLine(0f, Ui(10f));
+                if (ImGui.Button($"Keep independently##product-claim-{StableId(plugin.InternalName)}", Ui(154f, 36f)))
+                {
+                    if (libraryLedger.PromoteToManual(plugin.InternalName))
+                        operationMessage = $"{plugin.Name} is now treated as a direct/manual install and will never be offered for dependency autoremove.";
+                }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Promote this Omega-installed dependency to a direct/manual install.");
             }
             return;
         }
@@ -507,6 +520,11 @@ internal sealed partial class MarketplaceWindow
         if (installTask is not null && installingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase))
         {
             DrawProductActionButton("Installing…", $"product-installing-{plugin.InternalName}", enabled: false, accent: false);
+            return;
+        }
+        if (installTransactionTask is not null)
+        {
+            DrawProductActionButton("Transaction running…", $"product-transaction-{plugin.InternalName}", enabled: false, accent: false);
             return;
         }
 
@@ -588,10 +606,19 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawProductScreenshot(string url, int index)
     {
-        var texture = iconCache.GetOrQueue(url);
+        var cardSize = Ui(ProductScreenshotWidth, ProductScreenshotHeight);
+        // Project media can be much larger than ordinary marketplace artwork (for example animated
+        // README GIFs). Never start a project-media network/decode task merely because the catalog
+        // knows its URL: only an open product page can reach this method, and the card must also be
+        // inside the current clipped viewport before it is queued.
+        var mediaVisible = ImGui.IsRectVisible(cardSize);
+        var texture = mediaVisible ? iconCache.GetOrQueueProjectImage(url) : null;
+        var animated = iconCache.IsAnimatedProjectMedia(url);
+        var heavy = iconCache.IsHeavyProjectMedia(url);
+
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.025f, 0.030f, 0.038f, 0.88f));
         ImGui.BeginChild($"product-screenshot-{index}-{StableId(url)}",
-            Ui(ProductScreenshotWidth, ProductScreenshotHeight),
+            cardSize,
             true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
@@ -600,7 +627,15 @@ internal sealed partial class MarketplaceWindow
             var min = ImGui.GetCursorScreenPos();
             var avail = ImGui.GetContentRegionAvail();
             ImGui.Dummy(avail);
-            var text = "Loading image…";
+            var text = !mediaVisible
+                ? "Preview loads on demand"
+                : iconCache.IsTerminalFailure(url)
+                    ? "Image unavailable"
+                    : animated
+                        ? "Loading animated preview…"
+                        : heavy
+                            ? "Loading large preview…"
+                            : "Loading image…";
             var textSize = ImGui.CalcTextSize(text);
             ImGui.GetWindowDrawList().AddText(
                 min + new Vector2((avail.X - textSize.X) * 0.5f, (avail.Y - textSize.Y) * 0.5f),
@@ -619,12 +654,18 @@ internal sealed partial class MarketplaceWindow
         var screenshotHovered = ImGui.IsWindowHovered();
         var screenshotClicked = screenshotHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (screenshotHovered)
-            ImGui.SetTooltip("View larger image");
+        {
+            ImGui.SetTooltip(animated
+                ? "Animated project preview · loaded only while viewing this plugin"
+                : heavy
+                    ? "Large project preview · loaded only while viewing this plugin"
+                    : "View larger image");
+        }
 
         ImGui.EndChild();
         ImGui.PopStyleColor();
 
-        if (screenshotClicked)
+        if (screenshotClicked && texture is not null)
             OpenScreenshotViewer(url);
     }
 

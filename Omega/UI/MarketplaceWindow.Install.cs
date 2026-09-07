@@ -9,7 +9,7 @@ namespace Dalagab.Omega;
 
 internal sealed partial class MarketplaceWindow
 {
-    private const string InstallRiskPopupId = "Review repository risk###DalagabOmegaInstallRisk";
+    private const string InstallRiskPopupId = "Install plugin###DalagabOmegaInstallConfirm";
 
     private void DrawDetailsPrimaryAction(
         MarketplacePlugin plugin,
@@ -53,9 +53,9 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = installPopupOpen;
-        ImGui.SetNextWindowSize(UiModalSize(600f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(720f, 520f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal("Choose repository###DalagabOmegaInstall", ref keepOpen,
-                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.AlwaysAutoResize))
+                ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize))
         {
             installPopupOpen = keepOpen;
             return;
@@ -73,39 +73,11 @@ internal sealed partial class MarketplaceWindow
         EnsurePendingInstallSource(candidates);
         var selected = candidates.FirstOrDefault(x =>
             NormalizeUrl(x.SourceUrl).Equals(NormalizeUrl(pendingInstallSourceUrl), StringComparison.OrdinalIgnoreCase));
-        var selectedNeedsRiskReview = selected is not null && NeedsInstallRepositoryReview(selected);
 
-        var headingY = ImGui.GetCursorPosY();
-        ImGui.Text($"Install {plugin.Name}");
-
-        var installButtonHeight = Ui(30f);
-        var installButtonWidth = Ui(selectedNeedsRiskReview ? 108f : 88f);
-        var actionX = ImGui.GetCursorPosX() + Math.Max(0f, ImGui.GetContentRegionAvail().X - installButtonWidth);
-        ImGui.SetCursorPos(new Vector2(actionX, headingY));
-        var actionLabel = selectedNeedsRiskReview ? "Review risk" : "Install";
-        var canAct = selected is not null && installTask is null;
-        if (!canAct)
-            ImGui.BeginDisabled();
-        if (ImGui.Button(actionLabel, new Vector2(installButtonWidth, installButtonHeight)))
-        {
-            if (selectedNeedsRiskReview)
-                OpenInstallRepositoryRiskReview(selected!);
-            else
-                TryStartSelectedInstall(selected!);
-        }
-        if (!canAct)
-            ImGui.EndDisabled();
-
-        ImGui.SetCursorPosY(headingY + installButtonHeight + Ui(4f));
-        ImGui.TextDisabled("Choose which repository to use for this installation.");
-        ImGui.Separator();
-
-        if (DrawRequiredProviderInstallWarning(plugin))
-        {
-            installPopupOpen = false;
-            ImGui.EndPopup();
-            return;
-        }
+        ImGui.TextUnformatted(plugin.Name);
+        ImGui.SameLine(0f, Ui(10f));
+        ImGui.TextDisabled("Choose the package source. Omega's preferred source stays at the top.");
+        ImGui.Spacing();
 
         if (candidates.Count == 0)
         {
@@ -113,93 +85,51 @@ internal sealed partial class MarketplaceWindow
         }
         else
         {
-            foreach (var candidate in candidates)
-                DrawInstallSourceChoice(candidate, currentApi, currentDalamudVersion);
+            var footerHeight = Ui(72f);
+            ImGui.BeginChild("install-source-list", new Vector2(0f, -footerHeight), true,
+                ImGuiWindowFlags.AlwaysVerticalScrollbar);
+            for (var index = 0; index < candidates.Count; index++)
+                DrawInstallSourceChoice(candidates[index], currentApi, currentDalamudVersion, preferred: index == 0);
+            ImGui.EndChild();
         }
 
-        if (selectedNeedsRiskReview && selected is not null)
+        ImGui.Spacing();
+        if (selected is not null)
         {
-            ImGui.Spacing();
-            ImGui.TextColored(new Vector4(0.96f, 0.30f, 0.24f, 1f),
-                BuildInstallRepositoryReviewReason(selected));
+            ImGui.TextDisabled($"Selected: {selected.SourceName}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(selected.SourceUrl);
+        }
+        else
+        {
+            ImGui.TextDisabled("Select a repository to continue.");
         }
 
-        ImGui.Separator();
-        ImGui.TextDisabled("Installed and updated by Dalamud from the selected source.");
+        var continueWidth = Ui(116f);
+        var continueY = ImGui.GetCursorPosY() - ImGui.GetTextLineHeight() - Ui(5f);
+        var continueX = ImGui.GetCursorPosX() + Math.Max(0f, ImGui.GetContentRegionAvail().X - continueWidth);
+        ImGui.SetCursorPos(new Vector2(continueX, continueY));
+        var canContinue = selected is not null && installTask is null;
+        if (!canContinue)
+            ImGui.BeginDisabled();
+        if (ImGui.Button("Continue", new Vector2(continueWidth, Ui(34f))) && selected is not null)
+            ContinueInstallSelection(selected, currentApi, currentDalamudVersion);
+        if (!canContinue)
+            ImGui.EndDisabled();
 
         installPopupOpen = keepOpen && installPopupOpen;
         ImGui.EndPopup();
     }
 
-    private bool DrawRequiredProviderInstallWarning(MarketplacePlugin plugin)
-    {
-        var installedNames = Plugin.PluginInterface.InstalledPlugins
-            .Where(x => !string.IsNullOrWhiteSpace(x.InternalName))
-            .Select(x => x.InternalName)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var missing = plugin.SecurityDependencies
-            .Where(IsHighConfidenceRequiredProvider)
-            .Where(x => string.IsNullOrWhiteSpace(x.TargetInternalName) || !installedNames.Contains(x.TargetInternalName))
-            .GroupBy(x => string.IsNullOrWhiteSpace(x.TargetInternalName) ? x.Name : x.TargetInternalName, StringComparer.OrdinalIgnoreCase)
-            .Select(x => x.First())
-            .Take(4)
-            .ToArray();
-        if (missing.Length == 0)
-            return false;
+    // Package-manager dependencies come only from the normalized catalog graph.
+    // SecurityDependencies (including IPC observations) remain presentation-only and never block
+    // or trigger installation from the repository chooser.
 
-        var height = Ui(86f + (missing.Length * 28f));
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.90f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
-        ImGui.BeginChild("install-required-provider-warning", new Vector2(0f, height), true,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.SetCursorPosY(Ui(12f));
-        DrawPluginFontAwesomeRiskIcon(
-            FontAwesomeIcon.ExclamationTriangle,
-            new Vector4(0.98f, 0.28f, 0.31f, 1f),
-            "High-confidence required IPC provider is not installed",
-            Ui(24f));
-        ImGui.SameLine(0f, Ui(10f));
-        ImGui.BeginGroup();
-        ImGui.TextUnformatted(missing.Length == 1 ? "Required provider not installed" : "Required providers not installed");
-        ImGui.PushTextWrapPos(ImGui.GetWindowContentRegionMax().X - Ui(12f));
-        ImGui.TextDisabled("Required IPC provider. Install separately.");
-        ImGui.PopTextWrapPos();
-        ImGui.EndGroup();
-
-        foreach (var dependency in missing)
-        {
-            var providerName = string.IsNullOrWhiteSpace(dependency.TargetInternalName) ? dependency.Name : dependency.TargetInternalName;
-            ImGui.SetCursorPosX(Ui(14f));
-            ImGui.TextColored(new Vector4(0.98f, 0.46f, 0.42f, 1f), $"• {providerName}");
-            var target = string.IsNullOrWhiteSpace(dependency.TargetInternalName)
-                ? null
-                : catalog.GetVariants(dependency.TargetInternalName).FirstOrDefault();
-            if (target is not null)
-            {
-                ImGui.SameLine();
-                if (ImGui.SmallButton($"View provider##required-provider-{StableId(dependency.TargetInternalName)}"))
-                {
-                    pendingInstall = null;
-                    pendingInstallSourceUrl = string.Empty;
-                    installPopupOpen = false;
-                    ImGui.CloseCurrentPopup();
-                    OpenPluginDetails(target);
-                    ImGui.EndChild();
-                    ImGui.PopStyleColor(2);
-                    return true;
-                }
-            }
-            if (ImGui.IsItemHovered() && !string.IsNullOrWhiteSpace(dependency.RelationshipReason))
-                ImGui.SetTooltip($"{dependency.RelationshipConfidence} confidence\n{dependency.RelationshipReason}");
-        }
-
-        ImGui.EndChild();
-        ImGui.PopStyleColor(2);
-        ImGui.Spacing();
-        return false;
-    }
-
-    private void DrawInstallSourceChoice(MarketplacePlugin candidate, int currentApi, Version currentDalamudVersion)
+    private void DrawInstallSourceChoice(
+        MarketplacePlugin candidate,
+        int currentApi,
+        Version currentDalamudVersion,
+        bool preferred)
     {
         var selected = NormalizeUrl(candidate.SourceUrl)
             .Equals(NormalizeUrl(pendingInstallSourceUrl), StringComparison.OrdinalIgnoreCase);
@@ -207,7 +137,6 @@ internal sealed partial class MarketplaceWindow
             ? testing ? candidate.TestingAssemblyVersionText ?? candidate.AssemblyVersionText : candidate.AssemblyVersionText
             : candidate.AssemblyVersionText;
         var api = testing ? candidate.TestingDalamudApiLevel ?? candidate.DalamudApiLevel : candidate.DalamudApiLevel;
-        var sourceState = DescribeInstallSourceState(candidate);
         var alreadyPresent = IsInstallRepositoryPresent(candidate);
         var candidates = GetInstallCandidates(candidate.InternalName, currentApi, currentDalamudVersion);
         var baseline = candidates.FirstOrDefault(x =>
@@ -219,55 +148,80 @@ internal sealed partial class MarketplaceWindow
                            x.DalamudApiLevel == candidate.DalamudApiLevel)
                        ?? candidate;
         var sourceComparison = CompareRepositorySecurity(candidate, baseline);
+        var packageDivergent = IsPluginPackageArtifactDivergent(candidate);
         var repositoryDivergent = IsRepositoryArtifactDivergent(candidate.SourceUrl);
-        var divergenceAcknowledged = repositoryDivergent && IsRepositoryRiskAcknowledged(candidate.SourceUrl);
-        var untrusted = RequiresUntrustedRepositoryAcknowledgement(candidate);
-        var untrustedAcknowledged = untrusted && IsUntrustedRepositoryAcknowledged(candidate);
-        var repositoryAcknowledged = (repositoryDivergent && divergenceAcknowledged) || (untrusted && untrustedAcknowledged);
-        var needsReview = NeedsInstallRepositoryReview(candidate);
+        var unrecognized = RequiresUntrustedRepositoryAcknowledgement(candidate);
+        var unrecognizedAcknowledged = unrecognized && IsUntrustedRepositoryAcknowledged(candidate);
+
+        var statusLabel = "Available";
+        var statusColor = new Vector4(0.62f, 0.66f, 0.70f, 1f);
+        if (packageDivergent || repositoryDivergent)
+        {
+            statusLabel = "Package divergence";
+            statusColor = new Vector4(0.96f, 0.30f, 0.24f, 1f);
+        }
+        else if (sourceComparison.Worse)
+        {
+            statusLabel = "More findings";
+            statusColor = new Vector4(0.96f, 0.30f, 0.24f, 1f);
+        }
+        else if (unrecognized && !unrecognizedAcknowledged)
+        {
+            statusLabel = "Ack required";
+            statusColor = new Vector4(0.95f, 0.64f, 0.20f, 1f);
+        }
+        else if (preferred)
+        {
+            statusLabel = "Preferred";
+            statusColor = new Vector4(0.34f, 0.82f, 0.56f, 1f);
+        }
+        else if (unrecognizedAcknowledged)
+        {
+            statusLabel = "Acknowledged";
+            statusColor = new Vector4(0.95f, 0.64f, 0.20f, 1f);
+        }
+        else if (alreadyPresent)
+        {
+            statusLabel = "Ready";
+            statusColor = new Vector4(0.34f, 0.82f, 0.56f, 1f);
+        }
 
         ImGui.PushID($"install-source-{StableId(candidate.SourceUrl)}");
         var rowStart = ImGui.GetCursorPos();
         var rowWidth = ImGui.GetContentRegionAvail().X;
+        var rowHeight = Ui(MarketplaceLayoutRules.InstallSourceRowHeight);
         if (ImGui.Selectable(
                 "##choice",
                 selected,
                 ImGuiSelectableFlags.DontClosePopups,
-                new Vector2(rowWidth, Ui(MarketplaceLayoutRules.InstallSourceRowHeight))))
+                new Vector2(rowWidth, rowHeight)))
         {
             pendingInstallSourceUrl = candidate.SourceUrl;
         }
+        var rowHovered = ImGui.IsItemHovered();
         var rowEnd = ImGui.GetCursorPos();
 
         ImGui.SetCursorPos(rowStart + Ui(10f, 8f));
-        if (sourceComparison.Worse || needsReview)
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.94f, 0.28f, 0.26f, 1f));
-        else if (repositoryAcknowledged)
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.95f, 0.64f, 0.20f, 1f));
-        DrawRepositoryName(Shorten(candidate.SourceName, 46), candidate.SourceUrl, candidate.SourceIsOfficial, currentApi);
-        if (sourceComparison.Worse || needsReview || repositoryAcknowledged)
-            ImGui.PopStyleColor();
-        DrawRepositorySecurityDifferenceIndicator(sourceComparison);
+        DrawRepositoryName(Shorten(candidate.SourceName, 52), candidate.SourceUrl, candidate.SourceIsOfficial, currentApi);
 
-        if (alreadyPresent)
-            DrawInstallRepositoryPresentMarker(rowStart, rowWidth, candidate.SourceIsOfficial);
+        var statusWidth = ImGui.CalcTextSize(statusLabel).X + Ui(24f);
+        ImGui.SetCursorPos(new Vector2(
+            rowStart.X + Math.Max(Ui(180f), rowWidth - statusWidth - Ui(10f)),
+            rowStart.Y + Ui(8f)));
+        ImGui.TextColored(statusColor, "●");
+        ImGui.SameLine(0f, Ui(5f));
+        ImGui.TextColored(statusColor, statusLabel);
 
         ImGui.SetCursorPos(rowStart + Ui(10f, 33f));
         ImGui.TextDisabled($"Version {version}  •  API {api}  •  {RepositoryStateLabel(candidate.SourceName, candidate.SourceUrl, candidate.SourceIsOfficial)}");
-        ImGui.SetCursorPos(rowStart + Ui(10f, 55f));
-        if (sourceComparison.Worse || needsReview)
-            ImGui.TextColored(new Vector4(0.94f, 0.28f, 0.26f, 1f), sourceState);
-        else if (repositoryAcknowledged)
-            ImGui.TextColored(new Vector4(0.95f, 0.64f, 0.20f, 1f), sourceState);
-        else
-            ImGui.TextDisabled(sourceState);
-        ImGui.SetCursorPos(rowStart + Ui(10f, 76f));
-        ImGui.TextDisabled(Shorten(candidate.SourceUrl, 88));
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(candidate.SourceUrl);
+
+        if (rowHovered)
+        {
+            var reason = DescribeInstallSourceState(candidate);
+            ImGui.SetTooltip($"{reason}\n{candidate.SourceUrl}");
+        }
 
         ImGui.SetCursorPos(rowEnd);
-        ImGui.Spacing();
         ImGui.PopID();
     }
 
@@ -381,7 +335,7 @@ internal sealed partial class MarketplaceWindow
             return;
 
         var keepOpen = installRiskPopupOpen;
-        ImGui.SetNextWindowSize(UiModalSize(700f, 0f), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(UiModalSize(540f, 0f), ImGuiCond.Appearing);
         if (!ImGui.BeginPopupModal(InstallRiskPopupId, ref keepOpen,
                 ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize))
         {
@@ -389,7 +343,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        if (DrawOmegaModalHeader("Review repository risk", "install-risk"))
+        if (DrawOmegaModalHeader("Install plugin", "install-confirm"))
         {
             ReturnFromInstallRiskReview();
             ImGui.EndPopup();
@@ -403,8 +357,7 @@ internal sealed partial class MarketplaceWindow
 
         if (selected is null)
         {
-            ImGui.TextColored(new Vector4(0.96f, 0.30f, 0.24f, 1f), "The selected package is no longer available in the current Definitions.");
-            ImGui.TextWrapped(DescribeInstallUnavailability(plugin.InternalName, currentApi, currentDalamudVersion));
+            ImGui.TextWrapped("This package is no longer available in the current Omega Definitions.");
             ImGui.Spacing();
             if (ImGui.Button("Back to repositories", Ui(180f, 34f)))
                 ReturnFromInstallRiskReview();
@@ -413,80 +366,126 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        var notice = FindRepositoryRiskNotice(selected.SourceUrl);
-        var needsDivergenceAcknowledgement = notice is not null && !IsRepositoryRiskAcknowledged(notice);
-        var needsUntrustedAcknowledgement = RequiresUntrustedRepositoryAcknowledgement(selected) &&
-                                             !IsUntrustedRepositoryAcknowledged(selected);
+        selected = catalog.HydrateVariant(selected);
         var version = selected.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out var testing)
             ? testing ? selected.TestingAssemblyVersionText ?? selected.AssemblyVersionText : selected.AssemblyVersionText
             : selected.AssemblyVersionText;
         var api = testing ? selected.TestingDalamudApiLevel ?? selected.DalamudApiLevel : selected.DalamudApiLevel;
+        var notice = FindRepositoryRiskNotice(selected.SourceUrl);
+        var repositoryDivergent = IsRepositoryArtifactDivergent(selected.SourceUrl) || IsPluginPackageArtifactDivergent(selected);
+        var needsDivergenceAcknowledgement = repositoryDivergent && !IsRepositoryRiskAcknowledged(selected.SourceUrl);
+        var untrusted = RequiresUntrustedRepositoryAcknowledgement(selected);
+        var needsUntrustedAcknowledgement = untrusted && !IsUntrustedRepositoryAcknowledged(selected);
+        var needsAcknowledgement = needsDivergenceAcknowledgement || needsUntrustedAcknowledgement;
 
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.035f, 0.045f, 0.88f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.82f, 0.16f, 0.20f, 0.94f));
-        ImGui.BeginChild("install-risk-summary", new Vector2(0f, Ui(92f)), true,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.TextColored(new Vector4(0.98f, 0.37f, 0.31f, 1f), "This repository needs explicit acknowledgement before installation.");
-        ImGui.TextWrapped(BuildInstallRepositoryReviewExplanation(selected, needsDivergenceAcknowledgement, needsUntrustedAcknowledgement));
-        ImGui.EndChild();
-        ImGui.PopStyleColor(2);
+        ImGui.BeginGroup();
+        DrawPluginArtwork(
+            selected,
+            null,
+            Ui(72f),
+            Ui(72f),
+            currentApi,
+            currentDalamudVersion,
+            showOverlays: false);
+        ImGui.SameLine(0f, Ui(16f));
+        ImGui.BeginGroup();
+        ImGui.TextUnformatted(selected.Name);
+        if (!string.IsNullOrWhiteSpace(selected.Author))
+            ImGui.TextDisabled(selected.Author);
+        ImGui.TextDisabled($"{selected.SourceName}  •  Version {version}  •  API {api}");
+        ImGui.EndGroup();
+        ImGui.EndGroup();
 
-        ImGui.Spacing();
-        if (ImGui.BeginTable("install-risk-details", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH))
+        ImGui.Dummy(Ui(1f, 8f));
+        ImGui.Separator();
+        ImGui.Dummy(Ui(1f, 8f));
+
+        Vector4 statusColor;
+        string statusLabel;
+        string statusExplanation;
+        if (repositoryDivergent)
         {
-            ImGui.TableSetupColumn("Field", ImGuiTableColumnFlags.WidthFixed, Ui(145f));
-            ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
-            DrawInstallRiskDetailRow("Repository", selected.SourceName);
-            DrawInstallRiskDetailRow("Repository URL", selected.SourceUrl);
-            DrawInstallRiskDetailRow("Plugin package", $"{selected.Name}  •  v{version}  •  API {api}");
-            DrawInstallRiskDetailRow("Repository state", DescribeInstallRepositoryRegistration(selected));
-            DrawInstallRiskDetailRow("Source recognition", RepositoryStateLabel(selected.SourceName, selected.SourceUrl, selected.SourceIsOfficial));
-            DrawInstallRiskDetailRow("Selected package", IsPluginPackageArtifactDivergent(selected)
-                ? "Differs from Omega's preferred same-version package baseline"
-                : "No direct package mismatch recorded for this selected plugin variant");
-            if (notice is not null)
-            {
-                DrawInstallRiskDetailRow("Divergent packages", notice.DivergentArtifactCount.ToString());
-                DrawInstallRiskDetailRow("Example", notice.ExamplePlugin);
-            }
-            ImGui.EndTable();
+            statusColor = new Vector4(0.96f, 0.30f, 0.24f, 1f);
+            statusLabel = "Package divergence";
+            statusExplanation = BuildInstallRepositoryReviewExplanation(selected, true, untrusted);
         }
-
-        ImGui.Spacing();
-        if (!needsDivergenceAcknowledgement && !needsUntrustedAcknowledgement)
+        else if (needsUntrustedAcknowledgement)
         {
-            ImGui.TextColored(new Vector4(0.34f, 0.82f, 0.56f, 1f),
-                "This source is already acknowledged for the current review state.");
+            statusColor = new Vector4(0.95f, 0.64f, 0.20f, 1f);
+            statusLabel = "Acknowledgement required";
+            statusExplanation = BuildInstallRepositoryReviewExplanation(selected, false, true);
+        }
+        else if (untrusted)
+        {
+            statusColor = new Vector4(0.95f, 0.64f, 0.20f, 1f);
+            statusLabel = "Source acknowledged";
+            statusExplanation = "You previously acknowledged this unrecognized community source for its current identity.";
         }
         else
         {
-            ImGui.Checkbox("I understand this source is outside Omega's recognized provider set or has additional repository findings", ref pendingInstallRiskAcknowledgementChecked);
-            ImGui.TextDisabled("Acknowledgement applies to this source and current findings.");
+            statusColor = new Vector4(0.34f, 0.82f, 0.56f, 1f);
+            statusLabel = "Ready to install";
+            statusExplanation = DescribeInstallRepositoryRegistration(selected);
         }
 
-        ImGui.Spacing();
-        if (ImGui.Button("Back", Ui(100f, 34f)))
+        ImGui.TextColored(statusColor, "●");
+        ImGui.SameLine(0f, Ui(7f));
+        ImGui.TextColored(statusColor, statusLabel);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + Math.Max(Ui(320f), ImGui.GetContentRegionAvail().X));
+        ImGui.TextWrapped(statusExplanation);
+        ImGui.PopTextWrapPos();
+
+        if (needsAcknowledgement)
         {
-            ReturnFromInstallRiskReview();
-            ImGui.EndPopup();
-            return;
+            ImGui.Spacing();
+            ImGui.Checkbox("I understand this source and want to continue", ref pendingInstallRiskAcknowledgementChecked);
         }
-        ImGui.SameLine();
-        var canAcknowledge = (needsDivergenceAcknowledgement || needsUntrustedAcknowledgement) && pendingInstallRiskAcknowledgementChecked;
-        if (!canAcknowledge)
+        else if (repositoryDivergent)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Package divergence was already acknowledged for the current findings.");
+        }
+
+        ImGui.Dummy(Ui(1f, 8f));
+        ImGui.Separator();
+        ImGui.Dummy(Ui(1f, 8f));
+
+        var discord = BuildProductProjectLinks(selected)
+            .FirstOrDefault(link => link.Kind.Equals("discord", StringComparison.OrdinalIgnoreCase));
+        var footerY = ImGui.GetCursorPosY();
+        if (discord is not null)
+        {
+            if (DrawPillButton("Join community Discord", "install-confirm-discord", Ui(176f, 34f), true))
+                OpenProductWebsite(selected, discord.Url);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(discord.Url);
+        }
+        else
+        {
+            ImGui.TextDisabled("Community link unavailable");
+        }
+
+        var installWidth = Ui(104f);
+        var installX = ImGui.GetCursorPosX() + Math.Max(0f, ImGui.GetContentRegionAvail().X - installWidth);
+        ImGui.SetCursorPos(new Vector2(installX, footerY));
+        var canInstall = installTask is null && (!needsAcknowledgement || pendingInstallRiskAcknowledgementChecked);
+        if (!canInstall)
             ImGui.BeginDisabled();
-        if (ImGui.Button("Acknowledge source", Ui(170f, 34f)) && canAcknowledge)
+        if (ImGui.Button("Install", new Vector2(installWidth, Ui(34f))) && canInstall)
         {
             if (needsDivergenceAcknowledgement && notice is not null)
                 AcknowledgeRepositoryRisk(notice);
             if (needsUntrustedAcknowledgement)
                 AcknowledgeUntrustedRepository(selected);
-            operationMessage = $"Acknowledged the current source review state for {selected.SourceName}.";
-            ReturnFromInstallRiskReview();
+
+            installRiskPopupOpen = false;
+            pendingInstallRiskAcknowledgementChecked = false;
+            ImGui.CloseCurrentPopup();
+            TryStartSelectedInstall(selected);
             ImGui.EndPopup();
             return;
         }
-        if (!canAcknowledge)
+        if (!canInstall)
             ImGui.EndDisabled();
 
         installRiskPopupOpen = keepOpen && installRiskPopupOpen;
@@ -507,11 +506,16 @@ internal sealed partial class MarketplaceWindow
         installRiskPopupOpen = false;
         pendingInstallRiskAcknowledgementChecked = false;
         ImGui.CloseCurrentPopup();
-        if (pendingInstall is not null)
+        if (pendingInstall is null)
+            return;
+        if (pendingInstallPlan is not null)
         {
-            installPopupOpen = true;
-            requestInstallPopup = true;
+            installPlanPopupOpen = true;
+            requestInstallPlanPopup = true;
+            return;
         }
+        installPopupOpen = true;
+        requestInstallPopup = true;
     }
 
     private void EnsurePendingInstallSource(IReadOnlyList<MarketplacePlugin> candidates)
@@ -524,6 +528,17 @@ internal sealed partial class MarketplaceWindow
 
     private void StartSelectedInstall(MarketplacePlugin plugin)
     {
+        if (!PendingDependencyPlanAllowsSinglePluginExecution(plugin))
+        {
+            operationMessage = "The dependency plan changed or requires a multi-plugin transaction. Review the plan again before installing.";
+            installRiskPopupOpen = false;
+            installPermissionPopupOpen = false;
+            installPlanPopupOpen = true;
+            requestInstallPlanPopup = true;
+            ImGui.CloseCurrentPopup();
+            return;
+        }
+
         var source = ResolveOrCreateInstallSource(plugin);
         installingInternalName = plugin.InternalName;
         operationMessage = $"Installing {plugin.Name} from {plugin.SourceName}...";
@@ -534,6 +549,12 @@ internal sealed partial class MarketplaceWindow
         pendingInstall = null;
         pendingInstallSourceUrl = string.Empty;
         pendingInstallRiskSourceUrl = string.Empty;
+        pendingInstallPlan = null;
+        pendingInstallPlanRootSourceUrl = string.Empty;
+        pendingInstallPlanFromUpdate = false;
+        pendingInstallExplicitDependencies.Clear();
+        pendingInstallTransactionReviewSources.Clear();
+        installPlanPopupOpen = false;
         installPopupOpen = false;
         ImGui.CloseCurrentPopup();
     }
@@ -572,7 +593,13 @@ internal sealed partial class MarketplaceWindow
         pendingInstallRiskAcknowledgementChecked = false;
         pendingInstallPermissionSourceUrl = string.Empty;
         pendingInstallPermissionAcknowledgementChecked = false;
+        pendingInstallPlan = null;
+        pendingInstallPlanRootSourceUrl = string.Empty;
+        pendingInstallPlanFromUpdate = false;
+        pendingInstallExplicitDependencies.Clear();
+        pendingInstallTransactionReviewSources.Clear();
         installPopupOpen = false;
+        installPlanPopupOpen = false;
         installRiskPopupOpen = false;
         installPermissionPopupOpen = false;
         ImGui.CloseCurrentPopup();

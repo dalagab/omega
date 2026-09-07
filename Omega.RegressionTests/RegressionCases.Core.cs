@@ -78,6 +78,24 @@ internal static partial class RegressionCases
         var communityOnly = MarketplacePresentationRules.Choose(rich, [sparse, rich]);
         Equal("Community rich source", communityOnly.Variant.SourceName, "an explicitly selected community baseline keeps its own metadata");
         Equal(4, communityOnly.Images.Count, "selected baseline presentation keeps its complete screenshot set");
+
+        var duplicatedArtwork = new MarketplacePlugin
+        {
+            InternalName = "Artwork",
+            Name = "Artwork",
+            IconUrl = "https://github.com/example/project/blob/main/images/icon.png",
+            OmegaBannerUrl = "https://raw.githubusercontent.com/example/project/main/images/banner.png",
+            ImageUrls =
+            [
+                "https://raw.githubusercontent.com/example/project/main/images/icon.png",
+                "https://raw.githubusercontent.com/example/project/refs/heads/main/images/banner.png",
+                "https://example.invalid/screenshot.png",
+                "not-a-url",
+            ],
+        };
+        var projectImages = MarketplacePresentationRules.PresentationImages(duplicatedArtwork);
+        Equal(1, projectImages.Count, "product screenshots exclude the package icon, Omega banner and unusable image URLs");
+        Equal("https://example.invalid/screenshot.png", projectImages[0], "real project screenshot remains visible");
     }
 
     internal static void TestManifestParserWrappers()

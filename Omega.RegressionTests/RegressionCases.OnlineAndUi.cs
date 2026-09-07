@@ -673,6 +673,14 @@ internal static partial class RegressionCases
         True(blocks.Any(x => x.Kind == MarketplaceReadmeBlockKind.Code && x.Text.Contains("DoThing();", StringComparison.Ordinal)), "HTML pre/code becomes a code block");
         False(blocks.Any(x => x.Text.Contains("evil()", StringComparison.Ordinal)), "script contents are removed rather than rendered");
 
+        var linked = MarketplaceReadmeMarkup.Parse("[](https://discord.gg/example) [Source](https://github.com/example/project)");
+        True(linked.Any(x => x.Links is { Count: 2 }), "safe HTTPS Markdown links survive parsing as explicit presentation actions");
+        True(linked.SelectMany(x => x.Links ?? []).Any(x => x.Label == "Discord" && x.Url == "https://discord.gg/example"), "empty Discord labels receive a readable action label");
+        False(linked.Any(x => x.Text.Contains("[](", StringComparison.Ordinal)), "empty-label Markdown syntax is not exposed as raw text");
+
+        var htmlLinked = MarketplaceReadmeMarkup.Parse("<a href=\"https://github.com/example/project\">Project source</a>");
+        True(htmlLinked.SelectMany(x => x.Links ?? []).Any(x => x.Label == "Project source"), "safe HTML anchors become explicit project actions");
+
         var inline = MarketplaceReadmeMarkup.ToInlineText("&lt;p&gt;Questionable&lt;br&gt;&lt;strong&gt;updated&lt;/strong&gt;&lt;/p&gt;");
         Equal("Questionable updated", inline, "entity-encoded manifest HTML is decoded before tag interpretation");
         False(inline.Contains('<'), "inline plugin metadata cannot expose raw HTML tags");
@@ -686,6 +694,8 @@ internal static partial class RegressionCases
         var product = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
         var productContent = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductContent.cs"));
         var readmeUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductReadme.cs"));
+        var productPage = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductPage.cs"));
+        var iconCache = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginIconCache.cs"));
         var presentation = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplacePresentationRules.cs"));
         var markup = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplaceReadmeMarkup.cs"));
 
@@ -701,6 +711,14 @@ internal static partial class RegressionCases
         Contains(presentation, "MarketplaceReadmeMarkup.ToInlineText(plugin.Punchline)", "card and hero summaries normalize plugin-provided markup");
         Contains(markup, "WebUtility.HtmlDecode(text)", "HTML entities are decoded before markup interpretation");
         Contains(markup, "DangerousHtmlBlockRegex().Replace", "active embedded HTML remains stripped after decoding");
+        Contains(readmeUi, "DrawMarketplaceMarkupLinks", "safe README and changelog links render as explicit clickable actions");
+        Contains(readmeUi, "UseShellExecute = true", "markup links open through the operating-system browser");
+        Contains(iconCache, "MaximumProjectImageBytes = 32 * 1024 * 1024", "project screenshots may exceed the tighter icon-size ceiling");
+        Contains(iconCache, "HeavyProjectImageThresholdBytes = MaximumImageBytes", "heavy project media is classified relative to the normal artwork ceiling");
+        Contains(iconCache, "IsLikelyAnimatedProjectMediaUrl", "animated README media can be classified before its full payload is decoded");
+        Contains(iconCache, "maximumImageBytes > previousMaximum", "a project-page media request can immediately upgrade an earlier ordinary-artwork size failure");
+        Contains(productPage, "ImGui.IsRectVisible(cardSize)", "project media is not queued until its card is actually visible on the open product page");
+        Contains(productPage, "mediaVisible ? iconCache.GetOrQueueProjectImage(url) : null", "project image downloads are explicitly lazy and visibility-gated");
         DoesNotContain(productContent, "ImGui.TextWrapped(entry.Changelog)", "raw changelog HTML is never sent directly to ImGui");
     }
 

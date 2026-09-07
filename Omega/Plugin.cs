@@ -30,6 +30,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly PluginIconCache iconCache;
     private readonly PluginRecencyLedger pluginRecency;
     private readonly PluginLibraryLedger libraryLedger;
+    private readonly PluginInstallTransactionCoordinator installTransactions;
     private readonly PluginConfigBackupService configBackups;
     private readonly MarketplaceWindow marketplaceWindow;
     private readonly DalamudSystemMenuBridge systemMenuBridge;
@@ -39,6 +40,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly OmegaRepositoryMigrationService repositoryMigration;
     private readonly RepositoryRemediationService repositoryRemediation;
     private readonly StartupHealthService startupHealth;
+    private readonly OmegaSelfDisableService selfDisable;
     private readonly string assemblyDirectory;
     private IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
 
@@ -46,6 +48,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        OmegaDataResetService.ApplyPendingReset(PluginInterface.ConfigDirectory.FullName, PluginInterface.ConfigFile.FullName);
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         MigrateConfigurationSchema();
         assemblyDirectory = PluginInterface.AssemblyLocation.Directory?.FullName ?? string.Empty;
@@ -77,11 +80,13 @@ public sealed class Plugin : IDalamudPlugin
             Configuration,
             new DalamudInstallerBridge(PluginInterface),
             repositoryBridge);
+        installTransactions = new PluginInstallTransactionCoordinator(catalog, installCoordinator, libraryLedger);
         repositoryRemediation = new RepositoryRemediationService(
             Configuration, catalog, installCoordinator, repositoryBridge);
         startupHealth = new StartupHealthService(catalog);
+        selfDisable = new OmegaSelfDisableService();
         var profileBridge = new DalamudProfileBridge();
-        marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge, installCoordinator, repositoryRemediation);
+        marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge, installCoordinator, installTransactions, repositoryRemediation);
         windowSystem.AddWindow(marketplaceWindow);
 
         RegisterUiCallbacks();
@@ -290,6 +295,7 @@ public sealed class Plugin : IDalamudPlugin
         DalamudRepositoryBridge repositoryBridge,
         DalamudProfileBridge profileBridge,
         PluginInstallCoordinator installCoordinator,
+        PluginInstallTransactionCoordinator installTransactions,
         RepositoryRemediationService repositoryRemediation)
     {
         return new MarketplaceWindow(
@@ -297,6 +303,7 @@ public sealed class Plugin : IDalamudPlugin
             catalog,
             catalogUpdates,
             installCoordinator,
+            installTransactions,
             repositoryBridge,
             repositoryRemediation,
             profileBridge,
@@ -310,7 +317,8 @@ public sealed class Plugin : IDalamudPlugin
             Path.Combine(assemblyDirectory, "sigmascope-banner.png"),
             Path.Combine(assemblyDirectory, "company-fallback.png"),
             Path.Combine(assemblyDirectory, "EULA.md"),
-            ApplyBehaviorConfiguration);
+            ApplyBehaviorConfiguration,
+            selfDisable.Request);
     }
 
 

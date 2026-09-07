@@ -12,6 +12,7 @@ internal sealed record SqliteCatalogSnapshot(
     string DefinitionsRevision,
     string SecurityRevision,
     string EvidenceRevision,
+    string DependencyGraphRevision,
     DateTimeOffset? RevisionUpdatedAtUtc,
     int ChangelogEntryCount);
 
@@ -74,6 +75,7 @@ internal sealed class SqliteCatalogStore
                     ReadMeta(connection, "definitions_revision"),
                     ReadMeta(connection, "security_revision"),
                     ReadMeta(connection, "evidence_revision"),
+                    ReadMeta(connection, "dependency_graph_revision"),
                     ReadRevisionUpdatedAt(connection),
                     ReadChangelogEntryCount(connection));
             });
@@ -113,6 +115,96 @@ internal sealed class SqliteCatalogStore
         {
             using var connection = OpenReadOnly(DatabasePath);
             return ReadSourceDefinitions(connection);
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> ReadDependenciesForVariant(long variantId)
+    {
+        if (variantId <= 0 || !Exists)
+            return [];
+
+        lock (sync)
+        {
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                return ReadDependencyEdges(connection, "consumer_variant_id", variantId);
+            });
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> ReadDependenciesForPlugin(long pluginId)
+    {
+        if (pluginId <= 0 || !Exists)
+            return [];
+
+        lock (sync)
+        {
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                return ReadDependencyEdges(connection, "consumer_plugin_id", pluginId);
+            });
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> ReadDependentsForProvider(long providerPluginId)
+    {
+        if (providerPluginId <= 0 || !Exists)
+            return [];
+
+        lock (sync)
+        {
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                return ReadDependencyEdges(connection, "provider_plugin_id", providerPluginId);
+            });
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> ReadDependentsForProvider(string internalName)
+    {
+        if (string.IsNullOrWhiteSpace(internalName) || !Exists)
+            return [];
+
+        lock (sync)
+        {
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                return ReadDependencyEdges(connection, internalName.Trim());
+            });
+        }
+    }
+
+    public PluginDependencyProvider? ReadDependencyProvider(long providerPluginId)
+    {
+        if (providerPluginId <= 0 || !Exists)
+            return null;
+
+        lock (sync)
+        {
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                return ReadDependencyProvider(connection, "provider_plugin_id", providerPluginId);
+            });
+        }
+    }
+
+    public PluginDependencyProvider? ReadDependencyProvider(string internalName)
+    {
+        if (string.IsNullOrWhiteSpace(internalName) || !Exists)
+            return null;
+
+        lock (sync)
+        {
+            return WithDisposableDatabaseCopy(DatabasePath, copyPath =>
+            {
+                using var connection = OpenReadOnly(copyPath);
+                return ReadDependencyProvider(connection, internalName.Trim());
+            });
         }
     }
 
@@ -361,6 +453,152 @@ internal sealed class SqliteCatalogStore
         return command.ExecuteScalar() is not null;
     }
 
+    private static IReadOnlyList<PluginDependencyEdge> ReadDependencyEdges(
+        SqliteConnection connection,
+        string numericColumn,
+        long numericValue)
+    {
+        if (!TableExists(connection, "plugin_dependencies"))
+            return [];
+        if (numericColumn is not ("consumer_variant_id" or "consumer_plugin_id" or "provider_plugin_id"))
+            throw new ArgumentOutOfRangeException(nameof(numericColumn));
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT consumer_variant_id,consumer_plugin_id,consumer_internal_name,consumer_version,
+                   provider_plugin_id,provider_internal_name,relationship,version_constraint,
+                   resolved_version,resolution_status,version_status,confidence,source_kind,
+                   origins_json,install_eligible
+              FROM plugin_dependencies
+             WHERE {numericColumn}=$value
+             ORDER BY consumer_plugin_id,consumer_variant_id,provider_internal_name COLLATE NOCASE,
+                      relationship,version_constraint;
+            """;
+        command.Parameters.AddWithValue("$value", numericValue);
+        return ReadDependencyEdges(command);
+    }
+
+    private static IReadOnlyList<PluginDependencyEdge> ReadDependencyEdges(
+        SqliteConnection connection,
+        string providerInternalName)
+    {
+        if (!TableExists(connection, "plugin_dependencies"))
+            return [];
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT consumer_variant_id,consumer_plugin_id,consumer_internal_name,consumer_version,
+                   provider_plugin_id,provider_internal_name,relationship,version_constraint,
+                   resolved_version,resolution_status,version_status,confidence,source_kind,
+                   origins_json,install_eligible
+              FROM plugin_dependencies
+             WHERE provider_internal_name=$internalName COLLATE NOCASE
+             ORDER BY consumer_plugin_id,consumer_variant_id,provider_internal_name COLLATE NOCASE,
+                      relationship,version_constraint;
+            """;
+        command.Parameters.AddWithValue("$internalName", providerInternalName);
+        return ReadDependencyEdges(command);
+    }
+
+    private static IReadOnlyList<PluginDependencyEdge> ReadDependencyEdges(SqliteCommand command)
+    {
+        using var reader = command.ExecuteReader();
+        var result = new List<PluginDependencyEdge>();
+        while (reader.Read())
+        {
+            var sourceKind = GetString(reader, 12);
+            if (!IsNormalizedPluginDependencySourceKind(sourceKind))
+                continue;
+
+            result.Add(new PluginDependencyEdge(
+                GetLong(reader, 0),
+                GetLong(reader, 1),
+                GetString(reader, 2),
+                GetString(reader, 3),
+                GetLong(reader, 4),
+                GetString(reader, 5),
+                ParseDependencyRelationship(GetString(reader, 6)),
+                GetString(reader, 7),
+                GetString(reader, 8),
+                GetString(reader, 9),
+                GetString(reader, 10),
+                GetString(reader, 11),
+                sourceKind,
+                ReadStrings(GetString(reader, 13, "[]")),
+                GetBool(reader, 14)));
+        }
+        return result;
+    }
+
+    private static PluginDependencyProvider? ReadDependencyProvider(
+        SqliteConnection connection,
+        string numericColumn,
+        long numericValue)
+    {
+        if (!TableExists(connection, "plugin_dependency_providers"))
+            return null;
+        if (numericColumn != "provider_plugin_id")
+            throw new ArgumentOutOfRangeException(nameof(numericColumn));
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT provider_plugin_id,provider_internal_name,required_by_count,recommended_by_count,
+                   optional_by_count,total_dependent_plugins
+              FROM plugin_dependency_providers
+             WHERE {numericColumn}=$value
+             LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$value", numericValue);
+        return ReadDependencyProvider(command);
+    }
+
+    private static PluginDependencyProvider? ReadDependencyProvider(
+        SqliteConnection connection,
+        string providerInternalName)
+    {
+        if (!TableExists(connection, "plugin_dependency_providers"))
+            return null;
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT provider_plugin_id,provider_internal_name,required_by_count,recommended_by_count,
+                   optional_by_count,total_dependent_plugins
+              FROM plugin_dependency_providers
+             WHERE provider_internal_name=$internalName COLLATE NOCASE
+             LIMIT 1;
+            """;
+        command.Parameters.AddWithValue("$internalName", providerInternalName);
+        return ReadDependencyProvider(command);
+    }
+
+    private static PluginDependencyProvider? ReadDependencyProvider(SqliteCommand command)
+    {
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+            return null;
+
+        return new PluginDependencyProvider(
+            GetLong(reader, 0),
+            GetString(reader, 1),
+            GetInt(reader, 2),
+            GetInt(reader, 3),
+            GetInt(reader, 4),
+            GetInt(reader, 5));
+    }
+
+    private static bool IsNormalizedPluginDependencySourceKind(string value)
+        => (value ?? string.Empty).Trim().ToLowerInvariant() is
+            "external-plugin" or "plugin" or "project-reference";
+
+    private static PluginDependencyRelationship ParseDependencyRelationship(string value)
+        => (value ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "required" => PluginDependencyRelationship.Required,
+            "recommended" => PluginDependencyRelationship.Recommended,
+            "optional" => PluginDependencyRelationship.Optional,
+            _ => PluginDependencyRelationship.Observed,
+        };
+
     public void ReplaceFromBundle(string zipPath)
     {
         var parent = Path.GetDirectoryName(DatabasePath) ?? ".";
@@ -523,6 +761,9 @@ internal sealed class SqliteCatalogStore
         var catalogPluginIdProjection = runtimeColumns.Contains("plugin_id")
             ? "plugin_id"
             : "0 AS plugin_id";
+        var catalogVariantIdProjection = runtimeColumns.Contains("variant_id")
+            ? "variant_id"
+            : "0 AS variant_id";
         var automationLevelProjection = runtimeColumns.Contains("security_automation_level")
             ? "security_automation_level"
             : "'none' AS security_automation_level";
@@ -587,7 +828,7 @@ internal sealed class SqliteCatalogStore
                    {securityProjection},
                    {authorsProjection},{websiteLinksProjection},{omegaBannerProjection},{catalogPluginIdProjection},
                    {sourceAttributionConfidenceProjection},{sourceAttributionBasisProjection},{reviewCoverageLabelProjection},
-                   {websiteLicenseProjection}
+                   {websiteLicenseProjection},{catalogVariantIdProjection}
               FROM runtime_plugin_variants
              WHERE ($internalName='' OR internal_name COLLATE NOCASE=$internalName);
             """;
@@ -668,6 +909,7 @@ internal sealed class SqliteCatalogStore
                 SecuritySourceAttributionBasis = includeDetails ? ReadStrings(GetString(reader, 63, "[]")) : [],
                 SecurityReviewCoverageLabel = GetString(reader, 64, "Unresolved"),
                 OmegaWebsiteLicense = GetString(reader, 65),
+                CatalogVariantId = GetLong(reader, 66),
             });
         }
         return result;

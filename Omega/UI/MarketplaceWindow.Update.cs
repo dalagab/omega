@@ -13,7 +13,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (updateTask is not null)
+        if (updateTask is not null || installTransactionTask is not null)
             return;
 
         var candidate = GetAvailableUpdateCandidate(
@@ -26,6 +26,12 @@ internal sealed partial class MarketplaceWindow
             operationMessage = $"No newer compatible package is currently available for {displayedPlugin.Name}.";
             return;
         }
+
+        // Updates use the same normalized dependency solver as installs. If the new root version
+        // changes required providers, show/freeze the complete transaction before any lifecycle
+        // mutation. Simple updates with no normalized closure keep the existing fast path.
+        if (TryOpenDependencyUpdatePlan(candidate, currentApi, currentDalamudVersion))
+            return;
 
         if (!IsRepositoryMigration(installedPlugin, candidate))
         {
@@ -296,13 +302,14 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (updateAllActive || updateTask is not null || updateAllDefinitionsTask is not null || updates.IsRefreshing)
+        if (updateAllActive || updateTask is not null || installTransactionTask is not null || updateAllDefinitionsTask is not null || updates.IsRefreshing)
             return;
 
         updateAllQueue.Clear();
         updateAllCompleted = 0;
         updateAllFailed = 0;
         updateAllSkippedMigrations = 0;
+        updateAllSkippedDependencyTransactions = 0;
         updateAllDefinitionsPending = updates.DefinitionsUpdateAvailable;
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -318,14 +325,23 @@ internal sealed partial class MarketplaceWindow
                 updateAllSkippedMigrations++;
                 continue;
             }
+            var dependencyPlan = ResolveInstallPlan(candidate, currentApi, currentDalamudVersion);
+            if (dependencyPlan.HasDependencyClosure || dependencyPlan.Conflicts.Count > 0)
+            {
+                // Update All never bypasses the package solver. Dependency-changing/conflicted
+                // updates remain in the Updates list for the explicit transaction preview.
+                updateAllSkippedDependencyTransactions++;
+                continue;
+            }
             updateAllQueue.Enqueue(candidate);
         }
 
         updateAllTotal = updateAllQueue.Count + (updateAllDefinitionsPending ? 1 : 0);
         if (updateAllTotal == 0)
         {
-            operationMessage = updateAllSkippedMigrations > 0
-                ? $"{updateAllSkippedMigrations} update{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} require repository review below."
+            var reviewCount = updateAllSkippedMigrations + updateAllSkippedDependencyTransactions;
+            operationMessage = reviewCount > 0
+                ? $"{reviewCount} update{(reviewCount == 1 ? string.Empty : "s")} require repository/dependency review below."
                 : "Everything is already current.";
             return;
         }
@@ -399,6 +415,8 @@ internal sealed partial class MarketplaceWindow
             summary += $", {updateAllFailed} failed";
         if (updateAllSkippedMigrations > 0)
             summary += $". {updateAllSkippedMigrations} repository migration{(updateAllSkippedMigrations == 1 ? string.Empty : "s")} remain in the list for review";
+        if (updateAllSkippedDependencyTransactions > 0)
+            summary += $". {updateAllSkippedDependencyTransactions} dependency-changing update{(updateAllSkippedDependencyTransactions == 1 ? string.Empty : "s")} remain in the list for transaction review";
         operationMessage = summary + ".";
         updateAllActive = false;
         updateAllDefinitionsPending = false;
@@ -408,7 +426,7 @@ internal sealed partial class MarketplaceWindow
 
     private void StartSelectedUpdate(MarketplacePlugin plugin)
     {
-        if (updateTask is not null)
+        if (updateTask is not null || installTransactionTask is not null)
             return;
 
         var installedPlugin = Plugin.PluginInterface.InstalledPlugins.FirstOrDefault(x =>

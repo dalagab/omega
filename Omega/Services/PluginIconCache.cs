@@ -11,10 +11,13 @@ namespace Dalagab.Omega;
 internal sealed class PluginIconCache : IDisposable
 {
     private const int MaximumImageBytes = 8 * 1024 * 1024;
+    private const int MaximumProjectImageBytes = 32 * 1024 * 1024;
+    private const int HeavyProjectImageThresholdBytes = MaximumImageBytes;
     private const int MaximumConcurrentIconLoads = 2;
     private const int MaximumLiveTextures = 192;
     private static readonly TimeSpan MinimumLiveTextureIdleAge = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan PersistentImageMaxAge = TimeSpan.FromDays(7);
+    private static readonly TimeSpan FailedImageRetryDelay = TimeSpan.FromMinutes(2);
 
     private readonly HttpClient httpClient = new()
     {
@@ -25,7 +28,10 @@ internal sealed class PluginIconCache : IDisposable
     private readonly CancellationTokenSource cancellation = new();
     private readonly SemaphoreSlim loadGate = new(MaximumConcurrentIconLoads, MaximumConcurrentIconLoads);
     private readonly Dictionary<string, Task<IDalamudTextureWrap?>> loads = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> loadMaximumBytes = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, long> liveTextureLastUse = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> failedLoadAt = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ProjectMediaInfo> projectMedia = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task> refreshes = new(StringComparer.OrdinalIgnoreCase);
 
     public PluginIconCache(string configurationDirectory)
@@ -35,6 +41,34 @@ internal sealed class PluginIconCache : IDisposable
     }
 
     public IDalamudTextureWrap? GetOrQueue(string? url)
+        => GetOrQueue(url, MaximumImageBytes);
+
+    public IDalamudTextureWrap? GetOrQueueProjectImage(string? url)
+        => GetOrQueue(url, MaximumProjectImageBytes);
+
+    public bool IsHeavyProjectMedia(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        url = NormalizeUrl(url);
+        if (projectMedia.TryGetValue(url, out var info))
+            return info.IsHeavy;
+        return IsLikelyAnimatedProjectMediaUrl(url);
+    }
+
+    public bool IsAnimatedProjectMedia(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        url = NormalizeUrl(url);
+        if (projectMedia.TryGetValue(url, out var info))
+            return info.IsAnimated;
+        return IsLikelyAnimatedProjectMediaUrl(url);
+    }
+
+    private IDalamudTextureWrap? GetOrQueue(string? url, int maximumImageBytes)
     {
         if (string.IsNullOrWhiteSpace(url))
             return null;
@@ -46,17 +80,64 @@ internal sealed class PluginIconCache : IDisposable
             return null;
         }
 
-        liveTextureLastUse[url] = Environment.TickCount64;
+        var now = Environment.TickCount64;
+        liveTextureLastUse[url] = now;
         if (!loads.TryGetValue(url, out var load))
         {
-            load = LoadAsync(url, cancellation.Token);
+            load = LoadAsync(url, maximumImageBytes, cancellation.Token);
             loads[url] = load;
+            loadMaximumBytes[url] = maximumImageBytes;
+        }
+        else if (load.IsCompletedSuccessfully && load.Result is null)
+        {
+            var previousMaximum = loadMaximumBytes.TryGetValue(url, out var observedMaximum)
+                ? observedMaximum
+                : MaximumImageBytes;
+            // A URL may first be encountered as ordinary artwork and later be recognized as
+            // project media. Upgrade a completed 8 MiB failure immediately when the open product
+            // page explicitly permits the larger bounded media tier; do not make the user wait for
+            // the normal transient-failure retry cooldown.
+            if (maximumImageBytes > previousMaximum)
+            {
+                loads.Remove(url);
+                failedLoadAt.Remove(url);
+                load = LoadAsync(url, maximumImageBytes, cancellation.Token);
+                loads[url] = load;
+                loadMaximumBytes[url] = maximumImageBytes;
+            }
+            else if (!failedLoadAt.TryGetValue(url, out var failedAt))
+            {
+                failedLoadAt[url] = now;
+            }
+            else if (now - failedAt >= FailedImageRetryDelay.TotalMilliseconds)
+            {
+                loads.Remove(url);
+                failedLoadAt.Remove(url);
+                load = LoadAsync(url, maximumImageBytes, cancellation.Token);
+                loads[url] = load;
+                loadMaximumBytes[url] = maximumImageBytes;
+            }
+        }
+        else if (load.IsCompletedSuccessfully)
+        {
+            failedLoadAt.Remove(url);
         }
 
         // Re-check the working-set bound on ordinary cache hits too. This lets a burst of fast
         // scrolling settle back to the target once older textures have been idle for a moment.
         TrimLiveTextures(url);
         return load.IsCompletedSuccessfully ? load.Result : null;
+    }
+
+    public bool IsTerminalFailure(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return true;
+
+        url = NormalizeUrl(url);
+        return loads.TryGetValue(url, out var load) &&
+               load.IsCompletedSuccessfully &&
+               load.Result is null;
     }
 
     public void Dispose()
@@ -70,7 +151,10 @@ internal sealed class PluginIconCache : IDisposable
         }
 
         loads.Clear();
+        loadMaximumBytes.Clear();
         liveTextureLastUse.Clear();
+        failedLoadAt.Clear();
+        projectMedia.Clear();
         httpClient.Dispose();
         persistentCache.Dispose();
         loadGate.Dispose();
@@ -102,7 +186,9 @@ internal sealed class PluginIconCache : IDisposable
             {
                 if (completed.IsCompletedSuccessfully)
                     completed.Result?.Dispose();
+                loadMaximumBytes.Remove(pair.Key);
                 liveTextureLastUse.Remove(pair.Key);
+                failedLoadAt.Remove(pair.Key);
             }
         }
     }
@@ -124,7 +210,7 @@ internal sealed class PluginIconCache : IDisposable
         return url;
     }
 
-    private async Task<IDalamudTextureWrap?> LoadAsync(string url, CancellationToken cancellationToken)
+    private async Task<IDalamudTextureWrap?> LoadAsync(string url, int maximumImageBytes, CancellationToken cancellationToken)
     {
         try
         {
@@ -133,13 +219,25 @@ internal sealed class PluginIconCache : IDisposable
             var cached = await Task.Run(() => persistentCache.TryRead(url), cancellationToken).ConfigureAwait(false);
             if (cached is not null)
             {
+                if (maximumImageBytes > MaximumImageBytes)
+                    RememberProjectMedia(url, cached.ContentType, cached.Bytes.LongLength);
+
+                if (cached.Bytes.Length > maximumImageBytes)
+                {
+                    await Task.Run(() => persistentCache.Remove(url), cancellationToken).ConfigureAwait(false);
+                    cached = null;
+                }
+            }
+
+            if (cached is not null)
+            {
                 try
                 {
                     var texture = await CreateTextureAsync(cached.Bytes, url, cancellationToken).ConfigureAwait(false);
                     if (texture is not null)
                     {
                         if (cached.NeedsRefresh(DateTimeOffset.UtcNow, PersistentImageMaxAge))
-                            QueueBackgroundRefresh(url, cached, cancellationToken);
+                            QueueBackgroundRefresh(url, cached, maximumImageBytes, cancellationToken);
                         return texture;
                     }
                 }
@@ -151,7 +249,7 @@ internal sealed class PluginIconCache : IDisposable
                 await Task.Run(() => persistentCache.Remove(url), cancellationToken).ConfigureAwait(false);
             }
 
-            return await DownloadAsync(url, null, createTexture: true, cancellationToken).ConfigureAwait(false);
+            return await DownloadAsync(url, null, createTexture: true, maximumImageBytes, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -164,16 +262,24 @@ internal sealed class PluginIconCache : IDisposable
         }
     }
 
-    private void QueueBackgroundRefresh(string url, CachedMarketplaceImage cached, CancellationToken cancellationToken)
+    private void QueueBackgroundRefresh(
+        string url,
+        CachedMarketplaceImage cached,
+        int maximumImageBytes,
+        CancellationToken cancellationToken)
     {
-        refreshes.GetOrAdd(url, _ => RefreshAndForgetAsync(url, cached, cancellationToken));
+        refreshes.GetOrAdd(url, _ => RefreshAndForgetAsync(url, cached, maximumImageBytes, cancellationToken));
     }
 
-    private async Task RefreshAndForgetAsync(string url, CachedMarketplaceImage cached, CancellationToken cancellationToken)
+    private async Task RefreshAndForgetAsync(
+        string url,
+        CachedMarketplaceImage cached,
+        int maximumImageBytes,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await DownloadAsync(url, cached, createTexture: false, cancellationToken).ConfigureAwait(false);
+            await DownloadAsync(url, cached, createTexture: false, maximumImageBytes, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -199,6 +305,7 @@ internal sealed class PluginIconCache : IDisposable
         string url,
         CachedMarketplaceImage? cached,
         bool createTexture,
+        int maximumImageBytes,
         CancellationToken cancellationToken)
     {
         var entered = false;
@@ -232,10 +339,14 @@ internal sealed class PluginIconCache : IDisposable
             if (!response.IsSuccessStatusCode)
                 return null;
 
-            if (response.Content.Headers.ContentLength is > MaximumImageBytes)
+            var contentLength = response.Content.Headers.ContentLength;
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+            if (maximumImageBytes > MaximumImageBytes)
+                RememberProjectMedia(url, contentType, contentLength);
+
+            if (contentLength is { } knownLength && knownLength > maximumImageBytes)
                 return null;
 
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
             if (contentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase) ||
                 contentType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
                 contentType.Contains("html", StringComparison.OrdinalIgnoreCase))
@@ -244,7 +355,9 @@ internal sealed class PluginIconCache : IDisposable
             }
 
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            if (bytes.Length == 0 || bytes.Length > MaximumImageBytes)
+            if (maximumImageBytes > MaximumImageBytes)
+                RememberProjectMedia(url, contentType, bytes.LongLength);
+            if (bytes.Length == 0 || bytes.Length > maximumImageBytes)
                 return null;
 
             await Task.Run(
@@ -266,6 +379,32 @@ internal sealed class PluginIconCache : IDisposable
                 loadGate.Release();
         }
     }
+
+
+    private void RememberProjectMedia(string url, string? contentType, long? contentLength)
+    {
+        var normalizedType = (contentType ?? string.Empty).Trim().ToLowerInvariant();
+        var animated = normalizedType.Contains("gif", StringComparison.Ordinal) ||
+                       normalizedType.Contains("apng", StringComparison.Ordinal) ||
+                       IsLikelyAnimatedProjectMediaUrl(url);
+        var heavy = animated || contentLength is > HeavyProjectImageThresholdBytes;
+        projectMedia[url] = new ProjectMediaInfo(contentLength, normalizedType, animated, heavy);
+    }
+
+    private static bool IsLikelyAnimatedProjectMediaUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+        var extension = Path.GetExtension(uri.AbsolutePath);
+        return extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".apng", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private readonly record struct ProjectMediaInfo(
+        long? ContentLength,
+        string ContentType,
+        bool IsAnimated,
+        bool IsHeavy);
 
     private static async Task<IDalamudTextureWrap?> CreateTextureAsync(
         byte[] bytes,

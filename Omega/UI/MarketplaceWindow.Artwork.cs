@@ -426,7 +426,7 @@ internal sealed partial class MarketplaceWindow
             return plugin;
 
         return variants
-            .OrderBy(x => RepositoryProviderRules.SecurityBaselinePriority(x.SourceName, x.SourceUrl, x.SourceIsOfficial))
+            .OrderBy(x => RepositoryProviderRules.PackageProvenancePriority(x))
             .ThenByDescending(x => x.AssemblyVersion)
             .ThenByDescending(x => x.HighestKnownApiLevel)
             .ThenBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase)

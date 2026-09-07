@@ -17,6 +17,7 @@ internal sealed partial class MarketplaceCatalogService
                 DefinitionsRevision = string.Empty;
                 SecurityRevision = string.Empty;
                 EvidenceRevision = string.Empty;
+                DependencyGraphRevision = string.Empty;
                 DatabaseSizeBytes = 0L;
                 RevisionUpdatedAtUtc = null;
                 CatalogChangelogEntryCount = 0;
@@ -157,6 +158,7 @@ internal sealed partial class MarketplaceCatalogService
             DefinitionsRevision = snapshot.DefinitionsRevision;
             SecurityRevision = snapshot.SecurityRevision;
             EvidenceRevision = snapshot.EvidenceRevision;
+            DependencyGraphRevision = snapshot.DependencyGraphRevision;
             DatabaseSizeBytes = store.DatabaseSizeBytes;
             RevisionUpdatedAtUtc = snapshot.RevisionUpdatedAtUtc;
             CatalogChangelogEntryCount = snapshot.ChangelogEntryCount;

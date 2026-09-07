@@ -241,10 +241,25 @@ internal sealed partial class MarketplaceWindow
             return sameSource.Candidate;
 
         return valid
-            .OrderByDescending(x => PluginUpdateRules.NormalizeUnix(x.Candidate.LastUpdate))
+            .OrderBy(x => MigrationCandidatePriority(x.Candidate))
+            .ThenByDescending(x => PluginUpdateRules.NormalizeUnix(x.Candidate.LastUpdate))
             .ThenByDescending(x => x.Offered)
+            .ThenBy(x => x.Candidate.SourceName, StringComparer.OrdinalIgnoreCase)
             .Select(x => x.Candidate)
             .FirstOrDefault();
+    }
+
+    private int MigrationCandidatePriority(MarketplacePlugin candidate)
+    {
+        // Cross-repository migration is provenance-first, not newest-mirror-first. Recognized
+        // providers win first, then a feed published by the same GitHub owner as the plugin/source
+        // project, then other clean community sources. Known package/repository divergence is a
+        // final fallback and still requires the existing explicit review gate.
+        var provenance = RepositoryProviderRules.PackageProvenancePriority(candidate);
+        var divergent = IsRepositoryArtifactDivergent(candidate.SourceUrl) || IsPluginPackageArtifactDivergent(candidate);
+        // A known divergent fallback never wins merely because its version/timestamp is newer.
+        // Within the same divergence tier, package provenance owns the selection order.
+        return divergent ? 1000 + provenance : provenance;
     }
 
     private static bool IsRepositoryMigration(IExposedPlugin installedPlugin, MarketplacePlugin updateCandidate)
@@ -293,8 +308,8 @@ internal sealed partial class MarketplaceWindow
             // Never auto-prefer a package that Sigmascope already identified as the divergent
             // same-version artifact. A repository with known divergence elsewhere is also demoted
             // behind clean alternatives, but remains available for explicit reviewed selection.
-            .OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)
-            .ThenBy(v => divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0)
+            .OrderBy(v => IsPluginPackageArtifactDivergent(v) || divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0)
+            .ThenBy(v => RepositoryProviderRules.PackageProvenancePriority(v))
             .ThenByDescending(v => v.AssemblyVersion)
             .ThenBy(v => RepositoryProviderRules.SortPriority(
                 v.SourceName,
@@ -383,6 +398,10 @@ internal sealed partial class MarketplaceWindow
         // safest install candidate. The chooser owns source selection and starts from its ranked
         // clean candidate instead of inheriting the displayed variant implicitly.
         pendingInstallSourceUrl = string.Empty;
+        pendingInstallPlan = null;
+        pendingInstallPlanRootSourceUrl = string.Empty;
+        pendingInstallExplicitDependencies.Clear();
+        installPlanPopupOpen = false;
         installPopupOpen = true;
         requestInstallPopup = true;
     }

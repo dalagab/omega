@@ -10,7 +10,7 @@ internal static partial class RegressionCases
         Equal(88f, MarketplaceLayoutRules.CollectionRowHeight, "collection rows retain enough vertical room for three metadata lines");
         Equal(36f, MarketplaceLayoutRules.ProductCollectionRowHeight, "Discover collection management rows stay compact and aligned");
         Equal(21f, MarketplaceLayoutRules.ProductCollectionImpactLineHeight, "expanded collection impact lists use predictable line spacing");
-        Equal(98f, MarketplaceLayoutRules.InstallSourceRowHeight, "install repository rows retain room for four aligned metadata lines");
+        Equal(58f, MarketplaceLayoutRules.InstallSourceRowHeight, "install repository rows stay compact with two aligned metadata lines");
         Equal(17f, MarketplaceLayoutRules.CenterY(88f, 54f), "54px Library artwork is vertically centered");
         Equal(20f, MarketplaceLayoutRules.CenterY(88f, 48f), "48px collection artwork is vertically centered");
         Equal(28f, MarketplaceLayoutRules.CenterY(88f, 32f), "32px row actions are vertically centered");
@@ -31,7 +31,8 @@ internal static partial class RegressionCases
         Contains(chrome, "MarketplaceLayoutRules.ControlCornerRadius", "rounded rectangle controls use the tested radius contract");
         Contains(chrome, "DrawToggleSwitch", "binary state controls use a switch instead of status pills");
         Contains(install, "MarketplaceLayoutRules.InstallSourceRowHeight", "install source rows consume the tested fixed-height contract");
-        Contains(install, "Shorten(candidate.SourceUrl, 88)", "repository URLs remain one bounded line instead of wrapping into adjacent rows");
+        DoesNotContain(install, "Shorten(candidate.SourceUrl, 88)", "repository URLs move to hover details instead of consuming a third visible row");
+        Contains(install, "ImGui.SetTooltip($\"{reason}\\n{candidate.SourceUrl}\")", "compact source rows retain the full URL and review reason on hover");
         Contains(product, "private static void DrawProductSectionHeading(string title)", "product sections use a single header line");
         DoesNotContain(product, "ImGui.TextDisabled(subtitle)", "product section headings do not repeat explanatory subtitles");
         DoesNotContain(collections, "DrawPillButton(\n                entry.WantsEnabled", "collection plugin state must not regress to capsule buttons");

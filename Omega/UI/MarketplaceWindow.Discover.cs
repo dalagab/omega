@@ -682,15 +682,19 @@ internal sealed partial class MarketplaceWindow
         if (depth >= maximumDependencyRiskDepth || !visited.Add(visitKey) || !plugin.HasCompletedSecurityScan)
             return null;
 
-        var dependencies = plugin.SecurityDependencies
-            .Where(x => IsRequiredDependency(x) && x.IsPluginDependency && !string.IsNullOrWhiteSpace(x.TargetInternalName))
-            .GroupBy(x => x.TargetInternalName, StringComparer.OrdinalIgnoreCase)
+        // Required package relationships come only from the normalized catalog graph.
+        // SecurityDependencies may contain IPC or other observation evidence and must never become
+        // package authority merely because SigmaScope observed a relationship.
+        var dependencies = ReadNormalizedPackageDependencies(plugin)
+            .Where(x => x.Relationship == PluginDependencyRelationship.Required)
+            .Where(x => !string.IsNullOrWhiteSpace(x.ProviderInternalName))
+            .GroupBy(x => x.ProviderInternalName, StringComparer.OrdinalIgnoreCase)
             .Select(x => x.First())
             .ToArray();
 
         foreach (var dependency in dependencies)
         {
-            var targetSeed = catalog.GetVariants(dependency.TargetInternalName).FirstOrDefault();
+            var targetSeed = catalog.GetVariants(dependency.ProviderInternalName).FirstOrDefault();
             if (targetSeed is null)
                 continue;
 
@@ -699,16 +703,16 @@ internal sealed partial class MarketplaceWindow
             if (!target.HasCompletedSecurityScan)
                 continue;
 
-            var targetName = string.IsNullOrWhiteSpace(target.Name) ? dependency.Name : target.Name;
-            if (string.IsNullOrWhiteSpace(targetName))
-                targetName = dependency.TargetInternalName;
+            var targetName = string.IsNullOrWhiteSpace(target.Name)
+                ? dependency.ProviderInternalName
+                : target.Name;
 
             if (HasPluginAutomation(target))
             {
                 return new DependencyAutomationMatch(
                     targetName,
                     target.SecurityAutomationLevel,
-                    $"{plugin.InternalName} → {dependency.TargetInternalName}");
+                    $"{plugin.InternalName} → {dependency.ProviderInternalName}");
             }
 
             var nestedVisited = new HashSet<string>(visited, StringComparer.OrdinalIgnoreCase);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 
@@ -70,11 +71,64 @@ internal sealed partial class MarketplaceWindow
                 ImGui.Dummy(new Vector2(Ui(1f), Ui(4f)));
                 break;
             default:
-                ImGui.PushTextWrapPos(wrap);
-                ImGui.TextWrapped(block.Text);
-                ImGui.PopTextWrapPos();
+                if (!string.IsNullOrWhiteSpace(block.Text))
+                {
+                    ImGui.PushTextWrapPos(wrap);
+                    ImGui.TextWrapped(block.Text);
+                    ImGui.PopTextWrapPos();
+                }
                 ImGui.Dummy(new Vector2(Ui(1f), Ui(4f)));
                 break;
         }
+
+        DrawMarketplaceMarkupLinks(block, index, idPrefix);
+    }
+
+    private void DrawMarketplaceMarkupLinks(MarketplaceReadmeBlock block, int index, string idPrefix)
+    {
+        if (block.Links is not { Count: > 0 })
+            return;
+
+        var first = true;
+        for (var linkIndex = 0; linkIndex < Math.Min(block.Links.Count, 6); linkIndex++)
+        {
+            var link = block.Links[linkIndex];
+            if (!Uri.TryCreate(link.Url, UriKind.Absolute, out var uri) ||
+                !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!first)
+                ImGui.SameLine(0f, Ui(7f));
+
+            var label = string.IsNullOrWhiteSpace(link.Label) ? "Open link" : link.Label.Trim();
+            var buttonLabel = label.Length > 34 ? label[..31] + "…" : label;
+            var width = Math.Clamp(ImGui.CalcTextSize(buttonLabel).X + Ui(26f), Ui(82f), Ui(220f));
+            var discord = uri.Host.Equals("discord.gg", StringComparison.OrdinalIgnoreCase) ||
+                          uri.Host.EndsWith("discord.com", StringComparison.OrdinalIgnoreCase);
+            if (DrawPillButton(
+                    buttonLabel,
+                    $"{idPrefix}-link-{index}-{linkIndex}-{StableId(link.Url)}",
+                    new Vector2(width, Ui(27f)),
+                    discord))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(link.Url) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Debug(ex, "Omega could not open README link {Url}.", link.Url);
+                    operationMessage = "Could not open this project link.";
+                }
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(link.Url);
+            first = false;
+        }
+
+        if (!first)
+            ImGui.Dummy(new Vector2(Ui(1f), Ui(5f)));
     }
 }

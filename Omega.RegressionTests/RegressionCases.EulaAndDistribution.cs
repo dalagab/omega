@@ -15,13 +15,32 @@ internal static partial class RegressionCases
         var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
         Contains(window, "if (!configuration.EulaAccepted)", "catalogue is gated before first-use EULA acceptance");
         Contains(window, "DrawRequiredEulaGate", "required EULA gate owns first-use blocking flow");
+        Contains(window, "configuration.EulaAccepted && !configuration.TutorialCompleted", "the tutorial request is not consumed behind the first-use EULA");
 
         var eulaUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Eula.cs"));
         Contains(eulaUi, "EulaAcceptanceDelaySeconds = 15", "first-use agreement has a 15-second reading delay");
-        Contains(eulaUi, "Decline / Close Omega", "decline remains immediately available");
+        Contains(eulaUi, "Decline / Disable Omega", "decline remains immediately available and describes its persistent effect");
         Contains(eulaUi, "configuration.EulaAccepted = true", "acceptance is recorded only after explicit action");
         Contains(eulaUi, "configuration.EulaAcceptedAtUtc = DateTimeOffset.UtcNow", "acceptance timestamp is recorded");
-        Contains(eulaUi, "eulaDocumentAvailable && remaining <= 0", "missing EULA document fails closed instead of allowing acceptance");
+        Contains(eulaUi, "eulaDocumentAvailable && eulaScrolledToEnd && remaining <= 0", "acceptance requires the document, reaching the end, and the reading delay");
+        Contains(eulaUi, "ImGui.GetScrollMaxY()", "first-use EULA records whether the user reached the end of the scrollable agreement");
+        Contains(eulaUi, "Read the agreement and scroll to the end to continue.", "first-use EULA explains the scroll gate instead of silently disabling Accept");
+        Contains(eulaUi, "DrawEulaSectionHeading", "EULA sections render through a readable structured layout");
+        Contains(eulaUi, "DrawEulaEmphasis", "important risk statements receive distinct emphasis instead of blending into the body copy");
+        Contains(eulaUi, "StartTutorial();", "accepting the first-use EULA hands directly into the guided tutorial");
+        Contains(eulaUi, "showMark: false", "the EULA title bar uses text-only chrome without the decorative Omega mark");
+        Contains(eulaUi, "Ui(0f, 96f)", "the EULA warning panel reserves enough height for wrapped risk copy");
+        Contains(eulaUi, "DrawEulaFooterLinks", "GitHub and Discord actions live in the EULA footer instead of above the document");
+        DoesNotContain(eulaUi, "ImGui.Button(\"Open Omega project on GitHub\")", "the EULA no longer spends top-of-document space on a GitHub text button");
+        DoesNotContain(eulaUi, "Accepted once; routine Omega and Definitions updates do not ask again.", "the EULA footer uses useful project icons instead of redundant acceptance copy");
+        Contains(eulaUi, "disableOmegaAfterEulaDecline();", "declining the required EULA requests a real Dalamud disable rather than only hiding the window");
+
+        var selfDisable = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OmegaSelfDisableService.cs"));
+        Contains(selfDisable, "DelayTicks(1)", "self-disable waits until the EULA popup has left the current UI frame");
+        Contains(selfDisable, "AddOrUpdateAsync", "self-disable persists disabled state through Dalamud profiles");
+        Contains(selfDisable, "StartOnBoot", "developer-plugin EULA decline also disables boot loading");
+        Contains(selfDisable, "AutomaticReload", "developer-plugin EULA decline turns off automatic reload before unloading");
+        Contains(selfDisable, "UnloadAsync", "EULA decline asks Dalamud to unload Omega instead of leaving it running invisibly");
         Contains(eulaUi, "https://github.com/dalagab/omega", "EULA UI points to the public project site");
 
         Contains(eulaUi, "View EULA", "Settings can reopen the EULA after acceptance");

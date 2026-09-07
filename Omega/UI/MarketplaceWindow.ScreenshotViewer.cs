@@ -51,7 +51,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        var texture = iconCache.GetOrQueue(selectedScreenshotUrl);
+        var texture = iconCache.GetOrQueueProjectImage(selectedScreenshotUrl);
         var imageArea = new Vector2(
             Math.Max(Ui(120f), ImGui.GetContentRegionAvail().X),
             Math.Max(Ui(120f), ImGui.GetContentRegionAvail().Y));
@@ -63,7 +63,13 @@ internal sealed partial class MarketplaceWindow
                 imageArea,
                 true,
                 ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-            var text = "Loading screenshot…";
+            var text = iconCache.IsTerminalFailure(selectedScreenshotUrl)
+                ? "Image unavailable"
+                : iconCache.IsAnimatedProjectMedia(selectedScreenshotUrl)
+                    ? "Loading animated preview…"
+                    : iconCache.IsHeavyProjectMedia(selectedScreenshotUrl)
+                        ? "Loading large preview…"
+                        : "Loading screenshot…";
             var size = ImGui.CalcTextSize(text);
             SetCursorCenteredInCurrentContent(size);
             ImGui.TextDisabled(text);

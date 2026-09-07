@@ -136,6 +136,21 @@ internal static class RepositoryProviderRules
     }
 
     /// <summary>
+    /// Repository preference for package selection when no current/preferred source already owns
+    /// the operation. Known providers win first, then a feed published by the source-project owner,
+    /// then other community mirrors. Divergence remains a separate caller-owned penalty/gate.
+    /// </summary>
+    public static int PackageProvenancePriority(MarketplacePlugin plugin)
+    {
+        if (plugin.SourceIsOfficial)
+            return 0;
+        var stable = SecurityBaselinePriority(plugin.SourceName, plugin.SourceUrl, plugin.SourceIsOfficial);
+        if (stable != int.MaxValue)
+            return 10 + stable;
+        return IsSourceOwnerPublisher(plugin) ? 100 : 200;
+    }
+
+    /// <summary>
     /// Returns whether Omega requires explicit consent before installing from this source.
     /// Recognized stable providers are not automatically "safe"; this only distinguishes sources
     /// whose publishing identity Omega already recognizes from other community repositories.
@@ -150,6 +165,45 @@ internal static class RepositoryProviderRules
             : IsStableProvider(sourceName, sourceUrl, official)
                 ? "Recognized community"
                 : "Unrecognized community";
+
+
+    /// <summary>
+    /// Returns whether the repository feed appears to be published by the same GitHub owner that
+    /// owns the plugin/source project. This is a provenance preference only: mirrors can copy the
+    /// same RepoUrl, so callers must still keep package-divergence/security review independent.
+    /// </summary>
+    public static bool IsSourceOwnerPublisher(MarketplacePlugin plugin)
+    {
+        var publisher = TryGitHubOwner(plugin.SourceUrl);
+        if (string.IsNullOrWhiteSpace(publisher))
+            return false;
+
+        var sourceOwners = new[]
+            {
+                TryGitHubOwner(plugin.RepoUrl),
+                TryGitHubOwner(plugin.SecuritySourceRepository),
+                TryGitHubOwner(plugin.OmegaWebsiteUrl),
+            }
+            .Concat(plugin.OmegaProjectLinks.Select(x => TryGitHubOwner(x.Url)))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        return sourceOwners.Any(owner => owner!.Equals(publisher, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? TryGitHubOwner(string? value)
+    {
+        if (!Uri.TryCreate((value ?? string.Empty).Trim(), UriKind.Absolute, out var uri))
+            return null;
+        var host = uri.Host;
+        var parts = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+            return null;
+        if (host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
+            host.Equals("www.github.com", StringComparison.OrdinalIgnoreCase) ||
+            host.Equals("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+            return parts[0];
+        return null;
+    }
 
     private static bool Contains(string haystack, string needle)
         => haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);

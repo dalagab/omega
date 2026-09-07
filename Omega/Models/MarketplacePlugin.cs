@@ -12,6 +12,10 @@ public sealed class MarketplacePlugin
     // Stable catalog identity shared by every repository variant of the same plugin.
     // Zero means the plugin came from a legacy JSON/live Dalamud overlay without a database id.
     public long CatalogPluginId { get; init; }
+    // Exact catalog variant identity. Normalized package dependencies are consumer-variant scoped,
+    // so package-manager reads must use this id rather than repository URL heuristics.
+    // Zero means the variant came from a legacy/live overlay with no database variant identity.
+    public long CatalogVariantId { get; init; }
     public string Punchline { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string Changelog { get; init; } = string.Empty;

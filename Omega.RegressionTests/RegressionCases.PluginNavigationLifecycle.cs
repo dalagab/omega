@@ -91,7 +91,8 @@ internal static partial class RegressionCases
         Contains(details, "var candidates = GetInstallCandidates(internalName, currentApi, currentDalamudVersion)", "Updates consider every enabled compatible package instead of only the first repository");
         Contains(details, "PluginUpdateRules.IsUpdateCandidate", "Updates use chronology-aware cross-source comparison");
         Contains(details, "var sameSource = valid", "ordinary same-repository updates remain preferred over repository migration");
-        Contains(details, "OrderByDescending(x => PluginUpdateRules.NormalizeUnix(x.Candidate.LastUpdate))", "when the installed repository stops publishing, the newest chronologically proven repository migration is selected");
+        Contains(details, "OrderBy(x => MigrationCandidatePriority(x.Candidate))", "when the installed repository stops publishing, repository migration is provenance-ranked before chronology");
+        Contains(details, "ThenByDescending(x => PluginUpdateRules.NormalizeUnix(x.Candidate.LastUpdate))", "chronology breaks ties only after repository provenance preference");
         Contains(details, "the UI asks the user before moving repositories", "cross-repository update candidates remain explicit user-approved migrations");
         Contains(details, "installedPlugin.Manifest.LastUpdate", "installed release chronology comes from Dalamud's persisted local manifest when available");
         DoesNotContain(details, "foreach (var variant in catalog.GetMainVariants(internalName, currentApi))", "Updates no longer pick the numerically largest version from arbitrary repositories");
@@ -123,7 +124,7 @@ internal static partial class RegressionCases
         Contains(pluginEntry, "CommandManager.RemoveHandler(CommandAlias)", "the /omg alias is removed cleanly on plugin disposal");
         Contains(artwork, "activeView = MarketplaceView.Discover", "canonical plugin selection always enters Discover");
         Contains(artwork, "selectedVariantSource.Remove(plugin.InternalName)", "a fresh plugin selection clears stale repository overrides");
-        Contains(artwork, "RepositoryProviderRules.SecurityBaselinePriority", "fresh product navigation uses the stable-provider package baseline ranking");
+        Contains(artwork, "RepositoryProviderRules.PackageProvenancePriority", "fresh product navigation prefers known providers and source-owner publishers before generic mirrors");
         DoesNotContain(artwork, ".Where(x => x.SourceIsOfficial)", "fresh product navigation no longer hard-codes an official-only metadata preference");
         Contains(artwork, "selectedPlugin = catalog.HydrateVariant(ResolveDefaultVariant(plugin))", "fresh plugin selection starts from the canonical default repository variant");
         Contains(product, "ResolveProductBaselineVariant(selectedPlugin, currentApi, currentDalamudVersion)", "product-page rendering stays anchored to the preferred stable package baseline");
@@ -438,10 +439,11 @@ internal static partial class RegressionCases
         var update = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Update.cs"));
 
         Contains(dependencies, "ImGui.TableSetupColumn(\"Action\"", "dependency view exposes an explicit action column");
-        Contains(dependencies, "OpenInstallChooser(target)", "resolved required dependencies route through Omega's normal repository chooser rather than installing silently");
-        Contains(dependencies, "CanOfferDependencyInstall", "dependency install eligibility is explicit and bounded");
-        Contains(dependencies, "IsHighConfidenceRequiredProvider(dependency)", "inferred IPC providers only receive Install when the required relationship is high-confidence");
-        Contains(dependencies, "OpenPluginDetails(target)", "optional, feature, installed, and lower-confidence dependencies remain inspectable without silent installation");
+        Contains(dependencies, "OpenInstallChooser(target)", "normalized required package dependencies can still route through Omega's normal single-plugin repository chooser without silent installation");
+        Contains(dependencies, "dependency.Relationship == PluginDependencyRelationship.Required", "package install eligibility is grounded in the normalized required relationship");
+        Contains(dependencies, "IPC relationships are security/integration observations, not package-install dependencies.", "IPC relationships remain informational integrations rather than package authority");
+        Contains(dependencies, "OpenPluginDetails(target)", "optional, observed, installed, and integration providers remain inspectable without silent installation");
+        DoesNotContain(dependencies, "IsHighConfidenceRequiredProvider", "high-confidence IPC inference no longer promotes an integration into package authority");
 
         Contains(repositoryRules, "Dalamud official", "repository vocabulary names the official source consistently");
         Contains(repositoryRules, "Recognized community", "repository vocabulary names recognized community providers consistently");
@@ -455,7 +457,7 @@ internal static partial class RegressionCases
         Contains(library, "Review required", "repository-move update rows stay visibly marked for review");
         Contains(library, "DrawRoundedButton(\"Review\"", "repository-move updates expose a dedicated Review action instead of looking like automatic updates");
         Contains(update, "remain in the list for review", "Update all leaves migration items actionable in the Updates list");
-        Contains(update, "require repository review below", "an all-skipped Update all run points the user to the visible review queue");
+        Contains(update, "require repository/dependency review below", "an all-skipped Update all run points the user to the visible review queue");
     }
 
     internal static void TestRepositoryRemovalCollectionsAndSecurityProvenanceContract()

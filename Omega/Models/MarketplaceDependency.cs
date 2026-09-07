@@ -26,8 +26,12 @@ public sealed class MarketplaceDependency
     public int WarningCount { get; init; }
     public int AdvisoryCount { get; init; }
 
+    // Security/presentation classification only. IPC remains a separate integration observation
+    // and is never promoted to package-manager authority by this model.
     public bool IsPluginDependency => !string.IsNullOrWhiteSpace(TargetInternalName) ||
-                                      Type is "hard" or "soft" or "optional" or "plugin" or "ipc";
+                                      Type is "hard" or "soft" or "optional" or "plugin";
+    public bool IsIpcIntegration => Type.Equals("ipc", StringComparison.OrdinalIgnoreCase) ||
+                                    Kind.Equals("ipc", StringComparison.OrdinalIgnoreCase);
     public bool HasWarning => WarningCount > 0 || AdvisoryCount > 0 ||
                               !string.IsNullOrWhiteSpace(WarningSeverity);
 }

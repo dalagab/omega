@@ -175,9 +175,9 @@ internal static partial class RegressionCases
         Contains(permissions, "This is an install-time warning layer, not an API sandbox", "permission model does not claim sandbox enforcement");
 
         Contains(ui, "Choose repository###DalagabOmegaInstall", "repository chooser popup");
-        Contains(ui, "Choose which repository to use", "repository choice explanation");
+        Contains(ui, "Omega's preferred source stays at the top", "repository chooser explains preferred-source ordering");
         Contains(ui, "GetInstallCandidates", "compatible repository variants");
-        Contains(ui, "ImGui.Button(actionLabel", "repository chooser keeps one explicit top action while allowing risk review to replace unsafe install");
+        Contains(ui, "ImGui.Button(\"Continue\"", "repository chooser uses a compact source-selection step before final confirmation");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
         Contains(ui, "TryStartSelectedInstall", "selected source passes through install permission preferences before installation");
         Contains(ui, "catalog.HydrateVariant(plugin)", "install permission review hydrates detailed evidence before evaluating listener ports and other concerns");
@@ -187,13 +187,16 @@ internal static partial class RegressionCases
         Contains(ui, "Install anyway", "permission warning requires an explicit continue action");
         Contains(ui, "Math.Min(Ui(76f + (concerns.Count * 54f)), Ui(360f))", "expanded capability warnings stay inside a bounded scrollable review panel");
         Contains(ui, "MarketplacePermissionRules.FindBlockedCapabilities", "install permission gate uses catalog/security capability observations");
-        Contains(ui, "selectedNeedsRiskReview", "sources requiring acknowledgement cannot be installed by the normal Install action");
+        Contains(ui, "needsAcknowledgement", "final install confirmation gates unacknowledged sources");
         Contains(ui, "NeedsInstallRepositoryReview", "install gating combines unrecognized-source consent with package-divergence review");
         Contains(ui, "RequiresUntrustedRepositoryAcknowledgement", "unrecognized community repositories require explicit acknowledgement even without divergence findings");
-        Contains(ui, "Acknowledge source", "install-context source review has an explicit source acknowledgement action");
-        Contains(ui, "OpenInstallRepositoryRiskReview", "risky source selection opens install-specific repository review instead of installing immediately");
-        Contains(ui, "DrawInstallRiskReviewModal", "risk review preserves install context and renders source evidence directly");
-        Contains(ui, "Acknowledge risk", "risk review requires an explicit acknowledgement action");
+        Contains(ui, "I understand this source and want to continue", "install confirmation keeps acknowledgement explicit without a separate risk form");
+        Contains(ui, "OpenInstallRepositoryRiskReview", "repository selection opens the final install confirmation for every source");
+        Contains(ui, "DrawInstallRiskReviewModal", "store-style final confirmation preserves install context");
+        Contains(ui, "Package divergence", "known package divergence remains a red install status");
+        Contains(ui, "Ack required", "unrecognized-source acknowledgement remains an orange chooser status");
+        Contains(ui, "Preferred", "the first ranked source is visibly marked preferred");
+        Contains(ui, "Join community Discord", "final install confirmation exposes the plugin community link at the lower left");
         Contains(ui, "pendingInstallRiskAcknowledgementChecked", "risk acknowledgement requires an explicit user checkbox before proceeding");
         DoesNotContain(ui, "OpenDalamudRepositoryRiskReviewFromInstall", "install risk review no longer discards context by jumping to Settings");
         Contains(ui, "pendingInstallSourceUrl = string.Empty", "opening the chooser does not inherit a potentially risky displayed repository as the implicit selection");
@@ -201,17 +204,17 @@ internal static partial class RegressionCases
         DoesNotContain(ui, "DrawInstallProviderFilters", "repository chooser does not add a redundant provider-filter row");
         Contains(ui, "DrawRepositoryName", "repository names use shared provider presentation");
         Contains(ui, "MarketplaceLayoutRules.InstallSourceRowHeight", "repository chooser rows use tested deterministic geometry");
-        Contains(ui, "DrawInstallRepositoryPresentMarker", "repositories already present in Dalamud receive a check marker");
-        Contains(ui, "FontAwesomeIcon.Check", "present repository marker uses a standard icon");
+        Contains(ui, "statusLabel = \"Ready\"", "already-present repositories receive a compact ready status");
+        Contains(ui, "statusColor = new Vector4(0.34f, 0.82f, 0.56f, 1f)", "ready and preferred source status uses the positive indicator color");
         DoesNotContain(ui, "ImGui.Button(\"Cancel\")", "the modal close X is the only cancel control");
         True(
-            ui.IndexOf("ImGui.Button(actionLabel", StringComparison.Ordinal) <
-            ui.IndexOf("foreach (var candidate in candidates)", StringComparison.Ordinal),
-            "Install/review action renders above repository choices");
+            ui.IndexOf("DrawInstallSourceChoice(candidates[index]", StringComparison.Ordinal) <
+            ui.IndexOf("ImGui.Button(\"Continue\"", StringComparison.Ordinal),
+            "repository choices render before the Continue action");
         False(ui.Contains("Prepare this repository", StringComparison.Ordinal), "prepare wording hidden from marketplace user");
 
-        Contains(details, ".OrderBy(v => IsPluginPackageArtifactDivergent(v) ? 1 : 0)", "known divergent package variants are demoted before source provider preference");
-        Contains(details, "divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0", "repositories with known package divergence are not auto-preferred when a clean alternative exists");
+        Contains(details, "IsPluginPackageArtifactDivergent(v) || divergentSources.Contains(NormalizeUrl(v.SourceUrl)) ? 1 : 0", "known divergent package/repository variants are demoted before clean source preference");
+        Contains(details, "ThenBy(v => RepositoryProviderRules.PackageProvenancePriority(v))", "clean install sources prefer known providers and source-owner publishers before generic mirrors");
         Contains(awareness, "AcknowledgedRepositoryRiskByUrl", "divergence acknowledgement is source-specific and invalidates when evidence changes");
         Contains(awareness, "AcknowledgedUntrustedRepositoryByUrl", "unrecognized-source acknowledgement persists separately from divergence evidence");
         Contains(awareness, "!configuration.TrustUnrecognizedSources", "generic unrecognized-source acknowledgement can be skipped only by the explicit user preference");

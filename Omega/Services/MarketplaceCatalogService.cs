@@ -7,7 +7,8 @@ internal sealed record SqliteCatalogApplyResult(
     string CatalogRevision,
     string DefinitionsRevision,
     string SecurityRevision,
-    string EvidenceRevision);
+    string EvidenceRevision,
+    string DependencyGraphRevision);
 
 /// <summary>
 /// Owns Omega's in-memory marketplace projection backed by the compiled client SQLite database.
@@ -36,6 +37,12 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     private readonly Queue<string> detailedVariantCacheOrder = new();
     private readonly Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> changelogCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Queue<string> changelogCacheOrder = new();
+    private readonly Dictionary<long, IReadOnlyList<PluginDependencyEdge>> dependenciesByVariantCache = new();
+    private readonly Dictionary<long, IReadOnlyList<PluginDependencyEdge>> dependenciesByPluginCache = new();
+    private readonly Dictionary<long, IReadOnlyList<PluginDependencyEdge>> dependentsByProviderIdCache = new();
+    private readonly Dictionary<string, IReadOnlyList<PluginDependencyEdge>> dependentsByProviderNameCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<long, PluginDependencyProvider?> dependencyProviderByIdCache = new();
+    private readonly Dictionary<string, PluginDependencyProvider?> dependencyProviderByNameCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryStatusCache = new();
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryInventoryStatusCache = new();
     private readonly Dictionary<string, MarketplaceCatalogProjection> mainProjectionCache = new(StringComparer.OrdinalIgnoreCase);
@@ -69,11 +76,86 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             snapshot.CatalogRevision,
             snapshot.DefinitionsRevision,
             snapshot.SecurityRevision,
-            snapshot.EvidenceRevision);
+            snapshot.EvidenceRevision,
+            snapshot.DependencyGraphRevision);
     }
 
     public IReadOnlyList<CuratedSourceDefinition> ReadDatabaseSourceDefinitions()
         => store.ReadSourceDefinitions();
+
+    public IReadOnlyList<PluginDependencyEdge> GetDependenciesForVariant(long variantId)
+    {
+        if (variantId <= 0)
+            return [];
+        lock (sync)
+        {
+            if (!dependenciesByVariantCache.TryGetValue(variantId, out var value))
+                dependenciesByVariantCache[variantId] = value = store.ReadDependenciesForVariant(variantId);
+            return value;
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> GetDependenciesForPlugin(long pluginId)
+    {
+        if (pluginId <= 0)
+            return [];
+        lock (sync)
+        {
+            if (!dependenciesByPluginCache.TryGetValue(pluginId, out var value))
+                dependenciesByPluginCache[pluginId] = value = store.ReadDependenciesForPlugin(pluginId);
+            return value;
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> GetDependentsForProvider(long providerPluginId)
+    {
+        if (providerPluginId <= 0)
+            return [];
+        lock (sync)
+        {
+            if (!dependentsByProviderIdCache.TryGetValue(providerPluginId, out var value))
+                dependentsByProviderIdCache[providerPluginId] = value = store.ReadDependentsForProvider(providerPluginId);
+            return value;
+        }
+    }
+
+    public IReadOnlyList<PluginDependencyEdge> GetDependentsForProvider(string internalName)
+    {
+        var key = (internalName ?? string.Empty).Trim();
+        if (key.Length == 0)
+            return [];
+        lock (sync)
+        {
+            if (!dependentsByProviderNameCache.TryGetValue(key, out var value))
+                dependentsByProviderNameCache[key] = value = store.ReadDependentsForProvider(key);
+            return value;
+        }
+    }
+
+    public PluginDependencyProvider? GetDependencyProvider(long providerPluginId)
+    {
+        if (providerPluginId <= 0)
+            return null;
+        lock (sync)
+        {
+            if (!dependencyProviderByIdCache.TryGetValue(providerPluginId, out var value))
+                dependencyProviderByIdCache[providerPluginId] = value = store.ReadDependencyProvider(providerPluginId);
+            return value;
+        }
+    }
+
+    public PluginDependencyProvider? GetDependencyProvider(string internalName)
+    {
+        var key = (internalName ?? string.Empty).Trim();
+        if (key.Length == 0)
+            return null;
+        lock (sync)
+        {
+            if (!dependencyProviderByNameCache.TryGetValue(key, out var value))
+                dependencyProviderByNameCache[key] = value = store.ReadDependencyProvider(key);
+            return value;
+        }
+    }
 
     public bool SetDefaultPlugins(IEnumerable<MarketplacePlugin> pluginsFromDalamud)
     {
@@ -276,6 +358,12 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         detailedVariantCacheOrder.Clear();
         changelogCache.Clear();
         changelogCacheOrder.Clear();
+        dependenciesByVariantCache.Clear();
+        dependenciesByPluginCache.Clear();
+        dependentsByProviderIdCache.Clear();
+        dependentsByProviderNameCache.Clear();
+        dependencyProviderByIdCache.Clear();
+        dependencyProviderByNameCache.Clear();
     }
 
     public int GetStableApiLevel(string internalName, int preferredApi = 0)
@@ -467,6 +555,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     public string DefinitionsRevision { get; private set; } = string.Empty;
     public string SecurityRevision { get; private set; } = string.Empty;
     public string EvidenceRevision { get; private set; } = string.Empty;
+    public string DependencyGraphRevision { get; private set; } = string.Empty;
     public long DatabaseSizeBytes { get; private set; }
     public DateTimeOffset? RevisionUpdatedAtUtc { get; private set; }
     public int CatalogChangelogEntryCount { get; private set; }

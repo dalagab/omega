@@ -21,6 +21,18 @@ internal static partial class RegressionCases
         Contains(community, "FontAwesomeIcon.CodeBranch", "About uses an icon for GitHub");
         Contains(community, "FontAwesomeIcon.Comments", "About and Community use an icon for Discord");
         Contains(community, "UseShellExecute = true", "community destinations open through the operating-system browser");
+        Contains(community, "Delete all Omega local data", "Settings exposes an explicit local first-install reset");
+        Contains(community, "OmegaDataResetService.Request", "local reset is queued safely for the next plugin reload");
+        Contains(community, "\"omega\",\n            OmegaClientGitHubUrl", "Community labels the Omega client branch correctly");
+
+        var reset = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OmegaDataResetService.cs"));
+        Contains(reset, ".omega-reset-requested", "reset uses a durable restart marker");
+        Contains(reset, "SearchOption.TopDirectoryOnly", "reset stays bounded to Omega's own configuration directory");
+        Contains(reset, "Path.GetTempPath()", "reset also clears Omega temporary backup data");
+        Contains(reset, "third-party plugin configuration", "reset contract explicitly excludes other plugin data");
+
+        var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
+        Contains(plugin, "OmegaDataResetService.ApplyPendingReset", "pending reset executes before Omega reads its saved configuration");
 
         var about = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
         Contains(about, "var versionValueX = ImGui.GetCursorPosX();", "About remembers the version-value alignment");

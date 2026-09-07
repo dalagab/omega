@@ -94,7 +94,7 @@ internal static class MarketplaceCatalogRules
             : Array.Empty<MarketplacePlugin>();
         var pool = currentApi.Length > 0 ? currentApi : variants;
         return pool
-            .OrderBy(x => RepositoryProviderRules.SecurityBaselinePriority(x.SourceName, x.SourceUrl, x.SourceIsOfficial))
+            .OrderBy(x => RepositoryProviderRules.PackageProvenancePriority(x))
             .ThenByDescending(x => x.AssemblyVersion)
             .ThenByDescending(x => x.HighestKnownApiLevel)
             .ThenBy(x => x.SourceName, StringComparer.OrdinalIgnoreCase)
