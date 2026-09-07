@@ -6,7 +6,7 @@ from typing import Any, Mapping
 from . import capability_registry, collector_contracts, component_registry, rule_author_reference, srl
 
 SDK_SCHEMA = "omega.deltascope.consumer-sdk.v1"
-SDK_VERSION = "1.0.0"
+SDK_VERSION = "1.0.1"
 _BOUND: dict[str, str] = {}
 
 

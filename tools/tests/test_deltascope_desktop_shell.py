@@ -49,12 +49,13 @@ class DeltaScopeDesktopShellTests(unittest.TestCase):
         main = (root / "desktop" / "cmd" / "deltascope-desktop" / "main.go").read_text(encoding="utf-8")
         windows_build = (root / "desktop" / "build.ps1").read_text(encoding="utf-8")
         unix_build = (root / "desktop" / "build.sh").read_text(encoding="utf-8")
-        self.assertIn('server_version = "OmegaDeltaScope/4.21.15"', view)
+        self.assertIn('server_version = "OmegaDeltaScope/4.21.16"', view)
         contract = json.loads((root / "deltascope" / "runtime-contract.json").read_text(encoding="utf-8"))
-        self.assertEqual("4.21.15", contract["runtime"]["deltascopeVersion"])
-        self.assertIn('var version = "4.21.15-dev"', main)
-        self.assertIn("main.version=4.21.15", windows_build)
-        self.assertIn("main.version=4.21.15", unix_build)
+        self.assertEqual("4.21.16", contract["runtime"]["deltascopeVersion"])
+        self.assertEqual("1.0.1", contract["runtime"]["consumerSdkVersion"])
+        self.assertIn('var version = "4.21.16-dev"', main)
+        self.assertIn("main.version=4.21.16", windows_build)
+        self.assertIn("main.version=4.21.16", unix_build)
 
 
 
@@ -99,7 +100,7 @@ class DeltaScopeDesktopShellTests(unittest.TestCase):
         self.assertIn("(app-mode fallback)", launcher)
         self.assertIn('filepath.Join(root, "images", "title-icon.png")', launcher)
         self.assertIn("--icon", (root / "desktop" / "cmd" / "deltascope-desktop" / "main.go").read_text(encoding="utf-8"))
-        self.assertIn("DeltaScope 4.21.15 fixed navigation rail", view)
+        self.assertIn("DeltaScope 4.21.16 fixed navigation rail", view)
         self.assertIn("#perspectiveNav{overflow:hidden!important", view)
 
 

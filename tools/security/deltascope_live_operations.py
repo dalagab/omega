@@ -30,6 +30,7 @@ RUNNER_DASHBOARD_SCHEMA = "omega.deltascope.runner-dashboard.v1"
 WORKER_ROLE_SCHEMA = "omega.deltascope.worker-role-observation.v1"
 JOB_TELEMETRY_SCHEMA = "omega.deltascope.job-telemetry.v1"
 TELEMETRY_VIEW_SCHEMA = "omega.deltascope.actions-telemetry-view.v1"
+LIVE_ACTIVITY_SCHEMA = "omega.deltascope.live-activity.v1"
 
 FOREGROUND_POLL_SECONDS = 15
 BACKGROUND_POLL_SECONDS = 60
@@ -662,6 +663,190 @@ def project_actions_telemetry(
     return result
 
 
+
+def _activity_subject(event: Mapping[str, Any], job: Mapping[str, Any]) -> dict[str, Any]:
+    subject = event.get("subject") if isinstance(event.get("subject"), Mapping) else {}
+    return {
+        "pluginId": _int(subject.get("pluginId")),
+        "variantId": _int(subject.get("variantId")),
+        "internalName": str(subject.get("internalName") or ""),
+        "version": str(subject.get("version") or ""),
+        "workType": str(subject.get("workType") or ""),
+        "sourceName": str(subject.get("sourceName") or ""),
+        "fallback": str(job.get("name") or job.get("workflow") or ""),
+    }
+
+
+def project_live_activity(
+    client: Any,
+    *,
+    foreground: bool = True,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Project the live Actions snapshot into current work + an operator event timeline.
+
+    This is a presentation projection over the same cached live snapshot.  It never
+    performs an independent GitHub acquisition cycle and never upgrades operational
+    self-reports into Security Evidence authority.
+    """
+    live = live_status(client, foreground=foreground, force=force)
+    telemetry = live.get("telemetry") if isinstance(live.get("telemetry"), Mapping) else {}
+    events = [
+        dict(row) for row in telemetry.get("recentEvents") or []
+        if isinstance(row, Mapping)
+    ]
+    jobs = [
+        dict(row) for row in live.get("jobs") or []
+        if isinstance(row, Mapping) and str(row.get("state") or "") == "running"
+    ]
+
+    current_work: list[dict[str, Any]] = []
+    represented_runs: set[int] = set()
+    for job in jobs:
+        run_id = _int(job.get("runId"))
+        represented_runs.add(run_id)
+        event = (
+            dict(job.get("latestTelemetry"))
+            if isinstance(job.get("latestTelemetry"), Mapping)
+            else {}
+        )
+        role = (
+            dict(job.get("workerRole"))
+            if isinstance(job.get("workerRole"), Mapping)
+            else {}
+        )
+        current_step = (
+            dict(job.get("currentStep"))
+            if isinstance(job.get("currentStep"), Mapping)
+            else {}
+        )
+        explicit = bool(event)
+        state = str(
+            role.get("state")
+            or event.get("state")
+            or event.get("stage")
+            or current_step.get("name")
+            or job.get("state")
+            or "running"
+        )
+        current_work.append({
+            "kind": "job",
+            "runId": run_id,
+            "runNumber": _int(job.get("runNumber")),
+            "jobId": _int(job.get("jobId")),
+            "workflow": str(job.get("workflow") or ""),
+            "workflowPath": str(job.get("workflowPath") or ""),
+            "jobName": str(job.get("name") or ""),
+            "runnerId": _int(job.get("runnerId")),
+            "runnerName": str(job.get("runnerName") or ""),
+            "workerRole": role,
+            "state": state,
+            "telemetrySource": "structured" if explicit else "inferred",
+            "event": str(event.get("event") or ""),
+            "stage": str(event.get("stage") or current_step.get("name") or ""),
+            "subject": _activity_subject(event, job),
+            "queue": dict(event.get("queue") or {}) if isinstance(event.get("queue"), Mapping) else {},
+            "progress": dict(event.get("progress") or {}) if isinstance(event.get("progress"), Mapping) else {},
+            "publication": dict(event.get("publication") or {}) if isinstance(event.get("publication"), Mapping) else {},
+            "result": dict(event.get("result") or {}) if isinstance(event.get("result"), Mapping) else {},
+            "currentStep": current_step,
+            "startedAtUtc": str(job.get("startedAtUtc") or ""),
+            "url": str(job.get("url") or ""),
+            "readOnly": True,
+        })
+
+    for run in live.get("activeRuns") or []:
+        if not isinstance(run, Mapping):
+            continue
+        run_id = _int(run.get("runId"))
+        if run_id in represented_runs:
+            continue
+        current_work.append({
+            "kind": "run",
+            "runId": run_id,
+            "runNumber": _int(run.get("runNumber")),
+            "jobId": 0,
+            "workflow": str(run.get("workflow") or ""),
+            "workflowPath": str(run.get("workflowPath") or ""),
+            "jobName": "",
+            "runnerId": 0,
+            "runnerName": "",
+            "workerRole": {},
+            "state": str(run.get("status") or run.get("state") or "running"),
+            "telemetrySource": "actions-run",
+            "event": "",
+            "stage": "",
+            "subject": {"pluginId": 0, "variantId": 0, "internalName": "", "version": "", "workType": "", "sourceName": "", "fallback": str(run.get("title") or run.get("workflow") or "")},
+            "queue": {},
+            "progress": {},
+            "publication": {},
+            "result": {},
+            "currentStep": {},
+            "startedAtUtc": str(run.get("createdAtUtc") or ""),
+            "url": str(run.get("url") or ""),
+            "readOnly": True,
+        })
+
+    current_work.sort(key=lambda row: (
+        0 if row.get("telemetrySource") == "structured" else 1,
+        str(row.get("startedAtUtc") or ""),
+        _int(row.get("runId")),
+        _int(row.get("jobId")),
+    ))
+
+    latest_queue = next((
+        dict(event) for event in events
+        if str(event.get("event") or "").startswith("queue.")
+    ), {})
+    latest_publication = next((
+        dict(event) for event in events
+        if str(event.get("event") or "").startswith("publication.")
+    ), {})
+    latest_scan = next((
+        dict(event) for event in events
+        if str(event.get("event") or "").startswith(("scan.", "source.", "analysis."))
+    ), {})
+
+    return {
+        "schema": LIVE_ACTIVITY_SCHEMA,
+        "available": bool(live.get("available")),
+        "live": bool(live.get("live")),
+        "authenticated": bool(live.get("authenticated")),
+        "repository": str(live.get("repository") or getattr(client, "repository", "")),
+        "fetchedAtUtc": str(live.get("fetchedAtUtc") or ""),
+        "nextPollSeconds": _int(live.get("nextPollSeconds")) or BACKGROUND_POLL_SECONDS,
+        "servedFromCache": bool(live.get("servedFromCache")),
+        "stale": bool(live.get("stale")),
+        "counts": {
+            "currentWork": len(current_work),
+            "activeRuns": _int((live.get("counts") or {}).get("activeRuns")),
+            "jobs": _int((live.get("counts") or {}).get("jobs")),
+            "runners": _int((live.get("counts") or {}).get("runners")),
+            "busyRunners": _int((live.get("counts") or {}).get("busyRunners")),
+            "telemetryEvents": len(events),
+            "telemetryJobs": _int((live.get("counts") or {}).get("telemetryJobs")),
+        },
+        "currentWork": current_work,
+        "timeline": events,
+        "latest": {
+            "queue": latest_queue,
+            "scan": latest_scan,
+            "publication": latest_publication,
+        },
+        "rateLimit": dict(live.get("rateLimit") or {}),
+        "capabilities": dict(live.get("capabilities") or {}),
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "securityAuthority": False,
+        "semanticBoundary": {
+            "actionsRunJobState": "github-actions-operational-state",
+            "structuredTelemetry": "worker-self-report-operational-context",
+            "securityEvidence": "not-derived-from-live-operations",
+            "rawLogsReturned": False,
+        },
+    }
+
+
 def project_runner_dashboard(client: Any, *, foreground: bool = True, force: bool = False) -> dict[str, Any]:
     """Project runner infrastructure separately from Omega worker-role observations."""
     live = live_status(client, foreground=foreground, force=force)
@@ -914,6 +1099,7 @@ def _install_client_extensions(cls: Any) -> None:
     cls.live_status = live_status
     cls.runner_dashboard = project_runner_dashboard
     cls.actions_telemetry = project_actions_telemetry
+    cls.live_activity = project_live_activity
     cls._deltascope_live_operations_installed = True
 
 
@@ -932,7 +1118,8 @@ _RUNNER_VIEW = r'''
 
 _LIVE_CSS = r'''
 .workflow-live-strip{display:grid;grid-template-columns:minmax(180px,.8fr) repeat(4,minmax(90px,.45fr)) minmax(170px,.7fr);gap:1px;background:#c6c6c6;border:1px solid #c6c6c6;margin-top:10px}.workflow-live-cell{background:#fff;padding:9px 11px;min-width:0}.workflow-live-cell span{display:block;font-size:9px;color:#6f6f6f;text-transform:uppercase;letter-spacing:.04em}.workflow-live-cell b{display:block;margin-top:2px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workflow-live-cell.live b{color:#198038}.workflow-live-cell.offline b{color:#6f6f6f}.workflow-live-runners{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.workflow-live-runner{border:1px solid #c6c6c6;padding:3px 6px;font-size:10px;background:#fff}.workflow-live-runner.busy{border-color:#0f62fe;background:#edf5ff}.workflow-live-warning{padding:7px 10px;background:#fff1f1;border-left:4px solid #da1e28;font-size:10px;margin-top:6px}
-#workbench-runners{gap:12px;overflow:auto}.runner-dashboard-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.runner-dashboard-head h1{margin:2px 0 4px;font-size:27px}.runner-dashboard-head p{margin:0;color:#525252;max-width:780px}.runner-dashboard-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.runner-dashboard-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:#c6c6c6;border:1px solid #c6c6c6}.runner-stat{background:#fff;padding:11px 13px}.runner-stat b{display:block;font-size:22px;font-weight:400}.runner-stat span{display:block;color:#525252;font-size:10px;text-transform:uppercase}.runner-dashboard-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:8px}.runner-dashboard-toolbar input,.runner-dashboard-toolbar select{background:#fff!important;color:#161616!important;border:1px solid #8d8d8d!important}.runner-dashboard-notice{padding:10px 12px;border-left:4px solid #0f62fe;background:#edf5ff;color:#393939}.runner-dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:10px}.runner-card{border:1px solid #c6c6c6;background:#fff;min-width:0}.runner-card.busy{border-color:#0f62fe;box-shadow:inset 4px 0 #0f62fe}.runner-card.offline{border-color:#8d8d8d}.runner-card-head{display:flex;justify-content:space-between;gap:10px;padding:13px 14px;border-bottom:1px solid #e0e0e0}.runner-card-head h2{margin:2px 0 0;font-size:17px;overflow-wrap:anywhere}.runner-card-badges{display:flex;gap:5px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end}.runner-state-badge{font-size:9px;border:1px solid #8d8d8d;padding:2px 5px;text-transform:uppercase}.runner-state-badge.online{border-color:#24a148;color:#198038}.runner-state-badge.offline{border-color:#da1e28;color:#a2191f}.runner-state-badge.observed{border-color:#8d8d8d;color:#525252}.runner-state-badge.busy{border-color:#0f62fe;color:#0043ce;background:#edf5ff}.runner-infra{padding:11px 14px;border-bottom:1px solid #e0e0e0}.runner-section-label{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#525252;margin-bottom:7px}.runner-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.runner-fact span{display:block;font-size:9px;color:#6f6f6f;text-transform:uppercase}.runner-fact b{display:block;font-size:11px;overflow-wrap:anywhere}.runner-labels{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}.runner-label{font-size:9px;padding:2px 5px;background:#f4f4f4;border:1px solid #e0e0e0}.runner-workers{padding:11px 14px}.runner-worker{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 0;border-top:1px solid #e0e0e0}.runner-worker:first-of-type{border-top:0}.runner-worker-role{font-weight:600}.runner-worker-meta{font-size:10px;color:#525252;margin-top:2px}.runner-worker-step{font-size:10px;margin-top:4px}.runner-worker button{align-self:center;white-space:nowrap}.runner-no-worker{font-size:11px;color:#6f6f6f;padding:5px 0}.runner-boundary{font-size:10px;color:#525252;margin-top:8px;padding:8px;background:#f4f4f4}@media(max-width:1100px){.runner-dashboard-stats{grid-template-columns:repeat(3,1fr)}}@media(max-width:1000px){.workflow-live-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.workflow-live-strip{grid-template-columns:1fr 1fr}.runner-dashboard-head{align-items:flex-start;flex-direction:column}.runner-dashboard-stats{grid-template-columns:1fr 1fr}.runner-dashboard-toolbar{grid-template-columns:1fr}.runner-dashboard-grid{grid-template-columns:1fr}}
+#workbench-runners{gap:12px;overflow:auto}.runner-dashboard-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.runner-dashboard-head h1{margin:2px 0 4px;font-size:27px}.runner-dashboard-head p{margin:0;color:#525252;max-width:780px}.runner-dashboard-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.runner-dashboard-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:#c6c6c6;border:1px solid #c6c6c6}.runner-stat{background:#fff;padding:11px 13px}.runner-stat b{display:block;font-size:22px;font-weight:400}.runner-stat span{display:block;color:#525252;font-size:10px;text-transform:uppercase}.runner-dashboard-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:8px}.runner-dashboard-toolbar input,.runner-dashboard-toolbar select{background:#fff!important;color:#161616!important;border:1px solid #8d8d8d!important}.runner-dashboard-notice{padding:10px 12px;border-left:4px solid #0f62fe;background:#edf5ff;color:#393939}.runner-dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:10px}.runner-card{border:1px solid #c6c6c6;background:#fff;min-width:0}.runner-card.busy{border-color:#0f62fe;box-shadow:inset 4px 0 #0f62fe}.runner-card.offline{border-color:#8d8d8d}.runner-card-head{display:flex;justify-content:space-between;gap:10px;padding:13px 14px;border-bottom:1px solid #e0e0e0}.runner-card-head h2{margin:2px 0 0;font-size:17px;overflow-wrap:anywhere}.runner-card-badges{display:flex;gap:5px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end}.runner-state-badge{font-size:9px;border:1px solid #8d8d8d;padding:2px 5px;text-transform:uppercase}.runner-state-badge.online{border-color:#24a148;color:#198038}.runner-state-badge.offline{border-color:#da1e28;color:#a2191f}.runner-state-badge.observed{border-color:#8d8d8d;color:#525252}.runner-state-badge.busy{border-color:#0f62fe;color:#0043ce;background:#edf5ff}.runner-infra{padding:11px 14px;border-bottom:1px solid #e0e0e0}.runner-section-label{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#525252;margin-bottom:7px}.runner-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.runner-fact span{display:block;font-size:9px;color:#6f6f6f;text-transform:uppercase}.runner-fact b{display:block;font-size:11px;overflow-wrap:anywhere}.runner-labels{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}.runner-label{font-size:9px;padding:2px 5px;background:#f4f4f4;border:1px solid #e0e0e0}.runner-workers{padding:11px 14px}.runner-worker{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 0;border-top:1px solid #e0e0e0}.runner-worker:first-of-type{border-top:0}.runner-worker-role{font-weight:600}.runner-worker-meta{font-size:10px;color:#525252;margin-top:2px}.runner-worker-step{font-size:10px;margin-top:4px}.runner-worker button{align-self:center;white-space:nowrap}.runner-no-worker{font-size:11px;color:#6f6f6f;padding:5px 0}.runner-boundary{font-size:10px;color:#525252;margin-top:8px;padding:8px;background:#f4f4f4}
+.live-activity-panel{margin:12px 0;border-top:3px solid #0f62fe}.live-activity-panel .panelhead{align-items:flex-start}.live-activity-summary{display:flex;gap:6px;flex-wrap:wrap}.live-activity-summary .pill{font-size:9px}.live-current-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;padding:0 14px 12px}.live-current-card{border:1px solid #c6c6c6;background:#fff;padding:11px;min-width:0}.live-current-card.structured{box-shadow:inset 4px 0 #24a148}.live-current-card.inferred{box-shadow:inset 4px 0 #8d8d8d}.live-current-card h3{margin:2px 0 5px;font-size:15px;overflow-wrap:anywhere}.live-current-meta{font-size:10px;color:#525252;line-height:1.45}.live-current-state{font-size:10px;font-weight:700;text-transform:uppercase}.live-current-subject{margin-top:7px;font-size:11px}.live-current-progress{margin-top:7px;font-size:10px}.live-current-progress-bar{height:4px;background:#e0e0e0;margin-top:4px;overflow:hidden}.live-current-progress-bar span{display:block;height:100%;background:#0f62fe}.live-current-actions{margin-top:8px}.live-timeline{padding:0 14px 12px}.live-event{border-top:1px solid #e0e0e0;padding:8px 0}.live-event:first-child{border-top:0}.live-event summary{cursor:pointer;display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:9px;align-items:center}.live-event-time{font-family:Consolas,monospace;font-size:10px;color:#525252}.live-event-name{font-weight:600;overflow-wrap:anywhere}.live-event-context{font-size:10px;color:#525252}.live-event pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;background:#161616;color:#f4f4f4;padding:9px;font-size:10px}.workflow-live-events{margin-top:8px;border:1px solid #c6c6c6;background:#fff}.workflow-live-events>summary{padding:8px 10px;font-weight:600;cursor:pointer}.workflow-live-events-body{padding:0 10px 8px}.live-activity-empty{padding:12px 14px;color:#6f6f6f}.live-latest-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#e0e0e0;margin:0 14px 12px}.live-latest-item{background:#f4f4f4;padding:8px}.live-latest-item span{display:block;font-size:9px;text-transform:uppercase;color:#6f6f6f}.live-latest-item b{display:block;margin-top:2px;font-size:11px;overflow-wrap:anywhere}@media(max-width:1100px){.runner-dashboard-stats{grid-template-columns:repeat(3,1fr)}.live-event summary{grid-template-columns:110px minmax(0,1fr)}}@media(max-width:1000px){.workflow-live-strip{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.workflow-live-strip{grid-template-columns:1fr 1fr}.live-latest-strip{grid-template-columns:1fr}.live-event summary{grid-template-columns:1fr}.runner-dashboard-head{align-items:flex-start;flex-direction:column}.runner-dashboard-stats{grid-template-columns:1fr 1fr}.runner-dashboard-toolbar{grid-template-columns:1fr}.runner-dashboard-grid{grid-template-columns:1fr}}
 '''
 
 _LIVE_JS = r'''
@@ -940,7 +1127,7 @@ setTimeout(function(){
  if(window.__deltascopeLiveOperationsInstalled)return;window.__deltascopeLiveOperationsInstalled=true;
  var style=document.createElement('style');style.textContent=__LIVE_CSS__;document.head.appendChild(style);
  var operate=(perspectiveConfig.operations?.groups||[]).find(group=>group.label==='Operate');if(operate&&!operate.items.some(item=>item.view==='runners')){var workflowIndex=operate.items.findIndex(item=>item.view==='workflows');operate.items.splice(workflowIndex>=0?workflowIndex+1:2,0,{label:'Runners',mark:'R',view:'runners'})}contextualDocumentationFallback.runners={doc:'github-workflows',label:'Runner dashboard docs'};if(currentPerspective==='operations')renderPerspectiveNav();
- var timer=0,inFlight=false,last=null,lastRunner=null,runnerSearch='',runnerState='';
+ var timer=0,inFlight=false,last=null,lastRunner=null,lastActivity=null,runnerSearch='',runnerState='';
  function liveHost(){var view=document.getElementById('workbench-workflows');if(!view)return null;var host=document.getElementById('workflowLiveOperations');if(host)return host;host=document.createElement('div');host.id='workflowLiveOperations';var head=view.querySelector('.workflow-center-head');if(head)head.insertAdjacentElement('afterend',host);return host}
  function capText(cap){if(!cap)return'unknown';if(cap.available===true)return'yes';if(cap.available===false)return'no';return'not observed'}
  function renderLive(r){last=r;var host=liveHost();if(!host)return;var c=r.counts||{},rate=r.rateLimit||{},caps=r.capabilities||{},remaining=rate.limit?`${fmt(rate.remaining||0)} / ${fmt(rate.limit||0)}`:'not reported',mode=r.live?'LIVE':r.authenticated?'WAITING':'NOT CONNECTED';host.innerHTML=`<div class=workflow-live-strip><div class="workflow-live-cell ${r.live?'live':'offline'}"><span>GitHub telemetry</span><b>${esc(mode)}</b></div><div class=workflow-live-cell><span>Active runs</span><b>${fmt(c.activeRuns||0)}</b></div><div class=workflow-live-cell><span>Jobs / telemetry</span><b>${fmt(c.jobs||0)} · ${fmt(c.telemetryEvents||0)} events</b></div><div class=workflow-live-cell><span>Runners</span><b>${fmt(c.runners||0)} · ${fmt(c.busyRunners||0)} busy</b></div><div class=workflow-live-cell><span>Rate remaining</span><b>${esc(remaining)}</b></div><div class=workflow-live-cell><span>Capabilities</span><b>jobs ${esc(capText(caps.jobsRead))} · runners ${esc(capText(caps.runnerInventoryRead))}</b></div></div>${(r.runners||[]).length?`<div class=workflow-live-runners>${r.runners.slice(0,12).map(x=>`<span class="workflow-live-runner ${x.busy?'busy':''}" title="${esc((x.activeJobs||[]).map(j=>`${j.workflow} · ${j.name}`).join(' | '))}">${esc(x.runnerName||`runner ${x.runnerId||'?'}`)} · ${x.busy?'BUSY':esc(x.status||'observed')}</span>`).join('')}</div>`:''}${r.error?`<div class=workflow-live-warning>${esc(r.error)}</div>`:''}`;var snap=document.getElementById('workflowCenterSnapshot');if(snap&&r.live)snap.textContent=`Live · ${esc(r.fetchedAtUtc||'')}`}
@@ -951,10 +1138,20 @@ setTimeout(function(){
  function runnerCard(r){var i=r.infrastructure||{},state=infraState(r),workers=r.workers||[],groups=(i.groups||[]).join(', ')||'—',version=i.version||'not reported',os=i.os||'not reported';return `<article class="runner-card ${i.busy?'busy':''} ${state==='offline'?'offline':''}"><div class=runner-card-head><div><div class=eyebrow>GITHUB RUNNER</div><h2>${esc(r.runnerName||`Runner ${r.runnerId||'?'}`)}</h2></div><div class=runner-card-badges><span class="runner-state-badge ${state}">${esc(state)}</span><span class="runner-state-badge ${i.busy?'busy':''}">${i.busy?'busy':'idle'}</span></div></div><div class=runner-infra><div class=runner-section-label>Infrastructure state</div><div class=runner-facts><div class=runner-fact><span>OS</span><b>${esc(os)}</b></div><div class=runner-fact><span>Version</span><b>${esc(version)}</b></div><div class=runner-fact><span>Runner group</span><b>${esc(groups)}</b></div><div class=runner-fact><span>State source</span><b>${esc(i.source||'unknown')}</b></div></div>${(i.labels||[]).length?`<div class=runner-labels>${i.labels.map(x=>`<span class=runner-label>${esc(x)}</span>`).join('')}</div>`:''}<div class=runner-boundary>${i.inventoryBacked?'ONLINE/OFFLINE comes from GitHub runner inventory.':'This runner was observed through an active job. DeltaScope intentionally does not infer ONLINE/OFFLINE from the worker job.'}</div></div><div class=runner-workers><div class=runner-section-label>Omega worker activity</div>${workers.length?workers.map(workerHtml).join(''):'<div class=runner-no-worker>No Omega worker is currently correlated with this runner.</div>'}</div></article>`}
  function renderRunnerDashboard(r){lastRunner=r;renderRunnerStats();var notice=$('runnerDashboardNotice'),grid=$('runnerDashboardGrid'),snap=$('runnerDashboardSnapshot');if(notice)notice.textContent=r.message||'';if(snap)snap.textContent=r.fetchedAtUtc?`${r.live?'Live':'Snapshot'} · ${r.fetchedAtUtc}`:'Live snapshot not loaded';if(!grid)return;var rows=runnerRows();grid.innerHTML=rows.map(runnerCard).join('')||'<div class=workspace-empty>No runners match the current filter.</div>';grid.querySelectorAll('[data-runner-open-job]').forEach(button=>button.addEventListener('click',()=>openWorkflowRun({runId:Number(button.dataset.runnerOpenJob||0),workflow:button.dataset.runnerWorkflow||'',workflowPath:button.dataset.runnerWorkflowPath||''})))}
  async function openWorkflowRun(job){var item=(perspectiveConfig.operations?.groups||[]).flatMap(group=>group.items||[]).find(candidate=>candidate.view==='workflows');if(item&&typeof navigatePerspective==='function')navigatePerspective(item);else if(typeof setWorkbenchView==='function')setWorkbenchView('workflows');var wantedPath=String(job.workflowPath||'').replace(/\\/g,'/').split('/').pop().toLowerCase(),wantedName=String(job.workflow||'').toLowerCase();for(var tries=0;tries<24;tries++){await new Promise(resolve=>setTimeout(resolve,100));var buttons=[...document.querySelectorAll('#workflowCenterList [data-workflow-id]')],match=buttons.find(b=>{var path=String(b.querySelector('.workflow-list-path')?.textContent||'').toLowerCase(),name=String(b.querySelector('.workflow-list-name')?.textContent||'').toLowerCase();return(wantedPath&&path===wantedPath)||(wantedName&&name===wantedName)});if(match){match.click();break}}for(var tries=0;tries<24;tries++){await new Promise(resolve=>setTimeout(resolve,100));var run=document.querySelector(`#workflowCenterRunList [data-wc-run="${String(job.runId||0)}"]`);if(run){run.click();return}}}
+ function activitySubjectText(row){var s=row.subject||{},fallback=s.fallback||row.jobName||row.workflow||'active work';return s.internalName?`${s.internalName}${s.version?` · ${s.version}`:''}${s.workType?` · ${s.workType}`:''}`:fallback}
+ function activityProgress(row){var p=row.progress||{},q=row.queue||{};if(Number(p.total||0)>0){var current=Number(p.current||0),total=Number(p.total||0),pct=Math.max(0,Math.min(100,Number(p.percent??(current*100/total))));return {text:`${fmt(current)} / ${fmt(total)} ${p.unit||''}`.trim(),percent:pct}}if(q.remaining!==undefined&&q.remaining!==null)return{text:`${fmt(q.remaining)} queue remaining`,percent:null};return{text:'',percent:null}}
+ function activityPanel(){var operations=$('operationsDashboard');if(!operations)return null;var host=$('liveOperationsActivity');if(host)return host;host=document.createElement('section');host.id='liveOperationsActivity';host.className='panel live-activity-panel';var grid=operations.querySelector('.dashboard-grid');if(grid)grid.insertAdjacentElement('beforebegin',host);else operations.appendChild(host);return host}
+ function workflowEventsHost(){var liveHostNode=$('workflowLiveOperations');if(!liveHostNode)return null;var host=$('workflowLiveEvents');if(host)return host;host=document.createElement('details');host.id='workflowLiveEvents';host.className='workflow-live-events';host.innerHTML='<summary>Live Omega event timeline</summary><div class=workflow-live-events-body></div>';liveHostNode.insertAdjacentElement('afterend',host);return host}
+ function activityEventHtml(e,compact){var subject=e.subject||{},subjectText=subject.internalName?`${subject.internalName}${subject.version?` · ${subject.version}`:''}`:'',queue=e.queue||{},progress=e.progress||{},context=[e.runnerName,e.jobName,subjectText,queue.remaining!==undefined?`${fmt(queue.remaining)} remaining`:'',progress.total?`${fmt(progress.current||0)}/${fmt(progress.total)} ${progress.unit||''}`:''].filter(Boolean).join(' · ');return `<details class=live-event><summary><span class=live-event-time>${esc(e.emittedAtUtc||'')}</span><span><span class=live-event-name>${esc(e.event||'event')}${e.stage?` · ${esc(e.stage)}`:''}</span>${context?`<span class=live-event-context>${esc(context)}</span>`:''}</span>${e.runId?`<button type=button data-live-open-run="${Number(e.runId||0)}" data-live-workflow="${esc(e.workflow||'')}" data-live-workflow-path="${esc(e.workflowPath||'')}">Open run & logs</button>`:''}</summary>${compact?'':`<pre>${esc(JSON.stringify(e,null,2))}</pre>`}</details>`}
+ function wireLiveRunLinks(host){host?.querySelectorAll?.('[data-live-open-run]').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openWorkflowRun({runId:Number(button.dataset.liveOpenRun||0),workflow:button.dataset.liveWorkflow||'',workflowPath:button.dataset.liveWorkflowPath||''})}))}
+ function currentWorkHtml(row){var role=row.workerRole||{},progress=activityProgress(row),subject=activitySubjectText(row),source=row.telemetrySource==='structured'?'TELEMETRY':row.telemetrySource==='inferred'?'INFERRED':'ACTIONS',state=row.state||row.stage||'running';return `<article class="live-current-card ${row.telemetrySource==='structured'?'structured':'inferred'}"><div class=eyebrow>${esc(source)} · ${esc(row.runnerName||'runner pending')}</div><h3>${esc(subject)}</h3><div class=live-current-state>${esc(state)}</div><div class=live-current-meta>${esc(role.label||row.workflow||'workflow')} · run #${fmt(row.runNumber||0)}${row.jobName?` · ${esc(row.jobName)}`:''}</div>${row.event?`<div class=live-current-subject><b>${esc(row.event)}</b>${row.stage?` · ${esc(row.stage)}`:''}</div>`:''}${progress.text?`<div class=live-current-progress>${esc(progress.text)}${progress.percent!==null?`<div class=live-current-progress-bar><span style="width:${Math.max(0,Math.min(100,progress.percent))}%"></span></div>`:''}</div>`:''}<div class=live-current-actions>${row.runId?`<button type=button data-live-open-run="${Number(row.runId||0)}" data-live-workflow="${esc(row.workflow||'')}" data-live-workflow-path="${esc(row.workflowPath||'')}">Open run & logs</button>`:''}</div></article>`}
+ function latestItem(label,e){if(!e||!e.event)return `<div class=live-latest-item><span>${esc(label)}</span><b>no structured event yet</b></div>`;var subject=e.subject||{},detail=subject.internalName||e.stage||e.message||e.event;return `<div class=live-latest-item><span>${esc(label)}</span><b>${esc(detail)}</b><div class="muted tiny">${esc(e.event||'')}</div></div>`}
+ function renderActivity(a){lastActivity=a;var panel=activityPanel(),current=a.currentWork||[],timeline=a.timeline||[],latest=a.latest||{},c=a.counts||{};if(panel){panel.innerHTML=`<div class=panelhead><div><h2>Live Omega activity</h2><div class="muted small">Actions, workers, queue subjects and publication progress from the authenticated live snapshot. Structured events win over inferred job-stage labels.</div></div><div class=live-activity-summary><span class=pill>${fmt(c.currentWork||0)} current</span><span class=pill>${fmt(c.telemetryEvents||0)} events</span><span class=pill>${fmt(c.busyRunners||0)} busy runners</span></div></div><div class=live-latest-strip>${latestItem('Queue',latest.queue)}${latestItem('Scan / analysis',latest.scan)}${latestItem('Publication',latest.publication)}</div>${current.length?`<div class=live-current-grid>${current.map(currentWorkHtml).join('')}</div>`:'<div class=live-activity-empty>No active Actions work is currently visible to this credential.</div>'}<div class=panelhead><div><h3>Recent structured events</h3><div class="muted small">Expand an event for its sanitized payload; open the run for the existing Workflow Center log drill-down.</div></div><span class="muted small">${esc(a.fetchedAtUtc||'')}</span></div><div class=live-timeline>${timeline.length?timeline.slice(0,16).map(e=>activityEventHtml(e,false)).join(''):'<div class=live-activity-empty>No omega.actions.telemetry.v1 events are visible yet.</div>'}</div>`;wireLiveRunLinks(panel)}
+ var workflowHost=workflowEventsHost();if(workflowHost){var body=workflowHost.querySelector('.workflow-live-events-body');if(body)body.innerHTML=timeline.length?timeline.slice(0,8).map(e=>activityEventHtml(e,true)).join(''):'<div class=live-activity-empty>No structured events are visible yet.</div>';wireLiveRunLinks(workflowHost)}}
  function relevantForeground(){var view=String(window.currentWorkbenchView||currentWorkbenchView||'');return document.visibilityState==='visible'&&['workflows','runners','dashboard','ops-evidence','ops-gates'].includes(view)}
  function schedule(seconds){clearTimeout(timer);timer=setTimeout(()=>poll(false),Math.max(5000,Number(seconds||60)*1000))}
- async function poll(force){if(inFlight){schedule(5);return}inFlight=true;try{var foreground=relevantForeground(),r=await api(`/api/operations/live?foreground=${foreground?'1':'0'}${force?'&force=1':''}`);renderLive(r);if(String(window.currentWorkbenchView||currentWorkbenchView||'')==='runners'){var rd=await api(`/api/operations/runners?foreground=${foreground?'1':'0'}`);renderRunnerDashboard(rd);schedule(rd.nextPollSeconds||r.nextPollSeconds||60)}else{schedule(r.nextPollSeconds||60)}}catch(e){var host=liveHost();if(host)host.innerHTML=`<div class=workflow-live-warning>Live GitHub telemetry unavailable: ${esc(e.message)}</div>`;var grid=$('runnerDashboardGrid');if(grid&&String(window.currentWorkbenchView||currentWorkbenchView||'')==='runners')grid.innerHTML=`<div class=workflow-live-warning>Runner dashboard unavailable: ${esc(e.message)}</div>`;schedule(60)}finally{inFlight=false}}
- document.addEventListener('visibilitychange',()=>{if(last?.authenticated)poll(false)});var refresh=document.getElementById('workflowCenterRefresh');refresh?.addEventListener('click',()=>setTimeout(()=>poll(true),400));$('runnerDashboardRefresh')?.addEventListener('click',()=>poll(true));$('runnerDashboardSearch')?.addEventListener('input',event=>{runnerSearch=String(event.target.value||'');if(lastRunner)renderRunnerDashboard(lastRunner)});$('runnerDashboardState')?.addEventListener('change',event=>{runnerState=String(event.target.value||'');if(lastRunner)renderRunnerDashboard(lastRunner)});var setWorkbenchViewBaseLive=setWorkbenchView;setWorkbenchView=function(name){setWorkbenchViewBaseLive(name);if(name==='runners')poll(false)};poll(false);
+ async function poll(force){if(inFlight){schedule(5);return}inFlight=true;try{var foreground=relevantForeground(),view=String(window.currentWorkbenchView||currentWorkbenchView||''),r=await api(`/api/operations/live?foreground=${foreground?'1':'0'}${force?'&force=1':''}`),next=r.nextPollSeconds||60;renderLive(r);if(view==='runners'){var rd=await api(`/api/operations/runners?foreground=${foreground?'1':'0'}`);renderRunnerDashboard(rd);next=rd.nextPollSeconds||next}if(view==='dashboard'||view==='workflows'){var activity=await api(`/api/operations/activity?foreground=${foreground?'1':'0'}`);renderActivity(activity);next=activity.nextPollSeconds||next}schedule(next)}catch(e){var host=liveHost();if(host)host.innerHTML=`<div class=workflow-live-warning>Live GitHub telemetry unavailable: ${esc(e.message)}</div>`;var grid=$('runnerDashboardGrid');if(grid&&String(window.currentWorkbenchView||currentWorkbenchView||'')==='runners')grid.innerHTML=`<div class=workflow-live-warning>Runner dashboard unavailable: ${esc(e.message)}</div>`;var activityHost=$('liveOperationsActivity');if(activityHost)activityHost.innerHTML=`<div class=workflow-live-warning>Live Omega activity unavailable: ${esc(e.message)}</div>`;schedule(60)}finally{inFlight=false}}
+ document.addEventListener('visibilitychange',()=>{if(last?.authenticated)poll(false)});var refresh=document.getElementById('workflowCenterRefresh');refresh?.addEventListener('click',()=>setTimeout(()=>poll(true),400));$('runnerDashboardRefresh')?.addEventListener('click',()=>poll(true));$('runnerDashboardSearch')?.addEventListener('input',event=>{runnerSearch=String(event.target.value||'');if(lastRunner)renderRunnerDashboard(lastRunner)});$('runnerDashboardState')?.addEventListener('change',event=>{runnerState=String(event.target.value||'');if(lastRunner)renderRunnerDashboard(lastRunner)});var setWorkbenchViewBaseLive=setWorkbenchView;setWorkbenchView=function(name){setWorkbenchViewBaseLive(name);if(['runners','dashboard','workflows'].includes(name))poll(false)};poll(false);
 },0);
 '''
 
@@ -988,13 +1185,13 @@ def install() -> None:
 
     def patched_get(self: Any) -> None:
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path not in {"/api/operations/live", "/api/operations/runners", "/api/operations/telemetry"}:
+        if parsed.path not in {"/api/operations/live", "/api/operations/runners", "/api/operations/telemetry", "/api/operations/activity"}:
             return original_get(self)
         try:
             client = getattr(self, "operations_client", None)
             if client is None:
                 return self.json_response({
-                    "schema": RUNNER_DASHBOARD_SCHEMA if parsed.path.endswith("/runners") else TELEMETRY_VIEW_SCHEMA if parsed.path.endswith("/telemetry") else LIVE_SCHEMA,
+                    "schema": RUNNER_DASHBOARD_SCHEMA if parsed.path.endswith("/runners") else TELEMETRY_VIEW_SCHEMA if parsed.path.endswith("/telemetry") else LIVE_ACTIVITY_SCHEMA if parsed.path.endswith("/activity") else LIVE_SCHEMA,
                     "available": False,
                     "live": False,
                     "authenticated": False,
@@ -1009,6 +1206,8 @@ def install() -> None:
                 return self.json_response(client.runner_dashboard(foreground=foreground, force=force))
             if parsed.path.endswith("/telemetry"):
                 return self.json_response(client.actions_telemetry(foreground=foreground, force=force))
+            if parsed.path.endswith("/activity"):
+                return self.json_response(client.live_activity(foreground=foreground, force=force))
             return self.json_response(client.live_status(foreground=foreground, force=force))
         except Exception as exc:
             return self.json_response({"error": str(exc)}, 500)

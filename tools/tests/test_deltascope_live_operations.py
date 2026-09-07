@@ -426,6 +426,92 @@ class DeltaScopeLiveOperationsTests(unittest.TestCase):
         self.assertIn("telemetryEvents", html)
         self.assertTrue(hasattr(live, "project_actions_telemetry"))
 
+
+    def test_live_activity_projects_current_work_without_extra_network_acquisition(self):
+        calls = []
+        def opener(request, timeout=0):
+            url = request.full_url
+            calls.append(url)
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(_telemetry_log().encode("utf-8"), headers=_rate_headers())
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers())
+            raise AssertionError(url)
+
+        client = self.client(opener)
+        client.live_status()
+        before = len(calls)
+        activity = client.live_activity()
+        self.assertEqual(before, len(calls))
+        self.assertEqual(live.LIVE_ACTIVITY_SCHEMA, activity["schema"])
+        self.assertEqual(1, activity["counts"]["currentWork"])
+        self.assertEqual(2, activity["counts"]["telemetryEvents"])
+        work = activity["currentWork"][0]
+        self.assertEqual("structured", work["telemetrySource"])
+        self.assertEqual("Example.Plugin", work["subject"]["internalName"])
+        self.assertEqual("scan.progress", work["event"])
+        self.assertEqual(18, work["progress"]["current"])
+        self.assertFalse(activity["securityAuthority"])
+        self.assertFalse(activity["semanticBoundary"]["rawLogsReturned"])
+
+    def test_live_activity_falls_back_to_actions_job_when_structured_events_are_absent(self):
+        def opener(request, timeout=0):
+            url = request.full_url
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(b"ordinary log line\n", headers=_rate_headers())
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers())
+            raise AssertionError(url)
+
+        activity = self.client(opener).live_activity()
+        work = activity["currentWork"][0]
+        self.assertEqual("inferred", work["telemetrySource"])
+        self.assertEqual("Artifact worker", work["subject"]["fallback"])
+        self.assertEqual("scanning", work["workerRole"]["state"])
+        self.assertEqual([], activity["timeline"])
+
+    def test_live_activity_exposes_latest_queue_and_scan_events(self):
+        def opener(request, timeout=0):
+            url = request.full_url
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(_telemetry_log().encode("utf-8"), headers=_rate_headers())
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers())
+            raise AssertionError(url)
+
+        activity = self.client(opener).live_activity()
+        self.assertEqual("queue.claimed", activity["latest"]["queue"]["event"])
+        self.assertEqual("scan.progress", activity["latest"]["scan"]["event"])
+        self.assertEqual({}, activity["latest"]["publication"])
+
+    def test_seamless_ui_adds_dashboard_activity_timeline_and_run_log_drilldown(self):
+        html = live._patch_html(
+            "<html><body><main><section id='workbench-dashboard'><div id='operationsDashboard'><div class='dashboard-grid'></div></div></section></main>"
+            "<script>const currentWorkbenchView='dashboard';const currentPerspective='operations';</script></body></html>"
+        )
+        self.assertIn("Live Omega activity", html)
+        self.assertIn("/api/operations/activity?foreground=", html)
+        self.assertIn("Open run & logs", html)
+        self.assertIn("Recent structured events", html)
+        self.assertIn("JSON.stringify(e,null,2)", html)
+        self.assertIn("currentWork", html)
+        self.assertIn("latest.publication", html)
+        self.assertNotIn("Authorization", html)
+        self.assertNotIn("Bearer", html)
+
+
     def test_entrypoint_installs_live_operations_after_workflow_center(self):
         source = (SECURITY / "deltascope.py").read_text(encoding="utf-8")
         self.assertIn("import deltascope_live_operations", source)
