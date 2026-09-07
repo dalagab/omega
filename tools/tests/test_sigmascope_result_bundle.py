@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import common
 
@@ -149,6 +150,31 @@ class SigmascopeResultBundleTests(unittest.TestCase):
             self._json(authoritative / "index.json", moved_index)
             with self.assertRaisesRegex(ValueError, "stale"):
                 sigmascope_result_bundle.build_plan([out], current_evidence=authoritative, output=root / "stale-plan.json")
+
+    def test_merge_plan_returns_once_validated_documents(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            current, candidate, work, definitions = self._fixture(
+                root, variant_id=42, queue_key="variant-42"
+            )
+            bundle = root / "bundle"
+            sigmascope_result_bundle.build(
+                current=current, candidate=candidate, work_dir=work, definitions=definitions,
+                queue_key="variant-42", worker_image="ghcr.io/x@sha256:" + "a" * 64,
+                output=bundle,
+            )
+            with patch.object(
+                sigmascope_result_bundle,
+                "validate",
+                wraps=sigmascope_result_bundle.validate,
+            ) as validate:
+                plan, docs = sigmascope_result_bundle.build_plan_with_validated_bundles(
+                    [bundle], current_evidence=current, output=root / "plan.json"
+                )
+            self.assertEqual(1, validate.call_count)
+            self.assertEqual(1, plan["bundleCount"])
+            self.assertEqual(1, len(docs))
+            self.assertEqual(plan["bundles"][0]["bundleRevision"], docs[0]["bundleRevision"])
 
     def test_merge_plan_rejects_same_variant_conflicts(self) -> None:
         with tempfile.TemporaryDirectory() as td:

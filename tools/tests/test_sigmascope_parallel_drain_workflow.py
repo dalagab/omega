@@ -67,6 +67,13 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("default: 10", wake)
         self.assertIn("WORKERS: ${{ inputs.workers || 8 }}", wake)
         self.assertIn("ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", wake)
+        self.assertIn(
+            "tar -cf - -C catalog/security-v2-drain-candidate . | gzip -1 > "
+            "catalog/drain-publication/candidate.tar.gz",
+            text,
+        )
+        publication_upload = text[text.index("name: omega-sigmascope-drain-publication"):]
+        self.assertIn("compression-level: 0", publication_upload)
 
     def test_retention_recovery_gate_precedes_queue_planning(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")

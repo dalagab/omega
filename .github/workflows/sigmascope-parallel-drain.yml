@@ -673,7 +673,7 @@ jobs:
           set -euo pipefail
           rm -rf catalog/drain-publication
           mkdir -p catalog/drain-publication
-          tar -czf catalog/drain-publication/candidate.tar.gz -C catalog/security-v2-drain-candidate .
+          tar -cf - -C catalog/security-v2-drain-candidate . | gzip -1 > catalog/drain-publication/candidate.tar.gz
           (cd catalog/drain-publication && sha256sum candidate.tar.gz > candidate.tar.gz.sha256)
           cp catalog/sigmascope-drain-merge-report.json catalog/drain-publication/merge-report.json
           cp catalog/sigmascope-drain-developer-audit.json catalog/drain-publication/developer-audit.json
@@ -692,6 +692,9 @@ jobs:
           path: catalog/drain-publication
           if-no-files-found: error
           retention-days: 1
+          # candidate.tar.gz already carries its own checksummed compression; avoid
+          # spending runner CPU attempting to deflate the multi-GB gzip stream again.
+          compression-level: 0
 
   publish:
     name: One-writer publish merged Evidence and deferred security state
