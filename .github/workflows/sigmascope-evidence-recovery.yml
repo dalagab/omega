@@ -1,0 +1,205 @@
+name: Omega SigmaScope · forward Evidence retention recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the validated recovered candidate as a normal fast-forward Evidence child
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  recovery:
+    name: Reconstruct full Evidence from current + retained LKG
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: omega-catalog-sigmascope-exclusive
+      cancel-in-progress: false
+      queue: max
+    env:
+      RETAINED_EVIDENCE_SHA: 4011b37068c83821c5633f33e885230f50f4de37
+    steps:
+      - name: Check out exact SigmaScope recovery source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Check out current catalog authority
+        uses: actions/checkout@v6
+        with:
+          ref: catalog-data
+          path: catalog/active-state
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check out current Evidence authority
+        uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Check out retained full Evidence snapshot
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RETAINED_EVIDENCE_SHA }}
+          path: catalog/security-v2-retained
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install pinned security dependencies
+        run: python -m pip install --disable-pip-version-check -r tools/requirements-security.txt
+
+      - id: authority
+        name: Freeze exact authority heads held by this recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          catalog_head="$(git -C catalog/active-state rev-parse HEAD)"
+          evidence_head="$(git -C catalog/security-v2-current rev-parse HEAD)"
+          retained_head="$(git -C catalog/security-v2-retained rev-parse HEAD)"
+          test "$retained_head" = "$RETAINED_EVIDENCE_SHA"
+          echo "catalog_head=$catalog_head" >> "$GITHUB_OUTPUT"
+          echo "evidence_head=$evidence_head" >> "$GITHUB_OUTPUT"
+          echo "retained_head=$retained_head" >> "$GITHUB_OUTPUT"
+
+      - name: Verify current source matches the frozen Definitions worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, str(Path('tools/security').resolve()))
+          from sigmascope_local_queue_worker import verify_frozen_worker_matches_checkout
+          verify_frozen_worker_matches_checkout(Path('.').resolve(), Path('catalog/active-state').resolve())
+          PY
+
+      - name: Materialize current catalog database
+        shell: bash
+        run: |
+          set -euo pipefail
+          definitions_revision="$(jq -r '.definitionsRevision' catalog/active-state/definitions/index.json)"
+          python catalog/active-state/definitions/worker/tools/catalog/catalog_json_store.py materialize \
+            --root catalog/active-state/catalog \
+            --database catalog/security-recovery-input/omega-catalog.sqlite \
+            --definitions-revision "$definitions_revision"
+
+      - name: Build forward retained Evidence candidate with zero new scans
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/security/sigmascope_evidence_recovery.py \
+            --current-evidence catalog/security-v2-current \
+            --retained-evidence catalog/security-v2-retained \
+            --base-database catalog/security-recovery-input/omega-catalog.sqlite \
+            --definitions-root catalog/active-state/definitions \
+            --queue-seed catalog/active-state/scan-queue.json \
+            --candidate-evidence catalog/security-v2-recovered \
+            --work-dir catalog/security-v2-recovery-work \
+            --report catalog/security-v2-recovery-report.json
+
+      - name: Run developer audit on reconstructed full state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python catalog/active-state/definitions/worker/tools/security/security_developer_audit.py \
+            --database catalog/security-v2-recovery-work/omega-security-evidence-recovery.sqlite \
+            --advisories catalog/active-state/definitions/osv-advisories.json \
+            --json > catalog/security-v2-recovery-work/security-developer-audit.json
+
+      - name: Run full storage audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python catalog/active-state/definitions/worker/tools/security/evidence_storage_audit.py \
+            --root catalog/security-v2-recovered \
+            --report catalog/security-v2-recovery-work/evidence-storage-audit.json
+
+      - id: recheck
+        name: Revalidate catalog and Evidence parents under the writer lock
+        shell: bash
+        env:
+          EXPECTED_CATALOG_HEAD: ${{ steps.authority.outputs.catalog_head }}
+          EXPECTED_EVIDENCE_HEAD: ${{ steps.authority.outputs.evidence_head }}
+        run: |
+          set -euo pipefail
+          current_catalog="$(git -C catalog/active-state ls-remote --heads origin refs/heads/catalog-data | awk '{print $1}')"
+          current_evidence="$(git -C catalog/security-v2-current ls-remote --heads origin refs/heads/security-evidence-v2 | awk '{print $1}')"
+          test "$current_catalog" = "$EXPECTED_CATALOG_HEAD" || {
+            echo "::error::catalog-data moved during recovery: expected=$EXPECTED_CATALOG_HEAD current=$current_catalog"
+            exit 3
+          }
+          test "$current_evidence" = "$EXPECTED_EVIDENCE_HEAD" || {
+            echo "::error::security-evidence-v2 moved during recovery: expected=$EXPECTED_EVIDENCE_HEAD current=$current_evidence"
+            exit 3
+          }
+
+      - name: Publish recovered Evidence as one normal fast-forward child
+        if: ${{ inputs.publish }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_EVIDENCE_HEAD: ${{ steps.authority.outputs.evidence_head }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          python tools/security/publish_security_evidence_v2.py \
+            --input catalog/security-v2-recovered \
+            --repo . \
+            --branch security-evidence-v2 \
+            --history-mode fast-forward \
+            --expected-parent-sha "$EXPECTED_EVIDENCE_HEAD" \
+            --snapshot-validation-report catalog/security-v2-recovered/validation-report.json \
+            --audit-report catalog/security-v2-recovery-work/security-developer-audit.json \
+            --message "Repair Security Evidence v2 retained full tree" \
+            --push
+
+      - name: Upload recovery reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-evidence-recovery-report
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            catalog/security-v2-recovery-report.json
+            catalog/security-v2-recovered/validation-report.json
+            catalog/security-v2-recovery-work/security-developer-audit.json
+            catalog/security-v2-recovery-work/evidence-storage-audit.json
+
+      - name: Publish recovery summary
+        if: always()
+        shell: bash
+        env:
+          PUBLISH_REQUESTED: ${{ inputs.publish }}
+          CURRENT_HEAD: ${{ steps.authority.outputs.evidence_head }}
+          RETAINED_HEAD: ${{ steps.authority.outputs.retained_head }}
+        run: |
+          {
+            echo "### SigmaScope forward Evidence retention recovery"
+            echo
+            echo "- Publish requested: \`$PUBLISH_REQUESTED\`"
+            echo "- Current Evidence parent: \`$CURRENT_HEAD\`"
+            echo "- Retained full snapshot: \`$RETAINED_HEAD\`"
+            if [ -f catalog/security-v2-recovery-report.json ]; then
+              echo "- Current counts: \`$(jq -c '.current.counts' catalog/security-v2-recovery-report.json)\`"
+              echo "- Retained counts: \`$(jq -c '.retained.counts' catalog/security-v2-recovery-report.json)\`"
+              echo "- Candidate counts: \`$(jq -c '.candidate.counts' catalog/security-v2-recovery-report.json)\`"
+              echo "- Sparse marker removed: \`$(jq -r '.staging.sparseAuthorityMarkerRemoved' catalog/security-v2-recovery-report.json)\`"
+            fi
+            echo
+            echo "Deep Scan state is intentionally not modified by this recovery workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
