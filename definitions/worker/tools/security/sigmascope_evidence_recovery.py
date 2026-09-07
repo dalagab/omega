@@ -46,6 +46,7 @@ RECOVERY_SCHEMA = "omega.sigmascope-evidence-recovery.v1"
 SPARSE_MARKER = ".sigmascope-sparse-evidence.json"
 RETAINED_ROOTS = ("artifacts", "derived", "history", "terminal", "variants")
 CURRENT_OVERLAY_ROOTS = ("derived", "history", "terminal")
+SNAPSHOT_ROOTS = ("variants", "terminal/variants", "history/variants")
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -65,6 +66,25 @@ def _copy_tree(source: Path, target: Path) -> None:
         return
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, target, dirs_exist_ok=True)
+
+
+def _snapshot_identity_keys(root: Path) -> set[tuple[int, str, str]]:
+    """Return semantic snapshot identities independent of transport path/lifecycle state."""
+    identities: set[tuple[int, str, str]] = set()
+    for relative in SNAPSHOT_ROOTS:
+        directory = root / relative
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.rglob("*.json")):
+            payload = _read(path)
+            analysis = payload.get("analysis") if isinstance(payload.get("analysis"), dict) else {}
+            current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+            identities.add((
+                int(payload.get("variantId") or 0),
+                str(analysis.get("analysisId") or ""),
+                str(analysis.get("artifactSha256") or current.get("artifact_sha256") or "").strip().lower(),
+            ))
+    return identities
 
 
 def _bootstrap_payload_index(candidate: Path, current_index: dict[str, Any]) -> dict[str, int]:
@@ -274,6 +294,15 @@ def recover(
     if int(candidate_counts.get("analyses") or 0) < max(int(current_counts.get("analyses") or 0), int(retained_counts.get("analyses") or 0)):
         raise RuntimeError("recovery reduced immutable analysis coverage")
 
+    retained_snapshot_identities = _snapshot_identity_keys(retained_evidence)
+    candidate_snapshot_identities = _snapshot_identity_keys(candidate)
+    missing_retained = retained_snapshot_identities - candidate_snapshot_identities
+    if missing_retained:
+        sample = sorted(missing_retained)[:10]
+        raise RuntimeError(
+            f"recovery lost {len(missing_retained)} retained snapshot identities; sample={sample!r}"
+        )
+
     report: dict[str, Any] = {
         "schema": RECOVERY_SCHEMA,
         "authority": "candidate-only-no-evidence-publication",
@@ -298,6 +327,11 @@ def recover(
         "staging": staged,
         "materialized": materialized,
         "synchronize": synchronized,
+        "retention": {
+            "retainedSnapshotIdentities": len(retained_snapshot_identities),
+            "candidateSnapshotIdentities": len(candidate_snapshot_identities),
+            "missingRetainedSnapshotIdentities": 0,
+        },
         "queueSummary": scan_queue.state_summary(queue_state),
         "srlReprojection": {key: value for key, value in srl.items() if key != "validation"},
         "validation": {"ok": True, "indexSha256": validation.get("indexSha256")},
