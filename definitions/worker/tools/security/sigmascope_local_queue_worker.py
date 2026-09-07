@@ -289,6 +289,13 @@ def maybe_run_source_followups(args: argparse.Namespace, work: Path, env: dict[s
 def local_drain(args: argparse.Namespace) -> int:
     repo = args.repo.resolve()
     work = args.work_dir.resolve()
+    # Sparse Evidence is a bounded worker input projection, never publication authority.
+    if args.push and args.sparse_evidence:
+        raise ValueError(
+            "--push cannot be combined with --sparse-evidence: sparse Evidence is a read-only worker "
+            "input projection and cannot be the base of an authoritative candidate. Run without --push "
+            "until serialized result-bundle merge publication is available."
+        )
     validate_windows_work_dir(work, force=args.allow_long_windows_work_dir)
     if args.reconcile_source_followups and not args.push:
         raise ValueError(
