@@ -322,13 +322,18 @@ def validate(root: Path, *, current_evidence: Path | None = None) -> dict[str, A
     return doc
 
 
-def build_plan(bundle_roots: list[Path], *, current_evidence: Path, output: Path) -> dict[str, Any]:
-    current = current_evidence.resolve()
-    current_sha = _authoritative_index_sha(current)
+def _build_plan_from_validated_bundles(
+    bundle_roots: list[Path],
+    docs: list[dict[str, Any]],
+    *,
+    current_sha: str,
+    output: Path,
+) -> dict[str, Any]:
+    if len(bundle_roots) != len(docs):
+        raise ValueError("validated SigmaScope bundle count does not match bundle roots")
     unique: dict[str, dict[str, Any]] = {}
     roots: dict[str, Path] = {}
-    for root in bundle_roots:
-        doc = validate(root, current_evidence=current)
+    for root, doc in zip(bundle_roots, docs):
         revision = str(doc.get("bundleRevision") or "")
         unique[revision] = doc
         roots[revision] = root.resolve()
@@ -382,6 +387,26 @@ def build_plan(bundle_roots: list[Path], *, current_evidence: Path, output: Path
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(plan, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    return plan
+
+
+def build_plan_with_validated_bundles(
+    bundle_roots: list[Path], *, current_evidence: Path, output: Path
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Validate each bundle once and return both the merge plan and validated documents."""
+    current = current_evidence.resolve()
+    current_sha = _authoritative_index_sha(current)
+    docs = [validate(root, current_evidence=current) for root in bundle_roots]
+    plan = _build_plan_from_validated_bundles(
+        bundle_roots, docs, current_sha=current_sha, output=output
+    )
+    return plan, docs
+
+
+def build_plan(bundle_roots: list[Path], *, current_evidence: Path, output: Path) -> dict[str, Any]:
+    plan, _docs = build_plan_with_validated_bundles(
+        bundle_roots, current_evidence=current_evidence, output=output
+    )
     return plan
 
 

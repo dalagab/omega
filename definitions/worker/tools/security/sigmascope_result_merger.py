@@ -22,7 +22,8 @@ from pathlib import Path
 import shutil
 import sqlite3
 import sys
-from typing import Any
+import time
+from typing import Any, Callable
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CATALOG_DIR = SCRIPT_DIR.parent / "catalog"
@@ -76,6 +77,20 @@ def _read(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
+
+
+def _timed(label: str, action: Callable[[], Any]) -> Any:
+    started = time.monotonic()
+    print(f"[sigmascope-merge] {label}: started", flush=True)
+    try:
+        result = action()
+    except Exception:
+        elapsed = time.monotonic() - started
+        print(f"[sigmascope-merge] {label}: failed after {elapsed:.1f}s", flush=True)
+        raise
+    elapsed = time.monotonic() - started
+    print(f"[sigmascope-merge] {label}: completed in {elapsed:.1f}s", flush=True)
+    return result
 
 
 def _variant_path(root: Path, variant_id: int) -> Path:
@@ -351,8 +366,12 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         raise ValueError(f"serialized SigmaScope merge requires 1..{MAX_BUNDLES} result bundles")
     plan_path = work_dir / "merge-plan.json"
     work_dir.mkdir(parents=True, exist_ok=True)
-    plan = sigmascope_result_bundle.build_plan(bundle_roots, current_evidence=current_evidence, output=plan_path)
-    docs = [sigmascope_result_bundle.validate(root, current_evidence=current_evidence) for root in bundle_roots]
+    plan, docs = _timed(
+        "validate bundles and build merge plan",
+        lambda: sigmascope_result_bundle.build_plan_with_validated_bundles(
+            bundle_roots, current_evidence=current_evidence, output=plan_path
+        ),
+    )
     if len({int(doc["work"]["variantId"]) for doc in docs}) > MAX_VARIANTS:
         raise ValueError(f"serialized SigmaScope merge exceeds {MAX_VARIANTS} variants")
     definitions_index = _read(definitions / "index.json")
@@ -370,7 +389,7 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         raise ValueError("serialized merger Definitions identity differs from result bundles")
 
     previous_index = _read(current_evidence / "index.json")
-    _copy_evidence_tree(current_evidence, candidate)
+    _timed("copy published Evidence base", lambda: _copy_evidence_tree(current_evidence, candidate))
     successful: set[int] = set()
     copied_derived = 0
     archive_count = 0
@@ -385,9 +404,18 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
     _prepare_transport_plugins_index(candidate, docs)
 
     work_database = work_dir / "omega-security-parallel-merge.sqlite"
-    materialized = materialize_current_state(base_database, candidate, work_database, include_evidence=True)
-    osv_coverage = _refresh_frozen_advisories(work_database, work_dir, definitions, definitions_index)
-    sync_report = synchronize_candidate(candidate, work_database, successful)
+    materialized = _timed(
+        "materialize working database",
+        lambda: materialize_current_state(base_database, candidate, work_database, include_evidence=True),
+    )
+    osv_coverage = _timed(
+        "refresh frozen advisory projection",
+        lambda: _refresh_frozen_advisories(work_database, work_dir, definitions, definitions_index),
+    )
+    sync_report = _timed(
+        "synchronize candidate transport",
+        lambda: synchronize_candidate(candidate, work_database, successful),
+    )
 
     base_revisions = previous_index.get("revisions") if isinstance(previous_index.get("revisions"), dict) else {}
     queue_context = plan.get("queueContext") if isinstance(plan.get("queueContext"), dict) else {}
@@ -411,9 +439,20 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         "parallelResultMerge": True,
         "bundleRevisions": sorted(str(doc.get("bundleRevision") or "") for doc in docs),
     }
-    definition_provenance = materialize_definition_provenance_index(candidate, definitions)
-    threat_intelligence = materialize_threat_intelligence_index(candidate, definitions)
-    root_index = rebuild_candidate_indexes(candidate, work_database, previous_index, scan_context, osv_coverage, definition_provenance or None)
+    definition_provenance = _timed(
+        "materialize Definition provenance",
+        lambda: materialize_definition_provenance_index(candidate, definitions),
+    )
+    threat_intelligence = _timed(
+        "materialize threat-intelligence index",
+        lambda: materialize_threat_intelligence_index(candidate, definitions),
+    )
+    root_index = _timed(
+        "rebuild global Evidence indexes",
+        lambda: rebuild_candidate_indexes(
+            candidate, work_database, previous_index, scan_context, osv_coverage, definition_provenance or None
+        ),
+    )
     if threat_intelligence:
         root_index.setdefault("indexes", {})["threatIntelligence"] = threat_intelligence
         root_index.setdefault("revisions", {})["reputationRevision"] = str(threat_intelligence.get("reputationRevision") or "")
@@ -434,7 +473,10 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
     }
     write_json(candidate / "index.json", root_index)
 
-    srl = materialize_srl_reprojection_sidecar(candidate, definitions)
+    srl = _timed(
+        "reproject SRL sidecar",
+        lambda: materialize_srl_reprojection_sidecar(candidate, definitions),
+    )
     if srl.get("enabled"):
         root_index["srlRuleProjections"] = {key: value for key, value in srl.items() if key != "validation"}
         write_json(candidate / "index.json", root_index)
@@ -447,7 +489,10 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         (deep_scan_output or (work_dir / "deep-scan-state")).resolve(),
     )
 
-    validation = validate_snapshot(candidate, require_no_orphans=True)
+    validation = _timed(
+        "validate complete Evidence candidate",
+        lambda: validate_snapshot(candidate, require_no_orphans=True),
+    )
     write_json(candidate / "validation-report.json", validation)
     if not validation.get("ok"):
         raise ValueError("serialized parallel merge candidate failed Evidence-v2 validation: " + "; ".join(validation.get("errors") or []))
