@@ -79,6 +79,10 @@ def preflight(evidence: Path) -> dict[str, Any]:
     index = json.loads(index_path.read_text(encoding="utf-8"))
     if index.get("schema") != SCHEMA:
         raise RuntimeError(f"unsupported evidence schema: {index.get('schema')!r}")
+    if (evidence / ".sigmascope-sparse-evidence.json").is_file() or "sparseEvidenceView" in index:
+        raise RuntimeError(
+            "refusing to publish a sparse Evidence worker projection as authoritative security-evidence-v2"
+        )
     files = []
     total = 0
     for path in sorted(evidence.rglob("*")):

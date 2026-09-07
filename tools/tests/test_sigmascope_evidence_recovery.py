@@ -86,9 +86,12 @@ class SigmaScopeEvidenceRecoveryTests(unittest.TestCase):
         self.assertIn("_merge_successful_subset(candidate, current_evidence)", text)
         self.assertIn("validate_snapshot(candidate, require_no_orphans=True)", text)
         self.assertIn("SPARSE_MARKER", text)
+        self.assertIn("_snapshot_identity_keys(retained_evidence)", text)
+        self.assertIn("missingRetainedSnapshotIdentities", text)
 
-    def test_recovery_workflow_is_manual_serialized_and_fast_forward_only(self) -> None:
+    def test_recovery_workflow_is_callable_serialized_and_fast_forward_only(self) -> None:
         workflow = (common.ROOT / ".github" / "workflows" / "sigmascope-evidence-recovery.yml").read_text(encoding="utf-8")
+        self.assertIn("workflow_call:", workflow)
         self.assertIn("workflow_dispatch:", workflow)
         self.assertIn("omega-catalog-sigmascope-exclusive", workflow)
         self.assertIn("4011b37068c83821c5633f33e885230f50f4de37", workflow)

@@ -551,6 +551,10 @@ def _copy_evidence_tree(source: Path, target: Path) -> None:
         shutil.rmtree(target)
     ignore = shutil.ignore_patterns(".git", ".omega-security-evidence-v2-migration.json", ".staging")
     shutil.copytree(source, target, ignore=ignore)
+    # Sparse Evidence is a worker-input projection only. A full candidate may inherit
+    # payload bytes from a formerly damaged head, but it must never inherit the marker
+    # that describes that tree as a sparse view.
+    (target / ".sigmascope-sparse-evidence.json").unlink(missing_ok=True)
     (target / "validation-report.json").unlink(missing_ok=True)
 
 

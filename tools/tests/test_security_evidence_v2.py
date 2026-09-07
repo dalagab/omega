@@ -110,6 +110,25 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertGreater(publication["files"], 0)
             self.assertEqual(publication["evidenceRevision"], "ev-test")
 
+    def test_publisher_refuses_sparse_worker_projection(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-sparse-publish-") as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            output = root / "v2"
+            migrate(database, output, reset=True)
+
+            (output / ".sigmascope-sparse-evidence.json").write_text("{}\n", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "sparse Evidence worker projection"):
+                preflight(output)
+
+            (output / ".sigmascope-sparse-evidence.json").unlink()
+            index_path = output / "index.json"
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            index["sparseEvidenceView"] = {"schema": "omega.sigmascope.sparse-evidence-view.v1"}
+            index_path.write_text(json.dumps(index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "sparse Evidence worker projection"):
+                preflight(output)
+
     def test_variant_index_summary_preserves_pre_lifecycle_contract_shape(self) -> None:
         payload = {
             "variantId": 107,

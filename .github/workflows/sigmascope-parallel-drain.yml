@@ -76,6 +76,86 @@ env:
   PYTHONUNBUFFERED: "1"
 
 jobs:
+  recovery-health:
+    name: Check retained Evidence authority health
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      required: ${{ steps.health.outputs.required }}
+    env:
+      RETAINED_EVIDENCE_SHA: 4011b37068c83821c5633f33e885230f50f4de37
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: security-evidence-v2
+          path: catalog/security-v2-current
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            index.json
+            .sigmascope-sparse-evidence.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RETAINED_EVIDENCE_SHA }}
+          path: catalog/security-v2-retained
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: index.json
+          sparse-checkout-cone-mode: false
+      - id: health
+        name: Detect sparse-authority or retained-history loss
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_retained="$(jq '[.counts.terminalVariants // 0, .counts.historicalSnapshots // 0] | add' catalog/security-v2-current/index.json)"
+          retained_retained="$(jq '[.counts.terminalVariants // 0, .counts.historicalSnapshots // 0] | add' catalog/security-v2-retained/index.json)"
+          current_analyses="$(jq '.counts.analyses // 0' catalog/security-v2-current/index.json)"
+          retained_analyses="$(jq '.counts.analyses // 0' catalog/security-v2-retained/index.json)"
+          sparse_marker=false
+          if [ -f catalog/security-v2-current/.sigmascope-sparse-evidence.json ]; then
+            sparse_marker=true
+          fi
+
+          required=false
+          reasons=()
+          if [ "$sparse_marker" = "true" ]; then
+            required=true
+            reasons+=("sparse-authority-marker")
+          fi
+          if [ "$current_retained" -lt "$retained_retained" ]; then
+            required=true
+            reasons+=("retained-terminal-history-below-lkg")
+          fi
+          if [ "$current_analyses" -lt "$retained_analyses" ]; then
+            required=true
+            reasons+=("immutable-analysis-coverage-below-lkg")
+          fi
+          echo "required=$required" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### SigmaScope Evidence retention health"
+            echo
+            echo "- Recovery required: `$required`"
+            echo "- Sparse authority marker: `$sparse_marker`"
+            echo "- Current retained terminal/history: `$current_retained`"
+            echo "- LKG retained terminal/history: `$retained_retained`"
+            echo "- Current analyses: `$current_analyses`"
+            echo "- LKG analyses: `$retained_analyses`"
+            if [ "${#reasons[@]}" -gt 0 ]; then
+              echo "- Reasons: `$(IFS=,; echo "${reasons[*]}")`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  recovery:
+    name: Repair retained Evidence before queue planning
+    needs: recovery-health
+    if: needs.recovery-health.outputs.required == 'true'
+    uses: ./.github/workflows/sigmascope-evidence-recovery.yml
+    with:
+      publish: true
+    secrets: inherit
+
   resolve-images:
     name: Resolve immutable production worker images
     runs-on: ubuntu-latest
@@ -105,6 +185,11 @@ jobs:
 
   plan:
     name: Select disjoint release-update and baseline worker lanes
+    needs: [recovery-health, recovery]
+    if: >-
+      always() &&
+      needs.recovery-health.result == 'success' &&
+      (needs.recovery.result == 'success' || needs.recovery.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:

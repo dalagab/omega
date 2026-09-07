@@ -52,6 +52,20 @@ class SigmascopeResultMergerTests(unittest.TestCase):
             "srlReprojection": {},
         }
 
+    def test_authoritative_tree_copy_drops_sparse_worker_marker(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-full-evidence-copy-") as td:
+            root = Path(td)
+            source = root / "source"
+            target = root / "target"
+            source.mkdir()
+            self._json(source / "index.json", {"schema": "omega.security-evidence.v2"})
+            self._json(source / ".sigmascope-sparse-evidence.json", {"schema": "omega.sigmascope.sparse-evidence-view.v1"})
+
+            _copy_evidence_tree(source, target)
+
+            self.assertTrue((target / "index.json").is_file())
+            self.assertFalse((target / ".sigmascope-sparse-evidence.json").exists())
+
     def test_serialized_merger_reconstructs_valid_candidate_without_publication(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-parallel-merger-") as td:
             root = Path(td)

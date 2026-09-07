@@ -64,6 +64,22 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("WORKERS: ${{ inputs.workers || 8 }}", wake)
         self.assertIn("ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", wake)
 
+    def test_retention_recovery_gate_precedes_queue_planning(self) -> None:
+        text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        health = text[text.index("\n  recovery-health:"): text.index("\n  recovery:")]
+        recovery_job = text[text.index("\n  recovery:"): text.index("\n  resolve-images:")]
+        plan = text[text.index("\n  plan:"): text.index("\n  workers:")]
+        self.assertIn("4011b37068c83821c5633f33e885230f50f4de37", health)
+        self.assertIn(".sigmascope-sparse-evidence.json", health)
+        self.assertIn("sparse-checkout: |", health)
+        self.assertIn("terminalVariants", health)
+        self.assertIn("historicalSnapshots", health)
+        self.assertIn("immutable-analysis-coverage-below-lkg", health)
+        self.assertIn("uses: ./.github/workflows/sigmascope-evidence-recovery.yml", recovery_job)
+        self.assertIn("publish: true", recovery_job)
+        self.assertIn("needs: [recovery-health, recovery]", plan)
+        self.assertIn("needs.recovery.result == 'success' || needs.recovery.result == 'skipped'", plan)
+
     def test_parallel_workers_are_result_only_and_publication_is_serialized(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
         workers = text[text.index("\n  workers:"): text.index("\n  merge:")]
