@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Build Omega's normalized plugin-to-plugin dependency graph.
 
-SigmaScope owns observations; this module turns resolved plugin dependency observations
-into a deterministic catalog projection. It deliberately excludes IPC, NuGet, native,
-framework and bundled component relationships from package-manager authority.
+SigmaScope owns observations; this module turns explicit plugin dependency observations
+and their current catalog resolution into deterministic package relationships. Unresolved
+or ambiguous required declarations remain blocking edges instead of disappearing. IPC,
+project references, NuGet, native, framework and bundled components never become package
+authority.
 """
 from __future__ import annotations
 
@@ -13,7 +15,7 @@ import sqlite3
 from typing import Any
 
 GRAPH_SCHEMA = "omega.plugin-dependency-graph.v1"
-PACKAGE_KINDS = {"external-plugin", "plugin", "project-reference"}
+PACKAGE_KINDS = {"external-plugin", "plugin"}
 CONFIDENCE_RANK = {"veryhigh": 4, "high": 3, "medium": 2, "low": 1}
 
 
@@ -132,8 +134,9 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
           LEFT JOIN plugins cp ON cp.plugin_id=r.source_plugin_id
           LEFT JOIN plugin_variants pv ON pv.variant_id=r.source_variant_id
           {dependency_join}
-         WHERE TRIM(COALESCE(r.target_internal_name,''))<>''
-         ORDER BY r.source_variant_id,lower(r.target_internal_name),r.dependency_id
+         ORDER BY r.source_variant_id,
+                  lower(COALESCE(NULLIF(TRIM(r.target_internal_name),''),r.dependency_name)),
+                  r.dependency_id
     """).fetchall()
 
     merged: dict[tuple[Any, ...], dict[str, Any]] = {}
@@ -142,7 +145,9 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
         if source_kind not in PACKAGE_KINDS:
             continue
         consumer_internal = str(row[2] or "").strip()
-        provider_internal = str(row[15] or "").strip()
+        declared_internal = str(row[5] or "").strip()
+        resolved_internal = str(row[15] or "").strip()
+        provider_internal = resolved_internal or declared_internal
         if not provider_internal or provider_internal.casefold() == consumer_internal.casefold():
             continue
 
@@ -223,13 +228,18 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
         "semantics": {
             "securityEvidenceIsObservationOnly": True,
             "ipcIsPackageDependency": False,
+            "projectReferencesArePackageDependencies": False,
+            "unresolvedPluginRequirementsRetained": True,
             "providerIdentity": "stable-plugin-id",
             "consumerIdentity": "catalog-variant",
         },
         "counts": {
             "edges": len(edges),
             "providers": len(providers),
+            "resolvedEdges": sum(1 for edge in edges if int(edge["providerPluginId"] or 0) > 0),
+            "unresolvedEdges": sum(1 for edge in edges if int(edge["providerPluginId"] or 0) <= 0),
             "requiredEdges": sum(1 for edge in edges if edge["relationship"] == "required"),
+            "blockedRequiredEdges": sum(1 for edge in edges if edge["relationship"] == "required" and not edge["installEligible"]),
             "installEligibleEdges": sum(1 for edge in edges if edge["installEligible"]),
         },
         "edges": edges,
@@ -240,12 +250,15 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
 def _providers(edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
     buckets: dict[str, dict[str, Any]] = {}
     for edge in edges:
+        provider_plugin_id = int(edge["providerPluginId"] or 0)
         internal_name = str(edge["providerInternalName"])
+        if provider_plugin_id <= 0 or not internal_name:
+            continue
         key = internal_name.casefold()
         bucket = buckets.setdefault(
             key,
             {
-                "providerPluginId": int(edge["providerPluginId"] or 0),
+                "providerPluginId": provider_plugin_id,
                 "providerInternalName": internal_name,
                 "requiredBy": {},
                 "recommendedBy": {},
@@ -296,10 +309,20 @@ def _empty_graph() -> dict[str, Any]:
         "semantics": {
             "securityEvidenceIsObservationOnly": True,
             "ipcIsPackageDependency": False,
+            "projectReferencesArePackageDependencies": False,
+            "unresolvedPluginRequirementsRetained": True,
             "providerIdentity": "stable-plugin-id",
             "consumerIdentity": "catalog-variant",
         },
-        "counts": {"edges": 0, "providers": 0, "requiredEdges": 0, "installEligibleEdges": 0},
+        "counts": {
+            "edges": 0,
+            "providers": 0,
+            "resolvedEdges": 0,
+            "unresolvedEdges": 0,
+            "requiredEdges": 0,
+            "blockedRequiredEdges": 0,
+            "installEligibleEdges": 0,
+        },
         "edges": [],
         "providers": [],
     }
@@ -307,9 +330,9 @@ def _empty_graph() -> dict[str, Any]:
 
 def materialize_catalog_tables(db: sqlite3.Connection) -> dict[str, Any]:
     graph = build_graph(db)
-    db.executescript("""
-        DROP TABLE IF EXISTS plugin_dependencies;
-        DROP TABLE IF EXISTS plugin_dependency_providers;
+    db.execute("DROP TABLE IF EXISTS plugin_dependencies")
+    db.execute("DROP TABLE IF EXISTS plugin_dependency_providers")
+    db.execute("""
         CREATE TABLE plugin_dependencies (
             consumer_variant_id INTEGER NOT NULL,
             consumer_plugin_id INTEGER NOT NULL,
@@ -327,9 +350,15 @@ def materialize_catalog_tables(db: sqlite3.Connection) -> dict[str, Any]:
             origins_json TEXT NOT NULL,
             install_eligible INTEGER NOT NULL,
             PRIMARY KEY(consumer_variant_id,provider_internal_name,relationship,version_constraint)
-        );
-        CREATE INDEX ix_plugin_dependencies_provider ON plugin_dependencies(provider_plugin_id,provider_internal_name);
-        CREATE INDEX ix_plugin_dependencies_consumer ON plugin_dependencies(consumer_plugin_id,consumer_variant_id);
+        )
+    """)
+    db.execute(
+        "CREATE INDEX ix_plugin_dependencies_provider ON plugin_dependencies(provider_plugin_id,provider_internal_name)"
+    )
+    db.execute(
+        "CREATE INDEX ix_plugin_dependencies_consumer ON plugin_dependencies(consumer_plugin_id,consumer_variant_id)"
+    )
+    db.execute("""
         CREATE TABLE plugin_dependency_providers (
             provider_plugin_id INTEGER NOT NULL,
             provider_internal_name TEXT PRIMARY KEY,
@@ -337,7 +366,7 @@ def materialize_catalog_tables(db: sqlite3.Connection) -> dict[str, Any]:
             recommended_by_count INTEGER NOT NULL,
             optional_by_count INTEGER NOT NULL,
             total_dependent_plugins INTEGER NOT NULL
-        );
+        )
     """)
     for edge in graph["edges"]:
         db.execute(

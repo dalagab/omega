@@ -1135,7 +1135,9 @@ def rebuild_candidate_indexes(
         db.row_factory = sqlite3.Row
         identity_entry = _export_identity_index(db, candidate)
         nuget_entry, nuget_count = _export_nuget_index(db, candidate)
-        plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, dependency_graph_revision = _export_plugin_dependency_graph(db, candidate)
+        plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, plugin_dependency_unresolved_count, plugin_dependency_blocked_required_count, dependency_graph_revision = (
+            _export_plugin_dependency_graph(db, candidate)
+        )
         ipc_entry, ipc_count = _export_ipc_index(db, candidate)
         component_entry, component_count = _export_global_table(db, candidate, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, candidate, "plugin_security_dependency_advisory_matches", "advisories")
@@ -1226,6 +1228,8 @@ def rebuild_candidate_indexes(
             "nugetPackageVersionPairs": nuget_count,
             "pluginDependencyEdges": plugin_dependency_edge_count,
             "pluginDependencyProviders": plugin_dependency_provider_count,
+            "pluginDependencyUnresolvedEdges": plugin_dependency_unresolved_count,
+            "pluginDependencyBlockedRequiredEdges": plugin_dependency_blocked_required_count,
             "ipcProviders": ipc_count,
             "dependencyComponents": component_count,
             "advisories": advisory_count,
