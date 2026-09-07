@@ -24,6 +24,10 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
             "Deferred by retry backoff:", "Oldest eligible enqueue:", "Highest pending attempt count:",
         ):
             self.assertIn(required, text)
+        self.assertIn("matrix_assignment_count=", text)
+        self.assertIn("Invalid SigmaScope drain matrix", text)
+        self.assertIn("Detect a skipped SigmaScope worker matrix", text)
+        self.assertIn("worker matrix was skipped", text)
         self.assertNotIn('--queue-key "$queue_key"', text)
         self.assertNotIn("while IFS= read -r queue_key; do", text)
         self.assertNotIn("sigmascope_merge_equivalence.py", text)
@@ -120,7 +124,11 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         merge = text[text.index("\n  merge:"): text.index("\n  publish:")]
         self.assertIn("always() &&", merge)
         self.assertIn("!cancelled() &&", merge)
-        self.assertNotIn("needs.workers.result == 'success'", merge)
+        self.assertIn(
+            "(needs.workers.result == 'success' || needs.workers.result == 'failure')",
+            merge,
+        )
+        self.assertNotIn("needs.workers.result == 'skipped'", merge)
         self.assertIn("omega.sigmascope-drain-bundle-intake.v1", (common.ROOT / "tools" / "security" / "sigmascope_drain_bundle_intake.py").read_text(encoding="utf-8"))
         self.assertIn("sigmascope_drain_bundle_intake.py", merge)
         self.assertIn("bundle-intake.json", merge)

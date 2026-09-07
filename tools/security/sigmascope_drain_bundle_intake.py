@@ -101,6 +101,12 @@ def build_intake(
 ) -> dict[str, Any]:
     plan = _read_object(plan_path)
     planned = _planned_assignments(plan, expected_assignments)
+    normalized_workers_result = str(workers_result or "").strip().casefold()
+    if expected_assignments > 0 and normalized_workers_result == "skipped":
+        raise ValueError(
+            f"SigmaScope worker matrix was skipped despite {expected_assignments} planned assignment(s); "
+            "bundle intake cannot treat skipped execution as a partial worker failure"
+        )
     bundle_paths = sorted(artifacts_root.rglob("bundle.json")) if artifacts_root.exists() else []
     if not bundle_paths:
         raise ValueError("no finalized SigmaScope result bundles were delivered")

@@ -258,6 +258,22 @@ jobs:
             --items-per-worker "$ITEMS_PER_WORKER" \
             --wave "$WAVE" \
             --output catalog/sigmascope-drain-plan.json
+          assignment_count="$(jq -r '.assignmentCount' catalog/sigmascope-drain-plan.json)"
+          active_worker_count="$(jq -r '.activeWorkerCount' catalog/sigmascope-drain-plan.json)"
+          matrix_worker_count="$(jq -r '.matrix.include | length' catalog/sigmascope-drain-plan.json)"
+          matrix_assignment_count="$(jq -r '[.matrix.include[]?.assignmentCount // 0] | add // 0' catalog/sigmascope-drain-plan.json)"
+          if [ "$active_worker_count" -ne "$matrix_worker_count" ] || [ "$assignment_count" -ne "$matrix_assignment_count" ]; then
+            echo "::error::Invalid SigmaScope drain matrix: assignments=$assignment_count matrixAssignments=$matrix_assignment_count activeWorkers=$active_worker_count matrixWorkers=$matrix_worker_count"
+            exit 3
+          fi
+          if [ "$assignment_count" -gt 0 ] && [ "$active_worker_count" -le 0 ]; then
+            echo "::error::SigmaScope planned $assignment_count assignment(s) but emitted no active worker matrix"
+            exit 3
+          fi
+          if jq -e '.matrix.include[]? | select((.assignmentCount // 0) <= 0 or ((.queueKeys // []) | length) != (.assignmentCount // 0))' catalog/sigmascope-drain-plan.json >/dev/null; then
+            echo "::error::SigmaScope drain matrix contains an empty or cardinality-mismatched worker slot"
+            exit 3
+          fi
           base_head="$(git -C catalog/security-v2-current rev-parse HEAD)"
           catalog_head="$(git -C catalog/active-state rev-parse HEAD)"
           dev_sha="$(git rev-parse HEAD)"
@@ -311,7 +327,11 @@ jobs:
   workers:
     name: Scan ${{ matrix.lane }} slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
     needs: [resolve-images, plan]
-    if: needs.plan.outputs.assignment_count != '0'
+    if: >-
+      always() &&
+      needs.resolve-images.result == 'success' &&
+      needs.plan.result == 'success' &&
+      fromJSON(needs.plan.outputs.assignment_count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 75
     container:
@@ -402,6 +422,28 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  worker-orchestration-guard:
+    name: Detect a skipped SigmaScope worker matrix
+    needs: [resolve-images, plan, workers]
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.resolve-images.result == 'success' &&
+      needs.plan.result == 'success' &&
+      fromJSON(needs.plan.outputs.assignment_count || '0') > 0 &&
+      needs.workers.result == 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject planned work with no worker execution
+        env:
+          EXPECTED_ASSIGNMENTS: ${{ needs.plan.outputs.assignment_count }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::error::SigmaScope planned $EXPECTED_ASSIGNMENTS exact assignment(s), but the worker matrix was skipped. No merge or publication is safe."
+          echo "The drain stopped at the orchestration boundary; inspect the workers job condition/matrix in this run."
+          exit 3
+
   merge:
     name: Merge and validate one production Evidence candidate
     needs: [resolve-images, plan, workers]
@@ -410,7 +452,8 @@ jobs:
       !cancelled() &&
       needs.resolve-images.result == 'success' &&
       needs.plan.result == 'success' &&
-      needs.plan.outputs.assignment_count != '0'
+      fromJSON(needs.plan.outputs.assignment_count || '0') > 0 &&
+      (needs.workers.result == 'success' || needs.workers.result == 'failure')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:

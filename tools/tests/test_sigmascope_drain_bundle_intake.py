@@ -104,6 +104,30 @@ class SigmaScopeDrainBundleIntakeTests(unittest.TestCase):
                     output=root / "intake.json",
                 )
 
+    def test_rejects_skipped_worker_matrix_before_bundle_intake(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-drain-intake-skipped-") as td:
+            root = Path(td)
+            write_json(root / "plan.json", {
+                "schema": "omega.sigmascope-parallel-drain-plan.v1",
+                "planRevision": "sigmascope-drain-plan-v1-skipped",
+                "assignments": [
+                    {
+                        "queueKey": "variant-1:artifact",
+                        "workType": "artifact",
+                        "variantId": 1,
+                        "targetFingerprint": "a",
+                    },
+                ],
+            })
+            with self.assertRaisesRegex(ValueError, "worker matrix was skipped despite 1 planned assignment"):
+                build_intake(
+                    plan_path=root / "plan.json",
+                    artifacts_root=root / "artifacts",
+                    expected_assignments=1,
+                    workers_result="skipped",
+                    output=root / "intake.json",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
