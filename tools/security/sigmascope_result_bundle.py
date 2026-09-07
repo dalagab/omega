@@ -18,6 +18,7 @@ from typing import Any, Iterable
 
 SCHEMA = "omega.sigmascope-result-bundle.v1"
 PLAN_SCHEMA = "omega.sigmascope-result-merge-plan.v1"
+SPARSE_VIEW_SCHEMA = "omega.sigmascope.sparse-evidence-view.v1"
 MAX_FILES = 20_000
 MAX_FILE_BYTES = 128 * 1024 * 1024
 MAX_TOTAL_BYTES = 512 * 1024 * 1024
@@ -46,6 +47,23 @@ def _read(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"expected JSON object: {path}")
     return value
+
+
+def _authoritative_index_sha(root: Path) -> str:
+    """Return the full Evidence index identity behind a worker input projection."""
+    index_path = root / "index.json"
+    index = _read(index_path)
+    sparse = index.get("sparseEvidenceView")
+    if not sparse:
+        return _sha_file(index_path)
+    if not isinstance(sparse, dict) or str(sparse.get("schema") or "") != SPARSE_VIEW_SCHEMA:
+        raise ValueError("SigmaScope sparse Evidence view has an unsupported authority descriptor")
+    source_sha = str(sparse.get("sourceIndexSha256") or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", source_sha):
+        raise ValueError(
+            "SigmaScope sparse Evidence view is missing a valid authoritative source index SHA-256"
+        )
+    return source_sha
 
 
 def _safe_rel(value: str) -> str:
@@ -211,7 +229,8 @@ def build(*, current: Path, candidate: Path, work_dir: Path, definitions: Path, 
         "generatedAtUtc": str(report.get("generatedAtUtc") or ""),
         "authority": "result-only-no-evidence-publication",
         "base": {
-            "indexSha256": _sha_file(current / "index.json"),
+            "indexSha256": _authoritative_index_sha(current),
+            "workerInputIndexSha256": _sha_file(current / "index.json"),
             "evidenceRevision": str(base_revisions.get("evidenceRevision") or ""),
             "securityRevision": str(base_revisions.get("securityRevision") or ""),
             "catalogRevision": str(base_revisions.get("catalogRevision") or ""),
@@ -298,14 +317,14 @@ def validate(root: Path, *, current_evidence: Path | None = None) -> dict[str, A
         raise ValueError("SigmaScope result-bundle file count mismatch")
     if current_evidence is not None:
         current = current_evidence.resolve()
-        if _sha_file(current / "index.json") != str((doc.get("base") or {}).get("indexSha256") or ""):
+        if _authoritative_index_sha(current) != str((doc.get("base") or {}).get("indexSha256") or ""):
             raise ValueError("SigmaScope result bundle is stale: Evidence-v2 base index changed")
     return doc
 
 
 def build_plan(bundle_roots: list[Path], *, current_evidence: Path, output: Path) -> dict[str, Any]:
     current = current_evidence.resolve()
-    current_sha = _sha_file(current / "index.json")
+    current_sha = _authoritative_index_sha(current)
     unique: dict[str, dict[str, Any]] = {}
     roots: dict[str, Path] = {}
     for root in bundle_roots:

@@ -113,6 +113,43 @@ class SigmascopeResultBundleTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "integrity mismatch"):
                 sigmascope_result_bundle.validate(out, current_evidence=current)
 
+    def test_sparse_worker_bundle_binds_to_full_authoritative_index(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            current, candidate, work, definitions = self._fixture(root, variant_id=42, queue_key="variant-42")
+            authoritative = root / "authoritative"
+            full_index = json.loads((current / "index.json").read_text(encoding="utf-8"))
+            self._json(authoritative / "index.json", full_index)
+            source_index_sha256 = sigmascope_result_bundle._sha_file(authoritative / "index.json")
+
+            sparse_index = dict(full_index)
+            sparse_index["sparseEvidenceView"] = {
+                "schema": sigmascope_result_bundle.SPARSE_VIEW_SCHEMA,
+                "sourceRef": "1167cc6",
+                "sourceHead": "1" * 40,
+                "sourceIndexSha256": source_index_sha256,
+                "queueKeys": ["variant-42"],
+                "variantIds": [42],
+            }
+            self._json(current / "index.json", sparse_index)
+            self.assertNotEqual(source_index_sha256, sigmascope_result_bundle._sha_file(current / "index.json"))
+
+            out = root / "bundle"
+            doc = sigmascope_result_bundle.build(
+                current=current, candidate=candidate, work_dir=work, definitions=definitions,
+                queue_key="variant-42", worker_image="ghcr.io/dalagab/omega-sigmascope-worker@sha256:" + "a" * 64,
+                output=out,
+            )
+            self.assertEqual(source_index_sha256, doc["base"]["indexSha256"])
+            self.assertEqual(sigmascope_result_bundle._sha_file(current / "index.json"), doc["base"]["workerInputIndexSha256"])
+            plan = sigmascope_result_bundle.build_plan([out], current_evidence=authoritative, output=root / "plan.json")
+            self.assertEqual(source_index_sha256, plan["baseIndexSha256"])
+
+            moved_index = {**full_index, "revisions": {**full_index["revisions"], "evidenceRevision": "ev-v2-moved"}}
+            self._json(authoritative / "index.json", moved_index)
+            with self.assertRaisesRegex(ValueError, "stale"):
+                sigmascope_result_bundle.build_plan([out], current_evidence=authoritative, output=root / "stale-plan.json")
+
     def test_merge_plan_rejects_same_variant_conflicts(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

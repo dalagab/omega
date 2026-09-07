@@ -150,7 +150,9 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
     output.mkdir(parents=True, exist_ok=True)
 
     source_head = git_output(repo, "rev-parse", ref)
-    root_index = read_json_bytes(git_show(repo, ref, "index.json"))
+    source_index_bytes = git_show(repo, ref, "index.json")
+    source_index_sha256 = sha256_bytes(source_index_bytes)
+    root_index = read_json_bytes(source_index_bytes)
     scanner_queue = read_json_bytes(git_show(repo, ref, "scanner-queue.json"))
     queue_items = dict(scanner_queue.get("items") if isinstance(scanner_queue.get("items"), dict) else {})
     if queue_seed is not None:
@@ -223,6 +225,7 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
         "schema": SCHEMA,
         "sourceRef": ref,
         "sourceHead": source_head,
+        "sourceIndexSha256": source_index_sha256,
         "queueKeys": queue_keys,
         "variantIds": sorted(selected_variant_ids),
     }
@@ -242,6 +245,7 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
         "schema": SCHEMA,
         "sourceRef": ref,
         "sourceHead": source_head,
+        "sourceIndexSha256": source_index_sha256,
         "output": str(output),
         "queueKeys": queue_keys,
         "variantIds": sorted(selected_variant_ids),

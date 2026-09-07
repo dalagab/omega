@@ -65,11 +65,16 @@ class SparseEvidenceTests(unittest.TestCase):
         subprocess.run(["git", "add", "."], cwd=self.repo, check=True)
         subprocess.run(["git", "commit", "-m", "fixture"], cwd=self.repo, check=True, stdout=subprocess.PIPE)
 
+        source_index_sha256 = sigmascope_sparse_evidence.sha256_bytes((self.repo / "index.json").read_bytes())
         out = self.root / "sparse"
         report = sigmascope_sparse_evidence.build_sparse_view(self.repo, "HEAD", ["variant-7"], out)
 
         self.assertEqual([7], report["variantIds"])
+        self.assertEqual(source_index_sha256, report["sourceIndexSha256"])
         self.assertTrue((out / ".sigmascope-sparse-evidence.json").exists() is False)
+        sparse_index = json.loads((out / "index.json").read_text(encoding="utf-8"))
+        self.assertEqual(source_index_sha256, sparse_index["sparseEvidenceView"]["sourceIndexSha256"])
+        self.assertNotEqual(source_index_sha256, sigmascope_sparse_evidence.sha256_bytes((out / "index.json").read_bytes()))
         validation = validate_snapshot(out, require_no_orphans=False)
         self.assertTrue(validation.get("ok"), validation.get("errors"))
 
