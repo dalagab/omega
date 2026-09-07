@@ -1025,6 +1025,8 @@ CLIENT_ALLOWED_BASE_TABLES = {
     "runtime_plugin_variants",
     "plugin_search",
     "catalog_changelog",
+    "plugin_dependencies",
+    "plugin_dependency_providers",
 }
 
 
@@ -1101,6 +1103,13 @@ def _write_fresh_client_database(working: sqlite3.Connection, output_database: P
                       FROM server.plugin_search
                 """)
 
+            for dependency_table in ("plugin_dependencies", "plugin_dependency_providers"):
+                if _table_exists(working, dependency_table):
+                    _copy_table_schema_and_rows(working, client, dependency_table)
+            if _table_exists(working, "plugin_dependencies"):
+                client.execute("CREATE INDEX ix_client_dependencies_provider ON plugin_dependencies(provider_plugin_id,provider_internal_name)")
+                client.execute("CREATE INDEX ix_client_dependencies_consumer ON plugin_dependencies(consumer_plugin_id,consumer_variant_id)")
+
             if _table_exists(working, "catalog_changelog"):
                 # The changelog table is small semantic history already consumed by Omega.  Copy its
                 # current schema verbatim rather than coupling this projector to every changelog field.
@@ -1139,6 +1148,7 @@ def _write_fresh_client_database(working: sqlite3.Connection, output_database: P
 
 
 def project_database(evidence_database: Path, output_database: Path) -> dict[str, Any]:
+    import plugin_dependency_graph
     output_database.parent.mkdir(parents=True, exist_ok=True)
     output_database.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory(prefix="omega-marketplace-project-") as tmp:
@@ -1159,6 +1169,7 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             db.execute("PRAGMA foreign_keys=OFF")
             db.execute("BEGIN IMMEDIATE")
             create_marketplace_security_current(db)
+            plugin_dependency_graph.materialize_catalog_tables(db)
             db.execute("DROP VIEW IF EXISTS runtime_plugin_variants")
             # Do not strip the working snapshot destructively.  It is temporary and server-rich by
             # design; _write_fresh_client_database copies only the explicit client allow-list.
@@ -1206,6 +1217,9 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
         known_risk_rows = int(check.execute(
             "SELECT COUNT(*) FROM runtime_plugin_variants WHERE security_known_advisory_count>0"
         ).fetchone()[0])
+        dependency_edge_count = int(check.execute("SELECT COUNT(*) FROM plugin_dependencies").fetchone()[0])
+        dependency_provider_count = int(check.execute("SELECT COUNT(*) FROM plugin_dependency_providers").fetchone()[0])
+        dependency_graph_revision = read_meta(check, "dependency_graph_revision")
         return {
             "integrity": "ok",
             "runtimeProjectionSha256": runtime_projection_digest(check, ARTIFACT_CANONICAL_RUNTIME_COLUMNS),
@@ -1213,6 +1227,9 @@ def project_database(evidence_database: Path, output_database: Path) -> dict[str
             "securityRows": projected_rows,
             "dependencySummaryRows": dependency_rows,
             "dependencySummaryEntries": dependency_entries,
+            "dependencyGraphRevision": dependency_graph_revision,
+            "pluginDependencyEdges": dependency_edge_count,
+            "pluginDependencyProviders": dependency_provider_count,
             "knownRiskRows": known_risk_rows,
             "evidenceRevision": evidence_revision,
             "catalogRevision": read_meta(check, "catalog_revision"),
@@ -1273,6 +1290,7 @@ def project(
         "marketplaceProjectorVersion": PROJECTOR_VERSION,
         "detailedSecurityEvidenceIncluded": False,
         "evidenceRevision": projection["evidenceRevision"],
+        "dependencyGraphRevision": projection["dependencyGraphRevision"],
     })
     for key in ("preCompactionDatabaseBytes", "compactionSavedBytes"):
         marketplace_descriptor.pop(key, None)
@@ -1334,6 +1352,9 @@ def project(
             "securityRows": projection["securityRows"],
             "dependencySummaryRows": projection["dependencySummaryRows"],
             "dependencySummaryEntries": projection["dependencySummaryEntries"],
+            "dependencyGraphRevision": projection["dependencyGraphRevision"],
+            "pluginDependencyEdges": projection["pluginDependencyEdges"],
+            "pluginDependencyProviders": projection["pluginDependencyProviders"],
         },
         "publication": {
             "marketplaceRequired": marketplace_required,

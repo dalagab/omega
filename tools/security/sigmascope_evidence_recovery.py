@@ -29,6 +29,7 @@ for path in (SCRIPT_DIR, CATALOG_DIR):
 
 import scan_queue  # noqa: E402
 import sigmascope_result_merger  # noqa: E402
+import variant_lifecycle  # noqa: E402
 from production_sigmascope_v2_pipeline import (  # noqa: E402
     _build_plugins_artifacts_indexes,
     _merge_successful_subset,
@@ -45,7 +46,7 @@ from security_evidence_v2 import SCHEMA, sha256_file, validate_snapshot  # noqa:
 RECOVERY_SCHEMA = "omega.sigmascope-evidence-recovery.v1"
 SPARSE_MARKER = ".sigmascope-sparse-evidence.json"
 RETAINED_ROOTS = ("artifacts", "derived", "history", "terminal", "variants")
-CURRENT_OVERLAY_ROOTS = ("derived", "history", "terminal")
+CURRENT_OVERLAY_ROOTS = ("derived", "history")
 SNAPSHOT_ROOTS = ("variants", "terminal/variants", "history/variants")
 
 
@@ -66,6 +67,39 @@ def _copy_tree(source: Path, target: Path) -> None:
         return
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, target, dirs_exist_ok=True)
+
+
+def _overlay_current_terminals(current_evidence: Path, candidate: Path) -> dict[str, int]:
+    """Overlay current terminal authority while retaining replaced terminal snapshots."""
+    source_root = current_evidence / "terminal" / "variants"
+    copied = 0
+    archived = 0
+    if not source_root.is_dir():
+        return {"terminalSnapshotsCopied": 0, "terminalSnapshotsArchived": 0}
+    for source in sorted(source_root.rglob("*.json")):
+        relative = source.relative_to(current_evidence)
+        target = candidate / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        incoming = _read(source)
+        if target.is_file():
+            previous = _read(target)
+            if variant_lifecycle.identity_fingerprint(previous) != variant_lifecycle.identity_fingerprint(incoming):
+                variant_id = int(previous.get("variantId") or incoming.get("variantId") or 0)
+                history = variant_lifecycle.history_path(candidate, variant_id, previous)
+                if not history.exists():
+                    history.parent.mkdir(parents=True, exist_ok=True)
+                    write_json(
+                        history,
+                        variant_lifecycle.superseded_snapshot(
+                            previous,
+                            replacement=incoming,
+                            reason="recovery_current_terminal_wins",
+                        ),
+                    )
+                    archived += 1
+        shutil.copy2(source, target)
+        copied += 1
+    return {"terminalSnapshotsCopied": copied, "terminalSnapshotsArchived": archived}
 
 
 def _snapshot_identity_keys(root: Path) -> set[tuple[int, str, str]]:
@@ -130,6 +164,7 @@ def stage_retained_union(current_evidence: Path, retained_evidence: Path, candid
     merged = _merge_successful_subset(candidate, current_evidence)
     for root_name in CURRENT_OVERLAY_ROOTS:
         _copy_tree(current_evidence / root_name, candidate / root_name)
+    terminal_overlay = _overlay_current_terminals(current_evidence, candidate)
 
     sparse_marker_removed = (current_evidence / SPARSE_MARKER).is_file() or (candidate / SPARSE_MARKER).is_file()
     (candidate / SPARSE_MARKER).unlink(missing_ok=True)
@@ -137,6 +172,7 @@ def stage_retained_union(current_evidence: Path, retained_evidence: Path, candid
     return {
         "bootstrapCounts": bootstrap_counts,
         "currentMerge": merged,
+        "currentTerminalOverlay": terminal_overlay,
         "sparseAuthorityMarkerRemoved": sparse_marker_removed,
     }
 

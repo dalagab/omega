@@ -77,6 +77,40 @@ class SigmaScopeEvidenceRecoveryTests(unittest.TestCase):
             self.assertTrue(staged["sparseAuthorityMarkerRemoved"])
             self.assertEqual(1, staged["currentMerge"]["historicalSnapshotsArchived"])
 
+    def test_stage_retained_union_archives_replaced_terminal_before_current_wins(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-evidence-terminal-recovery-") as td:
+            root = Path(td)
+            retained = root / "retained"
+            current = root / "current"
+            candidate = root / "candidate"
+            self._json(retained / "index.json", {"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"catalogIdentityEpoch": "epoch"}})
+            self._json(current / "index.json", {"schema": "omega.security-evidence.v2", "formatVersion": 2, "revisions": {"catalogIdentityEpoch": "epoch"}})
+            retained_terminal = self._variant(1130, "a", 10)
+            retained_terminal["lifecycle"] = {"schema": "omega.security-evidence.variant-lifecycle.v1", "state": "retired"}
+            current_terminal = self._variant(1130, "a", 20)
+            current_terminal["lifecycle"] = {"schema": "omega.security-evidence.variant-lifecycle.v1", "state": "retired"}
+            self._json(retained / "terminal/variants/0001/1130.json", retained_terminal)
+            self._json(current / "terminal/variants/0001/1130.json", current_terminal)
+
+            fake_plugins = {"path": "indexes/plugins.json", "sha256": "1" * 64}
+            fake_artifacts = {"path": "indexes/artifacts.json", "sha256": "2" * 64}
+            with patch.object(
+                recovery,
+                "_build_plugins_artifacts_indexes",
+                return_value=(fake_plugins, fake_artifacts, 0, 1, 1, 2, 1),
+            ):
+                staged = recovery.stage_retained_union(current, retained, candidate)
+
+            terminal = json.loads((candidate / "terminal/variants/0001/1130.json").read_text(encoding="utf-8"))
+            self.assertEqual(20, terminal["current"]["scan_id"])
+            history = list((candidate / "history/variants/0001/1130").glob("*.json"))
+            self.assertEqual(1, len(history))
+            archived = json.loads(history[0].read_text(encoding="utf-8"))
+            self.assertEqual(10, archived["current"]["scan_id"])
+            self.assertEqual("superseded", archived["lifecycle"]["state"])
+            self.assertEqual("recovery_current_terminal_wins", archived["lifecycle"]["reason"])
+            self.assertEqual(1, staged["currentTerminalOverlay"]["terminalSnapshotsArchived"])
+
     def test_recovery_contract_uses_only_current_queue_progress(self) -> None:
         text = (common.ROOT / "tools" / "security" / "sigmascope_evidence_recovery.py").read_text(encoding="utf-8")
         self.assertIn('previous_queue = scan_queue.load_state(current_evidence / "scanner-queue.json")', text)
