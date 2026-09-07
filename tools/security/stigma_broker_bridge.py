@@ -21,6 +21,7 @@ from typing import Any, Mapping
 import analysis_broker
 import collector_contracts
 import security_evidence_v2
+import omega_actions_telemetry as actions_telemetry
 
 SCHEMA = "omega.stigma-analysis-broker-bridge.v1"
 MAX_REQUESTS = 50_000
@@ -231,9 +232,23 @@ def main() -> int:
     args = parser.parse_args()
     state = _json(args.state) if args.state.is_file() else analysis_broker.empty_state()
     inventory = _json(args.inventory) if args.inventory and args.inventory.is_file() else None
+    actions_telemetry.emit_event(
+        "worker.started", component="stigma-1", stage="analysis-broker-reconciliation", state="reconciling",
+        worker={"roleId": "stigma-1", "label": "Stigma-1 worker", "state": "reconciling"},
+    )
     updated, report = reconcile(state, projection_root=args.projection_root, evidence_root=args.evidence_root, inventory=inventory)
     _write(args.state, updated)
     _write(args.report, report)
+    actions_telemetry.emit_event(
+        "analysis.completed", component="stigma-1", stage="analysis-broker-reconciliation", state="complete",
+        worker={"roleId": "stigma-1", "label": "Stigma-1 worker", "state": "idle"},
+        queue={"remaining": int(report.get("dispatchable") or 0), "total": int(report.get("candidateRequests") or 0)},
+        result={"status": "complete", "analysisCount": int(report.get("candidateRequests") or 0)},
+        message=(
+            f"Stigma reconciliation: {int(report.get('enqueued') or 0)} enqueued, "
+            f"{int(report.get('reused') or 0)} reused, {int(report.get('dispatchable') or 0)} dispatchable"
+        ),
+    )
     print(json.dumps({"schema": SCHEMA, "candidateRequests": report["candidateRequests"], "enqueued": report["enqueued"], "reused": report["reused"]}, sort_keys=True))
     return 0
 

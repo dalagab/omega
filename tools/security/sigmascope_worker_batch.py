@@ -21,6 +21,8 @@ import sys
 from types import ModuleType
 from typing import Any, Callable, Iterable
 
+import omega_actions_telemetry as actions_telemetry
+
 MAX_SLOT_KEYS = 16
 REPORT_NAME = "production-sigmascope-v2-report.json"
 SLOT_SUMMARY_SCHEMA = "omega.sigmascope-worker-slot-summary.v1"
@@ -58,14 +60,37 @@ def validated_selected_queue_keys(report: dict[str, Any], planned_queue_keys: It
     )
 
 
+def _telemetry_subject(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "variantId": int(item.get("variantId") or 0),
+        "internalName": str(item.get("internalName") or ""),
+        "version": str(item.get("version") or item.get("assemblyVersion") or ""),
+        "workType": str(item.get("workType") or ""),
+        "sourceName": str(item.get("sourceName") or ""),
+    }
+
+
+def _telemetry_worker(state: str) -> dict[str, Any]:
+    slot = str(os.environ.get("WORKER_SLOT") or "")
+    return {
+        "roleId": "sigmascope",
+        "label": "SigmaScope worker",
+        "workerId": f"slot-{slot}" if slot else "",
+        "state": state,
+    }
+
+
 def planned_selector(
     select_key: Callable[[dict[str, Any], str], dict[str, Any] | None],
     queue_keys: Iterable[str],
 ) -> Callable[[dict[str, Any]], dict[str, Any] | None]:
     """Return a select_next replacement that can consume only planner-owned keys."""
-    remaining = iter(list(queue_keys))
+    planned = list(queue_keys)
+    remaining = iter(planned)
+    selected_count = 0
 
     def select_next(state: dict[str, Any]) -> dict[str, Any] | None:
+        nonlocal selected_count
         try:
             queue_key = next(remaining)
         except StopIteration:
@@ -73,6 +98,23 @@ def planned_selector(
         selected = select_key(state, queue_key)
         if selected is None:
             raise RuntimeError(f"planned SigmaScope queue item is no longer eligible: {queue_key}")
+        selected_count += 1
+        subject = _telemetry_subject(selected)
+        queue = {
+            "reason": str(selected.get("reason") or selected.get("queueReason") or ""),
+            "lane": str(os.environ.get("WORKER_LANE") or ""),
+            "workType": str(selected.get("workType") or ""),
+            "remaining": max(0, len(planned) - selected_count),
+        }
+        actions_telemetry.emit_event(
+            "queue.claimed", component="sigmascope", stage="queue-claim", state="scanning",
+            worker=_telemetry_worker("claiming"), subject=subject, queue=queue,
+            message=f"Claimed exact planned queue key {queue_key}",
+        )
+        actions_telemetry.emit_event(
+            "scan.started", component="sigmascope", stage=str(selected.get("workType") or "scan"),
+            state="scanning", worker=_telemetry_worker("scanning"), subject=subject, queue=queue,
+        )
         return selected
 
     return select_next
@@ -271,7 +313,27 @@ def run_frozen_pipeline(pipeline: Path, queue_keys: list[str], pipeline_argument
 
     report_path = work_dir / REPORT_NAME
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    validated_selected_queue_keys(report, queue_keys)
+    selected_keys = validated_selected_queue_keys(report, queue_keys)
+    successful = {int(value or 0) for value in report.get("successfulVariantIds") or [] if int(value or 0) > 0}
+    failed = {int(value or 0) for value in report.get("failedRetainedVariantIds") or [] if int(value or 0) > 0}
+    selected_items = [
+        dict(item) for item in ((report.get("queue") or {}).get("selectedItems") or [])
+        if isinstance(item, dict)
+    ]
+    for ordinal, item in enumerate(selected_items, 1):
+        variant_id = int(item.get("variantId") or 0)
+        status = "complete" if variant_id in successful else "failed" if variant_id in failed else "unknown"
+        actions_telemetry.emit_event(
+            "scan.completed", component="sigmascope", stage=str(item.get("workType") or "scan"),
+            state=status, worker=_telemetry_worker("scanning"), subject=_telemetry_subject(item),
+            queue={
+                "reason": str(item.get("reason") or item.get("queueReason") or ""),
+                "lane": str(os.environ.get("WORKER_LANE") or ""),
+                "workType": str(item.get("workType") or ""),
+                "remaining": max(0, len(selected_keys) - ordinal),
+            },
+            result={"status": status},
+        )
     return report
 
 
@@ -449,8 +511,16 @@ def build_result_bundles(
         except Exception:
             shutil.rmtree(temporary_bundle, ignore_errors=True)
             raise
-        revisions.append(str(validation.get("bundleRevision") or ""))
+        bundle_revision = str(validation.get("bundleRevision") or "")
+        revisions.append(bundle_revision)
         bundled.append(queue_key)
+        selected_item = ((split.get("queue") or {}).get("selected") or {})
+        actions_telemetry.emit_event(
+            "bundle.created", component="sigmascope", stage="result-bundle", state="bundling",
+            worker=_telemetry_worker("bundling"), subject=_telemetry_subject(selected_item),
+            progress={"current": len(bundled), "total": len(selected), "unit": "bundles"},
+            bundle={"id": bundle_revision, "status": "complete"},
+        )
         if summary_path is not None:
             _write_slot_summary(
                 summary_path,
@@ -476,12 +546,27 @@ def build_result_bundles(
 
 def _run_command(args: argparse.Namespace) -> int:
     queue_keys = load_queue_keys(args.queue_keys_file)
+    actions_telemetry.emit_event(
+        "worker.started", component="sigmascope", stage="scan-slot", state="scanning",
+        worker=_telemetry_worker("scanning"),
+        progress={"current": 0, "total": len(queue_keys), "unit": "planned queue items"},
+    )
     run_frozen_pipeline(args.pipeline, queue_keys, list(args.pipeline_arguments))
+    actions_telemetry.emit_event(
+        "worker.idle", component="sigmascope", stage="scan-slot", state="scan-complete",
+        worker=_telemetry_worker("idle"),
+        progress={"current": len(queue_keys), "total": len(queue_keys), "unit": "planned queue items"},
+    )
     return 0
 
 
 def _bundles_command(args: argparse.Namespace) -> int:
     queue_keys = load_queue_keys(args.queue_keys_file)
+    actions_telemetry.emit_event(
+        "worker.started", component="sigmascope", stage="result-bundles", state="bundling",
+        worker=_telemetry_worker("bundling"),
+        progress={"current": 0, "total": len(queue_keys), "unit": "bundles"},
+    )
     result = build_result_bundles(
         current_evidence=args.current_evidence,
         candidate_evidence=args.candidate_evidence,
@@ -497,6 +582,11 @@ def _bundles_command(args: argparse.Namespace) -> int:
         plan_revision=args.plan_revision,
     )
     print(json.dumps(result, sort_keys=True))
+    actions_telemetry.emit_event(
+        "worker.idle", component="sigmascope", stage="result-bundles", state="complete",
+        worker=_telemetry_worker("idle"),
+        progress={"current": int(result.get("bundleCount") or 0), "total": len(queue_keys), "unit": "bundles"},
+    )
     return 0
 
 
