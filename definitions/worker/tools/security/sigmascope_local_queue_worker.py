@@ -37,12 +37,34 @@ def read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _git_blob_sha256(repo: Path, relative_path: str) -> str:
+    completed = subprocess.run(
+        ["git", "show", f"HEAD:{relative_path}"],
+        cwd=repo,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if completed.returncode != 0:
+        return ""
+    return hashlib.sha256(completed.stdout).hexdigest()
+
+
+def _scanner_worktree_dirty(repo: Path) -> bool:
+    completed = subprocess.run(
+        [
+            "git", "status", "--porcelain", "--untracked-files=all", "--",
+            "tools/catalog", "tools/security", "tools/orchestration/git_snapshot_history.py",
+            "sources/source-overrides.json", "security-definitions", "tools/requirements-security.txt",
+        ],
+        cwd=repo,
+        check=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+    )
+    return bool(completed.stdout.strip())
 
 
 def verify_frozen_worker_matches_checkout(repo: Path, catalog: Path) -> None:
@@ -50,6 +72,11 @@ def verify_frozen_worker_matches_checkout(repo: Path, catalog: Path) -> None:
     manifest = read_json(manifest_path)
     entries = [item for item in manifest.get("files") or [] if isinstance(item, dict)]
     frozen = {str(item.get("path") or ""): str(item.get("sha256") or "") for item in entries}
+    if _scanner_worktree_dirty(repo):
+        raise RuntimeError(
+            "Local SigmaScope scanner/worker source has uncommitted changes. "
+            "Commit or discard them before comparing against frozen Definitions."
+        )
     expected_paths = {
         path.relative_to(repo).as_posix()
         for rel in ("tools/catalog", "tools/security")
@@ -68,7 +95,7 @@ def verify_frozen_worker_matches_checkout(repo: Path, catalog: Path) -> None:
     })
     mismatched = sorted(
         rel for rel in expected_paths | set(frozen)
-        if rel not in frozen or not (repo / rel).is_file() or _sha256_file(repo / rel) != frozen.get(rel)
+        if rel not in frozen or _git_blob_sha256(repo, rel) != frozen.get(rel)
     )
     if mismatched:
         revision = str(manifest.get("scannerRevision") or "")
