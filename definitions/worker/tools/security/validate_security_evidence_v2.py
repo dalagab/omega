@@ -19,9 +19,12 @@ import sys
 from typing import Any, Iterable, Sequence
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+CATALOG_DIR = SCRIPT_DIR.parent / "catalog"
+for import_root in (SCRIPT_DIR, CATALOG_DIR):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
 
+import plugin_dependency_graph  # noqa: E402
 from security_evidence_v2 import (  # noqa: E402
     CORE_DATASETS,
     FORMAT_VERSION,
@@ -205,10 +208,22 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
             "catalogRevision": meta.get("catalog_revision", meta.get("catalog_revision_candidate", "")),
             "securityRevision": meta.get("security_revision", ""),
             "evidenceRevision": meta.get("evidence_revision", ""),
+            "dependencyGraphRevision": plugin_dependency_graph.build_graph(db)["dependencyGraphRevision"],
             "observationContractRevision": observation_projection.contract_revision(),
             "projectionContractRevision": observation_projection.projection_contract_revision(),
         }
         _compare_exact("root revisions", expected_revisions, index.get("revisions") or {}, errors)
+        dependency_entry = (index.get("indexes") or {}).get("pluginDependencies") or {}
+        if dependency_entry.get("path"):
+            dependency_graph = _load_json(
+                evidence / safe_relpath(str(dependency_entry["path"]))
+            )
+            _compare_exact(
+                "plugin dependency graph",
+                plugin_dependency_graph.build_graph(db),
+                dependency_graph,
+                errors,
+            )
         current_rows = list(db.execute("SELECT * FROM plugin_security_current ORDER BY variant_id"))
         if int((index.get("counts") or {}).get("currentVariants") or -1) != len(current_rows):
             errors.append(f"current variant count differs: v1={len(current_rows)}, v2={(index.get('counts') or {}).get('currentVariants')}")
