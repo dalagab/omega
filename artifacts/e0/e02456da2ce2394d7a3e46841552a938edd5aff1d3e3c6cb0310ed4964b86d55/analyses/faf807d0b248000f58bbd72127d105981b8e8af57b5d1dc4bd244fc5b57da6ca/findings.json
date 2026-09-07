@@ -1,0 +1,115 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:FFXIVClientStructs.dll:FFXIVClientStructs.FFXIV.Client.UI.AddonActionBar.FireCallback+0x13: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:FFXIVClientStructs.dll:FFXIVClientStructs.FFXIV.Client.UI.AddonActionBarBase.FireCallback+0x9: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:FFXIVClientStructs.dll:FFXIVClientStructs.FFXIV.Client.UI.AddonActionBarX.FireCallback+0xe: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:FFXIVClientStructs.dll:FFXIVClientStructs.FFXIV.Client.UI.AddonActionCross.FireCallback+0xe: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamApps",
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamFriends",
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamUser",
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamUtils#GetServerRealTime",
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamUtils#IsSteamRunningOnSteamDeck",
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamUtils#ShowGamepadTextInput",
+      "artifact:FFXIVClientStructs.xml: s://partner.steamgames.com/doc/api/ISteamUtils#ShowFloatingGamepadTextInput",
+      "artifact:FFXIVClientStructs.xml: s://en.cppreference.com/w/cpp/string/basic_string"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:HaselCommon.dll: Dalamud.Hooking",
+      "metadata:HaselCommon.dll: SigScanner",
+      "metadata:HaselCommon.dll: HookFromAddress",
+      "il:HaselCommon.dll:HaselCommon.Services.MarketBoardService.Initialize+0x14: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:HaselCommon.dll:HaselCommon.Services.MarketBoardService.Initialize+0x37: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:HaselCommon.dll:HaselCommon.Extensions.Dalamud.IGameInteropProviderExtensions.HookFromVTable+0xa: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:HaselCommon.dll: Dalamud.Hooking",
+      "artifact:HaselCommon.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:HaselCommon.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:FFXIVClientStructs.dll: DllImportAttribute",
+      "metadata:HaselTweaks.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:HaselTweaks.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:InteropGenerator.Runtime.dll: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0x9: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0xe: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0x24: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0x2a: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+      "artifact:InteropGenerator.Runtime.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HaselTweaks.dll: File.Delete",
+      "metadata:HaselTweaks.dll: Directory.CreateDirectory",
+      "metadata:HaselTweaks.dll: WriteAllText",
+      "metadata:HaselTweaks.dll: File.Move",
+      "il:HaselTweaks.dll:HaselTweaks.Windows.PortraitHelperWindows.Dialogs.DeletePresetDialog.OnDelete+0x76: call System.IO.File.Delete: File.Delete",
+      "il:HaselTweaks.dll:HaselTweaks.Extensions.IPluginInterfaceExtensions.GetPortraitThumbnailPath+0x1f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HaselTweaks.dll:HaselTweaks.Config.PluginConfig.Save+0x2c: call Dalamud.Utility.Util.WriteAllTextSafe: WriteAllText",
+      "il:HaselTweaks.dll:HaselTweaks.Config.Migrations.Version6.Migrate+0x90: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

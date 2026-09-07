@@ -1,0 +1,129 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:MOGTOME.dll:MOGTOME.Services.GameHelpers.UseItem+0x21f: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:MOGTOME.dll:MOGTOME.Services.GameHelpers.InteractWithObject+0xbf: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:MOGTOME.dll:MOGTOME.Services.GameHelpers.InteractWithObject+0x6d: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:MOGTOME.dll:MOGTOME.Services.InnEntryService.TryInteract+0x11: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:MOGTOME.dll:MOGTOME.Services.GameHelpers.ClickYesIfVisible+0x99: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:MOGTOME.dll:MOGTOME.Services.GameHelpers.TryFireAddonCallbackInternal+0x242: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/runtime/issues/97057",
+      "artifact:Microsoft.Data.Sqlite.dll: s://www.sqlite.org/rescode.html",
+      "artifact:Microsoft.Data.Sqlite.dll: s://go.microsoft.com/fwlink/?linkid=2142181.",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.Data.Sqlite.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SQLitePCLRaw.provider.e_sqlite3.dll: DllImportAttribute",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!LoadLibraryW: LoadLibrary",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:runtimes\\win-arm\\native\\e_sqlite3.dll: LoadLibrary",
+      "artifact:runtimes\\win-arm\\native\\e_sqlite3.dll: GetProcAddress",
+      "native-pe:runtimes\\win-arm64\\native\\e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:MOGTOME.dll: System.Diagnostics.Process",
+      "metadata:MOGTOME.dll: ProcessStartInfo",
+      "metadata:MOGTOME.dll: ShellExecute",
+      "metadata:MOGTOME.dll: Process.Start",
+      "il:MOGTOME.dll:MOGTOME.Plugin.AcquireConfigDirectoryLock+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:MOGTOME.dll:MOGTOME.Plugin.AcquireConfigDirectoryLock+0x8: callvirt System.Diagnostics.Process.get_ProcessName: System.Diagnostics.Process",
+      "il:MOGTOME.dll:MOGTOME.Plugin.AcquireConfigDirectoryLock+0xd: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:MOGTOME.dll:MOGTOME.Windows.MainWindow.Draw+0xd0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:MOGTOME.dll: FileStream",
+      "metadata:MOGTOME.dll: WriteAllText",
+      "metadata:MOGTOME.dll: Directory.CreateDirectory",
+      "metadata:MOGTOME.dll: File.Move",
+      "metadata:MOGTOME.dll: File.Delete",
+      "il:MOGTOME.dll:MOGTOME.Configuration.SaveToFile+0xe: call System.IO.File.WriteAllText: WriteAllText",
+      "il:MOGTOME.dll:MOGTOME.Plugin.AcquireConfigDirectoryLock+0x38: newobj System.IO.FileStream..ctor: FileStream",
+      "il:MOGTOME.dll:MOGTOME.Services.AutoDutyPathService.EnsurePathExists+0xbe: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\linux-arm\\native\\libe_sqlite3.so",
+      "runtimes\\linux-arm64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-armel\\native\\libe_sqlite3.so",
+      "runtimes\\linux-mips64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-musl-arm\\native\\libe_sqlite3.so",
+      "runtimes\\linux-musl-arm64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-musl-riscv64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-musl-s390x\\native\\libe_sqlite3.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

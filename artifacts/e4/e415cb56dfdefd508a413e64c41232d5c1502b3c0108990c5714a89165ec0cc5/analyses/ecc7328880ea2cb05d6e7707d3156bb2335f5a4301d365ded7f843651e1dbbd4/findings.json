@@ -1,0 +1,585 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:CkCommons.dll:<>c__DisplayClass7_0.<DrawWithButtons>b__0+0x37: callvirt ImGuiInputTextCallbackPtrDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xbb: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xc0: callvirt System.Reflection.Emit.MethodBuilder.GetILGenerator: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xce: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xda: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x104: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x110: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:CkCommons.dll: s://github.com/CordeliaMist/CkCommons.git",
+      "artifact:CkCommons.dll: s://...",
+      "artifact:Luna.dll: s://github.com/Ottermandias/Luna.git",
+      "artifact:Luna.dll: G:/.*",
+      "artifact:Luna.dll: t:/dv",
+      "artifact:Luna.dll: s://reniguide.info/",
+      "artifact:Luna.dll: \\\\?\\UNC\\",
+      "artifact:Luna.dll: s://discord.gg/kVva7DHV4r"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:CkCommons.dll: SigScanner",
+      "metadata:CkCommons.dll: Dalamud.Hooking",
+      "artifact:CkCommons.dll: Dalamud.Hooking",
+      "artifact:CkCommons.dll: SigScanner",
+      "metadata:Luna.dll: Dalamud.Hooking",
+      "metadata:Luna.dll: SigScanner",
+      "metadata:Luna.dll: CreateHook",
+      "metadata:Luna.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "artifact:MufflerCore\\StoredDictionaries\\en_UK.json: Kestrel",
+      "artifact:MufflerCore\\StoredDictionaries\\en_US.json: Kestrel"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:CkCommons.dll: DllImportAttribute",
+      "metadata:Luna.dll: DllImportAttribute",
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.CommandLine.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://api.pishock.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.299361007f71",
+    "severity": "caution",
+    "title": "Endpoint: api.pishock.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://forms.gle/4AL43XUeWna2DtYK7"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.569c852abcdf",
+    "severity": "caution",
+    "title": "Endpoint: forms.gle"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://api.pishock.com/Share/GetShared"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.875b313c88ab",
+    "severity": "caution",
+    "title": "Endpoint: api.pishock.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagspeakAPI.dll: https://do.pishock.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.991eb72ba623",
+    "severity": "caution",
+    "title": "Endpoint: do.pishock.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Buttplug.dll: Socket.Connect",
+      "il:Buttplug.dll:<ConnectAsync>d__10.MoveNext+0x79: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "metadata:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x562: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x5dd: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Luna.dll: System.Diagnostics.Process",
+      "metadata:Luna.dll: ProcessStartInfo",
+      "metadata:Luna.dll: ShellExecute",
+      "metadata:Luna.dll: Process.Start",
+      "artifact:Luna.dll: System.Diagnostics.Process",
+      "artifact:Luna.dll: ProcessStartInfo",
+      "artifact:Luna.dll: ShellExecute",
+      "artifact:MessagePack.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:CkCommons.dll: System.Windows.Forms.Clipboard",
+      "il:CkCommons.dll:CkCommons.CkColors.Vec4ToClipboard+0x192: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:CkCommons.dll:CkCommons.CkColors.UintToClipboard+0x125: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:CkCommons.dll:CkCommons.ImageHelpers.TryGetClipboardImage+0x0: call System.Windows.Forms.Clipboard.ContainsImage: System.Windows.Forms.Clipboard",
+      "il:CkCommons.dll:CkCommons.ImageHelpers.TryGetClipboardImage+0x14: call System.Windows.Forms.Clipboard.GetImage: System.Windows.Forms.Clipboard",
+      "metadata:ProjectGagSpeak.dll: System.Windows.Forms.Clipboard",
+      "il:ProjectGagSpeak.dll:GagSpeak.GsColors.Vec4ToClipboard+0x192: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:ProjectGagSpeak.dll:GagSpeak.GsColors.UintToClipboard+0x125: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:CkCommons.dll: FileStream",
+      "metadata:CkCommons.dll: File.Move",
+      "metadata:CkCommons.dll: File.Delete",
+      "metadata:CkCommons.dll: WriteAllText",
+      "il:CkCommons.dll:CkCommons.HybridSaver.HybridSaveServiceBase`1.SaveConfigAsync+0x83: call System.IO.File.Move: File.Move",
+      "il:CkCommons.dll:CkCommons.HybridSaver.HybridSaveServiceBase`1.SaveConfigAsync+0xfa: call System.IO.File.Delete: File.Delete",
+      "il:CkCommons.dll:CkCommons.HybridSaver.HybridSaveServiceBase`1.WriteTempFile+0x1c: call System.IO.File.WriteAllText: WriteAllText",
+      "il:CkCommons.dll:CkCommons.HybridSaver.HybridSaveServiceBase`1.WriteTempFile+0x26: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://discord.gg/BeeRFKDJD3"
+    ],
+    "rule_id": "network.endpoint.community-invite.054e7b27ee03",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://discord.gg/QJy4zTqpMD"
+    ],
+    "rule_id": "network.endpoint.community-invite.bdc42541a244",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://discord.gg/kinkporium"
+    ],
+    "rule_id": "network.endpoint.community-invite.bfad3903a31e",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://discord.gg/kVva7DHV4r",
+      "artifact:OtterGui.dll: https://discord.gg/kVva7DHV4r",
+      "artifact:ProjectGagSpeak.dll: https://discord.gg/kVva7DHV4r"
+    ],
+    "rule_id": "network.endpoint.community-invite.d54730561467",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://discord.gg/KvGJCCnG8t"
+    ],
+    "rule_id": "network.endpoint.community-invite.e04e147da65b",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CkCommons.dll: https://github.com/CordeliaMist/CkCommons.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.040d383fcfed",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.081de96440b7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Buttplug.dll: https://github.com/buttplugio/buttplug-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1d8556c133bb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://github.com/Aether-Tools/CustomizePlus"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1e69493d3e2f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.GameData.dll: https://github.com/Ottermandias/Penumbra.GameData.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2d6344fe4ef9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://github.com/intiface/intiface-central"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48488c6d8b1a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DebounceThrottle.dll: https://github.com/coddicat/DebounceThrottle"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4f0e42785874",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Luna.dll: https://github.com/Ottermandias/Luna.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.63f2167925ec",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://github.com/NightmareXIV/Lifestream"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.777d7a0dd370",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://github.com/Ottermandias/OtterGui.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7830136213a1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.Abstractions.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Logging.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: https://github.com/AzureAD/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7e3f986def99",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://github.com/CordeliaMist/Loci"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8b161a889f4e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer",
+      "artifact:ProjectGagSpeak.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.json: https://github.com/Project-GagSpeak/client"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9fb6c4567125",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Loci.Api.dll: https://github.com/CordeliaMist/Loci.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.aa1f67411828",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b698391dbb73",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://github.com/Project-GagSpeak/client.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b822ad02aaac",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Client.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.SignalR.Client.Core.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FlatSharp.Runtime.dll: https://github.com/jamescourtney/FlatSharp/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e646ed5fdb44",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ProjectGagSpeak.dll: https://github.com/Sundouleia"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.febbf06f142d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:CkCommons.dll: System.Net.Http.HttpClient",
+      "il:CkCommons.dll:CkCommons.RichText.Emoji.EmojiLoader..ctor+0x1e: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:CkCommons.dll:CkCommons.RichText.Emoji.EmojiLoader..ctor+0x2c: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x3a: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x4c: callvirt System.Net.Http.HttpClientHandler.set_CookieContainer: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xa6: callvirt System.Net.Http.HttpClientHandler.get_ClientCertificates: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: s://github.com/MidoriKami/KamiToolKit"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress",
+      "metadata:CurrencyWatchdog.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.SaveAddonConfig+0x3c: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:CurrencyWatchdog.dll: WriteAllText",
+      "il:CurrencyWatchdog.dll:CurrencyWatchdog.Configuration.Storage.Save+0x4b: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+      "artifact:CurrencyWatchdog.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

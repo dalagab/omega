@@ -1,0 +1,197 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Coppelia.dll:Coppelia.Services.ActionExecutionService.TryExecute+0x163: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:Coppelia.dll:Coppelia.Services.ActionExecutionService.TryFindPowerlevelAction+0x162: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:Coppelia.dll:Coppelia.Services.CoppeliaCompanionService.Update+0x146: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:Coppelia.dll:Coppelia.Services.CoppeliaTravelService.TryUseGeneralAction+0x96: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Coppelia.dll:Coppelia.Services.ActionExecutionService.TryExecute+0x11c: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:Coppelia.dll:Coppelia.Services.ActionExecutionService.TryExecute+0x14d: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:Coppelia.dll:Coppelia.Services.ActionExecutionService.TryFindPowerlevelAction+0x99: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:Coppelia.dll:Coppelia.Services.HealbotRuntimeService.EvaluateSelectedTarget+0x377: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Coppelia.dll: Dalamud.Hooking",
+      "metadata:Coppelia.dll: HookFromAddress",
+      "il:Coppelia.dll:Coppelia.Services.HealBotTeleportObserver..ctor+0x3a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:Coppelia.dll: Dalamud.Hooking",
+      "artifact:Coppelia.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Coppelia.dll: TcpListener",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Start+0x23: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Start+0x33: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Dispose+0x34: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:Coppelia.dll:<AcceptClientsAsync>d__25.MoveNext+0x34: callvirt System.Net.Sockets.TcpListener.AcceptTcpClientAsync: TcpListener",
+      "artifact:Coppelia.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Coppelia.dll: https://ko-fi.com/mcvaxius"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.226f7ad8215b",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Coppelia.dll: System.Net.Sockets",
+      "metadata:Coppelia.dll: TcpClient",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Start+0x23: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Start+0x33: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Start+0xc1: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Dispose+0x34: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Dispose+0x98: callvirt System.Net.Sockets.TcpClient.Close: System.Net.Sockets",
+      "il:Coppelia.dll:Coppelia.Services.HealBotLanServer.Dispose+0x98: callvirt System.Net.Sockets.TcpClient.Close: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Coppelia.dll: System.Diagnostics.Process",
+      "metadata:Coppelia.dll: ProcessStartInfo",
+      "metadata:Coppelia.dll: ShellExecute",
+      "metadata:Coppelia.dll: Process.Start",
+      "il:Coppelia.dll:Coppelia.Windows.ConfigWindow.DrawHeader+0x43: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Coppelia.dll:Coppelia.Windows.ConfigWindow.DrawHeader+0x43: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Coppelia.dll:Coppelia.Windows.ConfigWindow.DrawHeader+0x4e: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:Coppelia.dll:Coppelia.Windows.ConfigWindow.DrawHeader+0x4e: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Coppelia.dll: File.Delete",
+      "metadata:Coppelia.dll: Directory.CreateDirectory",
+      "metadata:Coppelia.dll: WriteAllText",
+      "il:Coppelia.dll:Coppelia.Services.AetherytePositionDatabase.ClearAllPositionsForFreshScan+0x1f: call System.IO.File.Delete: File.Delete",
+      "il:Coppelia.dll:Coppelia.Services.AetherytePositionDatabase.Save+0x1d: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Coppelia.dll:Coppelia.Services.AetherytePositionDatabase.Save+0x69: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Coppelia.dll:Coppelia.Services.MapLocationDatabase.MigrateLegacyFile+0x8a: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Coppelia.dll:Coppelia.Services.MapLocationDatabase.MigrateLegacyFile+0xda: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Coppelia.dll: https://discord.gg/VsXqydsvpu"
+    ],
+    "rule_id": "network.endpoint.community-invite.d81f3d73dea6",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Coppelia.json: https://github.com/McVaxius/Coppelia"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.50fc979f1107",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Coppelia.dll: https://raw.githubusercontent.com/McVaxius/LootGoblin/refs/heads/master/LootGoblin/data/CommunityMapLocations.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6b3649c5c01c",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Coppelia.dll: https://github.com/McVaxius/Coppelia"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.962eb9898449",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Coppelia.json: https://raw.githubusercontent.com/McVaxius/Coppelia/main/Coppelia/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a17a02d940b1",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Coppelia.dll: System.Net.Http.HttpClient",
+      "il:Coppelia.dll:<DownloadCommunityDataAsync>d__35.MoveNext+0x37: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Coppelia.dll:<DownloadCommunityDataAsync>d__35.MoveNext+0x53: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:Coppelia.dll:<DownloadCommunityDataAsync>d__35.MoveNext+0x63: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

@@ -1,0 +1,3123 @@
+{
+  "analysis": {
+    "analysisId": "dc378bca453b77a60e2b4f485690898dcd58a6b7394de46583469b54e206bd24",
+    "artifactSha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+    "path": "artifacts/b8/b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e/analyses/dc378bca453b77a60e2b4f485690898dcd58a6b7394de46583469b54e206bd24",
+    "recordCount": 25900
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+    "artifact_url": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+    "assembly_version": "0.5.44.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Dynamic code loading",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "artifact:MessagePack.dll: System.Diagnostics.Process",
+          "artifact:MessagePack.dll: ProcessStartInfo",
+          "metadata:System.Data.SQLite.dll: System.Diagnostics.Process",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.HelperMethods.GetProcessId+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.HelperMethods.GetProcessId+0xc: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:System.Data.SQLite.dll: DllImportAttribute",
+          "metadata:System.Data.SQLite.dll: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32+0x1: call System.Data.SQLite.UnsafeNativeMethodsWin32.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x7: newobj LoadLibraryCallback..ctor: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x15: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryPosix: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+          "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb",
+          "artifact:SubmarineEtaPlanner.dll: s://github.com/AlexValliere/submarineEtaPlanner",
+          "artifact:System.Data.SQLite.dll: s://system.data.sqlite.org/",
+          "artifact:System.Data.SQLite.dll: /Users/eric/dev/sds/System.Data.SQLite/obj/Release/netstandard2.1/System.Data.SQLite.pdb",
+          "artifact:System.Data.SQLite.dll: e://"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:MessagePack.dll: Reflection.Emit",
+          "metadata:MessagePack.dll: AssemblyLoadContext",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:SubmarineEtaPlanner.dll: FileStream",
+          "metadata:SubmarineEtaPlanner.dll: File.Move",
+          "metadata:SubmarineEtaPlanner.dll: Directory.CreateDirectory",
+          "metadata:SubmarineEtaPlanner.dll: File.Delete",
+          "il:SubmarineEtaPlanner.dll:SubmarineEtaPlanner.Fuel.JsonFuelObservationStore.Load+0x34: newobj System.IO.FileStream..ctor: FileStream",
+          "il:SubmarineEtaPlanner.dll:SubmarineEtaPlanner.Fuel.JsonFuelObservationStore.PreserveCorruptFile+0xca: call System.IO.File.Move: File.Move",
+          "il:SubmarineEtaPlanner.dll:SubmarineEtaPlanner.Fuel.AtomicFileWriter..ctor+0x41: ldftn System.IO.File.Move: File.Move",
+          "il:SubmarineEtaPlanner.dll:SubmarineEtaPlanner.Fuel.AtomicFileWriter.Write+0x1d: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "artifactBytes": 1843028,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.5.44.0",
+        "artifactBytes": 1843028,
+        "artifactSha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+        "catalogAssemblyVersion": "0.5.44.0",
+        "manifestInternalName": "SubmarineEtaPlanner",
+        "manifestPath": "SubmarineEtaPlanner.json",
+        "manifestRepositoryUrl": "https://github.com/AlexValliere/submarineEtaPlanner",
+        "resolvedArtifactUrl": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "alexvalliere.github.io",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "alexvalliere.github.io",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Dynamic code loading",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 70,
+          "exactVersionObservedCount": 66,
+          "families": {
+            "managed-assembly": 62,
+            "native": 4,
+            "nuget": 4
+          },
+          "fingerprint": "6b8ba01fbd802b039c5e6f3944e572a43cf2a94f6693e4fabef13ab03fddf9ee",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 190,
+            "platformLibrary": 2
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "RegisterExtensionFunctions",
+              "library": "e_sqlite3",
+              "managedName": "RegisterExtensionFunctions",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_backup_finish",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_backup_finish",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_bind_parameter_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_bind_parameter_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close_v2",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close_v2",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_table_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_table_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_table_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_table_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_text",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_text",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_text16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_text16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_compileoption_get",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_compileoption_get",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_compileoption_used",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_compileoption_used",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_create_function",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_create_function",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_create_window_function",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_create_window_function",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_enable_load_extension",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_enable_load_extension",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_enable_shared_cache",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_enable_shared_cache",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_errmsg",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_errmsg",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 6,
+            "observed": 60,
+            "required": 4
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 66,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 4,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 6,
+            "observed": 60,
+            "optional": 0,
+            "required": 4,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 70
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 7,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "alexvalliere.github.io",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 4,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 17,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 23771
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "alexvalliere.github.io",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://alexvalliere.github.io/submarineEtaPlanner/images/icon.png"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/AlexValliere/submarineEtaPlanner"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/AlexValliere/submarineEtaPlanner"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dotnet/msbuild"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "system.data.sqlite.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://system.data.sqlite.org/"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+        "internalName": "SubmarineEtaPlanner",
+        "manifestVersion": "0.5.44.0",
+        "observationId": 8715,
+        "observationKey": "manifest-b8141f471a68e0d489a4427ed883",
+        "repositoryUrl": "https://github.com/AlexValliere/submarineEtaPlanner",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 5295
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 6,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 4268205
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+        "attemptId": "attempt-v2-39c89570e954949b",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7b1abe1b04a69d81",
+        "definitionsRevision": "defs-v1-198d28eed60fa0de",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-5295",
+        "queueSeedRevision": "queue-seed-v2-6c770da9969fa38e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "0b0058a403f0a557a720ce9992adb207963a303c9a7d2f51a4cabb5e031974c0",
+        "scannerRevision": "scanner-v1-6d28d3be6f1e0f68",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-31336f91d36df7c8",
+        "targetFingerprint": "artifact-target-v2-b8f6f23862642b2ad009",
+        "variantId": 5295,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-01T04:28:41Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/AlexValliere/submarineEtaPlanner"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/AlexValliere/submarineEtaPlanner",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 82614,
+    "scanned_at_utc": "2026-09-01T04:28:41Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/AlexValliere/submarineEtaPlanner",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 5295
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+      "current_assembly_version": "0.5.44.0",
+      "current_scan_id": 82614,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-01T04:28:45Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 5295
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 44,
+      "artifact_only_count": 44,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.8928"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:messagepack",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MessagePack",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.1.7.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:messagepack.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MessagePack.Annotations",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.1.7.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.net.stringtools",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.NET.StringTools",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0",
+            "2.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:submarineetaplanner",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "SubmarineEtaPlanner",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.5.44.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:submarineetaplanner.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SubmarineEtaPlanner.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.sqlite",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:e_sqlite3",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "e_sqlite3",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libc",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libdl",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libdl",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:messagepack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MessagePack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.7"
+          ]
+        },
+        {
+          "componentKey": "nuget:messagepack.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MessagePack.Annotations",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.7"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.net.stringtools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NET.StringTools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "17.11.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.data.sqlite",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.3"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-01T04:28:45Z",
+      "comparison_id": 2133,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 82614,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 5295,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "7eff03057da5dde87cb727b4be4a82007b8734cdffb858d5477bc3aaa7b7b163",
+    "observedAtUtc": "2026-09-06T16:33:18Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "725f0a0ee0d49f973c881cd10e5a081fb3529cb9f34c822bcfba5f9f71b47abb",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "37a3fad7987fe9a05f4dde712ee5731678db49f2550f92a556cd1e47599ff36b",
+        "records": 6,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "5f7edd2aac60184147c83fd5f15908941c101ba9605af2548b64fc9dd3b465a7",
+        "records": 70,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "4b410709b79b93bb4ac79b961a498485ce697a06ff8bf71359387b4762c9636f",
+        "records": 6,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "afe1043be4714b9e7acf3ebdb3670a78e0754127a15cbe5ba0d48479d834d2f2",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "0ac5acbafc6564a3c93cb725939b4788b8332363e25863b679b6a7db7e968c7d",
+        "records": 824,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "9368902201b074f4623313adf4204d3bd85a5705d177aadc154b968d9e1cee76",
+        "records": 4407,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "b07b08e6cae3945265e7ba79640d61ca64dc2ed315117ab9c93d5ca10c4fb28a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "6ee60fe38ebdfb513616aeaa37ae7ef1acbc4810c3e5b5a37dbb7c3a0f52f4d8",
+        "records": 192,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "36eaf6f3f24f5e6b0750a4650654b0f0a2d3000905dbeced3ecdf35558bf8788",
+        "records": 17,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "0f59c58e43856fb31bd47d8c79154ce3caa6edd0a6683841299783dbf5f28eb8",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "18de472ab1aa1caa0554927c0fccd032849b60223a8cf702729a54fcf02a789a",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "7309a9446d706af7399aa6132ee04f570a4fc96f1b60785b375c89f04a3014b3",
+        "records": 345,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-33ecd8ea122698144d7190a13bbb083bbd53351f5d708f02a20904ea5ccf52ec",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Submarine ETA Planner",
+    "first_seen_utc": "2026-08-31T18:30:09Z",
+    "internal_name": "SubmarineEtaPlanner",
+    "last_seen_utc": "2026-09-05T03:58:21Z",
+    "plugin_id": 1337
+  },
+  "pluginId": 1337,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Plan Free Company submarine operations from local SubmarineTracker data: prioritize returns and next actions, forecast leveling and sector unlocks, review recorded salvage income, configure farming routes, and estimate ceruleum fuel runway. Requires Submarine Tracker to be installed and enabled. Open it with /seta. The installer icon was created with AI assistance.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1495,
+      "summary": "Plan and monitor your Free Company submarine fleets.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/AlexValliere/submarineEtaPlanner",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Read-only ETA planner for tracked FC submarines using SubmarineTracker-compatible voyage, build, EXP, and unlock calculations.",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/AlexValliere/submarineEtaPlanner"
+        },
+        {
+          "kind": "docs",
+          "label": "Documentation",
+          "url": "https://goatcorp.github.io/"
+        },
+        {
+          "kind": "issues",
+          "label": "Issues",
+          "url": "https://github.com/AlexValliere/submarineEtaPlanner/issues"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Submarine ETA Planner\n\n[![Build](https://github.com/AlexValliere/submarineEtaPlanner/actions/workflows/build.yml/badge.svg)](https://github.com/AlexValliere/submarineEtaPlanner/actions/workflows/build.yml)\n[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)\n\nSubmarine ETA Planner turns local SubmarineTracker data into a Free Company fleet-operations workspace. It highlights returns and next actions, forecasts leveling and sector unlock progress, reports recorded salvage income, and projects recurring farming cycles and ceruleum fuel runway.\n\nThe plugin is read-only with respect to the game and SubmarineTracker: it does not collect submarines, resend voyages, buy fuel, or modify tracker data. Its Operations, Leveling, Unlocks, Income, and FC Setup views organize every tracked FC while Settings provides global simulation and display controls.\n\n## Features\n\n- **Operations:** prioritize fleets that need attention, follow current returns, review recommended next actions, and filter mixed leveling and farming fleets.\n- **Leveling:** forecast every assigned leveling submarine to an FC-specific target rank, with route, EXP, rank, and likely completion details.\n- **Unlocks:** inspect FC-specific unlocked, explored, discoverable, locked, and actively attempted sectors on schematic maps with complete discovery paths.\n- **Income:** compare recorded gross NPC salvage value across FCs, submarines, routes, and 7-, 30-, 90-, 365-day, or lifetime periods.\n- **FC Setup:** save favorites, target ranks, leveling strategies, submarine roles, pinned farming routes, fuel-stock sources, safety stock, and collection delays.\n- **Settings:** tune global simulation, route, data-source, build-profile, calculation-limit, and display preferences.\n- Distinguish active voyages from conditional next routes, and coordinate shared unlock attempts across the whole FC fleet.\n- Model sector-discovery RNG with median ETAs and P10-P90 likely ranges without presenting locked sectors as guaranteed.\n- Project recurring farming dispatch cycles, fuel per voyage, remaining full-fleet sends, approximate runway, and refill deadlines.\n- List every tracked FC immediately, publish forecasts progressively, and reuse unchanged results when only part of SubmarineTracker's data changes.\n\n## Installation\n\nSubmarine ETA Planner requires [XIVLauncher](https://goatcorp.github.io/) and Dalamud.\n\n[Submarine Tracker](https://github.com/Infiziert90/SubmarineTracker) must also be installed and enabled. If it is unavailable, the planner keeps existing results visible, blocks refreshes, and provides a shortcut to its Dalamud installer page.\n\n1. Type `/xlsettings` in the FFXIV chat box.\n2. Open the **Experimental** tab and scroll to **Custom Plugin Repositories**.\n3. Paste the repository URL below into an empty field, press the **+** button, and ensure it is enabled.\n4. Select **Save and Close**.\n5. Type `/xlplugins`, search for **Submarine ETA Planner**, and select **Install**.\n6. Install and enable **Submarine Tracker** from the plugin installer if needed.\n7. Type `/seta` to open the planner.\n\n### Repository URL\n\n`https://alexvalliere.github.io/submarineEtaPlanner/repo.json`\n\n## Quick start\n\n1. Open the planner with `/seta`; it starts on **Operations**, where fleets needing attention appear first.\n2. Open **FC Setup** to choose favorites, set FC-specific target ranks and strategies, and assign each submarine to Leveling, Farming, or Paused.\n3. For farming submarines, optionally pin a route, adjust collection delay, select the FC's local fuel-stock source, and set its safety stock.\n4. Use **Leveling** for progression forecasts and **Unlocks** for FC-specific sector status and remaining discovery paths.\n5. Use **Income** for historical SubmarineTracker salvage results. Farming-cycle and fuel forecasts remain projections, not recorded earnings or game actions.\n6. Use **Settings** when you need global simulation, route, data-source, build-profile, calculation-limit, or display controls, then select **Apply & refresh**.\n\nFresh installations start with target rank 90, Recommended leveling, FC-wide fleet simulation, a 120-minute collection delay, no voyage-duration cap, a 33% unlock chance, and a 20-second per-FC calculation limit. Existing saved settings are never replaced during an update.\n\n**Reset defaults** asks for confirmation before loading defaults across every settings category. The reset remains staged so you can inspect each tab, adjust values, select **Apply & refresh**, or use **Revert** without changing the saved configuration.\n\n## Progressive calculations\n\nForecasts run one FC at a time so a difficult fleet cannot consume the entire refresh deadline. Forecast-backed views list all tracked FCs immediately, mark each one as queued or calculating, and publish completed results without waiting for the remaining FCs. FCs already at the target rank are handled first, followed by leveling FCs closest to the target.\n\nThe **Limits → Per-FC time limit** setting bounds each FC independently. If an FC reaches that limit, its partial or previous result remains visible and calculation continues with the next FC. Probability sampling stops early after at least 64 trials when the P10, P50, and P90 estimates have stabilized; uncertain forecasts may continue up to 256 trials.\n\nWhen SubmarineTracker's database changes, the planner compares a semantic fingerprint for each FC and recalculates only changed fleets. Unchanged complete forecasts appear immediately as **Up to date**. An FC with a voyage that has just returned is held as **Waiting for SubmarineTracker** until the tracker records its new rank and unlock outcome. The cache is memory-only, so reloading the plugin starts a full forecast. The header **Refresh** action and `/seta refresh` also intentionally perform a full recalculation.\n\n## Recorded income\n\nThe Income view reads valid primary and additional loot entries from SubmarineTracker's local history and attributes them by FC, submarine, route, and voyage return. It reports gross gil, recorded gil per day, gil per voyage, voyage count, and history coverage. Voyage counts and coverage begin only with returns containing at least one of the tracked salvage items, so earlier leveling voyages do not dilute farming income. It totals only the eight market-prohibited salvage accessories used for direct NPC gil farming:\n\n| Item | NPC sale price |\n| --- | ---: |\n| Salvaged Ring | 8,000 gil |\n| Salvaged Bracelet | 9,000 gil |\n| Salvaged Earring | 10,000 gil |\n| Salvaged Necklace | 13,000 gil |\n| Extravagant Salvaged Ring | 27,000 gil |\n| Extravagant Salvaged Bracelet | 28,500 gil |\n| Extravagant Salvaged Earring | 30,000 gil |\n| Extravagant Salvaged Necklace | 34,500 gil |\n\nPrices are read from the installed game's item data, with the table above used as an offline fallback. The displayed amount is gross NPC sale value, not proof that the items were sold and not net profit after repairs or other expenses. It covers only voyages present in SubmarineTracker history; voyages from before the tracker recorded loot cannot be reconstructed.\n\n## Farming cycles and fuel runway\n\nSubmarines assigned the Farming role use their pinned farming route or their current ordered SubmarineTracker route for recurring-cycle projections. The planner validates the effective route, build, sectors, fuel cost, and duration before forecasting departures. Current voyages are treated as already paid; future sends are grouped around their configured collection delays.\n\nFC Setup can resolve ceruleum stock automatically from one matching local observation, use a selected observed character, or use a manual value. Automatic safety stock reserves enough tanks for one complete resend of every active farming submarine; a fixed reserve can be used instead. Operations then shows tanks per full-fleet send, full-fleet sends remaining, approximate time above safety stock, and the estimated refill deadline. These are planning estimates based on the configured routes, timings, and last known stock, not automated workshop actions.\n\nThe planner reads only the inventory of the character currently being played. It keeps a local `workshop-fuel-observations.json` file in its plugin configuration directory so that character's last observed ceruleum tank count remains available after switching characters. The file stores the character content ID, character name and world, FC ID, observed tank count, and observation timestamp. Stored observations can be forgotten from FC Setup and are never uploaded.\n\n## Probabilistic unlock forecasts\n\nSector discovery is not guaranteed. The planner runs 64 to 256 deterministic, repeatable simulations using the FC-wide unlocked-sector state and every known active voyage. It stops when the percentile estimates stabilize or the per-FC calculation deadline is reached; insufficient samples produce an explicit partial forecast. It reports:\n\n- **P50 / Median**: half of modeled outcomes finish by this time.\n- **P10-P90**: the likely range containing the middle 80% of modeled outcomes.\n- **Unlocks in progress**: the submarines currently visiting an unlock source and their combined modeled chance.\n- **Conditional routes**: routes that become available only in simulation outcomes where the required sector was discovered.\n\nThe default discovery chance is **33% per eligible source visit**. This is a community-informed forecasting assumption, not an official game value, and can be changed under **Routes → Unlock chance per visit**. Square Enix confirms that discovering sectors can require repeated voyages in the [official Patch 4.2 notes](https://fr.finalfantasyxiv.com/lodestone/topics/detail/75c691f90f4a7da3907f0671ac33e139e9792abf); the [FFXIV Submarine Builders guidance](https://ffxivarchive.neocities.org/submarine) describes sector unlocking as flat RNG unaffected by submarine stats.\n\nThe plugin performs no runtime web requests. Loot history and all calculated gil totals remain local; the plugin does not learn from, upload, or otherwise transmit them.\n\n## Transparency\n\nThe project is licensed under the [MIT License](LICENSE). SubmarineTracker attribution, its complete MIT notice, and the exact provenance of the bundled route data are recorded in [Third Party Notices](THIRD_PARTY_NOTICES.md) and [Route Data Provenance](docs/ROUTE_DATA_PROVENANCE.md).\n\nDevelopment used substantial AI assistance under human direction and in-game validation. The installer icon was generated with AI image tooling. See [AI Usage Disclosure](AI_USAGE.md) for the complete declaration.\n\n## Chat commands\n\n- `/seta` toggles the planner on the Operations view.\n- `/seta settings` opens Settings.\n- `/seta refresh` opens Operations and refreshes the forecasts.\n- `/seta help` lists the available commands.\n\n## Data source\n\nThe plugin looks for Submarine Tracker data at the standard XIVLauncher config path:\n\n`pluginConfigs\\SubmarineTracker\\submarine-sqlite.db`\n\nYou can override the database path in the plugin's Data Source settings.\n\n## Support\n\nReport bugs or request features through [GitHub Issues](https://github.com/AlexValliere/submarineEtaPlanner/issues). Please include the plugin version, any warning shown by the planner, and whether Submarine Tracker is installed and enabled.\n\n## Acknowledgements\n\nSubmarine ETA Planner uses data and calculation concepts adapted from [Submarine Tracker](https://github.com/Infiziert90/SubmarineTracker). See [Third Party Notices](THIRD_PARTY_NOTICES.md) for attribution and licensing details.\n\n## Development\n\n```powershell\ndotnet restore\ndotnet test\ndotnet build -c Release\n```\n\nPublic release verification is documented in [Public Release Checklist](docs/PUBLIC_RELEASE_CHECKLIST.md). The official Dalamud testing-track manifest and disclosure text are prepared in [D17 Submission Template](docs/D17_SUBMISSION.md).\n\nRelease history is available in the [Changelog](CHANGELOG.md).\n\nDalamud API 15 currently targets .NET 10. If your machine only has the .NET 9 SDK, validate the planner core with:\n\n```powershell\ndotnet test .\\tests\\SubmarineEtaPlanner.Tests\\SubmarineEtaPlanner.Tests.csproj\n```",
+      "title": "submarineEtaPlanner",
+      "url": "https://github.com/AlexValliere/submarineEtaPlanner"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "9eaeb7df579737920353082d7ac8ad7e8118bfde9f0be791db89aa02c1162a43",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "70ffee88d6fabe9db9cf1345721108e786863878f04d9a7052b071e85c214fad",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "9ab4801e382d92e517d1891468e2f5bac66ec6e2863e62cdb1858fdd22cd5fbd",
+        "records": 5
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+    "artifact_url": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+    "assembly_version": "0.5.44.0",
+    "capabilities_json": [
+      "Dynamic code loading",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 1337,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+      "artifactBytes": 1843028,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.5.44.0",
+        "artifactBytes": 1843028,
+        "artifactSha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+        "catalogAssemblyVersion": "0.5.44.0",
+        "manifestInternalName": "SubmarineEtaPlanner",
+        "manifestPath": "SubmarineEtaPlanner.json",
+        "manifestRepositoryUrl": "https://github.com/AlexValliere/submarineEtaPlanner",
+        "resolvedArtifactUrl": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "alexvalliere.github.io",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "alexvalliere.github.io",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Dynamic code loading",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 70,
+          "exactVersionObservedCount": 66,
+          "families": {
+            "managed-assembly": 62,
+            "native": 4,
+            "nuget": 4
+          },
+          "fingerprint": "6b8ba01fbd802b039c5e6f3944e572a43cf2a94f6693e4fabef13ab03fddf9ee",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 190,
+            "platformLibrary": 2
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "RegisterExtensionFunctions",
+              "library": "e_sqlite3",
+              "managedName": "RegisterExtensionFunctions",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_backup_finish",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_backup_finish",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_bind_parameter_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_bind_parameter_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_close_v2",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_close_v2",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_database_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_database_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_decltype16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_decltype16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_origin_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_origin_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_table_name",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_table_name",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_table_name16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_table_name16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_text",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_text",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_column_text16",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_column_text16",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_compileoption_get",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_compileoption_get",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_compileoption_used",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_compileoption_used",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_create_function",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_create_function",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_create_window_function",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_create_window_function",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_enable_load_extension",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_enable_load_extension",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_enable_shared_cache",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_enable_shared_cache",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "System.Data.SQLite.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sqlite3_errmsg",
+              "library": "e_sqlite3",
+              "managedName": "sqlite3_errmsg",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 6,
+            "observed": 60,
+            "required": 4
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 66,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 4,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 6,
+            "observed": 60,
+            "optional": 0,
+            "required": 4,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 70
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 7,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "alexvalliere.github.io",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 4,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "system.data.sqlite.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 17,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 23771
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "alexvalliere.github.io",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://alexvalliere.github.io/submarineEtaPlanner/images/icon.png"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/AlexValliere/submarineEtaPlanner"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/AlexValliere/submarineEtaPlanner"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dotnet/msbuild"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "system.data.sqlite.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://system.data.sqlite.org/"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+        "internalName": "SubmarineEtaPlanner",
+        "manifestVersion": "0.5.44.0",
+        "observationId": 8715,
+        "observationKey": "manifest-b8141f471a68e0d489a4427ed883",
+        "repositoryUrl": "https://github.com/AlexValliere/submarineEtaPlanner",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 5295
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 6,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 10,
+        "uncompressedBytes": 4268205
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-298aa7936bba1c47",
+        "attemptId": "attempt-v2-39c89570e954949b",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7b1abe1b04a69d81",
+        "definitionsRevision": "defs-v1-198d28eed60fa0de",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-5295",
+        "queueSeedRevision": "queue-seed-v2-6c770da9969fa38e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "0b0058a403f0a557a720ce9992adb207963a303c9a7d2f51a4cabb5e031974c0",
+        "scannerRevision": "scanner-v1-6d28d3be6f1e0f68",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-31336f91d36df7c8",
+        "targetFingerprint": "artifact-target-v2-b8f6f23862642b2ad009",
+        "variantId": 5295,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-01T04:28:41Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "b8cff4fbfb21c8afed5b39aecfce84704c1323ebe42fa018e823a335a2157b9e",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/AlexValliere/submarineEtaPlanner"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/AlexValliere/submarineEtaPlanner",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 82614,
+    "scanned_at_utc": "2026-09-01T04:28:41Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 835,
+    "source_repository": "https://github.com/AlexValliere/submarineEtaPlanner",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 5295
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "db42d4f13092674a74d04ada73a166be2b871090ad374083068a6b1771c96eac",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"96a2258ad9efac0bdb1500335279611e58b1d083a333c79add5cd23f5b6bfd0c\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-05T03:58:21Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-05T03:58:21Z",
+    "name": "AlexValliere/submarineEtaPlanner",
+    "plugin_count": 1,
+    "provider": "AlexValliere/submarineEtaPlanner",
+    "source_id": 835,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/AlexValliere/submarineEtaPlanner/main/repo.json"
+  },
+  "sourceId": 835,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.5.44.0",
+    "author": "Alex Vallière",
+    "authors_json": [
+      "Alex Vallière"
+    ],
+    "category_tags_json": [],
+    "changelog": "Right-aligns Income gil and voyage values, uses neutral Gross gil text, and shortens the average column header.",
+    "dalamud_api_level": 15,
+    "description": "Plan Free Company submarine operations from local SubmarineTracker data: prioritize returns and next actions, forecast leveling and sector unlocks, review recorded salvage income, configure farming routes, and estimate ceruleum fuel runway. Requires Submarine Tracker to be installed and enabled. Open it with /seta. The installer icon was created with AI assistance.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+    "first_seen_utc": "2026-08-31T18:30:09Z",
+    "icon_url": "https://alexvalliere.github.io/submarineEtaPlanner/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-31T18:30:09Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Submarine ETA Planner",
+    "plugin_id": 1337,
+    "punchline": "Plan and monitor your Free Company submarine fleets.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.5.44.0",
+      "Author": "Alex Vallière",
+      "Changelog": "Right-aligns Income gil and voyage values, uses neutral Gross gil text, and shortens the average column header.",
+      "DalamudApiLevel": 15,
+      "Description": "Plan Free Company submarine operations from local SubmarineTracker data: prioritize returns and next actions, forecast leveling and sector unlocks, review recorded salvage income, configure farming routes, and estimate ceruleum fuel runway. Requires Submarine Tracker to be installed and enabled. Open it with /seta. The installer icon was created with AI assistance.",
+      "DownloadLinkInstall": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+      "DownloadLinkUpdate": "https://alexvalliere.github.io/submarineEtaPlanner/SubmarineEtaPlanner/latest.zip",
+      "IconUrl": "https://alexvalliere.github.io/submarineEtaPlanner/images/icon.png",
+      "InternalName": "SubmarineEtaPlanner",
+      "Name": "Submarine ETA Planner",
+      "Punchline": "Plan and monitor your Free Company submarine fleets.",
+      "RepoUrl": "https://github.com/AlexValliere/submarineEtaPlanner",
+      "Tags": [
+        "Submarine",
+        "ETA",
+        "Planner",
+        "Tracker"
+      ]
+    },
+    "repo_url": "https://github.com/AlexValliere/submarineEtaPlanner",
+    "source_entry_key": "submarineetaplanner|0.5.44.0|15|0|0",
+    "source_id": 835,
+    "tags_json": [
+      "Submarine",
+      "ETA",
+      "Planner",
+      "Tracker"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 5295
+  },
+  "variantId": 5295
+}

@@ -1,0 +1,185 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: s://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com0",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.CommandLine.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.EnvironmentVariables.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Json.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.UserSecrets.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ShrinkU.dll: https://sphene.online/shrinku/change_log.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e87bb44410dc",
+    "severity": "caution",
+    "title": "Endpoint: sphene.online"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ShrinkU.dll: System.Diagnostics.Process",
+      "metadata:ShrinkU.dll: ProcessStartInfo",
+      "metadata:ShrinkU.dll: ShellExecute",
+      "metadata:ShrinkU.dll: Process.Start",
+      "il:ShrinkU.dll:ShrinkU.UI.ConversionUI.DrawSettings_ViewImpl+0x2d7: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:ShrinkU.dll:ShrinkU.UI.ConversionUI.DrawSettings_ViewImpl+0x2d7: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:ShrinkU.dll:ShrinkU.UI.ConversionUI.DrawSettings_ViewImpl+0x2de: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:ShrinkU.dll:ShrinkU.UI.ConversionUI.DrawSettings_ViewImpl+0x2de: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "il:Microsoft.Extensions.Configuration.FileExtensions.dll:Microsoft.Extensions.Configuration.FileConfigurationProvider.<Load>g__OpenRead|6_0+0x17: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "metadata:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "il:Microsoft.Extensions.FileProviders.Physical.dll:Microsoft.Extensions.FileProviders.Physical.PhysicalFileInfo.CreateReadStream+0x11: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "metadata:ShrinkU.dll: FileStream",
+      "metadata:ShrinkU.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ShrinkU.json: https://github.com/SpheneDev/ShrinkU"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1fd4afb1e900",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ShrinkU.dll: https://github.com/SpheneDev/ShrinkU"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d9b7001914c0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: WebRequest",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: HttpWebRequest",
+      "metadata:ShrinkU.dll: System.Net.Http.HttpClient",
+      "il:ShrinkU.dll:ShrinkU.Plugin..ctor+0x2a4: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ShrinkU.dll:<GetChangelogEntriesAsync>d__4.MoveNext+0x9b: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

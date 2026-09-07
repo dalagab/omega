@@ -1,0 +1,300 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net10.0\\System.Speech.dll: Assembly.Load",
+      "metadata:runtimes\\win\\lib\\net10.0\\System.Speech.dll: Assembly.LoadFrom",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Recognition.Grammar.Create+0x45: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Recognition.Grammar.Create+0x45: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Recognition.Grammar.Create+0x54: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Recognition.Grammar.Create+0x9c: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Recognition.Grammar.Create+0x9c: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Internal.Synthesis.VoiceSynthesis.GetSsmlEngine+0x18: call System.Reflection.Assembly.Load: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:dheacon.dll: s://github.com/McVaxius/dheacon",
+      "artifact:dheacon.dll: s://ko-fi.com/mcvaxius",
+      "artifact:dheacon.dll: s://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip",
+      "artifact:dheacon.dll: s://huggingface.co/rhasspy/piper-voices/raw/main/voices.json",
+      "artifact:dheacon.dll: s://huggingface.co/rhasspy/piper-voices/resolve/main/",
+      "artifact:dheacon.dll: s://api.github.com/repos/yeager/piper-voices-sv/releases",
+      "artifact:NAudio.Core.dll: s://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio.Core\\obj\\Release\\netstandard2.0\\NAudio.Core.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:dheacon.dll: SigScanner",
+      "il:dheacon.dll:Dheacon.Plugin..ctor+0xec: call Dheacon.Plugin.get_SigScanner: SigScanner",
+      "il:dheacon.dll:Dheacon.Services.BgmProbeService.EnsureResolved+0x3c: callvirt Dalamud.Plugin.Services.ISigScanner.TryGetStaticAddressFromSig: SigScanner",
+      "artifact:dheacon.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:NAudio.Core.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: LoadLibrary",
+      "metadata:NAudio.Core.dll: GetProcAddress",
+      "artifact:NAudio.Core.dll: LoadLibrary",
+      "artifact:NAudio.Core.dll: GetProcAddress",
+      "metadata:System.Speech.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Windows.Extensions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:WinRT.Runtime.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://www.w3.org/XML/1998/namespace"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2a69784840b2",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Speech.dll: http://www.w3.org/2001/06/grammar",
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://www.w3.org/2001/06/grammar"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3861589e4c33",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://schemas.microsoft.com/Speech/2003/03/PromptEngine"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5113737f1bc2",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://www.w3.org/2001/10/synthesis"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5bae5a1630d5",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://schemas.microsoft.com/Speech/2002/06/SRGSExtensions"
+    ],
+    "rule_id": "network.endpoint.insecure-http.628eef02954c",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Speech.dll: http://www.microsoft.com0/",
+      "artifact:System.Windows.Extensions.dll: http://www.microsoft.com0/",
+      "artifact:WinRT.Runtime.dll: http://www.microsoft.com0/",
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:dheacon.dll: https://ko-fi.com/mcvaxius"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.226f7ad8215b",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:dheacon.dll: https://huggingface.co/rhasspy/piper-voices/resolve/main/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.464362994247",
+    "severity": "caution",
+    "title": "Endpoint: huggingface.co"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:dheacon.dll: System.Diagnostics.Process",
+      "metadata:dheacon.dll: ProcessStartInfo",
+      "metadata:dheacon.dll: ShellExecute",
+      "metadata:dheacon.dll: Process.Start",
+      "il:dheacon.dll:Dheacon.Windows.MainWindow.Draw+0x82: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:dheacon.dll:Dheacon.Windows.MainWindow.Draw+0x82: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:dheacon.dll:Dheacon.Windows.MainWindow.Draw+0x8d: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:dheacon.dll:Dheacon.Windows.MainWindow.Draw+0x8d: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: RegistryKey",
+      "artifact:System.Speech.dll: RegistryKey",
+      "metadata:runtimes\\win\\lib\\net10.0\\System.Speech.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net10.0\\System.Speech.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Internal.Synthesis.VoiceSynthesis.GetComEngine+0x4: callvirt System.Speech.Synthesis.VoiceInfo.get_RegistryKeyPath: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Internal.ObjectTokens.RegistryDataKey..ctor+0x3: callvirt Microsoft.Win32.RegistryKey.get_Handle: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Internal.ObjectTokens.RegistryDataKey..ctor+0x3: callvirt Microsoft.Win32.RegistryKey.get_Handle: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.Speech.dll:System.Speech.Internal.ObjectTokens.RegistryDataKey.RootHKEYFromRegPath+0xd: callvirt Microsoft.Win32.RegistryKey.get_Handle: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:dheacon.dll: FileStream",
+      "metadata:dheacon.dll: Directory.CreateDirectory",
+      "metadata:dheacon.dll: File.Delete",
+      "metadata:dheacon.dll: WriteAllText",
+      "metadata:dheacon.dll: Directory.Delete",
+      "metadata:dheacon.dll: File.Move",
+      "metadata:dheacon.dll: WriteAllBytes",
+      "il:dheacon.dll:Dheacon.Services.CommentaryLinePackService.Load+0xa1: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:dheacon.dll: https://api.github.com/repos/yeager/piper-voices-sv/releases"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.06c9f990df88",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:dheacon.dll: https://github.com/McVaxius/dheacon"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3937eb5aa8a9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SoundTouch.Net.dll: https://github.com/owoudenberg/soundtouch.net",
+      "artifact:SoundTouch.Net.NAudioSupport.dll: https://github.com/owoudenberg/soundtouch.net"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.78365776d23e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:dheacon.dll: https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c1d2349e28e3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Speech.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Windows.Extensions.dll: https://github.com/dotnet/dotnet",
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Speech.dll: https://github.com/dotnet/dotnet",
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Windows.Extensions.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:dheacon.dll: System.Net.Http.HttpClient",
+      "il:dheacon.dll:Dheacon.Services.PiperVoiceCatalogService..ctor+0x68: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:dheacon.dll:Dheacon.Services.PiperVoiceCatalogService..ctor+0x78: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:dheacon.dll:<DownloadFileAsync>d__63.MoveNext+0x72: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:dheacon.dll:<InstallOfficialVoiceAsync>d__60.MoveNext+0x80: call Dheacon.Services.PiperVoiceCatalogService.DownloadFileAsync: DownloadFile",
+      "il:dheacon.dll:<InstallOfficialVoiceAsync>d__60.MoveNext+0x103: call Dheacon.Services.PiperVoiceCatalogService.DownloadFileAsync: DownloadFile",
+      "il:dheacon.dll:<InstallOfficialVoiceAsync>d__60.MoveNext+0x1a5: call Dheacon.Services.PiperVoiceCatalogService.DownloadFileAsync: DownloadFile",
+      "il:dheacon.dll:<InstallPackagedVoiceAsync>d__61.MoveNext+0x6e: call Dheacon.Services.PiperVoiceCatalogService.DownloadFileAsync: DownloadFile"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

@@ -1,0 +1,506 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:ClearScript.Core.dll:<LoadDocumentAsync>d__17.MoveNext+0x24a: callvirt Microsoft.ClearScript.DocumentLoadCallback.Invoke",
+      "il:ClearScript.Core.dll:<LoadDocumentAsync>d__17.MoveNext+0x293: callvirt Microsoft.ClearScript.AsyncDocumentLoadCallback.Invoke",
+      "il:ClearScript.Core.dll:<>c__DisplayClass56_0.<QueueNativeCallback>b__0+0xe: ldvirtftn Microsoft.ClearScript.Util.INativeCallback.Invoke",
+      "il:ClearScript.Core.dll:<>c.<OnTimer>b__5_0+0x1: callvirt Microsoft.ClearScript.Util.INativeCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: Assembly.Load",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.HostTypeCollection.AddAssembly+0x17: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.LoadPrimaryInteropAssembly+0x46: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:ClearScript.Core.dll:<>c.<GetFullAssemblyName>b__0_0+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:ClearScript.Core.dll:<>c.<TryLoad>b__1_0+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:ClearScript.Core.dll:<>c.<GetFullTypeName>b__81_0+0x6: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:ClearScript.Core.dll: C:\\Code\\ClearScript\\NetCore\\ClearScript.Core\\obj\\Release\\net5.0\\ClearScript.Core.pdb",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:ClearScript.Core.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com0",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Quack.dll: SigScanner",
+      "il:Quack.dll:Quack.Plugin..ctor+0xdd: call Quack.Plugin.get_SigScanner: SigScanner",
+      "il:Quack.dll:Quack.Chat.ChatServer..ctor+0x16: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:Quack.dll:Quack.Chat.ChatServer..ctor+0x31: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "artifact:Quack.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:ClearScript.V8.dll: TcpListener",
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8DebugAgent.StartAcceptWebClient+0x6: callvirt System.Net.Sockets.TcpListener.AcceptSocketAsync: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_0+0x11: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_0+0x26: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_1+0x11: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_1+0x26: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<Dispose>b__21_0+0x1: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "artifact:ClearScript.V8.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: DllImportAttribute",
+      "metadata:ClearScript.Core.dll: LoadLibrary",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.NativeMethods.LoadLibrary+0x8: call NativeWindowsMethods.LoadLibraryW -> kernel32.dll!LoadLibraryW: LoadLibrary",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.NativeMethods.LoadLibrary+0x1b: call NativeLinuxMethods.LoadLibrary -> libdl.so.2!dlopen: LoadLibrary",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.NativeMethods.LoadLibrary+0x2b: call NativeOSXMethods.LoadLibrary -> libdl.dylib!dlopen: LoadLibrary",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.NativeMethods.GetLoadLibraryErrorMessage+0x19: call NativeLinuxMethods.GetLoadLibraryErrorMessage -> libdl.so.2!dlerror: LoadLibrary",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.NativeMethods.GetLoadLibraryErrorMessage+0x2b: call NativeOSXMethods.GetLoadLibraryErrorMessage -> libdl.dylib!dlerror: LoadLibrary",
+      "artifact:ClearScript.Core.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Humanizer.dll: http://www.digicert.com/CPS0",
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClearScript.V8.ICUData.dll: http://www.unicode.org/copyright.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.452052199a8d",
+    "severity": "caution",
+    "title": "Endpoint: www.unicode.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClearScript.Core.dll: http://www.microsoft.com0/",
+      "artifact:ClearScript.V8.ICUData.dll: http://www.microsoft.com0/",
+      "artifact:ClearScript.V8.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Humanizer.dll: http://ocsp.digicert.com0o/",
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cronos.dll: http://ocsp.digicert.com0c/",
+      "artifact:Humanizer.dll: http://ocsp.digicert.com0c/",
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cronos.dll: http://ocsp.digicert.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f7ff339eaae3",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cronos.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cronos.dll: https://www.hangfire.io/0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.01cbe3ae6783",
+    "severity": "caution",
+    "title": "Endpoint: www.hangfire.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Quack.dll: https://www.sqlite.org/fts5.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.922ccb54ff13",
+    "severity": "caution",
+    "title": "Endpoint: www.sqlite.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClearScript.V8.dll: https://microsoft.github.io/ClearScript/favicon.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d11e8fda227c",
+    "severity": "caution",
+    "title": "Endpoint: microsoft.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cronos.dll: https://www.globalsign.com/repository/0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e3ac4e8e0000",
+    "severity": "caution",
+    "title": "Endpoint: www.globalsign.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: System.Net.Sockets",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.SocketHelpers.SendAsync+0x39: ldftn System.Net.Sockets.Socket.EndSend: System.Net.Sockets",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.SocketHelpers.ReceiveAsync+0x39: ldftn System.Net.Sockets.Socket.EndReceive: System.Net.Sockets",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.Web.WebSocket.<Close>b__12_0+0x6: callvirt System.Net.Sockets.Socket.Close: System.Net.Sockets",
+      "il:ClearScript.Core.dll:<>c__DisplayClass6_0.<SendAsync>b__0+0x1b: callvirt System.Net.Sockets.Socket.BeginSend: System.Net.Sockets",
+      "il:ClearScript.Core.dll:<>c__DisplayClass7_0.<ReceiveAsync>b__0+0x1b: callvirt System.Net.Sockets.Socket.BeginReceive: System.Net.Sockets",
+      "il:ClearScript.Core.dll:<CreateAsync>d__7.MoveNext+0x24e: callvirt System.Net.Sockets.Socket.get_LocalEndPoint: System.Net.Sockets",
+      "artifact:ClearScript.Core.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: System.Diagnostics.Process",
+      "il:ClearScript.Core.dll:<GetRawUris>d__8.MoveNext+0x1cb: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ClearScript.Core.dll:<GetRawUris>d__8.MoveNext+0x1e3: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:ClearScript.Core.dll:<GetRawUris>d__8.MoveNext+0x1f0: callvirt System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process",
+      "artifact:ClearScript.Core.dll: System.Diagnostics.Process",
+      "metadata:Quack.dll: System.Diagnostics.Process",
+      "metadata:Quack.dll: ProcessStartInfo",
+      "metadata:Quack.dll: ShellExecute"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: Microsoft.Win32.Registry",
+      "metadata:ClearScript.Core.dll: RegistryKey",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x12: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x12: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x47: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x47: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x80: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x80: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Quack.dll: File.Move",
+      "il:Quack.dll:Quack.Configs.ConfigMigrator.MigrateDatabasePathToV6+0x33: call System.IO.File.Move: File.Move",
+      "metadata:JavaScriptEngineSwitcher.Core.dll: FileStream",
+      "artifact:JavaScriptEngineSwitcher.Core.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Quack.json: https://github.com/anya-hichu/Quack"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0162c873b16e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Quack.dll: https://github.com/Warpholomey/DozeAnywhere"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1fe7c8c0874c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Humanizer.dll: https://github.com/Humanizr/Humanizer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5a0a88c20bb8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Quack.dll: https://github.com/anya-hichu/Quack/releases"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.935b71d4a0d5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Quack.json: https://raw.githubusercontent.com/anya-hichu/Quack/master/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b8442fd2f53d",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JavaScriptEngineSwitcher.V8.dll: https://github.com/Taritsyn/<redacted>",
+      "artifact:JavaScriptEngineSwitcher.Core.dll: https://github.com/Taritsyn/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b95ee920fbe6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Quack.dll: https://github.com/anya-hichu/Quack"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b961eec93e19",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AdvancedStringBuilder.dll: https://github.com/Taritsyn/AdvancedStringBuilder"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b9bce07cd28e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cfabce510df0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SQLite-net.dll: https://github.com/praeclarum/sqlite-net.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eae6a58d96a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ThrottleDebounce.dll: https://github.com/Aldaviva/ThrottleDebounce.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ee8f030ba131",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: System.Net.Http.HttpClient",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.Web.WebContext..ctor+0x9: newobj Microsoft.ClearScript.Util.Web.WebRequest..ctor: WebRequest",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.Web.WebRequest..ctor+0xf: call Microsoft.ClearScript.Util.Web.WebRequest.get_Uri: WebRequest",
+      "il:ClearScript.Core.dll:<LoadDocumentAsync>d__17.MoveNext+0x148: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ClearScript.Core.dll:<LoadDocumentAsync>d__17.MoveNext+0x163: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "il:ClearScript.Core.dll:<WebDocumentExistsAsync>d__16.MoveNext+0x1e: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ClearScript.Core.dll:<WebDocumentExistsAsync>d__16.MoveNext+0x55: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+      "il:ClearScript.Core.dll:<AcceptWebSocketAsync>d__8.MoveNext+0x17: callvirt Microsoft.ClearScript.Util.Web.WebRequest.get_IsWebSocketRequest: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/win-x64/native/e_sqlite3.dll",
+      "runtimes/win-x64/native/ClearScriptV8.win-x64.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

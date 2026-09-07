@@ -1,0 +1,259 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: s://github.com/AtmoOmen/CurrencyTracker/issues",
+      "artifact:CurrencyTracker.dll: s://discord.com/channels/581875019861328007/1019646133305344090/threads/1163039624957010021",
+      "artifact:CurrencyTracker.dll: s://pd.qq.com/s/fttirpnql",
+      "artifact:CurrencyTracker.dll: s://github.com/AtmoOmen/CurrencyTracker/",
+      "artifact:CurrencyTracker.dll: s://raw.githubusercontent.com/AtmoOmen/CurrencyTracker/master/CurrencyTracker/Manager/Langs/",
+      "artifact:CurrencyTracker.dll: s://raw.githubusercontents.com/AtmoOmen/CurrencyTracker/master/CurrencyTracker/Manager/Langs/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:CurrencyTracker.dll: SigScanner",
+      "metadata:CurrencyTracker.dll: Dalamud.Hooking",
+      "metadata:CurrencyTracker.dll: HookFromAddress",
+      "il:CurrencyTracker.dll:CurrencyTracker.Manager.Service..cctor+0x68: newobj Dalamud.Game.SigScanner..ctor: SigScanner",
+      "il:CurrencyTracker.dll:CurrencyTracker.Manager.Trackers.Components.WarpCosts.WarpConfirmationCheck+0x5b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:CurrencyTracker.dll: Dalamud.Hooking",
+      "artifact:CurrencyTracker.dll: SigScanner",
+      "artifact:CurrencyTracker.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Caching.Memory.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Caching.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Caching.Memory.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Primitives.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://crowdin.com/project/dalamud-currencytracker"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.43f47b492f4d",
+    "severity": "caution",
+    "title": "Endpoint: crowdin.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://raw.githubusercontents.com/AtmoOmen/CurrencyTracker/master/CurrencyTracker/Manager/Langs/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7016ed35ef3f",
+    "severity": "caution",
+    "title": "Endpoint: raw.githubusercontents.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://pd.qq.com/s/fttirpnql"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ca923a1fc7c5",
+    "severity": "caution",
+    "title": "Endpoint: pd.qq.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:CurrencyTracker.dll: System.Diagnostics.Process",
+      "metadata:CurrencyTracker.dll: ProcessStartInfo",
+      "metadata:CurrencyTracker.dll: ShellExecute",
+      "metadata:CurrencyTracker.dll: Process.Start",
+      "il:CurrencyTracker.dll:CurrencyTracker.Manager.Tools.Helpers.OpenDirectory+0x16: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:CurrencyTracker.dll:CurrencyTracker.Manager.Tools.Helpers.OpenDirectory+0x16: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:CurrencyTracker.dll:CurrencyTracker.Manager.Tools.Helpers.OpenDirectory+0x21: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:CurrencyTracker.dll:CurrencyTracker.Manager.Tools.Helpers.OpenDirectory+0x21: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:CurrencyTracker.dll: FileStream",
+      "metadata:CurrencyTracker.dll: Directory.CreateDirectory",
+      "metadata:CurrencyTracker.dll: File.Delete",
+      "metadata:CurrencyTracker.dll: Directory.Delete",
+      "metadata:CurrencyTracker.dll: File.Move",
+      "metadata:CurrencyTracker.dll: WriteAllBytes",
+      "il:CurrencyTracker.dll:CurrencyTracker.Plugin.GetCurrentCharacter+0x1f8: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:CurrencyTracker.dll:CurrencyTracker.Plugin.GetCurrentCharacterDataFolder+0x63: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://github.com/AtmoOmen/CurrencyTracker/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.03f328947dfb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://raw.githubusercontent.com/AtmoOmen/CurrencyTracker/master/CurrencyTracker/Manager/Langs/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0ae11efcaf2f",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:IntervalUtility.dll: https://github.com/AlexeyBoiko/IntervalUtility"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3a21bde40789",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://discord.com/channels/581875019861328007/1019646133305344090/threads/1163039624957010021"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4ea75e30e00d",
+    "severity": "informational",
+    "title": "Endpoint: discord.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.dll: https://github.com/AtmoOmen/CurrencyTracker/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5eab721a4716",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.json: https://raw.githubusercontent.com/AtmoOmen/CurrencyTracker/master/Assets/img1-CP.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8a1ee61a19fd",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TinyPinyin.dll: https://github.com/hstarorg/TinyPinyin.Net"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.982ef0c4d6f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TinyPinyin.dll: https://github.com/promeG/TinyPinyin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9a2d34a6dba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Caching.Memory.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CurrencyTracker.json: https://github.com/AtmoOmen/CurrencyTracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bcc59627590b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:CurrencyTracker.dll: System.Net.Http.HttpClient",
+      "il:CurrencyTracker.dll:<DownloadLanguageFilesAsync>d__2.MoveNext+0x15: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:CurrencyTracker.dll:<TryDownloadLanguageFileAsync>d__3.MoveNext+0x5c: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

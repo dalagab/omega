@@ -1,0 +1,414 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: Assembly.Load",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0xc0: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0x15c: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:OmenTools.dll: AssemblyLoadContext",
+      "artifact:OmenTools.dll: AssemblyLoadContext",
+      "metadata:System.CodeDom.dll: Assembly.Load",
+      "metadata:System.CodeDom.dll: Assembly.LoadFile",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.CompilerResults.get_CompiledAssembly+0x1d: call System.Reflection.Assembly.LoadFile: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: s://github.com/dotnet/runtime",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://www.microsoft.com0",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:MissFisher.dll: SigScanner",
+      "metadata:MissFisher.dll: Dalamud.Hooking",
+      "il:MissFisher.dll:A.q.A+0xd: call OmenTools.DService.get_SigScanner: SigScanner",
+      "il:MissFisher.dll:A.q.A+0x18: callvirt Dalamud.Game.SigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:MissFisher.dll:A.q.A+0x43: call OmenTools.DService.get_SigScanner: SigScanner",
+      "il:MissFisher.dll:A.q.A+0x49: callvirt Dalamud.Game.SigScanner.ScanText: SigScanner",
+      "il:MissFisher.dll:a.al.b+0x0: call OmenTools.DService.get_SigScanner: SigScanner",
+      "il:MissFisher.dll:a.al.b+0xb: callvirt Dalamud.Game.SigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: DllImportAttribute",
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: GetProcAddress",
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: LoadLibrary",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.WmiNetUtilsHelper..cctor+0x56: call Kernel32.LoadLibrary: LoadLibrary",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.WmiNetUtilsHelper..cctor+0x69: call System.SR.get_LoadLibraryFailed: LoadLibrary",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.WmiNetUtilsHelper.LoadDelegate+0x2: call Kernel32.GetProcAddress: GetProcAddress",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:Kernel32.GetProcAddress+0x4c: call Kernel32.<GetProcAddress>g____PInvoke|1_0 -> kernel32.dll!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: http://www.microsoft.com0/",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll: http://www.microsoft.com0/",
+      "artifact:System.CodeDom.dll: http://www.microsoft.com0/",
+      "artifact:System.Management.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://auth.n4ko.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.752024ee37fe",
+    "severity": "caution",
+    "title": "Endpoint: auth.n4ko.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://www.bouncycastle.org/csharp/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7e431621f13d",
+    "severity": "caution",
+    "title": "Endpoint: www.bouncycastle.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://gh.atmoomen.top/DalamudPlugins/main/pluginmaster-cn.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.995dd5a5f09b",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.json: https://missfisher-1331276814.cos.ap-guangzhou.myqcloud.com/MissFisherIcon128.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.acad766846c4",
+    "severity": "caution",
+    "title": "Endpoint: missfisher-1331276814.cos.ap-guangzhou.myqcloud.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://auth-test.n4ko.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ba4060e1f095",
+    "severity": "caution",
+    "title": "Endpoint: auth-test.n4ko.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://auth.n3ko.fun/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bace20fb16ac",
+    "severity": "caution",
+    "title": "Endpoint: auth.n3ko.fun"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://ko-fi.com/blackcleaverloli"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c15af7ffa63f",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://docs.qq.com/sheet/DVlNaQ012amF4SW1G"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dfd45dcca0dc",
+    "severity": "caution",
+    "title": "Endpoint: docs.qq.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://afdian.com/a/bcloli"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ebafdee8d818",
+    "severity": "caution",
+    "title": "Endpoint: afdian.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:OmenTools.dll: System.Diagnostics.Process",
+      "metadata:OmenTools.dll: ProcessStartInfo",
+      "metadata:OmenTools.dll: ShellExecute",
+      "metadata:OmenTools.dll: Process.Start",
+      "il:OmenTools.dll:OmenTools.Helpers.HelpersOm.OpenPath+0x7f: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+      "il:OmenTools.dll:OmenTools.Helpers.HelpersOm.OpenPath+0x86: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:OmenTools.dll:OmenTools.Helpers.HelpersOm.OpenPath+0x86: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:OmenTools.dll:OmenTools.Helpers.HelpersOm.OpenPath+0x8d: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:OmenTools.dll: System.Windows.Forms.Clipboard",
+      "il:OmenTools.dll:OmenTools.Helpers.HelpersOm.ExportToClipboard+0x21: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:OmenTools.dll:OmenTools.Helpers.HelpersOm.ImportFromClipboard+0x0: call System.Windows.Forms.Clipboard.GetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net7.0\\System.Management.dll: FileStream",
+      "il:runtimes\\win\\lib\\net7.0\\System.Management.dll:System.Management.ManagementClassGenerator.GenerateCode+0x37: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: FileStream",
+      "metadata:MissFisher.dll: FileStream",
+      "metadata:MissFisher.dll: File.Delete",
+      "metadata:MissFisher.dll: WriteAllText",
+      "metadata:MissFisher.dll: Directory.CreateDirectory",
+      "il:MissFisher.dll:MissFisher.Plugin.G+0x11: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://discord.gg/C3KuXT7FRR"
+    ],
+    "rule_id": "network.endpoint.community-invite.b3a7e07246fa",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://discord.com/invite/MDvv8Ejntw"
+    ],
+    "rule_id": "network.endpoint.community-invite.fad311e828a8",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://github.com/BlackCleaverLoli/KTJ.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2acf7a9ec247",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://raw.githubusercontent.com/RedAsteroid/DalamudPlugins/main/pluginmaster.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.468a607ac65c",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://raw.githubusercontent.com/BlackCleaverLoli/MissFisher/<redacted>/Preset/Presets-251208.csv"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5d569714fda4",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.json: https://github.com/cycleapple/<redacted>/releases/download/plugins-api13/MissFisher-1.6.5.13.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.63b46e6c9571",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://github.com/BlackCleaverLoli/MissFisher"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.67eb98140d03",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TinyPinyin.dll: https://github.com/hstarorg/TinyPinyin.Net"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.982ef0c4d6f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TinyPinyin.dll: https://github.com/promeG/TinyPinyin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9a2d34a6dba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net7.0\\System.Management.dll: https://github.com/dotnet/runtime",
+      "artifact:System.CodeDom.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Management.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://raw.githubusercontent.com/NiGuangOwO/DalamudPlugins/main/pluginmaster.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a107a922977b",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.dll: https://github.com/AtmoOmen/GatherBuddyReborn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a61f4acda203",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Windows.Extensions.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MissFisher.json: https://github.com/cycleapple/MissFisher"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eef2ae213986",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OmenTools.dll: https://github.com/AtmoOmen/OmenTools.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f73df46cb0d5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll: WebRequest",
+      "il:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll:System.Media.SoundPlayer.LoadSync+0x5d: call System.Net.WebRequest.Create: WebRequest",
+      "il:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll:System.Media.SoundPlayer.LoadSync+0x69: callvirt System.Net.WebRequest.set_Timeout: WebRequest",
+      "il:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll:System.Media.SoundPlayer.LoadSync+0x6e: callvirt System.Net.WebRequest.GetResponse: WebRequest",
+      "il:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll:<>c.<CopyStreamAsync>b__66_0+0x6: callvirt System.Net.WebRequest.Abort: WebRequest",
+      "il:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll:<CopyStreamAsync>d__66.MoveNext+0x5e: call System.Net.WebRequest.Create: WebRequest",
+      "il:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll:<CopyStreamAsync>d__66.MoveNext+0x9a: callvirt System.Net.WebRequest.GetResponseAsync: WebRequest",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Windows.Extensions.dll: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

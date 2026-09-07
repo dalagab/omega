@@ -1,0 +1,2203 @@
+{
+  "analysis": {
+    "analysisId": "329927568c4e538ea5db6f2d76b91039a8a8edf89ab6cff05a12d4a4f8225042",
+    "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+    "path": "artifacts/81/815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c/analyses/329927568c4e538ea5db6f2d76b91039a8a8edf89ab6cff05a12d4a4f8225042",
+    "recordCount": 8751
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+    "artifact_url": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "assembly_version": "1.3.0.8",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "input.keyboard.inject",
+        "confidence": "very-high",
+        "evidence": [
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x207: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x239: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x26b: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x29d: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x2c5: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event"
+        ],
+        "indirect": false,
+        "label": "Keyboard input injection",
+        "reachable": true,
+        "reason": "Calls a native keyboard/input injection API."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Endpoint: github.com",
+      "Endpoint: www.freedesktop.org",
+      "Hard-coded external file access",
+      "Keyboard input injection",
+      "Native/PInvoke",
+      "Raw sockets"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for keyboard input injection. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x207: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x239: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x26b: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:NowPlaying.dll:NowPlaying.Plugin.CommandHandler+0x29d: call NowPlaying.Plugin.keybd_event -> user32.dll!keybd_event"
+        ],
+        "ruleId": "automation.input.keyboard.inject",
+        "severity": "high",
+        "title": "Keyboard input injection"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:NowPlaying.dll: System.Net.Sockets",
+          "il:NowPlaying.dll:NowPlaying.Plugin..ctor+0x3a1: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+          "artifact:NowPlaying.dll: System.Net.Sockets",
+          "metadata:Tmds.DBus.Protocol.dll: System.Net.Sockets",
+          "metadata:Tmds.DBus.Protocol.dll: Socket.Connect",
+          "il:Tmds.DBus.Protocol.dll:Tmds.DBus.Protocol.MessageStream..ctor+0x1a: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+          "il:Tmds.DBus.Protocol.dll:Tmds.DBus.Protocol.MessageStream.CloseCore+0x1c: call System.Net.Sockets.Socket.Dispose: System.Net.Sockets",
+          "il:Tmds.DBus.Protocol.dll:Tmds.DBus.Protocol.NetstandardExtensions.GetSafeHandle+0x1: callvirt System.Net.Sockets.Socket.get_SafeHandle: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Tmds.DBus.Protocol.dll: http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"
+        ],
+        "ruleId": "network.endpoint.insecure-http.912d43e7b940",
+        "severity": "caution",
+        "title": "Endpoint: www.freedesktop.org"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:NowPlaying.dll: DllImportAttribute",
+          "metadata:NPSMLib.dll: DllImportAttribute",
+          "metadata:Tmds.DBus.Protocol.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NPSMLib.dll: https://github.com/ADeltaX/NPSMLib"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b9980e8112a8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NowPlaying.dll: https://github.com/wompscode/NowPlaying.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a701fd49558b",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Tmds.DBus.Protocol.dll: https://github.com/tmds/Tmds.DBus.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.5075f58a96d8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 3,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+      "artifactBytes": 168102,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.3.0.8",
+        "artifactBytes": 168102,
+        "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+        "catalogAssemblyVersion": "1.3.0.8",
+        "manifestInternalName": "NowPlaying",
+        "manifestPath": "NowPlaying.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/dda0721f183c2b7b1bfafe6db8c26e7697c39764/stable/NowPlaying/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "input.keyboard.inject",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Keyboard input injection",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "input",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "input.keyboard.inject",
+            "label": "Keyboard input injection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.freedesktop.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.freedesktop.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 6,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 6,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Endpoint: github.com",
+        "Endpoint: www.freedesktop.org",
+        "Hard-coded external file access",
+        "Keyboard input injection",
+        "Native/PInvoke",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "input.keyboard.inject",
+        "native.interop",
+        "network.socket"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 1,
+        "informational": 3
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 31,
+          "exactVersionObservedCount": 26,
+          "families": {
+            "managed-assembly": 24,
+            "native": 5,
+            "nuget": 2
+          },
+          "fingerprint": "12e12914798f41aff1c058d8c31707be23b39056486d46135adb9ec875776f84",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 12,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "close",
+              "library": "libc",
+              "managedName": "close",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "geteuid",
+              "library": "libc",
+              "managedName": "geteuid",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "getpwuid_r",
+              "library": "libc",
+              "managedName": "getpwuid_r",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "getuid",
+              "library": "libc",
+              "managedName": "getuid",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "recvmsg",
+              "library": "libc",
+              "managedName": "recvmsg",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sendmsg",
+              "library": "libc",
+              "managedName": "sendmsg",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XCloseDisplay",
+              "library": "libX11.so.6",
+              "managedName": "XCloseDisplay",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XFree",
+              "library": "libX11.so.6",
+              "managedName": "XFree",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XGetSelectionOwner",
+              "library": "libX11.so.6",
+              "managedName": "XGetSelectionOwner",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XGetWindowProperty",
+              "library": "libX11.so.6",
+              "managedName": "XGetWindowProperty",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XInternAtom",
+              "library": "libX11.so.6",
+              "managedName": "XInternAtom",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XOpenDisplay",
+              "library": "libX11.so.6",
+              "managedName": "XOpenDisplay",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NPSMLib.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RtlGetDeviceFamilyInfoEnum",
+              "library": "ntdll.dll",
+              "managedName": "RtlGetDeviceFamilyInfoEnum",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NPSMLib.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CoCreateInstance",
+              "library": "ole32.dll",
+              "managedName": "CoCreateInstance",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NPSMLib.dll",
+              "directManagedCallCount": 10,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "PropVariantClear",
+              "library": "ole32.dll",
+              "managedName": "PropVariantClear",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NowPlaying.dll",
+              "directManagedCallCount": 5,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "keybd_event",
+              "library": "user32.dll",
+              "managedName": "keybd_event",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 26,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 29,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 26,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 31
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 4,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.freedesktop.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 4,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/ADeltaX/NPSMLib"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/tmds/Tmds.DBus.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/wompscode/NowPlaying.git"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.freedesktop.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "internalName": "NowPlaying",
+        "manifestVersion": "1.3.0.8",
+        "observationId": 10305,
+        "observationKey": "manifest-7f90ab1ed64f77479123ffe4302f",
+        "repositoryUrl": "https://github.com/wompscode/NowPlaying.git",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 6304
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 354837
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+        "attemptId": "attempt-v2-7bb7704d195d7d37",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-db47dc8b768f3e20",
+        "definitionsRevision": "defs-v1-72b62ae5819f67ef",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-6304",
+        "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
+        "scannerRevision": "scanner-v1-d969057dc879d530",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
+        "targetFingerprint": "artifact-target-v2-8e157e9731c01a6e67b1",
+        "variantId": 6304,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-03T06:15:31Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/wompscode/NowPlaying",
+          "https://github.com/goatcorp/PluginDistD17",
+          "https://kamori.goats.dev/Plugin/Download/NowPlaying",
+          "https://github.com/goatcorp/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/wompscode/NowPlaying.git",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 146257,
+    "scanned_at_utc": "2026-09-03T06:15:31Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/wompscode/NowPlaying.git",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 6304
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+      "current_assembly_version": "1.3.0.8",
+      "current_scan_id": 146257,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-03T06:15:33Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 6304
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 23,
+      "artifact_only_count": 23,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:nowplaying",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NowPlaying",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.3.0.8"
+          ]
+        },
+        {
+          "componentKey": "assembly:npsmlib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NPSMLib",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.9.14.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.memorymappedfiles",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.MemoryMappedFiles",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.sockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.principal.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Principal.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.channels",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Channels",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:tmds.dbus.protocol",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Tmds.DBus.Protocol",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.95.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:libc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libc",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libx11.so.6",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libX11.so.6",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ntdll",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ntdll.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:npsmlib",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NPSMLib",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "0.9.14"
+          ]
+        },
+        {
+          "componentKey": "nuget:tmds.dbus.protocol",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Tmds.DBus.Protocol",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "0.95.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-03T06:15:33Z",
+      "comparison_id": 2295,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 146257,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 6304,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "identityFingerprint": "c55bf7b971fa5c2344a9bb30befaf440b9dfcb4f946d3db28df6a6108eddd415",
+    "observedAtUtc": "2026-09-03T09:50:58Z",
+    "reason": "current_analysis_replaced",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "superseded",
+    "supersededBy": {
+      "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+      "identityFingerprint": "c11c05950850710847754c707937492de2046f894afe9ac22effcc39f923067f",
+      "scanId": 147895
+    },
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "1349c24b1cf4fd0ae895010827d084a8119ae7b5583fdd21ee0e0c648c3d3251",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "ff372dcd572acc764371b8916a893c3d3e1d4e7413a96c4965c01162e06773b4",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "daeadfaaa4972e1cc1a1308756fed803627dc8b22a5d414d569ba397971d3f4c",
+        "records": 31,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "25f0c7e588d40faee789209f2ab235c35d3474b406ed99c8b4f12b6cf47e70fa",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "3de7cc2d376033778766a22e39850e1b4e78daf62bb99a6abc56ff87178e1f2c",
+        "records": 7302,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "a14df278e42250c1752d57d8de068c3ff427a7ceeb5bb31a93b886dfe4a943d0",
+        "records": 73,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "a38bbf8cec2f090e7a077f9b885a5992296d97f24fb679b8f665f5d981d93457",
+        "records": 1258,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "f018c0a968ad9a939e99ffb1e6d956a771ad8a78bfa0814500892e1dce48adfd",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "a7734a63bfa267580ca24998ca662a4a40d8ee66de3295902c3e7ecf8ce613a3",
+        "records": 16,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "252eb8677b5433488424cba85c12783feb5c6691aa5a33ddec78efbdc24511b8",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "0f94eb2b3c552bad230a21886dca46b9d93669e5278c253901e0c21a9655f303",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "6982edf99ed0701d842d01aeaa859ef887100f48e2f0e27e475f9c3d36d04759",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "b10497ed74ed996d4e08c811bfe9fec3cad5f38cdc89d2747231b7212dabaef7",
+        "records": 26,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-203eb0f321c930db9b0a57492c569414a62cd7a1cbde6d784167330bc0b70a8d",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+      "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "NowPlaying",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "NowPlaying",
+    "last_seen_utc": "2026-09-03T05:39:58Z",
+    "plugin_id": 299
+  },
+  "pluginId": 299,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 0,
+      "summary": "",
+      "webEnriched": false
+    },
+    "projectRepository": "https://github.com/wompscode/NowPlaying.git",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "d9b2dc16f73120762c6fd4ebe13cdad7c7808cac1f970fbe1749b9aca7b6ee86",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "947c0dd30721b12cde03ef65804c155ea0bbbb0466bb702dad2c18f7135b930e",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "9c79774499327bc5a5ceb18228fbac2da6ffd1ebcb2690625ab62bdcceddd2b4",
+        "records": 6
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "721f3a556bdf75b53268e02db7a086a63b56ac2c50daa21927f120a2ea41137b",
+        "records": 8
+      }
+    },
+    "projectionRevision": "projection-v1-26cf5d16f2b29bab",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+    "artifact_url": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "assembly_version": "1.3.0.8",
+    "capabilities_json": [
+      "Endpoint: github.com",
+      "Endpoint: www.freedesktop.org",
+      "Hard-coded external file access",
+      "Keyboard input injection",
+      "Native/PInvoke",
+      "Raw sockets"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 3,
+    "plugin_id": 299,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+      "artifactBytes": 168102,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.3.0.8",
+        "artifactBytes": 168102,
+        "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+        "catalogAssemblyVersion": "1.3.0.8",
+        "manifestInternalName": "NowPlaying",
+        "manifestPath": "NowPlaying.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/dda0721f183c2b7b1bfafe6db8c26e7697c39764/stable/NowPlaying/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "input.keyboard.inject",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Keyboard input injection",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "input",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "input.keyboard.inject",
+            "label": "Keyboard input injection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.freedesktop.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.freedesktop.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 6,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 6,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Endpoint: github.com",
+        "Endpoint: www.freedesktop.org",
+        "Hard-coded external file access",
+        "Keyboard input injection",
+        "Native/PInvoke",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "input.keyboard.inject",
+        "native.interop",
+        "network.socket"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 1,
+        "informational": 3
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 31,
+          "exactVersionObservedCount": 26,
+          "families": {
+            "managed-assembly": 24,
+            "native": 5,
+            "nuget": 2
+          },
+          "fingerprint": "12e12914798f41aff1c058d8c31707be23b39056486d46135adb9ec875776f84",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 12,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "close",
+              "library": "libc",
+              "managedName": "close",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "geteuid",
+              "library": "libc",
+              "managedName": "geteuid",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "getpwuid_r",
+              "library": "libc",
+              "managedName": "getpwuid_r",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "getuid",
+              "library": "libc",
+              "managedName": "getuid",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "recvmsg",
+              "library": "libc",
+              "managedName": "recvmsg",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "sendmsg",
+              "library": "libc",
+              "managedName": "sendmsg",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XCloseDisplay",
+              "library": "libX11.so.6",
+              "managedName": "XCloseDisplay",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XFree",
+              "library": "libX11.so.6",
+              "managedName": "XFree",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XGetSelectionOwner",
+              "library": "libX11.so.6",
+              "managedName": "XGetSelectionOwner",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XGetWindowProperty",
+              "library": "libX11.so.6",
+              "managedName": "XGetWindowProperty",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XInternAtom",
+              "library": "libX11.so.6",
+              "managedName": "XInternAtom",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Tmds.DBus.Protocol.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "XOpenDisplay",
+              "library": "libX11.so.6",
+              "managedName": "XOpenDisplay",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NPSMLib.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RtlGetDeviceFamilyInfoEnum",
+              "library": "ntdll.dll",
+              "managedName": "RtlGetDeviceFamilyInfoEnum",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NPSMLib.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CoCreateInstance",
+              "library": "ole32.dll",
+              "managedName": "CoCreateInstance",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NPSMLib.dll",
+              "directManagedCallCount": 10,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "PropVariantClear",
+              "library": "ole32.dll",
+              "managedName": "PropVariantClear",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "NowPlaying.dll",
+              "directManagedCallCount": 5,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "keybd_event",
+              "library": "user32.dll",
+              "managedName": "keybd_event",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 26,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 29,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 26,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 31
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 4,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.freedesktop.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 4,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/ADeltaX/NPSMLib"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/tmds/Tmds.DBus.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/wompscode/NowPlaying.git"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.freedesktop.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+        "internalName": "NowPlaying",
+        "manifestVersion": "1.3.0.8",
+        "observationId": 10305,
+        "observationKey": "manifest-7f90ab1ed64f77479123ffe4302f",
+        "repositoryUrl": "https://github.com/wompscode/NowPlaying.git",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 6304
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 354837
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-9cab15f2c75b9906",
+        "attemptId": "attempt-v2-7bb7704d195d7d37",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-db47dc8b768f3e20",
+        "definitionsRevision": "defs-v1-72b62ae5819f67ef",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-6304",
+        "queueSeedRevision": "queue-seed-v2-451040434e2460c4dad3",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-e21054f4d3c951e5",
+        "scannerBundleSha256": "dbb46c71ff40b108aa38b021ea59b0eafe680e91841a3f4aac0f2eb47be4a94b",
+        "scannerRevision": "scanner-v1-d969057dc879d530",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-a1ef1be29593da99",
+        "sourceObservationRevision": "source-observations-v1-50c8d5740239e1aa",
+        "targetFingerprint": "artifact-target-v2-8e157e9731c01a6e67b1",
+        "variantId": 6304,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-03T06:15:31Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "815b40cd0613b2103c56d0d6d699a72d52960daf37524c1153b6c999d111845c",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/wompscode/NowPlaying",
+          "https://github.com/goatcorp/PluginDistD17",
+          "https://kamori.goats.dev/Plugin/Download/NowPlaying",
+          "https://github.com/goatcorp/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/wompscode/NowPlaying.git",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 146257,
+    "scanned_at_utc": "2026-09-03T06:15:31Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1,
+    "source_repository": "https://github.com/wompscode/NowPlaying.git",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 6304
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "2ebb76276e9b7671c99850f5bbfa393a735c03f6753a4562c034d4bb68792361",
+    "curated_id": "dalamud-official",
+    "description": "Official Dalamud plugin repository.",
+    "discovered_by": "curated-sources.json",
+    "enabled_by_default": 1,
+    "etag": "",
+    "highest_api": 15,
+    "integrate_with_dalamud": 1,
+    "is_official": 1,
+    "kind": "aggregator",
+    "last_checked_utc": "2026-09-03T05:39:58Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-03T05:39:58Z",
+    "name": "Dalamud official",
+    "plugin_count": 488,
+    "provider": "Dalamud official",
+    "source_id": 1,
+    "source_repo_url": "",
+    "url": "https://kamori.goats.dev/Plugin/PluginMaster"
+  },
+  "sourceId": 1,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.3.0.8",
+    "author": "wompscode",
+    "authors_json": [
+      "wompscode"
+    ],
+    "category_tags_json": [],
+    "changelog": "now with Linux support: thanks beerpsi.",
+    "dalamud_api_level": 15,
+    "description": "Display what is playing in your server bar, and play/pause/skip. Great with macros!",
+    "dip17_channel": "stable",
+    "download_count": 14588,
+    "download_link_install": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+    "download_link_testing": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+    "download_link_update": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/NowPlaying/latest.zip",
+    "first_seen_utc": "2026-09-03T00:44:55Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 1,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-03T05:39:58Z",
+    "last_update": 1788377732,
+    "minimum_dalamud_version": null,
+    "name": "NowPlaying",
+    "plugin_id": 299,
+    "punchline": "Display what is playing in your server bar, and play/pause/skip.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.3.0.8",
+      "Author": "wompscode",
+      "CategoryTags": null,
+      "Changelog": "now with Linux support: thanks beerpsi.",
+      "DalamudApiLevel": 15,
+      "Description": "Display what is playing in your server bar, and play/pause/skip. Great with macros!",
+      "DownloadCount": 14588,
+      "DownloadLinkInstall": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
+      "DownloadLinkTesting": "https://kamori.goats.dev/Plugin/Download/NowPlaying?isUpdate=False&isTesting=True&branch=api9&isDip17=True",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/goatcorp/DalamudPlugins/api9/plugins/NowPlaying/latest.zip",
+      "FeedbackMessage": null,
+      "FeedbackWebhook": null,
+      "IconUrl": null,
+      "ImageUrls": null,
+      "InternalName": "NowPlaying",
+      "IsHide": true,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1788377732,
+      "LoadPriority": 0,
+      "Name": "NowPlaying",
+      "Punchline": "Display what is playing in your server bar, and play/pause/skip.",
+      "RepoUrl": "https://github.com/wompscode/NowPlaying.git",
+      "Tags": [
+        "music",
+        "background",
+        "utility"
+      ],
+      "TestingAssemblyVersion": null,
+      "TestingChangelog": null,
+      "TestingDalamudApiLevel": 0,
+      "_Dip17Channel": "stable",
+      "_isDip17Plugin": true
+    },
+    "repo_url": "https://github.com/wompscode/NowPlaying.git",
+    "source_entry_key": "nowplaying|1.3.0.8|15|0|287",
+    "source_id": 1,
+    "tags_json": [
+      "music",
+      "background",
+      "utility"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": 0,
+    "variant_id": 6304
+  },
+  "variantId": 6304
+}

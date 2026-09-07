@@ -1,0 +1,431 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:KamiLib.dll:KamiLib.Teleporter.TeleportManager.TeleportAction+0x37: call KamiLib.Teleporter.TeleportManager.Teleport"
+    ],
+    "rule_id": "automation.game.character.teleport",
+    "severity": "caution",
+    "title": "Teleport/travel control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindowNative.WndProc+0x59: callvirt WaveCallback.Invoke",
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindowNative.WndProc+0x77: callvirt WaveCallback.Invoke",
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindow.WndProc+0x59: callvirt WaveCallback.Invoke",
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindow.WndProc+0x77: callvirt WaveCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "artifact:Tf2Hud.deps.json: Reflection.Emit",
+      "metadata:NAudio.Lame.dll: Assembly.Load",
+      "il:NAudio.Lame.dll:NAudio.Lame.ResourceAssemblyLoader.LoadLameWrapper+0xc8: call System.Reflection.Assembly.Load: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Sledge.Formats.dll: s://github.com/LogicAndTrick/sledge-formats",
+      "artifact:Sledge.Formats.dll: /home/runner/work/sledge-formats/sledge-formats/Sledge.Formats/obj/Release/netstandard2.0/Sledge.Formats.pdb",
+      "artifact:Sledge.Formats.Packages.dll: /home/runner/work/sledge-formats/sledge-formats/Sledge.Formats.Packages/obj/Release/netstandard2.0/Sledge.Formats.Packages.pdb",
+      "artifact:CriticalCommonLib.dll: s://universalis.app/api/",
+      "artifact:CriticalCommonLib.dll: s://universalis.app/api/v2/",
+      "artifact:CSVFile.dll: C:\\git\\csharp-csv-reader\\src\\net50\\obj\\Release\\net5.0\\CSVFile.pdb",
+      "artifact:LuminaSupplemental.Excel.dll: s://github.com/Critical-Impact/LuminaSupplemental",
+      "artifact:NAudio.Midi.dll: s://github.com/naudio/NAudio"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Tf2Hud.dll: SigScanner",
+      "metadata:Tf2Hud.dll: Dalamud.Hooking",
+      "metadata:Tf2Hud.dll: HookFromAddress",
+      "il:Tf2Hud.dll:Tf2Hud.Common.Service.PlayerStatusService..ctor+0x1c: call Tf2Hud.Services.get_SigScanner: SigScanner",
+      "il:Tf2Hud.dll:Tf2Hud.Common.Service.PlayerStatusService..ctor+0x26: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:Tf2Hud.dll:Tf2Hud.Common.Service.PlayerStatusService..ctor+0x40: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:Tf2Hud.dll: Dalamud.Hooking",
+      "artifact:Tf2Hud.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:NAudio.Wasapi.dll: DllImportAttribute",
+      "native-pe:libmp3lame.64.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:libmp3lame.64.dll: import KERNEL32.dll!LoadLibraryExA: LoadLibrary",
+      "native-pe:libmp3lame.64.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:libmp3lame.64.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:libmp3lame.64.dll: LoadLibrary",
+      "artifact:libmp3lame.64.dll: GetProcAddress",
+      "metadata:NAudio.WinMM.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0k/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.40e6221be78d",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0k"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: http://www.jetbrains.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8888d82751c9",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libmp3lame.64.dll: http://lame.sf.net/",
+      "artifact:libmp3lame.32.dll: http://lame.sf.net/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c18a0ae207ed",
+    "severity": "caution",
+    "title": "Endpoint: lame.sf.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5a592d877451",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a5ec6e611d65",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "artifact:Tf2Hud.deps.json: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:KamiLib.dll: System.Diagnostics.Process",
+      "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0x5: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0xf: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:KamiLib.dll:KamiLib.Misc.Logging.GetAddressString+0x1f: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+      "artifact:KamiLib.dll: System.Diagnostics.Process",
+      "metadata:CriticalCommonLib.dll: System.Diagnostics.Process",
+      "il:CriticalCommonLib.dll:CriticalCommonLib.Utils.PrintOutObject+0x99: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:Tf2Hud.deps.json: Microsoft.Win32.Registry",
+      "metadata:Tf2Hud.dll: Microsoft.Win32.Registry",
+      "metadata:Tf2Hud.dll: RegistryKey",
+      "il:Tf2Hud.dll:Tf2Hud.Tf2Hud.Tf2HudModule.FindTf2InstallFolder+0x27: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:Tf2Hud.dll:Tf2Hud.Tf2Hud.Tf2HudModule.FindTf2InstallFolder+0x27: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:Tf2Hud.dll:Tf2Hud.Tf2Hud.Tf2HudModule.FindTf2InstallFolder+0x38: call Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:Tf2Hud.dll:Tf2Hud.Tf2Hud.Tf2HudModule.FindTf2InstallFolder+0x38: call Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "artifact:Tf2Hud.dll: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:Tf2Hud.dll: System.Windows.Forms.Clipboard",
+      "il:Tf2Hud.dll:Tf2Hud.Tf2Hud.Windows.Configuration.WinPanelSavedScoresWindow.DrawCsvButton+0x33: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Sledge.Formats.dll: FileStream",
+      "artifact:Sledge.Formats.dll: FileStream",
+      "metadata:Sledge.Formats.Packages.dll: FileStream",
+      "il:Sledge.Formats.Packages.dll:Sledge.Formats.Packages.PakPackage..ctor+0x20: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Sledge.Formats.Packages.dll:Sledge.Formats.Packages.VpkPackage.OpenFile+0xe: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Sledge.Formats.Packages.dll: FileStream",
+      "metadata:Tf2Hud.dll: WriteAllText",
+      "il:Tf2Hud.dll:Tf2Hud.Common.Configuration.ConfigZero.Save+0x21: call System.IO.File.WriteAllText: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.081de96440b7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://github.com/dotnet/reactive0"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2545080a4100",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CriticalCommonLib.dll: https://universalis.app/api/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.341ecfdad3a4",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CriticalCommonLib.dll: https://universalis.app/api/v2/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48e0f530ab27",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Gameloop.Vdf.dll: https://github.com/shravan2x/Gameloop.Vdf"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.50c6ccf25b57",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Tf2Hud.json: https://raw.githubusercontent.com/goatcorp/DalamudPluginsD17/main/testing/live/Tf2Hud/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.568afecaf86c",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sledge.Formats.dll: https://github.com/LogicAndTrick/sledge-formats",
+      "artifact:Sledge.Formats.Texture.dll: https://github.com/LogicAndTrick/sledge-formats"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.58aeab9bd4aa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reactive.dll: https://github.com/dotnet/reactive"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7c7f66411aeb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LuminaSupplemental.Excel.dll: https://github.com/Critical-Impact/LuminaSupplemental"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8107d126a6f8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Tf2Hud.json: https://github.com/Berna-L/ffxiv-tf2-hud-plugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8519e0fb61c7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NaturalSort.Extension.dll: https://github.com/tompazourek/NaturalSort.Extension"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.88f7487b1c9b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CsvHelper.dll: https://github.com/JoshClose/CsvHelper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9e7c5825f68c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Pilz.Dalamud.dll: https://github.com/Pilzinsel64/Pilz.Dalamud"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a13ab6c171d5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dalamud.ContextMenu.dll: https://github.com/kalilistic/Dalamud.ContextMenu"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a5f5e425d436",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.WinForms.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Wasapi.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.WinMM.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:CriticalCommonLib.dll: WebRequest",
+      "metadata:CriticalCommonLib.dll: HttpWebRequest",
+      "il:CriticalCommonLib.dll:<>c__DisplayClass22_0.<RetrieveMarketBoardPrices>b__0+0x58: call System.Net.WebRequest.Create: WebRequest",
+      "il:CriticalCommonLib.dll:<>c__DisplayClass22_0.<RetrieveMarketBoardPrices>b__0+0x65: callvirt System.Net.HttpWebRequest.set_AutomaticDecompression: WebRequest",
+      "il:CriticalCommonLib.dll:<>c__DisplayClass22_0.<RetrieveMarketBoardPrices>b__0+0x65: callvirt System.Net.HttpWebRequest.set_AutomaticDecompression: HttpWebRequest",
+      "il:CriticalCommonLib.dll:<>c__DisplayClass22_0.<RetrieveMarketBoardPrices>b__0+0x6b: callvirt System.Net.WebRequest.GetResponse: WebRequest",
+      "il:CriticalCommonLib.dll:<>c__DisplayClass22_0.<RetrieveMarketBoardPrices>b__0+0xb7: call System.Net.WebRequest.Create: WebRequest",
+      "il:CriticalCommonLib.dll:<>c__DisplayClass22_0.<RetrieveMarketBoardPrices>b__0+0xc3: callvirt System.Net.WebRequest.GetResponse: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "libmp3lame.64.dll",
+      "libmp3lame.32.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

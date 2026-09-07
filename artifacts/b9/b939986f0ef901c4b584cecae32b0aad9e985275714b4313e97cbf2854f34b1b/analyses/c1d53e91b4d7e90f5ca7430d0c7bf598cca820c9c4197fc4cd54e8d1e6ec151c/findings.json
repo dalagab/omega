@@ -1,0 +1,145 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Echosync.dll:Echosync.Helper.ClickHelper.ClickDialogue+0x93: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x93: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: s://github.com/MidoriKami/KamiToolKit.git",
+      "artifact:SixLabors.ImageSharp.dll: s://github.com/SixLabors/ImageSharp",
+      "artifact:SixLabors.ImageSharp.dll: p://ns.adobe.com/xap/1.0/",
+      "artifact:WebSocketSharp.NetCore.dll: /Users/nicholaschen/Projects/websocket-sharp/WebSocketSharp.NetCore/obj/Debug/netcoreapp3.1/WebSocketSharp.NetCore.pdb",
+      "artifact:WebSocketSharp.NetCore.dll: p://",
+      "artifact:WebSocketSharp.NetCore.dll: s://"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.InitializeCloseCallback+0x38: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController.LoadPopulators+0x43: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController.LoadPopulators+0x90: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:WebSocketSharp.NetCore.dll: TcpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.Close+0x3: callvirt WebSocketSharp.NetCore.Net.HttpListenerResponse.set_StatusCode: HttpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.Close+0xa: callvirt WebSocketSharp.NetCore.Net.HttpListenerResponse.get_OutputStream: HttpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.CloseWithAuthChallenge+0x2: callvirt WebSocketSharp.NetCore.Net.HttpListenerResponse.get_Headers: HttpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.WriteContent+0x38: callvirt WebSocketSharp.NetCore.Net.HttpListenerResponse.Close: HttpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.WriteContent+0x42: callvirt WebSocketSharp.NetCore.Net.HttpListenerResponse.set_ContentLength64: HttpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.WriteContent+0x49: callvirt WebSocketSharp.NetCore.Net.HttpListenerResponse.get_OutputStream: HttpListener",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.WebSocket..ctor+0x18: ldftn WebSocketSharp.NetCore.Net.WebSockets.HttpListenerWebSocketContext.Close: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Echosync.dll: Socket.Connect",
+      "il:Echosync.dll:Echosync.Helper.SyncClientHelper.Connect+0x60: callvirt WebSocketSharp.NetCore.WebSocket.Connect: Socket.Connect",
+      "metadata:WebSocketSharp.NetCore.dll: System.Net.Sockets",
+      "metadata:WebSocketSharp.NetCore.dll: TcpClient",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.Ext.IsLocal+0x41: call System.Net.Sockets.Socket.get_OSSupportsIPv6: System.Net.Sockets",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.WebSocket.releaseClientResources+0x37: callvirt System.Net.Sockets.TcpClient.Close: System.Net.Sockets",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.WebSocket.releaseClientResources+0x37: callvirt System.Net.Sockets.TcpClient.Close: TcpClient",
+      "il:WebSocketSharp.NetCore.dll:WebSocketSharp.NetCore.WebSocket.sendProxyConnectRequest+0xc2: newobj System.Net.Sockets.TcpClient..ctor: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.SaveAddonConfig+0x46: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:SixLabors.ImageSharp.dll: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0x1: newobj System.IO.FileStreamOptions..ctor: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0x8: callvirt System.IO.FileStreamOptions.set_Mode: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Echosync.dll: https://github.com/RenNagasaki/QuestPartySync.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.572464dfa6dc",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: https://github.com/MidoriKami/KamiToolKit.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bed307b2844c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Echotools.Logging.dll: https://github.com/RenNagasaki/Echotools.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f5b6d11aa180",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  }
+]

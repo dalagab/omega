@@ -1,0 +1,513 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:ECommons.dll: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x146: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "artifact:ECommons.dll: VirtualProtectEx"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:BouncyCastle.Cryptography.dll:Org.BouncyCastle.Tls.DtlsRecordLayer.ProcessRecord+0x21d: callvirt Org.BouncyCastle.Tls.DtlsRecordCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: Assembly.Load",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0xb5: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0x149: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:ECommons.dll: AssemblyLoadContext",
+      "metadata:ECommons.dll: Assembly.Load",
+      "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "artifact:ECommons.dll: AssemblyLoadContext",
+      "metadata:Microsoft.CodeAnalysis.dll: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: s://github.com/dotnet/runtime",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: s://aka.ms/dotnet-warnings/{0}",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: p://www.microsoft.com0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner",
+      "metadata:ECommons.dll: HookFromAddress",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x13: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x3c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:ECommons.dll:ECommons.Hooks.DirectorUpdate.Init+0x12: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.DirectorUpdate.Init+0x1e: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: DllImportAttribute",
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: GetProcAddress",
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: LoadLibrary",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.WmiNetUtilsHelper..cctor+0x55: call Kernel32.LoadLibrary: LoadLibrary",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.WmiNetUtilsHelper..cctor+0x68: call System.SR.get_LoadLibraryFailed: LoadLibrary",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.WmiNetUtilsHelper.LoadDelegate+0x2: call Kernel32.GetProcAddress: GetProcAddress",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:Kernel32.GetProcAddress+0x56: call Kernel32.<GetProcAddress>g____PInvoke|1_0 -> kernel32.dll!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl05"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3b7a15fc0c83",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.sectigo.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.635e7622e035",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.sectigo.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicTimeStampingRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6b75d89ae9ba",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.comodoca.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7af642f7bbc6",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.comodoca.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.CodeAnalysis.dll: http://www.microsoft.com0/",
+      "artifact:System.CodeDom.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.usertrust.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e7b69f6dd1e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.usertrust.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-2.1.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e8b4a5cbf22e",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f9f8662c9e9e",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-1.0.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fa0c83d25376",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://subscribe.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1120f6337d66",
+    "severity": "caution",
+    "title": "Endpoint: subscribe.nightmarexiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PromeRotation.json: https://vip.123pan.cn/1830059912/PromeRotation/prome.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2e29173c7fd8",
+    "severity": "caution",
+    "title": "Endpoint: vip.123pan.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3641efc8bfda",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4ce195eb4a2e",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://donate.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6b7bff260abc",
+    "severity": "caution",
+    "title": "Endpoint: donate.nightmarexiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6fcbaf3fcb63",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://sectigo.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9c9763950252",
+    "severity": "caution",
+    "title": "Endpoint: sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://msdn.microsoft.com/query/roslyn.query"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ce13eaccbf59",
+    "severity": "caution",
+    "title": "Endpoint: msdn.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f9b41ae90b96",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:BouncyCastle.Cryptography.dll: System.Net.Sockets",
+      "il:BouncyCastle.Cryptography.dll:Org.BouncyCastle.Tls.TlsUtilities.IsTimeout+0x6: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+      "artifact:BouncyCastle.Cryptography.dll: System.Net.Sockets",
+      "metadata:PromeRotation.dll: System.Net.Sockets",
+      "metadata:PromeRotation.dll: TcpClient",
+      "artifact:PromeRotation.dll: System.Net.Sockets",
+      "artifact:PromeRotation.dll: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Diagnostics.Process",
+      "metadata:ECommons.dll: ProcessStartInfo",
+      "metadata:ECommons.dll: ShellExecute",
+      "metadata:ECommons.dll: Process.Start",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x2: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Management.dll: FileStream",
+      "il:runtimes\\win\\lib\\net9.0\\System.Management.dll:System.Management.ManagementClassGenerator.GenerateCode+0x37: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: FileStream",
+      "metadata:BouncyCastle.Cryptography.dll: FileStream",
+      "artifact:BouncyCastle.Cryptography.dll: FileStream",
+      "metadata:ECommons.dll: FileStream",
+      "metadata:ECommons.dll: WriteAllText",
+      "metadata:ECommons.dll: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PromeRotation.dll: https://discord.gg/XqyxjNE94Z"
+    ],
+    "rule_id": "network.endpoint.community-invite.c01f87c465af",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PromeRotation.dll: https://raw.githubusercontent.com/PromeRotation/<redacted>/main"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1e763c322ab0",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/67592"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2f1b858ecd88",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.351354630292",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: https://github.com/dotnet/runtime",
+      "artifact:System.CodeDom.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Management.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/73002",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/73002"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.af2c29b9f1dc",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/70609X"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b1b1e52b473e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/63440"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cb6335723c68",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/74753"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d5e751092829",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/70609"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f0697fe68c5e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn/issues/72133"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f8e7c912ff11",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://github.com/bcgit/bc-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fe92c1786ba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: WebRequest",
+      "artifact:runtimes\\win\\lib\\net9.0\\System.Management.dll: HttpWebRequest",
+      "metadata:ECommons.dll: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Networking.HttpClientProxyHelper.ApplyProxySettings+0x69: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x15: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

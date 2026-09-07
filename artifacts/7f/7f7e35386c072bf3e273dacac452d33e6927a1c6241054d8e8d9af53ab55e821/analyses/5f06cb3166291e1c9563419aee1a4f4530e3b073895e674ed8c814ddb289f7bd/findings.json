@@ -1,0 +1,608 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Downloader.dll: http://localhost/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.ac0c95776fce",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xba: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xbf: callvirt System.Reflection.Emit.MethodBuilder.GetILGenerator: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xcd: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xd9: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x103: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x10f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x142: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Downloader.dll: s://github.com/bezzad/Downloader",
+      "artifact:Downloader.dll: p://localhost",
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: D:\\a\\1\\s\\obj\\src\\MessagePack\\Release\\net6.0\\MessagePack.pdb",
+      "artifact:MessagePack.dll: s://github.com/neuecc/MessagePack-CSharp/issues/1134 for details.",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: s://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:OnlyMare.dll: SigScanner",
+      "artifact:OnlyMare.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.CommandLine.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.EnvironmentVariables.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/requestcontext/claims/relyingpartytrustid"
+    ],
+    "rule_id": "network.endpoint.insecure-http.1e038250821d",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/<redacted>"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2fc570fd3f82",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/authoritykeyidentifier"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2fee7fd2663b",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/ismanaged"
+    ],
+    "rule_id": "network.endpoint.insecure-http.332a1b9e70b7",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/requestcontext/claims/x-ms-client-application"
+    ],
+    "rule_id": "network.endpoint.insecure-http.435ea9f182e2",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/registrationid"
+    ],
+    "rule_id": "network.endpoint.insecure-http.445dbf254436",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/requestcontext/claims/x-ms-proxy"
+    ],
+    "rule_id": "network.endpoint.insecure-http.48e9e800e07e",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/san"
+    ],
+    "rule_id": "network.endpoint.insecure-http.493c9d097661",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/requestcontext/claims/<redacted>"
+    ],
+    "rule_id": "network.endpoint.insecure-http.54c39d640051",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/osversion"
+    ],
+    "rule_id": "network.endpoint.insecure-http.58447317c4de",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/eku"
+    ],
+    "rule_id": "network.endpoint.insecure-http.63be2eb4b183",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/keyusage"
+    ],
+    "rule_id": "network.endpoint.insecure-http.66279ac4c26e",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/userowner"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6a08af62b51a",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/requestcontext/claims/x-ms-client-user-agent"
+    ],
+    "rule_id": "network.endpoint.insecure-http.72e207a1a6e5",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/applicationpolicy"
+    ],
+    "rule_id": "network.endpoint.insecure-http.74f8c75e4b78",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/subjectkeyidentifier"
+    ],
+    "rule_id": "network.endpoint.insecure-http.78f4da886404",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/displayname"
+    ],
+    "rule_id": "network.endpoint.insecure-http.874cadae0651",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/requestcontext/claims/x-ms-client-ip"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8da5dbe591dc",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/field/issuer"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9e1971467ea2",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/certificatepolicy"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9e55c8c1fb8d",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/certificatetemplatename"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9f0cf286aced",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/ostype"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a2f77c8f5f26",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/12/certificatecontext/extension/basicconstraints"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d4070b20babc",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://openid.net/specs/jwt/1.0",
+      "artifact:System.IdentityModel.Tokens.Jwt.dll: http://openid.net/specs/jwt/1.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.df8a0791ba00",
+    "severity": "caution",
+    "title": "Endpoint: openid.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/identifier"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e13ea633b264",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/isregistereduser"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fbe7622e2e5f",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Downloader.dll: System.Net.Sockets",
+      "artifact:Downloader.dll: System.Net.Sockets",
+      "metadata:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x562: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x5dd: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:OnlyMare.dll: System.Diagnostics.Process",
+      "metadata:OnlyMare.dll: ProcessStartInfo",
+      "metadata:OnlyMare.dll: ShellExecute",
+      "metadata:OnlyMare.dll: Process.Start",
+      "il:OnlyMare.dll:OnlyMare.UI.EventViewerUI.DrawInternal+0xf8: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:OnlyMare.dll:OnlyMare.UI.EventViewerUI.DrawInternal+0xf8: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:OnlyMare.dll:OnlyMare.UI.EventViewerUI.DrawInternal+0x109: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:OnlyMare.dll:OnlyMare.UI.EventViewerUI.DrawInternal+0x109: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net9.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Downloader.dll: FileStream",
+      "metadata:Downloader.dll: File.Delete",
+      "metadata:Downloader.dll: Directory.CreateDirectory",
+      "il:Downloader.dll:Downloader.AbstractDownloadService.OnDownloadFileCompleted+0x77: call System.IO.File.Delete: File.Delete",
+      "il:Downloader.dll:Downloader.ConcurrentStream.GetStream+0x48: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Downloader.dll:Downloader.Extensions.Helpers.FileHelper.CreateFile+0x1e: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Downloader.dll:Downloader.Extensions.Helpers.FileHelper.CreateFile+0x28: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Downloader.dll:<StartDownload>d__58.MoveNext+0x4e: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OnlyMare.json: https://github.com/yokidevcat/OnlyMareRepo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.408094c249ab",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.dll: https://github.com/neuecc/MessagePack-CSharp/issues/1134"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.415d35873630",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.Abstractions.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Logging.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: https://github.com/AzureAD/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7e3f986def99",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Downloader.dll: https://github.com/bezzad/Downloader"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.817291dce459",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:K4os.Compression.LZ4.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+      "artifact:K4os.Compression.LZ4.Legacy.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8d6d7403ad8a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.Configuration.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: https://github.com/dotnet/aspnetcore",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Client.dll: https://github.com/dotnet/aspnetcore",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Common.dll: https://github.com/dotnet/aspnetcore",
+      "artifact:Microsoft.AspNetCore.SignalR.Client.Core.dll: https://github.com/dotnet/aspnetcore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ab7eadc8e64a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NReco.Logging.File.dll: https://github.com/nreco/logging"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ca67590d8ba5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OnlyMare.dll: https://github.com/yokidevcat/OnlyMareClient"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e3dcdec2c49c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Downloader.dll: System.Net.Http.HttpClient",
+      "il:Downloader.dll:Downloader.AbstractDownloadService.DownloadFileTaskAsync+0x9: callvirt Downloader.AbstractDownloadService.DownloadFileTaskAsync: DownloadFile",
+      "il:Downloader.dll:Downloader.AbstractDownloadService.DownloadFileTaskAsync+0xd: callvirt Downloader.AbstractDownloadService.DownloadFileTaskAsync: DownloadFile",
+      "il:Downloader.dll:Downloader.AbstractDownloadService.DownloadFileTaskAsync+0xc: callvirt Downloader.AbstractDownloadService.DownloadFileTaskAsync: DownloadFile",
+      "il:Downloader.dll:Downloader.Download.add_DownloadFileCompleted+0x7: callvirt Downloader.IDownloadService.add_DownloadFileCompleted: DownloadFile",
+      "il:Downloader.dll:Downloader.Download.remove_DownloadFileCompleted+0x7: callvirt Downloader.IDownloadService.remove_DownloadFileCompleted: DownloadFile",
+      "il:Downloader.dll:Downloader.SocketClient.GetHttpClientWithSocketHandler+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Downloader.dll:Downloader.SocketClient.GetHttpClientWithSocketHandler+0xe: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
