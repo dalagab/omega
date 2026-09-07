@@ -1,0 +1,318 @@
+[
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: http://localhost/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.ac0c95776fce",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:EmbedIO.dll:EmbedIO.HttpContextExtensions.SendDataAsync+0x7: callvirt EmbedIO.ResponseSerializerCallback.Invoke",
+      "il:EmbedIO.dll:EmbedIO.HttpContextExtensions.SendDataAsync+0xd: callvirt EmbedIO.ResponseSerializerCallback.Invoke",
+      "il:EmbedIO.dll:<Handle>d__16.MoveNext+0xaa: callvirt EmbedIO.ExceptionHandlerCallback.Invoke",
+      "il:EmbedIO.dll:<Handle>d__16.MoveNext+0x203: callvirt EmbedIO.HttpExceptionHandlerCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Swan.Lite.dll: C:\\Unosquare\\swan\\src\\Swan.Lite\\obj\\Release\\netstandard2.0\\Swan.Lite.pdb",
+      "artifact:Swan.Lite.dll: C:\\Unosquare\\swan\\src\\Swan.Lite\\Extensions.Exceptions.cs",
+      "artifact:Swan.Lite.dll: C:\\Unosquare\\swan\\src\\Swan.Lite\\SwanRuntime.cs",
+      "artifact:Swan.Lite.dll: \\\\)\"@)|(([0-9a-z]((\\.(?!\\.))|[-!#\\$%&",
+      "artifact:Swan.Lite.dll: C:\\Unosquare\\swan\\src\\Swan.Lite\\Threading\\RunnerBase.cs",
+      "artifact:Swan.Lite.dll: C:\\Unosquare\\swan\\src\\Swan.Lite\\Net\\Internal\\IPAddressValue.cs",
+      "artifact:Swan.Lite.dll: C:\\Unosquare\\swan\\src\\Swan.Lite\\Threading\\PeriodicTask.cs",
+      "artifact:EmbedIO.dll: s://github.com/unosquare/embedio/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:XIVDeck.FFXIVPlugin.dll: Dalamud.Hooking",
+      "metadata:XIVDeck.FFXIVPlugin.dll: SigScanner",
+      "metadata:XIVDeck.FFXIVPlugin.dll: HookFromAddress",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Game.GameHooks..ctor+0x2e: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Game.GameHooks..ctor+0x61: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:XIVDeck.FFXIVPlugin.dll: Dalamud.Hooking",
+      "artifact:XIVDeck.FFXIVPlugin.dll: SigScanner",
+      "artifact:XIVDeck.FFXIVPlugin.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:XIVDeck.FFXIVPlugin.dll: HttpListener",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.UI.Windows.DebugWindow.PreDraw+0x10: callvirt XIVDeck.FFXIVPlugin.Base.PluginConfig.get_HttpListenerMode: HttpListener",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.UI.Windows.DebugWindow.Draw+0x168: callvirt XIVDeck.FFXIVPlugin.Base.PluginConfig.set_HttpListenerMode: HttpListener",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Server.XIVDeckWebServer.GetListenerMode+0xa: callvirt XIVDeck.FFXIVPlugin.Base.PluginConfig.get_HttpListenerMode: HttpListener",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Server.XIVDeckWebServer.GetListenerMode+0x23: callvirt XIVDeck.FFXIVPlugin.Base.PluginConfig.get_HttpListenerMode: HttpListener",
+      "artifact:XIVDeck.FFXIVPlugin.dll: HttpListener",
+      "metadata:EmbedIO.dll: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer..ctor+0x9: call EmbedIO.WebServer.CreateHttpListener: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:XIVDeck.FFXIVPlugin.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: https://developer.microsoft.com/en-us/windows/uwp-community-toolkit"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.18af43152701",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: https://www.gnu.org/licenses/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8e92f4a90705",
+    "severity": "caution",
+    "title": "Endpoint: www.gnu.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: https://fsf.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ab7eba3f2bf0",
+    "severity": "caution",
+    "title": "Endpoint: fsf.org"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Swan.Lite.dll: System.Net.Sockets",
+      "artifact:Swan.Lite.dll: System.Net.Sockets",
+      "metadata:XIVDeck.FFXIVPlugin.dll: System.Net.Sockets",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Utils.NetworkUtil.HostSupportsLocalIPv6+0x0: call System.Net.Sockets.Socket.get_OSSupportsIPv6: System.Net.Sockets",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Utils.NetworkUtil.HostSupportsLocalIPv4+0x0: call System.Net.Sockets.Socket.get_OSSupportsIPv4: System.Net.Sockets",
+      "artifact:XIVDeck.FFXIVPlugin.dll: System.Net.Sockets",
+      "metadata:EmbedIO.dll: System.Net.Sockets",
+      "metadata:EmbedIO.dll: SocketAsyncEventArgs"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:XIVDeck.FFXIVPlugin.dll: System.Diagnostics.Process",
+      "il:XIVDeck.FFXIVPlugin.dll:XIVDeck.FFXIVPlugin.Utils.UiUtil.IsMultiboxing+0x5: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "artifact:XIVDeck.FFXIVPlugin.dll: System.Diagnostics.Process",
+      "metadata:EmbedIO.dll: System.Diagnostics.Process",
+      "metadata:EmbedIO.dll: ProcessStartInfo",
+      "metadata:EmbedIO.dll: Process.Start",
+      "metadata:EmbedIO.dll: ShellExecute",
+      "il:EmbedIO.dll:EmbedIO.WebServerOptions.LoadCertificate+0x62: callvirt System.Diagnostics.Process.add_ErrorDataReceived: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Swan.Lite.dll: FileStream",
+      "metadata:Swan.Lite.dll: Directory.CreateDirectory",
+      "metadata:Swan.Lite.dll: WriteAllText",
+      "il:Swan.Lite.dll:Swan.SwanRuntime.get_LocalStoragePath+0x2f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Swan.Lite.dll:Swan.Configuration.SettingsProvider`1.PersistGlobalSettings+0x1f: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:Swan.Lite.dll: WriteAllText",
+      "artifact:Swan.Lite.dll: FileStream",
+      "metadata:EmbedIO.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: https://discord.gg/holdshift"
+    ],
+    "rule_id": "network.endpoint.community-invite.b4f581b63900",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.json: https://github.com/KazWolfe/XIVDeck/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0e2bf938f580",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: https://github.com/KazWolfe/XIVDeck.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.454b9c0395df",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: https://github.com/CommunityToolkit/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5e2c4ed80499",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EmbedIO.dll: https://github.com/unosquare/embedio/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.735d15796476",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVDeck.FFXIVPlugin.dll: https://github.com/KazWolfe/XIVDeck"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cccdd4aadb36",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BCnEncoder.NET.ImageSharp.dll: https://github.com/Nominom/BCnEncoder.NET",
+      "artifact:BCnEncoder.dll: https://github.com/Nominom/BCnEncoder.NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e85fd72d0e75",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  }
+]
