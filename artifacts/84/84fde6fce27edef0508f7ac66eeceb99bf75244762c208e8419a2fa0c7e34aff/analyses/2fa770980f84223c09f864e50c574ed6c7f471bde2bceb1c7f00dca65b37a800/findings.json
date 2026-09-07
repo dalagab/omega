@@ -1,0 +1,138 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:NAudio.dll:NAudio.Wave.WaveWindowNative.WndProc+0x59: callvirt WaveCallback.Invoke",
+      "il:NAudio.dll:NAudio.Wave.WaveWindowNative.WndProc+0x77: callvirt WaveCallback.Invoke",
+      "il:NAudio.dll:NAudio.Wave.WaveWindow.WndProc+0x59: callvirt WaveCallback.Invoke",
+      "il:NAudio.dll:NAudio.Wave.WaveWindow.WndProc+0x77: callvirt WaveCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:NAudio.dll: C:\\Code\\github\\NAudio\\NAudio\\obj\\Release\\netcoreapp3.0\\NAudio.pdb",
+      "artifact:System.Resources.Extensions.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:System.Resources.Extensions.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:System.Resources.Extensions.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:System.Resources.Extensions.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:System.Resources.Extensions.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:System.Resources.Extensions.dll: p://www.microsoft.com0",
+      "artifact:System.Resources.Extensions.dll: p://crl.microsoft.com/pki/crl/products/MicTimStaPCA_2010-07-01.crl0Z"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:NAudio.dll: DllImportAttribute",
+      "metadata:NAudio.dll: LoadLibrary",
+      "metadata:NAudio.dll: GetProcAddress",
+      "il:NAudio.dll:NAudio.Wave.Compression.AcmDriver.AddLocalDriver+0x1: call NAudio.Utils.NativeMethods.LoadLibrary -> kernel32.dll!LoadLibrary: LoadLibrary",
+      "il:NAudio.dll:NAudio.Wave.Compression.AcmDriver.AddLocalDriver+0x25: call NAudio.Utils.NativeMethods.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "artifact:NAudio.dll: LoadLibrary",
+      "artifact:NAudio.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Resources.Extensions.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.dll: RegistryKey",
+      "il:NAudio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+      "il:NAudio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:VenueManager.dll: WriteAllText",
+      "metadata:VenueManager.dll: File.Delete",
+      "il:VenueManager.dll:VenueManager.FileStore.SaveStringToFile+0x2: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "il:VenueManager.dll:VenueManager.FileStore.SaveClassToFile+0x16: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "il:VenueManager.dll:VenueManager.VenueList.load+0x2b: call System.IO.File.Delete: File.Delete",
+      "artifact:VenueManager.dll: WriteAllText",
+      "metadata:NAudio.dll: FileStream",
+      "il:NAudio.dll:NAudio.SoundFont.SoundFont..ctor+0x4: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VenueManager.dll: https://github.com/Jrogo7/VenueManager"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8cadfe1fb469",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VenueManager.json: https://github.com/Jrogo7/VenueManager"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.966f33b17d3e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VenueManager.json: https://raw.githubusercontent.com/Jrogo7/VenueManager/master/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e3b629f9d17e",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:VenueManager.dll: System.Net.Http.HttpClient",
+      "il:VenueManager.dll:VenueManager.RestUtils..cctor+0xa: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:VenueManager.dll:<PostAsync>d__8.MoveNext+0x29: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:VenueManager.dll:<PostAsync>d__8.MoveNext+0x3a: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient",
+      "il:VenueManager.dll:<PostAsync>d__8.MoveNext+0x49: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:VenueManager.dll:<PostAsync>d__8.MoveNext+0xa0: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:VenueManager.dll:<PostAsync>d__8.MoveNext+0x109: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
