@@ -1,0 +1,279 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:OmenTools.dll:OmenTools.OmenService.LocalPlayerState.SwitchGearset+0xab: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:OmenTools.dll: AssemblyLoadContext",
+      "il:OmenTools.dll:OmenTools.DService.Init+0x122: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:OmenTools.dll:OmenTools.DService.Uninit+0x8e: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "artifact:OmenTools.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:OmenTools.dll: s://github.com/AtmoOmen/OmenTools",
+      "artifact:OmenTools.dll: C:\\Windows\\Fonts",
+      "artifact:OmenTools.dll: p://vv.video.qq.com/checktime?otype=json",
+      "artifact:SillyToolbox.dll: s://github.com/u86cd/SillyToolbox.git",
+      "artifact:SillyToolbox.dll: s://plogon.meowrs.com/cn",
+      "artifact:SillyToolbox.dll: s://greasyfork.org/zh-TW/scripts/590912-sillyglamourbridge"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress",
+      "metadata:OmenTools.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:OmenTools.dll: DllImportAttribute",
+      "metadata:OmenTools.dll: GetProcAddress",
+      "artifact:OmenTools.dll: GetProcAddress",
+      "metadata:SillyToolbox.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OmenTools.dll: http://vv.video.qq.com/checktime"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b4f92ec3a098",
+    "severity": "caution",
+    "title": "Endpoint: vv.video.qq.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SillyToolbox.dll: https://greasyfork.org/zh-TW/scripts/<redacted>"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.04922d24d39d",
+    "severity": "caution",
+    "title": "Endpoint: greasyfork.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SillyToolbox.dll: https://plogon.meowrs.com/cn"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.11b732611885",
+    "severity": "caution",
+    "title": "Endpoint: plogon.meowrs.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:GuerrillaNtp.dll: System.Net.Sockets",
+      "metadata:GuerrillaNtp.dll: Socket.Connect",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.CreateSocket+0x3: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.CreateSocket+0x1c: callvirt System.Net.Sockets.Socket.set_ReceiveTimeout: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.Connect+0xe: callvirt System.Net.Sockets.Socket.Connect: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.Connect+0xe: callvirt System.Net.Sockets.Socket.Connect: Socket.Connect",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.Connect+0x17: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.Query+0x19: callvirt System.Net.Sockets.Socket.Send: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:OmenTools.dll: System.Diagnostics.Process",
+      "metadata:OmenTools.dll: ProcessStartInfo",
+      "metadata:OmenTools.dll: ShellExecute",
+      "metadata:OmenTools.dll: Process.Start",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x78: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x7f: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x7f: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x86: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:SillyToolbox.dll: System.Windows.Forms.Clipboard",
+      "il:SillyToolbox.dll:a.A+0xd: call System.Windows.Forms.Clipboard.SetImage: System.Windows.Forms.Clipboard",
+      "il:SillyToolbox.dll:C.i.A+0x33: call System.Windows.Forms.Clipboard.SetImage: System.Windows.Forms.Clipboard",
+      "il:SillyToolbox.dll:C.A+0xd: call System.Windows.Forms.Clipboard.SetImage: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.SaveAddonConfig+0x3c: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:OmenTools.dll: FileStream",
+      "metadata:OmenTools.dll: File.Delete",
+      "metadata:OmenTools.dll: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SillyToolbox.dll: https://github.com/u86cd/SillyToolbox.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4561b758f5dd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: https://github.com/Dalamud-DailyRoutines/KamiToolKit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7dfe4542cc77",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OmenTools.dll: https://github.com/AtmoOmen/OmenTools"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7e6e9631f324",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SillyToolbox.json: https://raw.githubusercontent.com/u86cd/DalamudPlugins/main/plugins/SillyToolbox/SillyToolbox_icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.817fe135c8fd",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TinyPinyin.dll: https://github.com/hstarorg/TinyPinyin.Net"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.982ef0c4d6f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TinyPinyin.dll: https://github.com/promeG/TinyPinyin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9a2d34a6dba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SillyToolbox.dll: https://raw.githubusercontent.com/MeowZWR/DalamudPlugin/main/repo.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eb2e05485a7b",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GuerrillaNtp.dll: https://github.com/robertvazan/guerrillantp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f33fd5f1b011",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:OmenTools.dll: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.HTTPClientHelper.CreateClient+0x4: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.HTTPClientHelper.CreateClient+0xb: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.HTTPClientHelper.CreateClient+0x17: callvirt System.Net.Http.HttpClient.set_DefaultRequestVersion: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.HTTPClientHelper.CreateClient+0x1e: callvirt System.Net.Http.HttpClient.set_DefaultVersionPolicy: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.HTTPClientHelper.CreateClient+0x24: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.StandardTimeManager..ctor+0x26: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:OmenTools.dll:OmenTools.OmenService.StandardTimeManager..ctor+0x33: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
