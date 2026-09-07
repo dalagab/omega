@@ -1,0 +1,376 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:Raimere.dll: ProtectedData.Unprotect",
+      "il:Raimere.dll:Raimere.TokenProtector.Unprotect+0x17: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x8b: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x29: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnDeserializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnDeserialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateParameterizedConstructor+0x2f: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateMethodCall+0x3c: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x8: callvirt System.Reflection.Emit.ILGenerator.DefineLabel: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x15: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: s://github.com/SixLabors/ImageSharp",
+      "artifact:SixLabors.ImageSharp.dll: p://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Raimere.dll: TcpListener",
+      "il:Raimere.dll:Raimere.AuthService.StartLogin+0x4e: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:Raimere.dll:Raimere.AuthService.StartLogin+0x57: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:Raimere.dll:Raimere.AuthService.StartLogin+0x66: callvirt System.Net.Sockets.TcpListener.get_LocalEndpoint: TcpListener",
+      "il:Raimere.dll:Raimere.AuthService.StopListener+0x3a: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:Raimere.dll:<AcceptAsync>d__16.MoveNext+0x45: callvirt System.Net.Sockets.TcpListener.AcceptTcpClientAsync: TcpListener",
+      "il:Raimere.dll:<AcceptAsync>d__16.MoveNext+0x471: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "artifact:Raimere.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:System.Security.Cryptography.ProtectedData.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.ProtectedData.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Raimere.json: https://raimere.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.759d495d3232",
+    "severity": "caution",
+    "title": "Endpoint: raimere.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Raimere.dll: https://raimere.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b9d6ae1b4b87",
+    "severity": "caution",
+    "title": "Endpoint: raimere.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Raimere.json: https://raimere.com/raimere-icon.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cb06b45a3e1a",
+    "severity": "caution",
+    "title": "Endpoint: raimere.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Raimere.dll: System.Net.Sockets",
+      "metadata:Raimere.dll: TcpClient",
+      "il:Raimere.dll:Raimere.AuthService.StartLogin+0x4e: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:Raimere.dll:Raimere.AuthService.StartLogin+0x57: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:Raimere.dll:Raimere.AuthService.StartLogin+0x66: callvirt System.Net.Sockets.TcpListener.get_LocalEndpoint: System.Net.Sockets",
+      "il:Raimere.dll:Raimere.AuthService.StopListener+0x3a: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "il:Raimere.dll:<AcceptAsync>d__16.MoveNext+0x45: callvirt System.Net.Sockets.TcpListener.AcceptTcpClientAsync: System.Net.Sockets",
+      "il:Raimere.dll:<AcceptAsync>d__16.MoveNext+0x45: callvirt System.Net.Sockets.TcpListener.AcceptTcpClientAsync: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Newtonsoft.Json.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:SixLabors.ImageSharp.dll: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0x1: newobj System.IO.FileStreamOptions..ctor: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0x8: callvirt System.IO.FileStreamOptions.set_Mode: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0xf: callvirt System.IO.FileStreamOptions.set_Access: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0x16: callvirt System.IO.FileStreamOptions.set_Share: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.OpenReadAsynchronous+0x21: callvirt System.IO.FileStreamOptions.set_Options: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.CreateAsynchronous+0x1: newobj System.IO.FileStreamOptions..ctor: FileStream",
+      "il:SixLabors.ImageSharp.dll:SixLabors.ImageSharp.IO.LocalFileSystem.CreateAsynchronous+0x8: callvirt System.IO.FileStreamOptions.set_Mode: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Raimere.dll: https://discord.gg/MBF25cUfu"
+    ],
+    "rule_id": "network.endpoint.community-invite.d69a764731ca",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.ProtectedData.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Raimere.dll: https://github.com/RianMorningstar/raimere.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e9deddf110c9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Raimere.dll: System.Net.Http.HttpClient",
+      "il:Raimere.dll:Raimere.Plugin..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Raimere.dll:<FetchIdentityAsync>d__26.MoveNext+0xd4: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+      "il:Raimere.dll:<PullNsfwPreferenceAsync>d__28.MoveNext+0x134: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+      "il:Raimere.dll:<PushNsfwPreferenceAsync>d__29.MoveNext+0x16f: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+      "il:Raimere.dll:<RefreshAsync>d__31.MoveNext+0xb8: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+      "il:Raimere.dll:<GetAsync>d__6.MoveNext+0x43: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:Raimere.dll:<GetJsonAsync>d__9`1.MoveNext+0x2c: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
