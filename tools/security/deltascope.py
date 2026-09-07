@@ -11,6 +11,7 @@ from __future__ import annotations
 from developer_view import main
 import deltascope_0015_compat
 import deltascope_workflow_center
+import deltascope_live_operations
 import deltascope_availability
 import deltascope_delivery_dashboard
 import deltascope_scan_report
@@ -21,6 +22,7 @@ import deltascope_orchestration_alignment
 
 deltascope_0015_compat.install()
 deltascope_workflow_center.install()
+deltascope_live_operations.install()
 deltascope_availability.install()
 deltascope_delivery_dashboard.install()
 deltascope_scan_report.install()
