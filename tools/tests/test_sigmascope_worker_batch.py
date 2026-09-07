@@ -207,7 +207,14 @@ class SigmaScopeWorkerBatchTests(unittest.TestCase):
         self.assertIn("if: always()", workflow)
         intake = (ROOT / "tools" / "security" / "sigmascope_drain_bundle_intake.py").read_text(encoding="utf-8")
         self.assertIn("omega.sigmascope-drain-bundle-intake.v1", intake)
-        self.assertNotIn("needs.workers.result == 'success'", workflow)
+        self.assertIn(
+            "(needs.workers.result == 'success' || needs.workers.result == 'failure')",
+            workflow,
+        )
+        self.assertNotIn(
+            "(needs.workers.result == 'success' || needs.workers.result == 'skipped')",
+            workflow,
+        )
         self.assertNotIn("while IFS= read -r queue_key; do", workflow)
         self.assertIn("gh run list", workflow)
         self.assertIn("Another active parallel drain already owns successor dispatch", workflow)
