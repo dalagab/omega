@@ -696,7 +696,12 @@ jobs:
   publish:
     name: One-writer publish merged Evidence and deferred security state
     needs: [resolve-images, plan, merge]
-    if: needs.merge.result == 'success'
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.resolve-images.result == 'success' &&
+      needs.plan.result == 'success' &&
+      needs.merge.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:

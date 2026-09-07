@@ -119,6 +119,11 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("refs/heads/security-evidence-v2", publish)
         self.assertIn("git -C catalog/active-state ls-remote --heads origin refs/heads/catalog-data", publish)
         self.assertIn("git -C catalog/security-v2-current ls-remote --heads origin refs/heads/security-evidence-v2", publish)
+        self.assertIn("always() &&", publish)
+        self.assertIn("!cancelled() &&", publish)
+        self.assertIn("needs.resolve-images.result == 'success'", publish)
+        self.assertIn("needs.plan.result == 'success'", publish)
+        self.assertIn("needs.merge.result == 'success'", publish)
         self.assertIn("Stale parallel candidate discarded", publish)
         self.assertIn("if: steps.authority.outputs.publish == 'true'", publish)
         merge = text[text.index("\n  merge:"): text.index("\n  publish:")]
