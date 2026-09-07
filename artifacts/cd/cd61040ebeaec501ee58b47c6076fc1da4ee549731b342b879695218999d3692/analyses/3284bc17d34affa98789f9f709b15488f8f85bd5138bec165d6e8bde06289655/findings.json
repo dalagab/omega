@@ -1,0 +1,326 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:Microsoft.AspNetCore.DataProtection.dll: CryptUnprotectData",
+      "il:Microsoft.AspNetCore.DataProtection.dll:Microsoft.AspNetCore.DataProtection.Cng.DpapiSecretSerializerHelper.UnprotectWithDpapiCore+0x6b: call Microsoft.AspNetCore.Cryptography.UnsafeNativeMethods.CryptUnprotectData: CryptUnprotectData",
+      "artifact:Microsoft.AspNetCore.DataProtection.dll: CryptUnprotectData",
+      "metadata:Microsoft.AspNetCore.Cryptography.Internal.dll: CryptUnprotectData",
+      "il:Microsoft.AspNetCore.Cryptography.Internal.dll:Microsoft.AspNetCore.Cryptography.UnsafeNativeMethods.CryptUnprotectData+0x10: call Microsoft.AspNetCore.Cryptography.UnsafeNativeMethods.<CryptUnprotectData>g____PInvoke|24_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:Microsoft.AspNetCore.Cryptography.Internal.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "native-pe:mscordbi.dll: import KERNEL32.dll!VirtualProtectEx: VirtualProtectEx",
+      "native-pe:mscordbi.dll: import KERNEL32.dll!OpenProcess: OpenProcess",
+      "native-pe:mscordbi.dll: import KERNEL32.dll!ReadProcessMemory: ReadProcessMemory",
+      "native-pe:mscordbi.dll: import KERNEL32.dll!WriteProcessMemory: WriteProcessMemory",
+      "native-pe:mscordbi.dll: import ADVAPI32.dll!OpenProcessToken: OpenProcess",
+      "artifact:mscordbi.dll: OpenProcess",
+      "artifact:mscordbi.dll: ReadProcessMemory",
+      "artifact:mscordbi.dll: WriteProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs commonly used to start execution in another process.",
+    "evidence_json": [
+      "native-pe:coreclr.dll: import KERNEL32.dll!QueueUserAPC: QueueUserAPC",
+      "artifact:coreclr.dll: QueueUserAPC"
+    ],
+    "rule_id": "memory.remote-thread",
+    "severity": "high",
+    "title": "Remote thread creation"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.AspNetCore.Server.IISIntegration.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Hosting.dll: Assembly.Load",
+      "il:Microsoft.Extensions.Hosting.dll:Microsoft.Extensions.Hosting.HostingHostBuilderExtensions.ApplyDefaultAppConfiguration+0xc1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Microsoft.AspNetCore.SignalR.Core.dll: Reflection.Emit",
+      "il:Microsoft.AspNetCore.SignalR.Core.dll:Microsoft.AspNetCore.SignalR.Internal.TypedClientBuilder`1.GenerateClientBuilder+0x1a: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+      "il:Microsoft.AspNetCore.SignalR.Core.dll:Microsoft.AspNetCore.SignalR.Internal.TypedClientBuilder`1.GenerateClientBuilder+0x24: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+      "il:Microsoft.AspNetCore.SignalR.Core.dll:Microsoft.AspNetCore.SignalR.Internal.TypedClientBuilder`1.GenerateInterfaceImplementation+0x3f: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:Microsoft.AspNetCore.SignalR.Core.dll:Microsoft.AspNetCore.SignalR.Internal.TypedClientBuilder`1.GenerateInterfaceImplementation+0x57: callvirt System.Reflection.Emit.TypeBuilder.DefineField: Reflection.Emit",
+      "il:Microsoft.AspNetCore.SignalR.Core.dll:Microsoft.AspNetCore.SignalR.Internal.TypedClientBuilder`1.GenerateInterfaceImplementation+0xae: callvirt System.Reflection.Emit.TypeBuilder.CreateType: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:System.IO.FileSystem.dll: s://github.com/dotnet/dotnet",
+      "artifact:System.IO.FileSystem.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:System.IO.FileSystem.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:System.IO.FileSystem.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:System.IO.FileSystem.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:System.IO.FileSystem.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:System.IO.FileSystem.dll: p://www.microsoft.com0",
+      "artifact:System.IO.FileSystem.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:MagitekStratagem.dll: Dalamud.Hooking",
+      "artifact:MagitekStratagem.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.get_Server+0x1: call System.Net.Sockets.TcpListener.CreateNewSocketIfNeeded: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.set_ExclusiveAddressUse+0x8: call System.SR.get_net_tcplistener_mustbestopped: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.AllowNatTraversal+0x8: call System.SR.get_net_tcplistener_mustbestopped: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.AllowNatTraversal+0x1d: call System.Net.Sockets.TcpListener.SetIPProtectionLevel: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.Start+0x6: call System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.Start+0x15: call System.Net.Sockets.TcpListener.CreateNewSocketIfNeeded: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.Start+0x3b: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.TcpListener.Dispose+0x1: call System.Net.Sockets.TcpListener.Stop: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Debug.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.IO.FileSystem.Watcher.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.IO.FileSystem.Watcher.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.Configuration.Json.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.DataAnnotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Threading.ThreadPool.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Net.Sockets.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Private.Xml.dll: http://exslt.org/common"
+    ],
+    "rule_id": "network.endpoint.insecure-http.4054a7daf7ec",
+    "severity": "caution",
+    "title": "Endpoint: exslt.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Private.Xml.dll: http://collations.microsoft.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d28621822782",
+    "severity": "caution",
+    "title": "Endpoint: collations.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MagitekStratagem.dll: https://beam.eyeware.tech/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a3ccf62ecc1a",
+    "severity": "caution",
+    "title": "Endpoint: beam.eyeware.tech"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:System.Net.Sockets.dll: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:Winsock.<EnsureInitialized>g__Initialize|57_0+0x12: newobj System.Net.Sockets.SocketException..ctor: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SocketsTelemetry.ConnectStart+0x1e: call System.Net.Sockets.SocketsTelemetry.ConnectStart: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SocketsTelemetry.ConnectStart+0x116: call System.Net.Sockets.SocketsTelemetry.<ConnectStart>g__SetNetworkTransport|24_0: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SocketsTelemetry.ConnectStart+0x128: call System.Net.Sockets.SocketsTelemetry.<ConnectStart>g__SetNetworkTransport|24_0: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SocketsTelemetry.ConnectStart+0x172: call System.Net.Sockets.SocketsTelemetry.<ConnectStart>g__SetNetworkTransport|24_0: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SocketsTelemetry.AfterConnect+0x22: call System.Net.Sockets.SocketsTelemetry.GetErrorType: System.Net.Sockets",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SocketsTelemetry.AfterConnect+0x47: call System.Net.Sockets.SocketsTelemetry.ConnectFailed: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "createdump.exe",
+      "MagitekStratagem.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.Xml.dll: CreateProcess",
+      "native-pe:mscordbi.dll: import KERNEL32.dll!CreateProcessW: CreateProcess",
+      "artifact:mscordbi.dll: CreateProcess",
+      "metadata:Microsoft.AspNetCore.Server.Kestrel.Core.dll: System.Diagnostics.Process",
+      "metadata:Microsoft.AspNetCore.Server.Kestrel.Core.dll: ProcessStartInfo",
+      "metadata:Microsoft.AspNetCore.Server.Kestrel.Core.dll: Process.Start",
+      "il:Microsoft.AspNetCore.Server.Kestrel.Core.dll:Microsoft.AspNetCore.Certificates.Generation.MacOSCertificateManager.TrustCertificateCore+0x5e: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+      "il:Microsoft.AspNetCore.Server.Kestrel.Core.dll:Microsoft.AspNetCore.Certificates.Generation.MacOSCertificateManager.TrustCertificateCore+0x5e: call System.Diagnostics.Process.Start: Process.Start"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "native-pe:msquic.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:msquic.dll: RegOpenKey",
+      "metadata:Microsoft.AspNetCore.DataProtection.dll: Microsoft.Win32.Registry",
+      "metadata:Microsoft.AspNetCore.DataProtection.dll: RegistryKey",
+      "il:Microsoft.AspNetCore.DataProtection.dll:Microsoft.AspNetCore.DataProtection.RegistryPolicyResolver.ReadKeyEscrowSinks+0xc: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:Microsoft.AspNetCore.DataProtection.dll:Microsoft.AspNetCore.DataProtection.RegistryPolicyResolver.ReadKeyEscrowSinks+0xc: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "il:Microsoft.AspNetCore.DataProtection.dll:Microsoft.AspNetCore.DataProtection.RegistryPolicyResolver.ResolvePolicyCore+0xd: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:Microsoft.AspNetCore.DataProtection.dll:Microsoft.AspNetCore.DataProtection.RegistryPolicyResolver.ResolvePolicyCore+0xd: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "artifact:System.IO.FileSystem.dll: FileStream",
+      "il:Microsoft.Extensions.FileProviders.Embedded.dll:Microsoft.Extensions.FileProviders.Embedded.Manifest.ManifestDirectory.CopyChildren+0x6a: call Microsoft.Extensions.FileProviders.Embedded.Manifest.ManifestDirectory.CreateDirectory: Directory.CreateDirectory",
+      "il:Microsoft.Extensions.FileProviders.Embedded.dll:Microsoft.Extensions.FileProviders.Embedded.Manifest.ManifestParser.BuildEntry+0xf5: call Microsoft.Extensions.FileProviders.Embedded.Manifest.ManifestDirectory.CreateDirectory: Directory.CreateDirectory",
+      "metadata:System.Net.Sockets.dll: FileStream",
+      "metadata:System.Net.Sockets.dll: File.Delete",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SendPacketsElement..ctor+0x12: callvirt System.IO.FileStream.get_IsAsync: FileStream",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SendPacketsElement..ctor+0x19: call System.SR.get_net_sockets_sendpackelement_FileStreamMustBeAsync: FileStream",
+      "il:System.Net.Sockets.dll:System.Net.Sockets.SendPacketsElement.Initialize+0x9: call System.Net.Sockets.SendPacketsElement.set_FileStream: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.JSInterop.dll: https://github.com/dotnet/aspnetcore/issues/29946"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.434d3794d7ca",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.JSInterop.dll: https://github.com/dotnet/aspnetcore/issues/29946g"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9b05418e8cea",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Logging.Debug.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.IO.FileSystem.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.FileProviders.Embedded.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:System.Net.WebClient.dll: WebRequest",
+      "metadata:System.Net.WebClient.dll: HttpWebRequest",
+      "il:System.Net.WebClient.dll:System.Net.WebClient.OnDownloadStringCompleted+0xd: callvirt System.Net.DownloadStringCompletedEventHandler.Invoke: DownloadString",
+      "il:System.Net.WebClient.dll:System.Net.WebClient.OnDownloadDataCompleted+0xd: callvirt System.Net.DownloadDataCompletedEventHandler.Invoke: DownloadData",
+      "il:System.Net.WebClient.dll:System.Net.WebClient.get_Proxy+0x8: call System.Net.WebRequest.get_DefaultWebProxy: WebRequest",
+      "il:System.Net.WebClient.dll:System.Net.WebClient.GetWebRequest+0x1: call System.Net.WebRequest.Create: WebRequest",
+      "il:System.Net.WebClient.dll:System.Net.WebClient.GetWebRequest+0x1d: callvirt System.Net.WebRequest.set_Credentials: WebRequest",
+      "il:System.Net.WebClient.dll:System.Net.WebClient.GetWebRequest+0x31: callvirt System.Net.WebRequest.set_Method: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "msquic.dll",
+      "clretwrc.dll",
+      "System.IO.Compression.Native.dll",
+      "mscordbi.dll",
+      "clrgcexp.dll",
+      "mscordaccore.dll",
+      "aspnetcorev2_inprocess.dll",
+      "mscorrc.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

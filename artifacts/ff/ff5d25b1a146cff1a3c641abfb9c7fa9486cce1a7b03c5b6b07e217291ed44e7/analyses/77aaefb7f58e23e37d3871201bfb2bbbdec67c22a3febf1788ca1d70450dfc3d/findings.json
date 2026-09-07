@@ -1,0 +1,168 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SoundFlow.dll:SoundFlow.Midi.Devices.MidiInputDevice.InvokeOnMessageReceived+0x12: callvirt SoundFlow.Midi.Devices.MidiMessageReceivedCallback.Invoke",
+      "il:SoundFlow.dll:SoundFlow.Midi.Devices.MidiInputDevice.InvokeOnSysExReceived+0x12: callvirt SoundFlow.Midi.Devices.SysExMessageReceivedCallback.Invoke",
+      "il:SoundFlow.dll:SoundFlow.Components.Recorder.OnAudioProcessed+0x91: callvirt SoundFlow.Abstracts.AudioProcessCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SoundFlow.dll: s://github.com/LSXPrime/SoundFlow",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/obj/Release/net8.0/SoundFlow.pdb",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/Security/AudioEncryptor.cs",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/Security/Analyzers/IntegrityWatermarkVerifyAnalyzer.cs",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/Security/Analyzers/OwnershipWatermarkExtractAnalyzer.cs",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/Midi/Routing/MidiRoute.cs",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/Metadata/Midi/MidiFileParser.cs",
+      "artifact:SoundFlow.dll: /home/runner/work/SoundFlow/SoundFlow/Src/Editing/Persistence/CompositionProjectManager.cs"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SoundFlow.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:SoundFlow.dll: NativeLibrary.Load",
+      "metadata:SoundFlow.dll: DllImportAttribute",
+      "native-pe:runtimes/win-arm64/native/miniaudio.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:runtimes/win-arm64/native/miniaudio.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "artifact:runtimes/win-arm64/native/miniaudio.dll: LoadLibrary",
+      "artifact:runtimes/win-arm64/native/miniaudio.dll: GetProcAddress",
+      "native-pe:runtimes/win-x86/native/miniaudio.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/android-x64/native/libminiaudio.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-arm/native/libminiaudio.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-arm64/native/libminiaudio.so: https://android.googlesource.com/toolchain/llvm-project"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0575a452af0c",
+    "severity": "caution",
+    "title": "Endpoint: android.googlesource.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OofPlugin.dll: https://www.youtube.com/watch"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.792d7cec19be",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:runtimes/win-arm64/native/miniaudio.dll: RegOpenKey",
+      "artifact:runtimes/win-x86/native/miniaudio.dll: RegOpenKey",
+      "artifact:runtimes/win-x64/native/miniaudio.dll: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:SoundFlow.dll: FileStream",
+      "metadata:SoundFlow.dll: WriteAllText",
+      "metadata:SoundFlow.dll: File.Move",
+      "metadata:SoundFlow.dll: File.Delete",
+      "metadata:SoundFlow.dll: WriteAllBytes",
+      "metadata:SoundFlow.dll: Directory.CreateDirectory",
+      "il:SoundFlow.dll:SoundFlow.Synthesis.Banks.SoundFontBank..ctor+0x16: newobj System.IO.FileStream..ctor: FileStream",
+      "il:SoundFlow.dll:SoundFlow.Security.AudioEncryptor.Decrypt+0x2d: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/freebsd-x64/native/libminiaudio.so: https://github.com/llvm/llvm-project.git",
+      "artifact:runtimes/freebsd-arm64/native/libminiaudio.so: https://github.com/llvm/llvm-project.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5484f80d8aa3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OofPlugin.json: https://github.com/Frogworks-Interactive/OOF"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5a6ae84fc477",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OofPlugin.dll: https://github.com/Frogworks-Interactive/OOF.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd5a0ccd3c0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SoundFlow.dll: https://github.com/LSXPrime/SoundFlow"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e0ad754defa1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:SoundFlow.dll: System.Net.Http.HttpClient",
+      "il:SoundFlow.dll:SoundFlow.Providers.NetworkDataProvider..ctor+0x27: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-x64/native/libminiaudio.so",
+      "runtimes/osx-arm64/native/libminiaudio.dylib",
+      "runtimes/win-arm64/native/miniaudio.dll",
+      "runtimes/freebsd-x64/native/libminiaudio.so",
+      "runtimes/linux-arm/native/libminiaudio.so",
+      "runtimes/android-x64/native/libminiaudio.so",
+      "runtimes/osx-x64/native/libminiaudio.dylib",
+      "runtimes/android-arm/native/libminiaudio.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
