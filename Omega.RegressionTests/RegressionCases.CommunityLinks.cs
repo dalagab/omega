@@ -23,7 +23,8 @@ internal static partial class RegressionCases
         Contains(community, "UseShellExecute = true", "community destinations open through the operating-system browser");
         Contains(community, "Delete all Omega local data", "Settings exposes an explicit local first-install reset");
         Contains(community, "OmegaDataResetService.Request", "local reset is queued safely for the next plugin reload");
-        Contains(community, "\"omega\",\n            OmegaClientGitHubUrl", "Community labels the Omega client branch correctly");
+        var normalizedCommunity = community.Replace("\r\n", "\n", StringComparison.Ordinal);
+        Contains(normalizedCommunity, "\"omega\",\n            OmegaClientGitHubUrl", "Community labels the Omega client branch correctly");
 
         var reset = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "OmegaDataResetService.cs"));
         Contains(reset, ".omega-reset-requested", "reset uses a durable restart marker");
