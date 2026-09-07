@@ -1,0 +1,193 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.EnumChildWindowsNativeCallback+0x19: callvirt EnumChildWindowsCallback.Invoke",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.EnumDisplayMonitorsNativeCallback+0x1a: callvirt EnumDisplayMonitorsCallback.Invoke",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.HandleEnumThreadWindowsNativeCallback+0x19: callvirt EnumThreadWindowsCallback.Invoke",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.EnumWindowsNativeCallback+0x19: callvirt EnumWindowsCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Assemblies.get_MscorlibAssembly+0xe: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x6f: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x88: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x13: call System.Reflection.Assembly.Load: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:System.Private.Windows.Core.dll: s://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.Core.dll: s://aka.ms/binaryformatter for more information.",
+      "artifact:System.Private.Windows.Core.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:System.Private.Windows.Core.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:System.Private.Windows.Core.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:System.Private.Windows.Core.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:System.Private.Windows.Core.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:System.Private.Windows.Core.dll: p://www.microsoft.com0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:DeepDungeonTracker.dll: SigScanner",
+      "metadata:DeepDungeonTracker.dll: Dalamud.Hooking",
+      "metadata:DeepDungeonTracker.dll: HookFromAddress",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.Hook.DutyHook..ctor+0xc: call DeepDungeonTracker.Service.get_SigScanner: SigScanner",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.Hook.DutyHook..ctor+0x16: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.Hook.DutyHook..ctor+0x28: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.Hook.EffectResultPacketHook..ctor+0xc: call DeepDungeonTracker.Service.get_SigScanner: SigScanner",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.Hook.EffectResultPacketHook..ctor+0x16: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.Core.dll: DllImportAttribute",
+      "metadata:System.Drawing.Common.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Drawing.Common.dll: DllImportAttribute",
+      "metadata:Microsoft.Win32.SystemEvents.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.GdiPlus.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.GdiPlus.dll: DllImportAttribute",
+      "il:System.Private.Windows.GdiPlus.dll:Windows.Win32.PInvokeGdiPlus..cctor+0x17: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Private.Windows.Core.dll: http://www.microsoft.com0/",
+      "artifact:System.Drawing.Common.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Win32.SystemEvents.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.GdiPlus.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DeepDungeonTracker.dll: https://ko-fi.com/marconsou"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e65aadcb1f2a",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:System.Private.Windows.Core.dll: CreateProcess",
+      "metadata:DeepDungeonTracker.dll: System.Diagnostics.Process",
+      "metadata:DeepDungeonTracker.dll: ProcessStartInfo",
+      "metadata:DeepDungeonTracker.dll: ShellExecute",
+      "metadata:DeepDungeonTracker.dll: Process.Start",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.LocalStream.OpenFolder+0xf: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.LocalStream.OpenFolder+0xf: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.LocalStream.OpenFolder+0x16: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: FileStream",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.System.Com.ComManagedStream.Windows.Win32.System.Com.IStream.Interface.Stat+0x7d: callvirt System.IO.FileStream.get_Name: FileStream",
+      "artifact:System.Private.Windows.Core.dll: FileStream",
+      "metadata:System.Drawing.Common.dll: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Icon..ctor+0xa: newobj System.IO.FileStream..ctor: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Imaging.Metafile..ctor+0x49: call Windows.Win32.PInvokeGdiPlus.GdipRecordMetafileStream: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Imaging.Metafile..ctor+0x54: call Windows.Win32.PInvokeGdiPlus.GdipRecordMetafileStream: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Imaging.Metafile..ctor+0x66: call Windows.Win32.PInvokeGdiPlus.GdipRecordMetafileStream: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DeepDungeonTracker.json: https://github.com/marconsou/deep-dungeon-tracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6d33bca48f8a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Private.Windows.Core.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Drawing.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Win32.SystemEvents.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.GdiPlus.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DeepDungeonTracker.dll: https://github.com/marconsou/deep-dungeon-tracker.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d9181e1fc71a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DeepDungeonTracker.dll: System.Net.Http.HttpClient",
+      "il:DeepDungeonTracker.dll:DeepDungeonTracker.NetworkStream..cctor+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DeepDungeonTracker.dll:<Load>d__1`1.MoveNext+0x1c: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "artifact:runtimes/win/lib/net10.0/Microsoft.Win32.SystemEvents.dll: WebRequest",
+      "artifact:runtimes/win/lib/net10.0/Microsoft.Win32.SystemEvents.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
