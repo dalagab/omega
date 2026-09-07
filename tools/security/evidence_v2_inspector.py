@@ -32,6 +32,16 @@ DEFAULT_CATALOG_BASE_URL = "https://raw.githubusercontent.com/dalagab/omega/cata
 DEFAULT_MAX_REMOTE_FILE_BYTES = 32 * 1024 * 1024
 DEFAULT_REMOTE_CACHE_BYTES = 128 * 1024 * 1024
 USER_AGENT = "Omega-Sigmascope-Developer-View/2.0"
+SPARSE_EVIDENCE_SCHEMA = "omega.sigmascope.sparse-evidence-view.v1"
+SPARSE_EVIDENCE_MARKER = ".sigmascope-sparse-evidence.json"
+SPARSE_EVIDENCE_MESSAGE = (
+    "Sparse worker projection — non-authoritative. "
+    "DeltaScope normal workbench mode requires a full authoritative Security Evidence v2 tree."
+)
+
+
+class SparseEvidenceAuthorityError(ValueError):
+    """Normal DeltaScope must never present a sparse SigmaScope worker view as corpus authority."""
 
 
 def _safe_relative(relative: str) -> str:
@@ -67,6 +77,10 @@ class LocalEvidenceSource:
 
     def set_revision(self, revision: str) -> None:
         self.revision = str(revision or "")
+
+    def has_sparse_evidence_marker(self) -> bool:
+        """Fail-closed local marker check; marker contents are not trusted or executed."""
+        return (self.root / SPARSE_EVIDENCE_MARKER).exists()
 
     def _path(self, relative: str) -> Path:
         relative = _safe_relative(relative)
@@ -436,8 +450,38 @@ class V2SigmascopeInspector:
             str(provenance.get("sha256") or "").strip().lower(),
         ))
 
+    def _assert_full_evidence_authority(self, root: dict[str, Any]) -> None:
+        """Reject SigmaScope sparse worker projections before any corpus data is staged.
+
+        Sparse views deliberately retain the normal Evidence-v2 root schema so workers can
+        consume a bounded subset.  They are not publication authority and their counts are
+        not corpus-wide.  Normal DeltaScope therefore fails closed on either the embedded
+        sparseEvidenceView contract or the local worker marker.
+        """
+        root_marked_sparse = "sparseEvidenceView" in root
+        local_marker = (
+            isinstance(self.source, LocalEvidenceSource)
+            and self.source.has_sparse_evidence_marker()
+        )
+        if not root_marked_sparse and not local_marker:
+            return
+
+        signals: list[str] = []
+        if root_marked_sparse:
+            sparse = root.get("sparseEvidenceView")
+            sparse_schema = str(sparse.get("schema") or "") if isinstance(sparse, dict) else ""
+            signals.append(
+                f"root sparseEvidenceView ({sparse_schema or 'schema unavailable'})"
+            )
+        if local_marker:
+            signals.append(SPARSE_EVIDENCE_MARKER)
+        raise SparseEvidenceAuthorityError(
+            f"{SPARSE_EVIDENCE_MESSAGE} Detected {', '.join(signals)} at {self.evidence_path}."
+        )
+
     def _load_snapshot(self, *, refresh_root: bool = False, root: dict[str, Any] | None = None, verify_definitions: bool = False) -> None:
         root = root or self.source.read_json("index.json", refresh=refresh_root)
+        self._assert_full_evidence_authority(root)
         if root.get("schema") != "omega.security-evidence.v2" or root.get("formatVersion") != 2:
             raise ValueError(f"{self.evidence_path} is not an Omega Security Evidence v2 tree")
         # Stage the root and its authoritative plugin index before swapping the live
