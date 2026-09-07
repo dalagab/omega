@@ -13,8 +13,7 @@ internal sealed record SqliteCatalogSnapshot(
     string SecurityRevision,
     string EvidenceRevision,
     DateTimeOffset? RevisionUpdatedAtUtc,
-    int ChangelogEntryCount,
-    IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> PluginChangelogHistory);
+    int ChangelogEntryCount);
 
 /// <summary>
 /// Owns Omega's single client marketplace database. Detailed security evidence remains server-side.
@@ -68,7 +67,7 @@ internal sealed class SqliteCatalogStore
                 using var connection = OpenReadOnly(copyPath);
                 ValidateConnection(connection);
                 return new SqliteCatalogSnapshot(
-                    ReadVariants(connection),
+                    ReadVariants(connection, includeDetails: false),
                     ReadSourceDefinitions(connection),
                     ReadGeneratedAt(connection),
                     ReadMeta(connection, "catalog_revision"),
@@ -76,10 +75,290 @@ internal sealed class SqliteCatalogStore
                     ReadMeta(connection, "security_revision"),
                     ReadMeta(connection, "evidence_revision"),
                     ReadRevisionUpdatedAt(connection),
-                    ReadChangelogEntryCount(connection),
-                    ReadPluginChangelogHistory(connection));
+                    ReadChangelogEntryCount(connection));
             });
         }
+    }
+
+    public IReadOnlyList<MarketplacePlugin> ReadVariantDetails(string internalName)
+    {
+        if (string.IsNullOrWhiteSpace(internalName) || !Exists)
+            return [];
+
+        lock (sync)
+        {
+            using var connection = OpenReadOnly(DatabasePath);
+            return ReadVariants(connection, includeDetails: true, internalName);
+        }
+    }
+
+    public IReadOnlyList<MarketplaceChangelogEntry> ReadChangelogHistory(string internalName)
+    {
+        if (string.IsNullOrWhiteSpace(internalName) || !Exists)
+            return [];
+
+        lock (sync)
+        {
+            using var connection = OpenReadOnly(DatabasePath);
+            return ReadPluginChangelogHistory(connection, internalName);
+        }
+    }
+
+    public IReadOnlyList<CuratedSourceDefinition> ReadSourceDefinitions()
+    {
+        if (!Exists)
+            return [];
+
+        lock (sync)
+        {
+            using var connection = OpenReadOnly(DatabasePath);
+            return ReadSourceDefinitions(connection);
+        }
+    }
+
+    public IReadOnlySet<string> SearchInternalNames(string search, string? sourceName = null)
+    {
+        var needle = (search ?? string.Empty).Trim();
+        if (needle.Length == 0 || !Exists)
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        lock (sync)
+        {
+            using var connection = OpenReadOnly(DatabasePath);
+            return SearchInternalNames(connection, needle, sourceName);
+        }
+    }
+
+    public IReadOnlySet<string> QueryDiscoverInternalNames(
+        string search,
+        string? sourceName,
+        IReadOnlyCollection<string>? enabledSourceUrls,
+        int apiLevel,
+        bool requireInstallableApiBuild,
+        bool preferTesting,
+        string? category,
+        IReadOnlyCollection<string> tags,
+        bool? adultOnly,
+        int securityFilter)
+    {
+        if (!Exists)
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        lock (sync)
+        {
+            using var connection = OpenReadOnly(DatabasePath);
+            var runtimeColumns = RuntimeViewColumns(connection);
+            var predicates = new List<string> { "is_hide=0" };
+            using var command = connection.CreateCommand();
+
+            var normalizedSource = string.IsNullOrWhiteSpace(sourceName) ||
+                                   sourceName.Equals("All sources", StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : sourceName.Trim();
+            if (normalizedSource.Length > 0)
+            {
+                predicates.Add("source_name COLLATE NOCASE=$source");
+                command.Parameters.AddWithValue("$source", normalizedSource);
+            }
+
+            var enabledUrls = (enabledSourceUrls ?? [])
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Select(url => url.Trim().TrimEnd('/'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (enabledUrls.Length > 0)
+            {
+                var parameters = new List<string>(enabledUrls.Length);
+                for (var index = 0; index < enabledUrls.Length; index++)
+                {
+                    var parameter = $"$sourceUrl{index}";
+                    parameters.Add(parameter);
+                    command.Parameters.AddWithValue(parameter, enabledUrls[index]);
+                }
+                predicates.Add($"RTRIM(source_url,'/') COLLATE NOCASE IN ({string.Join(",", parameters)})");
+            }
+
+            if (apiLevel > 0)
+            {
+                predicates.Add(requireInstallableApiBuild
+                    ? """
+                      ((is_testing_exclusive=0 AND dalamud_api_level=$api AND TRIM(download_link_install)<>'') OR
+                       (((is_testing_exclusive<>0) OR $preferTesting=1) AND testing_dalamud_api_level=$api AND TRIM(download_link_testing)<>''))
+                      """
+                    : "(dalamud_api_level=$api OR testing_dalamud_api_level=$api)");
+                command.Parameters.AddWithValue("$api", apiLevel);
+                command.Parameters.AddWithValue("$preferTesting", preferTesting ? 1 : 0);
+            }
+
+            var normalizedCategory = (category ?? string.Empty).Trim();
+            if (normalizedCategory.Length > 0 &&
+                !normalizedCategory.Equals("All categories", StringComparison.OrdinalIgnoreCase))
+            {
+                predicates.Add("EXISTS (SELECT 1 FROM json_each(category_tags_json) WHERE value COLLATE NOCASE=$category)");
+                command.Parameters.AddWithValue("$category", normalizedCategory);
+            }
+
+            var normalizedTags = tags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => tag.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            for (var index = 0; index < normalizedTags.Length; index++)
+            {
+                var parameter = $"$tag{index}";
+                predicates.Add($"EXISTS (SELECT 1 FROM json_each(tags_json) WHERE value COLLATE NOCASE={parameter})");
+                command.Parameters.AddWithValue(parameter, normalizedTags[index]);
+            }
+
+            if (adultOnly is not null)
+            {
+                var adultTagPredicate = """
+                    EXISTS (
+                        SELECT 1 FROM json_each(tags_json)
+                         WHERE LOWER(value) IN ('nsfw','adult','18+','18plus','explicit','sexual-content','mature')
+                    ) OR
+                    EXISTS (
+                        SELECT 1 FROM json_each(category_tags_json)
+                         WHERE LOWER(value) IN ('nsfw','adult','18+','18plus','explicit','sexual-content','mature')
+                    )
+                    """;
+                var adultPredicate = runtimeColumns.Contains("plugin_nsfw")
+                    ? $"(plugin_nsfw<>0 OR {adultTagPredicate})"
+                    : $"({adultTagPredicate})";
+                predicates.Add(adultOnly.Value ? adultPredicate : $"NOT {adultPredicate}");
+            }
+
+            if (runtimeColumns.Contains("security_status") && securityFilter != 0)
+            {
+                predicates.Add(securityFilter switch
+                {
+                    1 => "LOWER(security_status)='complete'",
+                    2 => "LOWER(security_status)<>'complete'",
+                    3 => "LOWER(security_highest_severity) IN ('caution','high','critical')",
+                    4 => "LOWER(security_highest_severity) IN ('high','critical')",
+                    _ => "1=1",
+                });
+            }
+
+            var needle = (search ?? string.Empty).Trim();
+            if (needle.Length > 0)
+            {
+                command.Parameters.AddWithValue("$pattern", $"%{needle}%");
+                if (TableExists(connection, "plugin_search") && normalizedSource.Length == 0)
+                {
+                    predicates.Add("""
+                        internal_name COLLATE NOCASE IN (
+                            SELECT internal_name
+                              FROM plugin_search
+                             WHERE internal_name LIKE $pattern COLLATE NOCASE OR
+                                   name LIKE $pattern COLLATE NOCASE OR
+                                   author LIKE $pattern COLLATE NOCASE OR
+                                   punchline LIKE $pattern COLLATE NOCASE OR
+                                   description LIKE $pattern COLLATE NOCASE OR
+                                   tags LIKE $pattern COLLATE NOCASE OR
+                                   website_text LIKE $pattern COLLATE NOCASE
+                        )
+                        """);
+                }
+                else
+                {
+                    var readmePredicate = runtimeColumns.Contains("website_readme_excerpt")
+                        ? " OR website_readme_excerpt LIKE $pattern COLLATE NOCASE"
+                        : string.Empty;
+                    predicates.Add($"""
+                        (internal_name LIKE $pattern COLLATE NOCASE OR
+                         name LIKE $pattern COLLATE NOCASE OR
+                         author LIKE $pattern COLLATE NOCASE OR
+                         punchline LIKE $pattern COLLATE NOCASE OR
+                         description LIKE $pattern COLLATE NOCASE OR
+                         website_description LIKE $pattern COLLATE NOCASE OR
+                         tags_json LIKE $pattern COLLATE NOCASE OR
+                         category_tags_json LIKE $pattern COLLATE NOCASE
+                         {readmePredicate})
+                        """);
+                }
+            }
+
+            command.CommandText = $"""
+                SELECT DISTINCT internal_name
+                  FROM runtime_plugin_variants
+                 WHERE {(predicates.Count == 0 ? "1=1" : string.Join(" AND ", predicates))};
+                """;
+            return ReadInternalNameSet(command);
+        }
+    }
+
+    private static IReadOnlySet<string> SearchInternalNames(
+        SqliteConnection connection,
+        string needle,
+        string? sourceName)
+    {
+        var normalizedSource = string.IsNullOrWhiteSpace(sourceName) ||
+                               sourceName.Equals("All sources", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : sourceName.Trim();
+        using var command = connection.CreateCommand();
+        command.Parameters.AddWithValue("$pattern", $"%{needle}%");
+        command.Parameters.AddWithValue("$source", normalizedSource);
+
+        if (TableExists(connection, "plugin_search") && normalizedSource.Length == 0)
+        {
+            command.CommandText = """
+                SELECT DISTINCT internal_name
+                  FROM plugin_search
+                 WHERE internal_name LIKE $pattern COLLATE NOCASE OR
+                       name LIKE $pattern COLLATE NOCASE OR
+                       author LIKE $pattern COLLATE NOCASE OR
+                       punchline LIKE $pattern COLLATE NOCASE OR
+                       description LIKE $pattern COLLATE NOCASE OR
+                       tags LIKE $pattern COLLATE NOCASE OR
+                       website_text LIKE $pattern COLLATE NOCASE;
+                """;
+            return ReadInternalNameSet(command);
+        }
+
+        var columns = RuntimeViewColumns(connection);
+        var readmePredicate = columns.Contains("website_readme_excerpt")
+            ? " OR website_readme_excerpt LIKE $pattern COLLATE NOCASE"
+            : string.Empty;
+        command.CommandText = $"""
+            SELECT DISTINCT internal_name
+              FROM runtime_plugin_variants
+             WHERE ($source='' OR source_name COLLATE NOCASE=$source)
+               AND (
+                    internal_name LIKE $pattern COLLATE NOCASE OR
+                    name LIKE $pattern COLLATE NOCASE OR
+                    author LIKE $pattern COLLATE NOCASE OR
+                    punchline LIKE $pattern COLLATE NOCASE OR
+                    description LIKE $pattern COLLATE NOCASE OR
+                    website_description LIKE $pattern COLLATE NOCASE OR
+                    tags_json LIKE $pattern COLLATE NOCASE OR
+                    category_tags_json LIKE $pattern COLLATE NOCASE
+                    {readmePredicate}
+               );
+            """;
+        return ReadInternalNameSet(command);
+    }
+
+    private static IReadOnlySet<string> ReadInternalNameSet(SqliteCommand command)
+    {
+        using var reader = command.ExecuteReader();
+        var matches = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (reader.Read())
+        {
+            var internalName = GetString(reader, 0);
+            if (!string.IsNullOrWhiteSpace(internalName))
+                matches.Add(internalName);
+        }
+        return matches;
+    }
+
+    private static bool TableExists(SqliteConnection connection, string tableName)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=$name LIMIT 1;";
+        command.Parameters.AddWithValue("$name", tableName);
+        return command.ExecuteScalar() is not null;
     }
 
     public void ReplaceFromBundle(string zipPath)
@@ -207,7 +486,8 @@ internal sealed class SqliteCatalogStore
 
     private static void ValidateRuntimeSnapshot(SqliteConnection candidate)
     {
-        _ = ReadVariants(candidate);
+        // Validate the client read model without eagerly retaining verbose historical/evidence text.
+        _ = ReadVariants(candidate, includeDetails: false);
         _ = ReadSourceDefinitions(candidate);
         _ = ReadGeneratedAt(candidate);
         _ = ReadMeta(candidate, "catalog_revision");
@@ -216,10 +496,12 @@ internal sealed class SqliteCatalogStore
         _ = ReadMeta(candidate, "evidence_revision");
         _ = ReadRevisionUpdatedAt(candidate);
         _ = ReadChangelogEntryCount(candidate);
-        _ = ReadPluginChangelogHistory(candidate);
     }
 
-    private static IReadOnlyList<MarketplacePlugin> ReadVariants(SqliteConnection connection)
+    private static IReadOnlyList<MarketplacePlugin> ReadVariants(
+        SqliteConnection connection,
+        bool includeDetails,
+        string? internalName = null)
     {
         var runtimeColumns = RuntimeViewColumns(connection);
         var hasSecurityProjection = runtimeColumns.Contains("security_status");
@@ -271,6 +553,9 @@ internal sealed class SqliteCatalogStore
         var reviewCoverageLabelProjection = runtimeColumns.Contains("security_review_coverage_label")
             ? "security_review_coverage_label"
             : "'Unresolved' AS security_review_coverage_label";
+        var websiteLicenseProjection = runtimeColumns.Contains("website_license")
+            ? "website_license"
+            : "'' AS website_license";
         var securityProjection = hasSecurityProjection
             ? $"""
                    security_status,security_scanned_at_utc,security_artifact_sha256,security_scanner_version,
@@ -301,9 +586,14 @@ internal sealed class SqliteCatalogStore
                    website_description,{websiteReadmeProjection},website_image_urls_json,website_enriched,{adultContentProjection},
                    {securityProjection},
                    {authorsProjection},{websiteLinksProjection},{omegaBannerProjection},{catalogPluginIdProjection},
-                   {sourceAttributionConfidenceProjection},{sourceAttributionBasisProjection},{reviewCoverageLabelProjection}
-              FROM runtime_plugin_variants;
+                   {sourceAttributionConfidenceProjection},{sourceAttributionBasisProjection},{reviewCoverageLabelProjection},
+                   {websiteLicenseProjection}
+              FROM runtime_plugin_variants
+             WHERE ($internalName='' OR internal_name COLLATE NOCASE=$internalName);
             """;
+        command.Parameters.AddWithValue(
+            "$internalName",
+            string.IsNullOrWhiteSpace(internalName) ? string.Empty : internalName.Trim());
         using var reader = command.ExecuteReader();
         var result = new List<MarketplacePlugin>();
         while (reader.Read())
@@ -341,7 +631,7 @@ internal sealed class SqliteCatalogStore
                 OmegaWebsiteUrl = GetString(reader, 28),
                 OmegaWebsiteTitle = GetString(reader, 29),
                 OmegaWebsiteDescription = GetString(reader, 30),
-                OmegaWebsiteReadmeExcerpt = GetString(reader, 31),
+                OmegaWebsiteReadmeExcerpt = includeDetails ? GetString(reader, 31) : string.Empty,
                 OmegaWebsiteImageUrls = ReadStrings(GetString(reader, 32, "[]")),
                 OmegaEnriched = GetBool(reader, 33),
                 OmegaIsAdultContent = GetBool(reader, 34),
@@ -357,7 +647,9 @@ internal sealed class SqliteCatalogStore
                 SecurityCapabilities = ReadStrings(GetString(reader, 44, "[]")),
                 SecurityAutomationLevel = GetString(reader, 45, "none"),
                 SecurityAutomationCapabilities = ReadAutomationCapabilities(GetString(reader, 46, "[]")),
-                SecurityFindings = ReadSecurityFindings(GetString(reader, 47, "[]")),
+                SecurityFindings = includeDetails
+                    ? ReadSecurityFindings(GetString(reader, 47, "[]"))
+                    : ReadSecurityFindingSummaries(GetString(reader, 47, "[]")),
                 SecurityDependencies = ReadDependencies(GetString(reader, 48, "[]")),
                 SecurityDependencyTotalCount = GetInt(reader, 49),
                 SecurityKnownAdvisoryCount = GetInt(reader, 50),
@@ -369,12 +661,13 @@ internal sealed class SqliteCatalogStore
                 SecuritySourceToBinaryVerified = GetBool(reader, 56),
                 SecurityError = GetString(reader, 57),
                 Authors = ReadStrings(GetString(reader, 58, "[]")),
-                OmegaProjectLinks = ReadProjectLinks(GetString(reader, 59, "[]")),
+                OmegaProjectLinks = includeDetails ? ReadProjectLinks(GetString(reader, 59, "[]")) : [],
                 OmegaBannerUrl = GetString(reader, 60),
                 CatalogPluginId = GetLong(reader, 61),
                 SecuritySourceAttributionConfidence = GetInt(reader, 62),
-                SecuritySourceAttributionBasis = ReadStrings(GetString(reader, 63, "[]")),
+                SecuritySourceAttributionBasis = includeDetails ? ReadStrings(GetString(reader, 63, "[]")) : [],
                 SecurityReviewCoverageLabel = GetString(reader, 64, "Unresolved"),
+                OmegaWebsiteLicense = GetString(reader, 65),
             });
         }
         return result;
@@ -392,12 +685,14 @@ internal sealed class SqliteCatalogStore
     }
 
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> ReadPluginChangelogHistory(SqliteConnection connection)
+    private static IReadOnlyList<MarketplaceChangelogEntry> ReadPluginChangelogHistory(
+        SqliteConnection connection,
+        string internalName)
     {
         using var exists = connection.CreateCommand();
         exists.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plugin_variants';";
         if (Convert.ToInt64(exists.ExecuteScalar() ?? 0L) == 0)
-            return new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
+            return [];
 
         using var command = connection.CreateCommand();
         command.CommandText = """
@@ -405,34 +700,25 @@ internal sealed class SqliteCatalogStore
               FROM plugin_variants v
               JOIN plugins p ON p.plugin_id=v.plugin_id
               JOIN sources s ON s.source_id=v.source_id
-             WHERE TRIM(v.changelog)<>''
-             ORDER BY p.internal_name COLLATE NOCASE,
-                      CASE WHEN v.last_update>0 THEN 0 ELSE 1 END,
-                      v.last_update DESC,v.last_seen_utc DESC,v.assembly_version DESC;
+             WHERE p.internal_name=$internalName COLLATE NOCASE
+               AND TRIM(v.changelog)<>''
+             ORDER BY CASE WHEN v.last_update>0 THEN 0 ELSE 1 END,
+                      v.last_update DESC,v.last_seen_utc DESC,v.assembly_version DESC
+             LIMIT 96;
             """;
+        command.Parameters.AddWithValue("$internalName", internalName);
         using var reader = command.ExecuteReader();
-        var mutable = new Dictionary<string, List<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
-        var seen = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        while (reader.Read())
+        var result = new List<MarketplaceChangelogEntry>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        while (reader.Read() && result.Count < 32)
         {
-            var internalName = GetString(reader, 0);
-            if (string.IsNullOrWhiteSpace(internalName))
-                continue;
-            if (!mutable.TryGetValue(internalName, out var entries))
-            {
-                entries = [];
-                mutable[internalName] = entries;
-                seen[internalName] = new HashSet<string>(StringComparer.Ordinal);
-            }
-            if (entries.Count >= 32)
-                continue;
-
             var changelog = GetString(reader, 5).Trim();
             var key = $"{GetString(reader, 2).TrimEnd('/')}\u001f{GetString(reader, 3)}\u001f{changelog}";
-            if (!seen[internalName].Add(key))
+            if (!seen.Add(key))
                 continue;
-            entries.Add(new MarketplaceChangelogEntry(
-                internalName,
+
+            result.Add(new MarketplaceChangelogEntry(
+                GetString(reader, 0),
                 GetString(reader, 1),
                 GetString(reader, 2),
                 GetString(reader, 3),
@@ -441,10 +727,7 @@ internal sealed class SqliteCatalogStore
                 GetBool(reader, 6)));
         }
 
-        return mutable.ToDictionary(
-            pair => pair.Key,
-            pair => (IReadOnlyList<MarketplaceChangelogEntry>)pair.Value,
-            StringComparer.OrdinalIgnoreCase);
+        return result;
     }
 
     private static IReadOnlyList<CuratedSourceDefinition> ReadSourceDefinitions(SqliteConnection connection)
@@ -602,6 +885,32 @@ internal sealed class SqliteCatalogStore
         }
     }
 
+
+    private static IReadOnlyList<MarketplaceSecurityFinding> ReadSecurityFindingSummaries(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "[]" : json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                return [];
+
+            return document.RootElement.EnumerateArray()
+                .Where(x => x.ValueKind == JsonValueKind.Object)
+                .Select(x => new MarketplaceSecurityFinding
+                {
+                    RuleId = ReadJsonString(x, "ruleId"),
+                    Severity = ReadJsonString(x, "severity"),
+                    Category = ReadJsonString(x, "category"),
+                    Title = ReadJsonString(x, "title"),
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x.RuleId) || !string.IsNullOrWhiteSpace(x.Title))
+                .ToArray();
+        }
+        catch
+        {
+            return [];
+        }
+    }
 
     private static IReadOnlyList<MarketplaceProjectLink> ReadProjectLinks(string json)
     {

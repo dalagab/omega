@@ -30,8 +30,12 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyDictionary<string, MarketplacePlugin[]> presentationVariantsByInternalName =
         new Dictionary<string, MarketplacePlugin[]>(StringComparer.OrdinalIgnoreCase);
-    private IReadOnlyDictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> changelogHistoryByInternalName =
-        new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
+    private const int DetailedVariantCacheLimit = 64;
+    private const int ChangelogCacheLimit = 32;
+    private readonly Dictionary<string, MarketplacePlugin[]> detailedVariantCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<string> detailedVariantCacheOrder = new();
+    private readonly Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>> changelogCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Queue<string> changelogCacheOrder = new();
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryStatusCache = new();
     private readonly Dictionary<int, IReadOnlyList<RepositoryCatalogStatus>> repositoryInventoryStatusCache = new();
     private readonly Dictionary<string, MarketplaceCatalogProjection> mainProjectionCache = new(StringComparer.OrdinalIgnoreCase);
@@ -69,11 +73,7 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
     }
 
     public IReadOnlyList<CuratedSourceDefinition> ReadDatabaseSourceDefinitions()
-    {
-        if (!store.Exists)
-            return [];
-        return store.ReadSnapshot().SourceDefinitions;
-    }
+        => store.ReadSourceDefinitions();
 
     public bool SetDefaultPlugins(IEnumerable<MarketplacePlugin> pluginsFromDalamud)
     {
@@ -108,6 +108,20 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
         get { lock (sync) return variants; }
     }
 
+    /// <summary>
+    /// Full repository inventory used by Settings projections. Unlike <see cref="Variants"/>, this
+    /// retains disabled Definitions sources so API filtering and repository review remain accurate
+    /// without re-reading repositories while the Settings window is open.
+    /// </summary>
+    public IReadOnlyList<MarketplacePlugin> GetRepositoryInventoryVariants()
+    {
+        lock (sync)
+            return allDatabaseVariants
+                .Concat(liveOverlayByUrl.Values.SelectMany(x => x))
+                .Concat(defaultPlugins)
+                .ToArray();
+    }
+
     public IReadOnlyList<MarketplacePlugin> GetVariants(string internalName)
     {
         lock (sync)
@@ -120,22 +134,148 @@ internal sealed partial class MarketplaceCatalogService : IDisposable
             return presentationVariantsByInternalName.TryGetValue(internalName, out var group) ? group : [];
     }
 
-    public IReadOnlyList<MarketplaceChangelogEntry> GetChangelogHistory(string internalName, string? preferredSourceUrl = null)
+    public MarketplacePlugin HydrateVariant(MarketplacePlugin summary)
     {
+        if (string.IsNullOrWhiteSpace(summary.InternalName))
+            return summary;
+
+        MarketplacePlugin[] details;
         lock (sync)
         {
-            if (!changelogHistoryByInternalName.TryGetValue(internalName, out var entries))
-                return [];
-            var normalizedPreferred = NormalizeUrl(preferredSourceUrl);
-            return entries
-                .OrderByDescending(entry => !string.IsNullOrWhiteSpace(normalizedPreferred) &&
-                    NormalizeUrl(entry.SourceUrl).Equals(normalizedPreferred, StringComparison.OrdinalIgnoreCase))
-                .ThenByDescending(entry => PluginUpdateRules.NormalizeUnix(entry.LastUpdate))
-                .ThenByDescending(entry => Version.TryParse(entry.VersionText, out var parsed) ? parsed : new Version(0, 0))
-                .DistinctBy(entry => $"{entry.VersionText}\u001f{entry.Changelog}", StringComparer.Ordinal)
-                .Take(20)
+            if (!detailedVariantCache.TryGetValue(summary.InternalName, out details!))
+            {
+                details = store.ReadVariantDetails(summary.InternalName).ToArray();
+                detailedVariantCache[summary.InternalName] = details;
+                detailedVariantCacheOrder.Enqueue(summary.InternalName);
+                while (detailedVariantCacheOrder.Count > DetailedVariantCacheLimit)
+                    detailedVariantCache.Remove(detailedVariantCacheOrder.Dequeue());
+            }
+        }
+
+        var detailed = details.FirstOrDefault(candidate =>
+            summary.CatalogPluginId > 0
+                ? candidate.CatalogPluginId == summary.CatalogPluginId &&
+                  NormalizeUrl(candidate.SourceUrl).Equals(NormalizeUrl(summary.SourceUrl), StringComparison.OrdinalIgnoreCase) &&
+                  candidate.AssemblyVersionText.Equals(summary.AssemblyVersionText, StringComparison.OrdinalIgnoreCase)
+                : summary.CanInheritSecurityProjectionFrom(candidate));
+
+        if (detailed is null)
+            return summary;
+
+        if (summary.CatalogPluginId <= 0)
+        {
+            // Runtime manifests remain authoritative for fresh install/update metadata.
+            // Enriched presentation metadata and the full exact-version Sigmascope projection may
+            // be copied from the same source/version database row without replacing live package links.
+            summary.OmegaWebsiteLicense = detailed.OmegaWebsiteLicense;
+            summary.ApplySecurityProjectionFrom(detailed);
+            return summary;
+        }
+
+        return detailed;
+    }
+
+    public IReadOnlySet<string> SearchInternalNames(string search, string? sourceName = null)
+        => store.SearchInternalNames(search, sourceName);
+
+    public IReadOnlySet<string> QueryDiscoverInternalNames(
+        string search,
+        string? sourceName,
+        int apiLevel,
+        bool requireInstallableApiBuild,
+        bool preferTesting,
+        string? category,
+        IReadOnlyCollection<string> tags,
+        bool? adultOnly,
+        int securityFilter)
+    {
+        string[] enabledSourceUrls;
+        lock (sync)
+        {
+            enabledSourceUrls = databaseVariants
+                .Select(x => NormalizeUrl(x.SourceUrl))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
+        return store.QueryDiscoverInternalNames(
+            search,
+            sourceName,
+            enabledSourceUrls,
+            apiLevel,
+            requireInstallableApiBuild,
+            preferTesting,
+            category,
+            tags,
+            adultOnly,
+            securityFilter);
+    }
+
+    public int GetDiscoverCompatibleCount(int currentApi, bool preferTesting)
+    {
+        string[] enabledSourceUrls;
+        MarketplacePlugin[] localVariants;
+        lock (sync)
+        {
+            enabledSourceUrls = databaseVariants
+                .Select(x => NormalizeUrl(x.SourceUrl))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            localVariants = variants.Where(x => x.CatalogPluginId <= 0).ToArray();
+        }
+
+        var names = store.QueryDiscoverInternalNames(
+            string.Empty,
+            "All sources",
+            enabledSourceUrls,
+            currentApi,
+            true,
+            preferTesting,
+            "All categories",
+            [],
+            null,
+            0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var variant in localVariants)
+        {
+            if (variant.HasCurrentApiBuild(currentApi, preferTesting, out _))
+                names.Add(variant.InternalName);
+        }
+        return names.Count;
+    }
+
+    public IReadOnlyList<MarketplaceChangelogEntry> GetChangelogHistory(string internalName, string? preferredSourceUrl = null)
+    {
+        IReadOnlyList<MarketplaceChangelogEntry> entries;
+        lock (sync)
+        {
+            if (!changelogCache.TryGetValue(internalName, out entries!))
+            {
+                entries = store.ReadChangelogHistory(internalName);
+                changelogCache[internalName] = entries;
+                changelogCacheOrder.Enqueue(internalName);
+                while (changelogCacheOrder.Count > ChangelogCacheLimit)
+                    changelogCache.Remove(changelogCacheOrder.Dequeue());
+            }
+        }
+
+        var normalizedPreferred = NormalizeUrl(preferredSourceUrl);
+        return entries
+            .OrderByDescending(entry => !string.IsNullOrWhiteSpace(normalizedPreferred) &&
+                NormalizeUrl(entry.SourceUrl).Equals(normalizedPreferred, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(entry => PluginUpdateRules.NormalizeUnix(entry.LastUpdate))
+            .ThenByDescending(entry => Version.TryParse(entry.VersionText, out var parsed) ? parsed : new Version(0, 0))
+            .DistinctBy(entry => $"{entry.VersionText}\u001f{entry.Changelog}", StringComparer.Ordinal)
+            .Take(20)
+            .ToArray();
+    }
+
+    private void ClearLazyCachesLocked()
+    {
+        detailedVariantCache.Clear();
+        detailedVariantCacheOrder.Clear();
+        changelogCache.Clear();
+        changelogCacheOrder.Clear();
     }
 
     public int GetStableApiLevel(string internalName, int preferredApi = 0)

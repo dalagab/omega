@@ -170,6 +170,9 @@ internal sealed partial class MarketplaceWindow
         }
         finally
         {
+            // Startup apps are an on-demand snapshot. If an uninstall completed while the page
+            // was open, discard that snapshot so the next draw reflects Dalamud's current list.
+            startupAppsSnapshot = null;
             uninstallTask = null;
             uninstallingInternalName = string.Empty;
         }

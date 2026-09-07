@@ -192,7 +192,13 @@ internal sealed partial class MarketplaceWindow
         if (selectedCategory != "All categories")
             DrawSelectedFilterPill($"Category: {Shorten(selectedCategory, 22)}", "category", ref first, () => selectedCategory = "All categories");
         if (selectedApi > 0)
-            DrawSelectedFilterPill($"API {selectedApi}", "api", ref first, () => selectedApi = 0);
+            DrawSelectedFilterPill(
+                $"API {selectedApi}",
+                "api",
+                ref first,
+                () => selectedApi = activeView == MarketplaceView.Discover ? -1 : 0);
+        else if (activeView == MarketplaceView.Discover && selectedApi == 0)
+            DrawSelectedFilterPill("API: Any", "api-any", ref first, () => selectedApi = -1);
         if (activeView == MarketplaceView.Discover && statusFilter != MarketplaceStatusFilter.All)
             DrawSelectedFilterPill($"Status: {StatusFilterLabel(statusFilter)}", "status", ref first, () => statusFilter = MarketplaceStatusFilter.All);
         if (activeView == MarketplaceView.Library && libraryRuntimeFilter != LibraryRuntimeFilter.All)
@@ -472,7 +478,8 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.TextDisabled("Dalamud API");
         ImGui.SetNextItemWidth(-1f);
-        var label = selectedApi == 0 ? "Any API" : $"API {selectedApi}";
+        var effectiveApi = EffectiveApiFilter(currentApi);
+        var label = effectiveApi == 0 ? "Any API" : $"API {effectiveApi}";
         if (!ImGui.BeginCombo("##filter-api", label))
             return;
         if (ImGui.Selectable("Any API", selectedApi == 0))
@@ -482,7 +489,7 @@ internal sealed partial class MarketplaceWindow
         }
         foreach (var api in apis)
         {
-            if (!ImGui.Selectable($"API {api}", selectedApi == api))
+            if (!ImGui.Selectable($"API {api}", effectiveApi == api))
                 continue;
             selectedApi = api;
             resetStorefrontScroll = true;

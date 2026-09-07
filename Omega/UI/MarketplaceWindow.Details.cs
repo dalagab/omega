@@ -33,6 +33,28 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         var query = plugins;
+        var effectiveSearch = EffectiveSearchQuery();
+        IReadOnlySet<string>? databaseDiscoverMatches = null;
+        if (activeView == MarketplaceView.Discover)
+        {
+            var adultOnly = contentFilter switch
+            {
+                MarketplaceContentFilter.ExcludeAdult => false,
+                MarketplaceContentFilter.AdultOnly => true,
+                _ => (bool?)null,
+            };
+            databaseDiscoverMatches = catalog.QueryDiscoverInternalNames(
+                effectiveSearch,
+                selectedSource,
+                EffectiveApiFilter(currentApi),
+                EffectiveApiFilter(currentApi) == currentApi,
+                configuration.PreferTestingBuilds,
+                selectedCategory,
+                selectedTags,
+                adultOnly,
+                (int)securityFilter);
+            query = query.Where(x => x.CatalogPluginId <= 0 || databaseDiscoverMatches.Contains(x.InternalName));
+        }
 
         query = activeView switch
         {
@@ -47,17 +69,17 @@ internal sealed partial class MarketplaceWindow
         query = ApplySecurityFilter(query);
         query = ApplyContentRatingFilter(query);
 
-        var effectiveSearch = EffectiveSearchQuery();
         if (!string.IsNullOrWhiteSpace(effectiveSearch))
         {
             var needle = effectiveSearch.Trim();
+            var databaseMatches = databaseDiscoverMatches ?? catalog.SearchInternalNames(needle, selectedSource);
             query = query.Where(x =>
+                (x.CatalogPluginId > 0 && databaseMatches.Contains(x.InternalName)) ||
                 Contains(x.Name, needle) ||
                 Contains(x.InternalName, needle) ||
                 Contains(x.Punchline, needle) ||
                 Contains(x.Description, needle) ||
                 Contains(x.OmegaWebsiteDescription, needle) ||
-                Contains(x.OmegaWebsiteReadmeExcerpt, needle) ||
                 Contains(x.Author, needle) ||
                 x.Tags.Any(tag => Contains(tag, needle)) ||
                 x.EffectiveCategories.Any(category => Contains(category, needle)));
@@ -81,15 +103,18 @@ internal sealed partial class MarketplaceWindow
             query = query.Where(x => tagIndex.MatchesAll(x.InternalName, requiredTags));
         }
 
-        if (selectedApi != 0)
+        var effectiveApi = EffectiveApiFilter(currentApi);
+        if (effectiveApi > 0)
         {
             query = query.Where(x => catalog.GetVariants(x.InternalName).Any(v =>
-                v.DalamudApiLevel == selectedApi ||
-                v.TestingDalamudApiLevel == selectedApi ||
-                (v.OmegaMinimumApiLevel.HasValue &&
-                 v.OmegaMaximumApiLevel.HasValue &&
-                 v.OmegaMinimumApiLevel.Value <= selectedApi &&
-                 v.OmegaMaximumApiLevel.Value >= selectedApi)));
+                effectiveApi == currentApi
+                    ? v.HasCurrentApiBuild(currentApi, configuration.PreferTestingBuilds, out _)
+                    : v.DalamudApiLevel == effectiveApi ||
+                      v.TestingDalamudApiLevel == effectiveApi ||
+                      (v.OmegaMinimumApiLevel.HasValue &&
+                       v.OmegaMaximumApiLevel.HasValue &&
+                       v.OmegaMinimumApiLevel.Value <= effectiveApi &&
+                       v.OmegaMaximumApiLevel.Value >= effectiveApi)));
         }
 
         return sort switch
@@ -101,6 +126,11 @@ internal sealed partial class MarketplaceWindow
             _ => query.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase),
         };
     }
+
+    private int EffectiveApiFilter(int currentApi)
+        => selectedApi < 0
+            ? activeView == MarketplaceView.Discover ? currentApi : 0
+            : selectedApi;
 
     private IEnumerable<MarketplacePlugin> ApplyLibraryRuntimeFilter(
         IEnumerable<MarketplacePlugin> plugins,
@@ -283,8 +313,9 @@ internal sealed partial class MarketplaceWindow
         MarketplacePlugin plugin,
         int currentApi,
         Version currentDalamudVersion)
-        => GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion).FirstOrDefault()
-           ?? ResolveDefaultVariant(plugin);
+        => catalog.HydrateVariant(
+            GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion).FirstOrDefault()
+            ?? ResolveDefaultVariant(plugin));
 
     private static bool IsInstallSourceSelectable(MarketplacePlugin plugin)
     {

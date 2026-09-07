@@ -12,6 +12,8 @@ internal sealed class PluginIconCache : IDisposable
 {
     private const int MaximumImageBytes = 8 * 1024 * 1024;
     private const int MaximumConcurrentIconLoads = 2;
+    private const int MaximumLiveTextures = 192;
+    private static readonly TimeSpan MinimumLiveTextureIdleAge = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan PersistentImageMaxAge = TimeSpan.FromDays(7);
 
     private readonly HttpClient httpClient = new()
@@ -23,6 +25,7 @@ internal sealed class PluginIconCache : IDisposable
     private readonly CancellationTokenSource cancellation = new();
     private readonly SemaphoreSlim loadGate = new(MaximumConcurrentIconLoads, MaximumConcurrentIconLoads);
     private readonly Dictionary<string, Task<IDalamudTextureWrap?>> loads = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> liveTextureLastUse = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, Task> refreshes = new(StringComparer.OrdinalIgnoreCase);
 
     public PluginIconCache(string configurationDirectory)
@@ -43,12 +46,16 @@ internal sealed class PluginIconCache : IDisposable
             return null;
         }
 
+        liveTextureLastUse[url] = Environment.TickCount64;
         if (!loads.TryGetValue(url, out var load))
         {
             load = LoadAsync(url, cancellation.Token);
             loads[url] = load;
         }
 
+        // Re-check the working-set bound on ordinary cache hits too. This lets a burst of fast
+        // scrolling settle back to the target once older textures have been idle for a moment.
+        TrimLiveTextures(url);
         return load.IsCompletedSuccessfully ? load.Result : null;
     }
 
@@ -63,10 +70,41 @@ internal sealed class PluginIconCache : IDisposable
         }
 
         loads.Clear();
+        liveTextureLastUse.Clear();
         httpClient.Dispose();
         persistentCache.Dispose();
         loadGate.Dispose();
         cancellation.Dispose();
+    }
+
+    private void TrimLiveTextures(string currentUrl)
+    {
+        if (loads.Count <= MaximumLiveTextures)
+            return;
+
+        var now = Environment.TickCount64;
+        var minimumIdleMs = (long)MinimumLiveTextureIdleAge.TotalMilliseconds;
+        var candidates = loads
+            .Where(pair => !pair.Key.Equals(currentUrl, StringComparison.OrdinalIgnoreCase) && pair.Value.IsCompleted)
+            .OrderBy(pair => liveTextureLastUse.TryGetValue(pair.Key, out var lastUse) ? lastUse : long.MinValue)
+            .ToArray();
+
+        foreach (var pair in candidates)
+        {
+            if (loads.Count <= MaximumLiveTextures)
+                break;
+
+            var lastUse = liveTextureLastUse.TryGetValue(pair.Key, out var observed) ? observed : long.MinValue;
+            if (lastUse != long.MinValue && now - lastUse < minimumIdleMs)
+                continue;
+
+            if (loads.Remove(pair.Key, out var completed))
+            {
+                if (completed.IsCompletedSuccessfully)
+                    completed.Result?.Dispose();
+                liveTextureLastUse.Remove(pair.Key);
+            }
+        }
     }
 
     private static string NormalizeUrl(string url)
@@ -143,7 +181,13 @@ internal sealed class PluginIconCache : IDisposable
         }
         catch (Exception ex)
         {
-            Plugin.Log.Debug(ex, "Unable to refresh cached marketplace artwork from {Url}", url);
+            // A stale-cache refresh is opportunistic. The already-decoded cached image remains
+            // usable, so connection failures should not dump a full exception stack into the
+            // normal debug log as though artwork loading itself failed.
+            Plugin.Log.Debug(
+                "Marketplace artwork refresh skipped for {Url}: {Message}. Cached artwork remains available.",
+                url,
+                ex.Message);
         }
         finally
         {

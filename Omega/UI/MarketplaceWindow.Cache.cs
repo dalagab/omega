@@ -168,7 +168,7 @@ internal sealed partial class MarketplaceWindow
         selectedCategory = "All categories";
         selectedTags.Clear();
         tagSearch = string.Empty;
-        selectedApi = 0;
+        selectedApi = -1;
         statusFilter = MarketplaceStatusFilter.All;
         libraryRuntimeFilter = LibraryRuntimeFilter.All;
         securityFilter = MarketplaceSecurityFilter.All;

@@ -11,7 +11,7 @@ namespace Dalagab.Omega;
 /// </summary>
 internal sealed partial class MarketplaceWindow
 {
-    private const string OmegaClientGitHubUrl = "https://github.com/dalagab/omega/tree/main";
+    private const string OmegaClientGitHubUrl = "https://github.com/dalagab/omega/tree/omega";
     private const string SigmaScopeGitHubUrl = "https://github.com/dalagab/omega/tree/sigmascope";
     private const string DeltaScopeGitHubUrl = "https://github.com/dalagab/omega/tree/deltascope";
     private const string RiftGitHubUrl = "https://github.com/dalagab/omega/tree/rift";

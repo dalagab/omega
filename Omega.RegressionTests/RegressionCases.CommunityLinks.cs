@@ -13,7 +13,7 @@ internal static partial class RegressionCases
         Contains(sources, "DrawSettingsCommunityTab();", "Community panel remains explicitly wired");
 
         var community = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Community.cs"));
-        Contains(community, "https://github.com/dalagab/omega/tree/main", "Community links Omega to the client branch");
+        Contains(community, "https://github.com/dalagab/omega/tree/omega", "Community links Omega to the client branch");
         Contains(community, "https://github.com/dalagab/omega/tree/sigmascope", "Community links SigmaScope to its branch");
         Contains(community, "https://github.com/dalagab/omega/tree/deltascope", "Community links DeltaScope to its standalone branch");
         Contains(community, "https://github.com/dalagab/omega/tree/rift", "Community links Rift to its branch");

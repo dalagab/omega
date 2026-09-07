@@ -464,6 +464,8 @@ internal sealed partial class MarketplaceWindow
             return "Can start other programs or commands";
         if (text.Contains("registry"))
             return "Can read or change Windows settings";
+        if (IsRecognizedEndpointFinding(finding))
+            return "References a recognized or informational endpoint";
         if (text.Contains("socket") || text.Contains("http") || text.Contains("network") || text.Contains("webhook"))
             return "Can connect to the internet";
         if (text.Contains("file") || text.Contains("path") || text.Contains("directory") || text.Contains("filesystem"))
@@ -580,16 +582,78 @@ internal sealed partial class MarketplaceWindow
     private static void DrawSecurityFinding(MarketplaceSecurityFinding finding)
     {
         ImGui.Spacing();
-        ImGui.TextUnformatted($"[{finding.Severity.ToUpperInvariant()}] {finding.Title}");
+        var recognizedEndpoint = IsRecognizedEndpointFinding(finding);
+        if (recognizedEndpoint)
+        {
+            const string endpointTooltip = "Recognized/reference endpoint. Green identifies a known or reference destination only; it is not a safety verdict for the plugin.";
+            DrawPluginFontAwesomeRiskIcon(
+                FontAwesomeIcon.CheckCircle,
+                new Vector4(0.20f, 0.76f, 0.44f, 1f),
+                endpointTooltip,
+                Ui(16f));
+            ImGui.SameLine(0f, Ui(7f));
+            ImGui.TextColored(
+                new Vector4(0.35f, 0.84f, 0.56f, 1f),
+                $"[{finding.Severity.ToUpperInvariant()}] {finding.Title}");
+        }
+        else
+        {
+            ImGui.TextUnformatted($"[{finding.Severity.ToUpperInvariant()}] {finding.Title}");
+        }
+
         if (!string.IsNullOrWhiteSpace(finding.Description))
             ImGui.TextWrapped(finding.Description);
         if (finding.Evidence.Count == 0)
             return;
         ImGui.Indent(14f);
         foreach (var evidence in finding.Evidence.Take(4))
-            ImGui.TextDisabled(evidence);
+        {
+            if (recognizedEndpoint)
+                ImGui.TextColored(new Vector4(0.42f, 0.68f, 0.50f, 1f), evidence);
+            else
+                ImGui.TextDisabled(evidence);
+        }
         ImGui.Unindent(14f);
     }
+
+    private static bool IsRecognizedEndpointFinding(MarketplaceSecurityFinding finding)
+    {
+        var text = string.Join(
+                " ",
+                finding.RuleId,
+                finding.Category,
+                finding.Title,
+                finding.Description,
+                string.Join(" ", finding.Evidence))
+            .ToLowerInvariant();
+
+        if (!text.Contains("network.endpoint", StringComparison.Ordinal) &&
+            !finding.Category.Equals("network-endpoint", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Never turn a caution/threat classification green merely because a known hostname also
+        // appears somewhere in its evidence. These retain their normal review presentation.
+        if (ContainsAny(text,
+                "threat-intel", "botnet-c2", "insecure-http", "unrecognised-host",
+                "unrecognized-host", "public-ip", "special-use-ip", "private-or-loopback",
+                "collection-endpoint", "webhook-endpoint"))
+            return false;
+
+        if (ContainsAny(text,
+                "recognised-platform", "recognized-platform", "source-reference",
+                "documentation-reference", "community-invite", "community-forum",
+                "ffxiv-lodestone-link", "certificate-infrastructure", "telemetry-endpoint"))
+            return true;
+
+        // GitHub is a common source/update/documentation destination and should remain visibly
+        // distinct from an unknown endpoint even when older Definitions did not classify it yet.
+        return ContainsAny(text,
+            "github.com", "api.github.com", "raw.githubusercontent.com",
+            "objects.githubusercontent.com", "githubusercontent.com", "goatcorp.github.io");
+    }
+
+    private static bool ContainsAny(string text, params string[] needles)
+        => needles.Any(needle => text.Contains(needle, StringComparison.Ordinal));
 
     private static void DrawSecuritySeverityBadge(string severity)
     {

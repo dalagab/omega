@@ -66,7 +66,7 @@ SigmaScope collects and publishes evidence such as:
 
 SigmaScope reports evidence. It is not intended to be an unquestionable malware verdict system.
 
-The production SigmaScope implementation does **not** live on `main`. It lives on the [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) branch.
+The production SigmaScope implementation does **not** live on `omega`. It lives on the [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) branch.
 
 ## What is the Rift?
 
@@ -133,7 +133,7 @@ Omega is one GitHub repository, but the project is intentionally split across br
 
 | Branch | Role | Important locations |
 | --- | --- | --- |
-| [`main`](https://github.com/dalagab/omega/tree/main) | **Omega Dalamud client** and client-facing release source | `Omega/`, `Omega.RegressionTests/`, `sources/`, `catalog/`, `repository/`, `tools/release/` |
+| [`omega`](https://github.com/dalagab/omega/tree/omega) | **Omega Dalamud client** and client-facing release source | `Omega/`, `Omega.RegressionTests/`, `sources/`, `catalog/`, `repository/`, `tools/release/` |
 | [`sigmascope`](https://github.com/dalagab/omega/tree/sigmascope) | **Security services**: SigmaScope, DeltaScope, SRL/Stigma-1, deep-scan orchestration, Security Evidence tooling and security definitions | `tools/security/`, `tools/catalog/`, `security-definitions/`, `docs/`, `SECURITY-SERVICES.md` |
 | [`rift`](https://github.com/dalagab/omega/tree/rift) | **Interdimensional Rift** runtime observation and hostile-code sandbox work; includes **Alpha** | `InterdimensionalRift/`, `InterdimensionalRift.DalamudShim/`, `tools/`, `docs/ALPHA.adoc`, `docs/RIFT-SANDBOX-PROFILE.adoc` |
 | [`catalog-data`](https://github.com/dalagab/omega/tree/catalog-data) | **Published/generated catalog state** consumed by services and clients | `catalog/`, `definitions/`, `scan-queue.json`, `source-inventory.json`, `index.json` |
@@ -144,9 +144,9 @@ Dependabot branches are normal automated dependency-maintenance branches and are
 
 ### Important consequence
 
-Checking only `main` does **not** show the complete Omega security platform.
+Checking only `omega` does **not** show the complete Omega security platform.
 
-`main` is primarily the **client/consumer side**. The active security-service implementation is developed on `sigmascope`; runtime observation and containment live on `rift`; generated operational/catalog state is published to `catalog-data`; immutable/derived security evidence is published to `security-evidence-v2`; and the public site is maintained on `website`.
+`omega` is the **client/consumer side**. The active security-service implementation is developed on `sigmascope`; runtime observation and containment live on `rift`; generated operational/catalog state is published to `catalog-data`; immutable/derived security evidence is published to `security-evidence-v2`; and the public site is maintained on `website`.
 
 ## High-level security data flow
 
@@ -261,12 +261,12 @@ You are in the right repository, but **make sure you are on the branch that owns
 
 For client work:
 
-- `main: Omega/` — the Dalamud plugin.
-- `main: Omega.RegressionTests/` — C# regression tests.
-- `main: sources/` — source/repository information used by the client-side project.
-- `main: tools/release/` — client release tooling.
-- `main: SECURITY.md` — client-facing security/reporting boundary.
-- `main: CHANGELOG.md` — client development and release changes.
+- `omega: Omega/` — the Dalamud plugin.
+- `omega: Omega.RegressionTests/` — C# regression tests.
+- `omega: sources/` — source/repository information used by the client-side project.
+- `omega: tools/release/` — client release tooling.
+- `omega: SECURITY.md` — client-facing security/reporting boundary.
+- `omega: CHANGELOG.md` — client development and release changes.
 
 For security-service work:
 

@@ -1,5 +1,151 @@
 ## [Unreleased]
 
+## [0.20.26] - 2026-09-06
+
+- Add an opt-out integration that routes clicks on Dalamud's own plugin-updates-available notification into Omega > Updates while leaving Dalamud's Update/Open installer action buttons intact.
+- Detect only Dalamud-origin AutoUpdateManager availability notifications; the bridge fails closed if Dalamud's internal notification layout changes.
+- Render recognized/reference endpoint findings (including GitHub/source/documentation/registered-platform endpoints) with a green check treatment while explicitly avoiding any implication that the whole plugin is safe.
+- Keep threat-intelligence, insecure HTTP, unknown host, public/special/private IP, collection-service, and webhook endpoint findings in their normal review colors.
+- Advance configuration schema to 24 for the notification-routing preference.
+
+## [0.10.17] - 2026-09-06
+
+- Show project-license metadata as a compact product-header badge and in About metadata when future Definitions expose the enriched website license; older Definitions remain fully compatible.
+- Wrap long product hero titles and install-unavailability explanations inside their available width instead of letting text escape the product surface.
+- Replace colored installed-source chips/trust names with icon-first provenance: repository names stay neutral while small status/provider icons carry official, recognized, unmanaged-local, or unrecognized meaning.
+- Replace the flat hand-drawn collection folders with cleaner Font Awesome folder tiles and compact plugin-count badges.
+- Measure Library plugin titles by rendered width rather than character count and keep the full value on hover.
+- Repair an ImGui style-stack imbalance in the product collection panel.
+
+## [0.10.16] - 2026-09-06
+
+- Repair the stale regression contract that still expected the pre-0.10.15 `Warn about network access` label after Settings split inbound listener warnings from optional outbound network warnings.
+- Keep all 0.10.15 runtime behavior unchanged; this release exists only to restore the build/regression gate.
+
+## [0.10.15] - 2026-09-06
+
+- Add a default-on install warning for plugins with SigmaScope `network.listener` capability; hydrate the exact security row before install review and show statically observed listener/local-endpoint port numbers when available, while explicitly saying the runtime/configured port can differ or remain undetermined.
+- Split inbound listeners from the optional general outbound-network warning so users can care about opened listening surfaces without being warned for every ordinary HTTP client.
+- Add default-on high-signal warnings for shell/PowerShell, cross-process memory, remote-thread creation, dynamic code loading, bundled executables, and writable+executable native sections.
+- Add opt-in warnings for Registry access, native/unmanaged interop, and game-memory/hooking facilities to avoid warning fatigue for common advanced-plugin behavior.
+- Advance configuration schema to 23 for the new warning defaults while preserving all prior user choices.
+- Repair the malformed quoted `plugin_search` regression assertion introduced in 0.10.14 so the regression project compiles again.
+
+## [0.10.14] - 2026-09-06
+
+- Collapse the Repository Manager API multi-select into an on-demand combo so the API list no longer permanently consumes Settings height; Current only, All, click, Shift-range and Ctrl-toggle behavior remain available inside the popup.
+- Add a default-on install warning when Omega has no published analysis record at all for the exact selected plugin version and repository; queued, running and failed analyses retain their distinct lifecycle states.
+- Generalize the install-warning modal wording so capability concerns and missing-analysis warnings can share the same explicit acknowledgement flow.
+- Advance configuration schema to 22 so existing users receive the missing-analysis warning without changing their earlier capability preferences.
+
+## [0.10.13] - 2026-09-06
+
+- Push Discover search, current-API, source, category, tag, content and security prefiltering into the on-disk SQLite read model before managed runtime filters; use the compact one-row-per-plugin `plugin_search` projection when newer Definitions include it and retain backward compatibility with existing databases.
+- Derive the baseline Discover rail count from SQLite plus live/Dalamud overlays instead of walking every stored repository variant in managed code.
+- Raise the contrast floor for unavailable marketplace cards, measure Spotlight names/authors by rendered width, and show deliberate empty states for missing recent additions/updates.
+- Add evidence-backed install warnings for clipboard, external-path file, process-execution and credential/protected-data capabilities; network warnings are available but remain opt-in to avoid warning fatigue.
+- Show a concise first changelog entry on hover over the Updates changelog icon without increasing row height.
+- Advance configuration schema to 21 while preserving all earlier source, automation, chat-read and repository-manager preferences.
+
+## [0.10.12] - 2026-09-06
+
+- Cull off-screen Updates rows using each row's real height so long update lists avoid unnecessary ImGui work without fixed-height scrollbar jumps.
+- Add Ctrl+F and `/` shortcuts to move directly into Omega's global search when no modal/text input owns the keyboard.
+- Present the actual installed repository as a compact provenance chip whose color reflects Dalamud official, recognized community, unrecognized community, or unmanaged local state.
+- Bound decoded live marketplace artwork to a 192-entry least-recently-used working set while retaining the existing bounded persistent SQLite artwork cache.
+
+## [0.10.11] - 2026-09-06
+
+- Makes Library > Startup use the full remaining page height instead of falling back to a short scale-inflated minimum.
+- Uses native table scrolling for the bounded installed-plugin Startup list, removing fixed-row clipper estimation and the resulting scrollbar jumps.
+- Replaces the repository API checkbox strip with a compact multi-select list: click selects one API, Shift-click selects a range, and Ctrl-click toggles individual APIs.
+- Keeps Current only and All shortcuts plus the existing persisted repository API filter semantics and Dalamud repository protections.
+
+## [0.10.10] - 2026-09-06
+
+- Repairs Library > Startup scrolling after the 0.10.9 virtualization pass by giving the virtualized row list its own `ScrollY` table viewport.
+- Freezes the Startup table header while rows scroll and keeps the summary/search area outside the virtual row scroll region.
+- Preserves the 0.10.9 chat-read warning, Library action cleanup, Library virtualization, and Startup search behavior unchanged.
+
+## [0.10.9] - 2026-09-06
+
+- Adds a separate default-on install warning when SigmaScope evidence says a plugin can read the in-game chat log; this is distinct from the existing optional warning for sending/changing chat.
+- Tightens chat-control matching so merely observing chat no longer gets mislabeled as the ability to send messages.
+- Virtualizes Library > All rows and Library > Startup rows so off-screen installed plugins are not submitted to ImGui every frame.
+- Adds a local Startup search across plugin identity, running/startup/activity/status labels without adding background monitoring.
+- Reduces Library row control density: enable/disable and Open/Details stay visible, while Settings, config backup, and Uninstall move under a compact `...` menu.
+- Advances configuration schema to 20 so existing users receive the new chat-read warning while all earlier permission preferences are preserved.
+
+## [0.10.8] - 2026-09-06
+
+- Repairs five stale C# regression assertions exposed by the first 0.10.7 ZipRunner build after both production and regression projects compiled successfully.
+- Keeps the 0.10.7 runtime behavior unchanged: disk-backed verbose Definitions data, bounded lazy detail/changelog hydration, current-API Discover default, and live filtered Discover count.
+- Updates regression contracts to follow the hydrated canonical product variant, SQLite-backed README search, per-plugin changelog predicate, and filtered logical-plugin Discover count.
+
+## [0.10.7] - 2026-09-06
+
+- Stops retaining the complete historical changelog corpus in the client at startup; changelog history is queried from SQLite for the selected plugin and held in a bounded cache.
+- Keeps verbose README excerpts, project-link arrays, and full SigmaScope finding descriptions/evidence disk-backed during normal marketplace browsing, while retaining lightweight finding identity/severity needed by listings and startup/library classification.
+- Hydrates the exact full Definitions row on demand when a plugin product page is opened, with a bounded detailed-plugin cache.
+- Keeps README-inclusive marketplace search available by querying the local SQLite Definitions database instead of keeping every README excerpt resident in managed memory.
+- Makes Discover default to plugins that have an actual package for the current Dalamud API; Library and Updates remain unfiltered by API unless the user explicitly selects one.
+- Shows the live number of plugins matching the current Discover search/filter state directly on the Discover navigation icon.
+- Preserves the 0.10.6 virtualized/cached repository manager and its independent full API-version source filter.
+- Updates client-facing repository links/documentation to use the dedicated `omega` client branch.
+
+## [0.10.6] - 2026-09-06
+
+- Virtualizes the Settings repository table so only visible rows render while scrolling instead of drawing the full Definitions inventory every frame.
+- Caches repository statuses, configured Dalamud repositories, installed-source usage, API-level membership, Definitions membership, and package-divergence state until their underlying revisions change.
+- Adds a persistent full Dalamud API-version filter to the repository manager; the default dynamically shows only the current API level until the user customizes it.
+- Adds Current only and All API shortcuts plus Use shown / Don't use shown bulk selection for the currently filtered Omega repository list.
+- Protects built-in and already-configured Dalamud repositories from Omega bulk/individual disable operations; the separate Dalamud tab remains the place to manage those registrations.
+- Keeps unknown local Dalamud repositories visible in the Dalamud tab so API filtering never makes an unmanaged configured source impossible to remove or review.
+
+## [0.10.5] - 2026-09-06
+
+- Removes uninstalled or scheduled-for-deletion plugins from Library > Startup instead of leaving stale Not loaded / Off rows behind.
+- Refreshes the on-demand Startup snapshot when installed-plugin membership changes, including removals performed through Dalamud.
+
+## [0.10.4] - 2026-09-05
+
+- Replaces the Startup impact grading with a more useful view of whether each installed plugin is running now, when it joins startup, what it appears to do while the game is running, and whether anything is actually wrong.
+- Uses plain startup phases: At launch, As game starts, After UI is ready, or Off; exact collection ownership and whether Dalamud waits for the plugin remain available in hover details.
+- Adds a While playing classification that reuses exact-version SigmaScope observations already present in Omega to distinguish background activity, event-driven behavior, triggered automation, IPC/plugin-to-plugin activity, UI availability, and genuinely unclassified behavior.
+- Keeps runtime classifications conservative: missing or incomplete exact-version evidence is shown as Not classified rather than guessed, and UI availability is never presented as proof that a plugin only runs while its window is open.
+- Removes Light/Normal/Heavy/Very heavy and Slow last startup from the Startup apps table; performance investigation remains delegated to Dalamud's built-in startup profiler.
+- Keeps the Startup page snapshot/on-demand only with no gameplay monitoring, recurring timers, file watchers, or additional network polling.
+
+## [0.10.3] - 2026-09-05
+
+- Renames Library > Health to Library > Startup and presents the feature as startup help instead of diagnostics.
+- Adds a Windows-style Startup apps list with user-facing Plugin, Starts, Startup impact, and Status columns.
+- Derives startup enablement from Dalamud's existing profile/collection state rather than inventing a second startup configuration model.
+- Reads Dalamud's already-recorded boot timings on demand to classify startup impact as Light, Normal, Heavy, or Very heavy; exact timing/load-stage details stay in tooltips.
+- Keeps the Startup apps projection snapshot-only: it refreshes when the Startup tab is opened and does not attach gameplay hooks, recurring timers, file watchers, or network polling.
+- Moves the built-in startup profiler button into the top startup summary and rewrites waiting/checking/problem text for normal users.
+- Keeps plugin-specific startup problems routed into Omega's integrated product pages and keeps the small Library attention badge.
+
+## [0.10.2] - 2026-08-28
+
+- Repairs the Startup Health regression contract so the Dev Plugin Locations target is checked where the action value is actually defined.
+- Keeps stale cached marketplace artwork usable when an external image host is unavailable and logs background refresh failures without a full exception stack.
+- Routes plugin-specific Startup Health findings into Omega's integrated product page instead of opening Dalamud's plugin installer.
+- Opens missing development-plugin paths directly on Dalamud's Experimental page, filtered to Dev Plugin Locations.
+- Removes the large startup-attention banner from Spotlight/normal marketplace pages.
+- Removes the standalone Health heart from the left rail and folds startup attention into a small heart/count badge on Library.
+- Keeps Health as a Library tab but removes its duplicate numeric label; the Library badge carries the attention count.
+- Simplifies Startup tools to the dedicated Dalamud startup profiler while keeping Startup Health one-shot and completely idle during gameplay.
+
+## [0.10.1] - 2026-08-28
+
+- Adds Library > Health with a compact one-time startup snapshot for plugin load/dependency failures, failed repositories, missing absolute development-plugin paths, and Omega catalog readiness.
+- Adds a Health rail shortcut and a dismissible startup-attention banner that route into the same snapshot instead of creating another live diagnostics surface.
+- Runs the automatic health pass only for `PluginLoadReason.Boot`; installs, updates, and mid-session reloads defer capture until the next game/Dalamud startup.
+- Waits for Dalamud automatic updates to settle, performs one bounded reflection/file-existence snapshot, then becomes completely idle for the rest of gameplay.
+- Does not subscribe to `Framework.Update`, tail live logs, profile gameplay frames, inspect IPC/network traffic, or periodically rescan plugins.
+- Routes recovery to existing authorities: Dalamud plugin/settings pages, Omega repository settings, and Dalamud's built-in `/xlprofiler` startup profiler.
+
 ## [0.10.0] - 2026-08-28
 
 - Combines the Community/About project links for Omega, SigmaScope, DeltaScope, Rift, and Discord into the client.

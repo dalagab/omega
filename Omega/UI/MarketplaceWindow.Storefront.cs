@@ -58,7 +58,7 @@ internal sealed partial class MarketplaceWindow
             count++;
         if (selectedTags.Count > 0)
             count++;
-        if (selectedApi > 0)
+        if (selectedApi > 0 || (activeView == MarketplaceView.Discover && selectedApi == 0))
             count++;
         if (activeView == MarketplaceView.Discover && statusFilter != MarketplaceStatusFilter.All)
             count++;
@@ -88,7 +88,7 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
-        if (activeView == MarketplaceView.Spotlight || ShowingLibraryCollections || ShowingLibrarySigmascope)
+        if (activeView == MarketplaceView.Spotlight || ShowingLibraryCollections || ShowingLibraryStartup || ShowingLibrarySigmascope)
         {
             detailsOpen = false;
             selectedPlugin = null;
@@ -145,6 +145,12 @@ internal sealed partial class MarketplaceWindow
         if (ShowingLibraryCollections)
         {
             DrawCollectionsPage(installed, currentApi, currentDalamudVersion);
+            return;
+        }
+
+        if (ShowingLibraryStartup)
+        {
+            DrawStartupHealthPage(installed);
             return;
         }
 

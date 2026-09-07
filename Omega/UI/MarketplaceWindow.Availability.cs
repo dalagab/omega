@@ -24,9 +24,10 @@ internal sealed partial class MarketplaceWindow
         if (available)
             return false;
 
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.42f, 0.44f, 0.47f, 1f));
-        ImGui.PushStyleColor(ImGuiCol.TextDisabled, new Vector4(0.32f, 0.34f, 0.37f, 1f));
-        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.76f);
+        // Keep unavailable cards subordinate without making them look like failed/empty renders.
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.66f, 0.68f, 0.72f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.TextDisabled, new Vector4(0.50f, 0.52f, 0.56f, 1f));
+        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.90f);
         return true;
     }
 

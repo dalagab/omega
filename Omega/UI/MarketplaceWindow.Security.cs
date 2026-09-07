@@ -20,6 +20,14 @@ internal sealed partial class MarketplaceWindow
             ImGui.SetTooltip("Check for Omega, plugin list, and source updates.");
 
         ImGui.Spacing();
+        DrawGeneralSetting(
+            "Open Omega from Dalamud plugin-update notifications",
+            "When Dalamud shows its own plugin-updates notification, clicking the notification body opens Omega > Updates. Dalamud's Update/Open installer buttons remain available; if the internal notification shape changes, the bridge leaves Dalamud untouched.",
+            "general-route-dalamud-update-notifications",
+            configuration.RouteDalamudUpdateNotificationsToOmega,
+            value => configuration.RouteDalamudUpdateNotificationsToOmega = value);
+
+        ImGui.Spacing();
         if (selfUpdates.UpdateAvailable)
         {
             ImGui.TextColored(new Vector4(0.35f, 0.64f, 0.92f, 1f), $"Omega {selfUpdates.AvailableDisplayVersion} is available — open Updates to install it.");
@@ -91,6 +99,12 @@ internal sealed partial class MarketplaceWindow
         ImGui.Spacing();
 
         DrawGeneralSetting(
+            "Warn when no Omega scan exists",
+            "Stop before install when Omega has no published analysis for this exact plugin version and repository yet.",
+            "permission-no-omega-scan",
+            configuration.WarnWhenNoOmegaScan,
+            value => configuration.WarnWhenNoOmegaScan = value);
+        DrawGeneralSetting(
             "Warn about gameplay automation",
             "The plugin can control your character or play parts of the game for you.",
             "permission-bot-like",
@@ -103,11 +117,113 @@ internal sealed partial class MarketplaceWindow
             configuration.WarnOnCameraControl,
             value => configuration.WarnOnCameraControl = value);
         DrawGeneralSetting(
-            "Warn about chat control",
+            "Warn about reading chat",
+            "The plugin can observe messages from the in-game chat log.",
+            "permission-chat-read",
+            configuration.WarnOnChatRead,
+            value => configuration.WarnOnChatRead = value);
+        DrawGeneralSetting(
+            "Warn about sending chat",
             "The plugin can send, change, or automate messages in game chat.",
             "permission-chat",
             configuration.WarnOnChatControl,
             value => configuration.WarnOnChatControl = value);
+        ImGui.Spacing();
+        ImGui.TextDisabled("Computer and network");
+        DrawGeneralSetting(
+            "Warn about local/network servers",
+            "The plugin can listen for inbound connections. Omega shows statically observed port numbers in the install warning when SigmaScope can determine them.",
+            "permission-local-listener",
+            configuration.WarnOnLocalListener,
+            value => configuration.WarnOnLocalListener = value);
+        DrawGeneralSetting(
+            "Warn about outbound network access",
+            "The plugin can communicate with external services or other network endpoints. This is common, so the warning is optional.",
+            "permission-network",
+            configuration.WarnOnNetworkAccess,
+            value => configuration.WarnOnNetworkAccess = value);
+        DrawGeneralSetting(
+            "Warn about clipboard access",
+            "The plugin can read or change clipboard contents.",
+            "permission-clipboard",
+            configuration.WarnOnClipboardAccess,
+            value => configuration.WarnOnClipboardAccess = value);
+        DrawGeneralSetting(
+            "Warn about external file access",
+            "The plugin can access hard-coded paths outside normal FFXIV/Dalamud locations.",
+            "permission-external-files",
+            configuration.WarnOnExternalFileAccess,
+            value => configuration.WarnOnExternalFileAccess = value);
+        DrawGeneralSetting(
+            "Warn about starting other programs",
+            "The plugin can launch another executable, process, or command.",
+            "permission-process-execute",
+            configuration.WarnOnProcessExecution,
+            value => configuration.WarnOnProcessExecution = value);
+        DrawGeneralSetting(
+            "Warn about shell / PowerShell",
+            "The plugin can invoke a command shell or PowerShell.",
+            "permission-shell",
+            configuration.WarnOnShellExecution,
+            value => configuration.WarnOnShellExecution = value);
+        DrawGeneralSetting(
+            "Warn about credential access",
+            "The plugin can use credential-manager, password-vault, or protected-data APIs.",
+            "permission-credentials",
+            configuration.WarnOnCredentialAccess,
+            value => configuration.WarnOnCredentialAccess = value);
+        DrawGeneralSetting(
+            "Warn about cross-process memory access",
+            "The plugin can open another process and read or write its memory.",
+            "permission-process-memory",
+            configuration.WarnOnProcessMemoryAccess,
+            value => configuration.WarnOnProcessMemoryAccess = value);
+        DrawGeneralSetting(
+            "Warn about remote-thread creation",
+            "The plugin can create or queue execution inside another process.",
+            "permission-remote-thread",
+            configuration.WarnOnRemoteThreadCreation,
+            value => configuration.WarnOnRemoteThreadCreation = value);
+        DrawGeneralSetting(
+            "Warn about dynamic code loading",
+            "The plugin can load or generate code dynamically at runtime.",
+            "permission-dynamic-code",
+            configuration.WarnOnDynamicCodeLoading,
+            value => configuration.WarnOnDynamicCodeLoading = value);
+        DrawGeneralSetting(
+            "Warn about bundled executables",
+            "The plugin package contains one or more executable program files in addition to the plugin.",
+            "permission-bundled-executable",
+            configuration.WarnOnBundledExecutable,
+            value => configuration.WarnOnBundledExecutable = value);
+        DrawGeneralSetting(
+            "Warn about writable executable native sections",
+            "A bundled native binary contains memory that is both writable and executable.",
+            "permission-writable-executable",
+            configuration.WarnOnWritableExecutableSection,
+            value => configuration.WarnOnWritableExecutableSection = value);
+
+        ImGui.Spacing();
+        ImGui.TextDisabled("Advanced optional warnings");
+        DrawGeneralSetting(
+            "Warn about Windows Registry access",
+            "The plugin can read or modify Windows Registry values. This is off by default because legitimate integrations use the Registry too.",
+            "permission-registry",
+            configuration.WarnOnRegistryAccess,
+            value => configuration.WarnOnRegistryAccess = value);
+        DrawGeneralSetting(
+            "Warn about native / unmanaged code",
+            "The plugin can call native libraries or operating-system APIs. This is common in advanced plugins, so the warning is optional.",
+            "permission-native-interop",
+            configuration.WarnOnNativeInterop,
+            value => configuration.WarnOnNativeInterop = value);
+        DrawGeneralSetting(
+            "Warn about game-memory / hooking access",
+            "The plugin can use game structures, signature scanning, or hooking facilities. Many advanced Dalamud plugins need this, so the warning is optional.",
+            "permission-game-memory",
+            configuration.WarnOnGameMemoryAccess,
+            value => configuration.WarnOnGameMemoryAccess = value);
+
         DrawGeneralSetting(
             "Warn about menu control",
             "The plugin can click, select, or move through game windows and menus for you.",
@@ -172,23 +288,18 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawGeneralSetting(string label, string description, string id, bool value, Action<bool> apply)
     {
-        // General preferences are a simple list: one explicit checkbox and its explanation per row.
-        var startY = ImGui.GetCursorPosY();
-        var selected = value;
-        if (ImGui.Checkbox($"##settings-{id}", ref selected))
+        var start = ImGui.GetCursorPos();
+        ImGui.TextUnformatted(label);
+        ImGui.TextDisabled(description);
+        var toggleWidth = Ui(44f);
+        ImGui.SetCursorPos(new Vector2(Math.Max(start.X, ImGui.GetWindowWidth() - toggleWidth - Ui(34f)), start.Y));
+        if (DrawToggleSwitch(id, value))
         {
-            apply(selected);
+            apply(!value);
             configuration.Save();
             behaviorConfigurationChanged();
         }
-
-        ImGui.SameLine(0f, Ui(10f));
-        ImGui.BeginGroup();
-        ImGui.TextUnformatted(label);
-        ImGui.TextDisabled(description);
-        ImGui.EndGroup();
-
-        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), startY + Ui(46f)));
+        ImGui.SetCursorPosY(Math.Max(ImGui.GetCursorPosY(), start.Y + Ui(52f)));
         ImGui.Separator();
         ImGui.Spacing();
     }
@@ -250,7 +361,7 @@ internal sealed partial class MarketplaceWindow
             return;
         }
 
-        if (DrawOmegaModalHeader("About Omega", "about", showMark: false))
+        if (DrawOmegaModalHeader("About Omega", "about"))
         {
             aboutOpen = false;
             ImGui.CloseCurrentPopup();

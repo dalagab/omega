@@ -82,6 +82,14 @@ internal sealed partial class MarketplaceWindow
         int currentApi,
         Version currentDalamudVersion)
     {
+        if (plugins.Count == 0)
+        {
+            ImGui.TextDisabled(shelfId.Equals("latest-additions", StringComparison.Ordinal)
+                ? "No recent additions are available yet."
+                : "No recent updates are available yet.");
+            return;
+        }
+
         var layout = CalculateSpotlightRowLayout();
         for (var index = 0; index < SpotlightCardCount; index++)
         {
@@ -136,8 +144,12 @@ internal sealed partial class MarketplaceWindow
             listingPanelMax: cardMax);
 
         ImGui.Spacing();
-        CenterText(Shorten(plugin.Name, 24));
-        CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 24), disabled: true);
+        var textWidth = Math.Max(Ui(32f), ImGui.GetContentRegionAvail().X - Ui(8f));
+        DrawCenteredFittedText(plugin.Name, textWidth);
+        DrawCenteredFittedText(
+            string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author,
+            textWidth,
+            disabled: true);
 
         var clicked = ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left);
         if (ImGui.IsWindowHovered())
@@ -148,6 +160,35 @@ internal sealed partial class MarketplaceWindow
 
         if (artworkClicked || clicked)
             OpenSpotlightPluginInDiscover(plugin);
+    }
+
+    private static void DrawCenteredFittedText(string text, float maximumWidth, bool disabled = false)
+    {
+        var fitted = FitTextToWidth(text, maximumWidth);
+        CenterText(fitted, disabled);
+        if (!fitted.Equals(text, StringComparison.Ordinal) && ImGui.IsItemHovered())
+            SetReadableTooltip(text);
+    }
+
+    private static string FitTextToWidth(string text, float maximumWidth)
+    {
+        text ??= string.Empty;
+        if (text.Length == 0 || ImGui.CalcTextSize(text).X <= maximumWidth)
+            return text;
+
+        const string ellipsis = "…";
+        var low = 0;
+        var high = text.Length;
+        while (low < high)
+        {
+            var mid = (low + high + 1) / 2;
+            var candidate = text[..mid].TrimEnd() + ellipsis;
+            if (ImGui.CalcTextSize(candidate).X <= maximumWidth)
+                low = mid;
+            else
+                high = mid - 1;
+        }
+        return text[..Math.Max(0, low)].TrimEnd() + ellipsis;
     }
 
     private static void DrawSpotlightSectionTitle(string title, string? explanation = null)

@@ -86,6 +86,24 @@ internal sealed partial class MarketplaceWindow
             ImGui.TextDisabled($"{entries.Count - maximumEntries} older changelog entr{(entries.Count - maximumEntries == 1 ? "y" : "ies")}");
     }
 
+    private static string BuildUpdateChangelogPreview(IReadOnlyList<MarketplaceChangelogEntry> entries)
+    {
+        var first = entries.FirstOrDefault();
+        if (first is null)
+            return string.Empty;
+        var plain = MarketplaceReadmeMarkup.ToPlainText(first.Changelog)
+            .Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal);
+        while (plain.Contains("  ", StringComparison.Ordinal))
+            plain = plain.Replace("  ", " ", StringComparison.Ordinal);
+        plain = plain.Trim();
+        if (plain.Length > 180)
+            plain = plain[..177].TrimEnd() + "…";
+        return string.IsNullOrWhiteSpace(first.VersionText)
+            ? plain
+            : $"v{first.VersionText}: {plain}";
+    }
+
     private bool DrawInlineChangelogButton(
         MarketplacePlugin plugin,
         string id,
@@ -112,7 +130,12 @@ internal sealed partial class MarketplaceWindow
             glyph);
         ImGui.PopFont();
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("View what changes in this update");
+        {
+            var preview = BuildUpdateChangelogPreview(entries);
+            ImGui.SetTooltip(string.IsNullOrWhiteSpace(preview)
+                ? "View what changes in this update"
+                : $"View what changes in this update\n\n{preview}");
+        }
         if (clicked)
             OpenUpdateChangelogPanel(plugin, installedVersion);
         return clicked;

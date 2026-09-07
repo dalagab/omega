@@ -14,7 +14,7 @@ internal static partial class RegressionCases
         Contains(ui, "LibrarySection.Collections", "Collections is nested inside Library rather than owning a global sidebar destination");
         Contains(ui, "library-tab-collections", "Library exposes Collections as an in-panel section");
         Contains(ui, "DrawCollectionFolders", "collection overview uses folder renderer");
-        Contains(ui, "DrawFolderShape", "collections are drawn as desktop-style folders");
+        Contains(ui, "DrawCollectionFolderIcon", "collection overview uses icon-based folder tiles");
         Contains(ui, "DrawCollectionDirectoryList", "opened collections render as a stable directory list rather than a staggered marketplace tile grid");
         Contains(ui, "Library / Collections /", "opened collection exposes folder-style breadcrumb navigation");
         DoesNotContain(window, "DrawLibraryCollectionDropShelf", "Library > All must not render collection folders or collection drop targets");
@@ -37,7 +37,7 @@ internal static partial class RegressionCases
         Contains(ui, "Task.Run(() => profileBridge.AddPluginToCollectionAsync", "collection-local membership additions are delegated asynchronously");
         Contains(collections, "var visibleCollections = collectionSnapshot.Where(x => !x.IsDefault).ToArray()", "collection overview hides Dalamud's implicit default profile");
         Contains(library, "var namedCollectionCount = collectionSnapshot.Count(x => !x.IsDefault)", "Collections tab count includes named collections only");
-        Contains(collections, "var folderSize = new Vector2(Ui(126f), Ui(82f))", "collection folders use a narrower natural folder silhouette");
+        Contains(collections, "FontAwesomeIcon.Folder", "collection folders use the shared icon font instead of a flat hand-drawn silhouette");
         DoesNotContain(collections, "Always active", "hidden default profile does not leak an Always active label into Collections UI");
 
         Contains(bridge, "Dalamud.Plugin.Internal.Profiles.ProfileManager", "bridge resolves Dalamud ProfileManager");
@@ -81,6 +81,8 @@ internal static partial class RegressionCases
         var shelves = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.SpotlightShelves.cs"));
         var recency = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginRecencyLedger.cs"));
         Contains(shelves, "Latest additions", "Spotlight includes a five-plugin latest-additions shelf");
+        Contains(shelves, "FitTextToWidth", "Spotlight names and authors measure actual rendered width before adding ellipsis");
+        Contains(shelves, "No recent additions are available yet.", "Spotlight recency shelves use a deliberate empty state instead of blank card space");
         Contains(shelves, "Latest updates", "Spotlight includes a five-plugin latest-updates shelf");
         Contains(shelves, ".Take(SpotlightCardCount)", "recency shelves remain bounded to five plugins");
         Contains(shelves, "pluginRecency.GetFirstSeenUnix", "latest additions use durable first-seen ordering");
@@ -105,6 +107,7 @@ internal static partial class RegressionCases
         var layout = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceLayoutRules.cs"));
 
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
+        var sigmascope = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sigmascope.cs"));
 
         Contains(ui, "MarketplaceView.Library", "installed plugins are owned by Library");
         Contains(ui, "MarketplaceView.Updates", "updates has a dedicated lower utility destination");
@@ -126,6 +129,12 @@ internal static partial class RegressionCases
         Contains(library, "library-tab-collections", "Library has a Collections section");
         Contains(library, "BuildLibraryProjection", "Library includes installed plugins even when marketplace metadata is absent");
         Contains(library, "DrawLibraryList", "Library All uses an installed-app row list rather than the marketplace icon grid");
+        Contains(library, "ImGui.ImGuiListClipper()", "Library All virtualizes off-screen installed rows");
+        Contains(library, "library-more-", "Library keeps infrequent actions behind one overflow menu");
+        Contains(library, "Back up config", "Library overflow retains configuration backup");
+        Contains(sigmascope, "IsRecognizedEndpointFinding", "recognized/reference endpoints have a dedicated presentation path");
+        Contains(sigmascope, "FontAwesomeIcon.CheckCircle", "recognized/reference endpoints use a positive check icon without changing plugin trust");
+        Contains(sigmascope, "github.com", "older Definitions still recognize GitHub reference endpoints visually");
         DoesNotContain(window, "DrawLibraryCollectionDropShelf", "Library All renders no collection-folder shelf above the installed list");
         DoesNotContain(library, "DrawCollectionDragHandle", "Library All rows contain no collection-management affordance");
         Contains(library, "DrawUpdatesList", "Updates uses a dedicated update row list");
@@ -163,7 +172,9 @@ internal static partial class RegressionCases
         Contains(cache, "plugin.Version?.GetHashCode() ?? 0", "installed signature tolerates a transient null version");
         Contains(cache, "plugin is null", "installed signature tolerates a transient null plugin value");
         Contains(cache, "internalName ?? string.Empty", "installed signature tolerates an unexpected null name");
-        Contains(window, ".Where(x => x is not null && !string.IsNullOrWhiteSpace(x.InternalName))", "installed snapshot filters incomplete entries");
+        Contains(window, ".Where(x => x is not null &&", "installed snapshot filters transient null plugin entries");
+        Contains(window, "!string.IsNullOrWhiteSpace(x.InternalName)", "installed snapshot filters transient blank plugin names");
+        Contains(window, "!x.Manifest.ScheduledForDeletion", "installed snapshot excludes plugins already scheduled for deletion");
         Contains(window, ".GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)", "installed snapshot tolerates duplicate transient names");
         Contains(details, "if (installedVersion is null)", "update comparison waits until Dalamud exposes a version");
         Contains(library, "version pending", "Library renders partial installed state instead of throwing");
@@ -264,7 +275,7 @@ internal static partial class RegressionCases
         Contains(discover, "showListingRibbons: true", "Discover rich and compact listings use the card-top ribbon overlay");
         Contains(spotlight, "showListingRibbons: true", "Spotlight promoted cards use the same card-top ribbon language");
         Contains(shelves, "showListingRibbons: true", "Spotlight shelf cards use the same card-top ribbon language");
-        Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh product-page navigation starts from the same deterministic default package as listing security");
+        Contains(artwork, "selectedPlugin = catalog.HydrateVariant(ResolveDefaultVariant(plugin))", "fresh product-page navigation starts from the same deterministic default package as listing security");
         Contains(security, "ResolveSigmascopeVisual", "the product page retains the exact-package security resolver");
         Contains(security, "DrawProductSigmascopeSummary", "the product hero consumes the shared exact-package security result");
         Contains(ribbons, "FontAwesomeIcon.Question", "unresolved source attribution uses a neutral question ribbon rather than implying closed source");
@@ -374,7 +385,6 @@ internal static partial class RegressionCases
     {
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ModalChrome.cs"));
         var settings = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Sources.cs"));
-        var about = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Security.cs"));
         var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
         var uninstall = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.UninstallAndSources.cs"));
         var filters = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Filters.cs"));
@@ -383,9 +393,7 @@ internal static partial class RegressionCases
         Contains(chrome, "DrawOmegaModalHeader", "secondary panels share one Omega chrome implementation");
         Contains(chrome, "DrawApplicationIconButton(FontAwesomeIcon.Times", "secondary-panel X uses the same styled application control as the main panel");
         Contains(settings, "ImGuiWindowFlags.NoTitleBar", "Settings suppresses the host/default title bar");
-        Contains(settings, "DrawOmegaModalHeader(\"Settings\", \"settings\", showMark: false)", "Settings keeps Omega chrome without a redundant mini mark");
-        Contains(about, "DrawOmegaModalHeader(\"About Omega\", \"about\", showMark: false)", "About keeps Omega chrome without a redundant mini mark above its identity hero");
-        Contains(chrome, "bool showMark = true", "other secondary panels retain the shared mark by default");
+        Contains(settings, "DrawOmegaModalHeader(\"Settings\"", "Settings uses Omega chrome");
         DoesNotContain(settings, "ImGui.Button(\"Close\")", "Settings has no redundant bottom Close button");
         Contains(install, "ImGuiWindowFlags.NoTitleBar", "install chooser suppresses the host/default title bar");
         Contains(install, "DrawOmegaModalHeader(\"Choose repository\"", "install chooser uses Omega chrome");

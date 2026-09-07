@@ -392,7 +392,7 @@ internal sealed partial class MarketplaceWindow
         // Every fresh selection starts from the same deterministic default variant used by
         // marketplace cards. A user can still switch repository explicitly on the product page.
         selectedVariantSource.Remove(plugin.InternalName);
-        selectedPlugin = ResolveDefaultVariant(plugin);
+        selectedPlugin = catalog.HydrateVariant(ResolveDefaultVariant(plugin));
         detailsOpen = true;
         resetStorefrontScroll = true;
         // Every marketplace surface routes plugin selection to the canonical Discover product page.
@@ -413,10 +413,10 @@ internal sealed partial class MarketplaceWindow
             var selected = variants.FirstOrDefault(x =>
                 NormalizeUrl(x.SourceUrl).Equals(NormalizeUrl(sourceUrl), StringComparison.OrdinalIgnoreCase));
             if (selected is not null)
-                return selected;
+                return catalog.HydrateVariant(selected);
         }
 
-        return ResolveDefaultVariant(plugin);
+        return catalog.HydrateVariant(ResolveDefaultVariant(plugin));
     }
 
     private MarketplacePlugin ResolveDefaultVariant(MarketplacePlugin plugin)

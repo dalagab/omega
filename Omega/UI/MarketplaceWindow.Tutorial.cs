@@ -291,6 +291,7 @@ internal sealed partial class MarketplaceWindow
         var changed = false;
         var bot = configuration.WarnOnBotLikeAutomation;
         var camera = configuration.WarnOnCameraControl;
+        var chatRead = configuration.WarnOnChatRead;
         var chat = configuration.WarnOnChatControl;
         var menu = configuration.WarnOnMenuControl;
         if (ImGui.Checkbox("Stop for gameplay automation", ref bot))
@@ -303,7 +304,12 @@ internal sealed partial class MarketplaceWindow
             configuration.WarnOnCameraControl = camera;
             changed = true;
         }
-        if (ImGui.Checkbox("Stop for chat control", ref chat))
+        if (ImGui.Checkbox("Stop for reading chat", ref chatRead))
+        {
+            configuration.WarnOnChatRead = chatRead;
+            changed = true;
+        }
+        if (ImGui.Checkbox("Stop for sending chat", ref chat))
         {
             configuration.WarnOnChatControl = chat;
             changed = true;

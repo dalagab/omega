@@ -43,6 +43,10 @@ internal static partial class RegressionCases
         Contains(icons, "Task.Run(() => persistentCache.TryRead(url)", "persistent SQLite reads must stay off the UI thread");
         Contains(icons, "PersistentImageMaxAge = TimeSpan.FromDays(7)", "cached images must be revalidated periodically");
         Contains(icons, "If-None-Match", "stale persistent images must use conditional HTTP revalidation");
+        Contains(icons, "Cached artwork remains available.", "failed stale-artwork refreshes keep the existing cached image and log a concise fallback");
+        Contains(icons, "MaximumLiveTextures = 192", "decoded live artwork has a bounded working-set target");
+        Contains(icons, "TrimLiveTextures", "live artwork evicts least-recently-used completed textures instead of growing for the full session");
+        Contains(icons, "MinimumLiveTextureIdleAge", "live artwork is not disposed while it may still belong to the current draw frame");
 
         var storeSource = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "PluginImageCacheStore.cs"));
         Contains(storeSource, "omega-image-cache.sqlite", "artwork must use a separate local cache database");

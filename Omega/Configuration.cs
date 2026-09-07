@@ -12,7 +12,7 @@ public enum DiscoverLayoutMode
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 18;
+    public int Version { get; set; } = 24;
 
     // Persisted source state. Curated identity/name/url are refreshed from the
     // bundled/online Definitions whenever Omega loads. Non-curated rows are temporary mirrors of
@@ -33,11 +33,18 @@ public sealed class Configuration : IPluginConfiguration
     public bool SearchEverywhere { get; set; } = true;
     public DiscoverLayoutMode DiscoverLayout { get; set; } = DiscoverLayoutMode.Dynamic;
     public bool ShowAdvancedSecurityInformation { get; set; } = false;
+    public bool RouteDalamudUpdateNotificationsToOmega { get; set; } = true;
 
     // Source trust only skips Omega's generic acknowledgement for repositories whose identity is
     // outside the recognized-provider list. It never suppresses Sigmascope, package-divergence,
     // permission, compatibility, or unsupported-plugin reporting/gates.
     public bool TrustUnrecognizedSources { get; set; }
+
+    // Repository manager visibility. Until the user customizes this list, Omega dynamically
+    // shows only the current full Dalamud API level (for example 15 or 16). This is a list filter,
+    // not permission to disable repository registrations that already exist in Dalamud.
+    public bool RepositoryApiLevelsCustomized { get; set; }
+    public List<int> RepositoryApiLevels { get; set; } = [];
 
     // First-use guidance. The tutorial is intentionally independent from the EULA so users can replay
     // it without touching acceptance state. Schema 15 shows it once to existing development clients.
@@ -45,9 +52,26 @@ public sealed class Configuration : IPluginConfiguration
 
     // Install-time permission preferences. These do not sandbox Dalamud plugins; they tell Omega which
     // known capabilities should stop the install flow and ask the user before continuing.
+    public bool WarnWhenNoOmegaScan { get; set; } = true;
     public bool WarnOnBotLikeAutomation { get; set; } = true;
     public bool WarnOnCameraControl { get; set; }
+    public bool WarnOnChatRead { get; set; } = true;
     public bool WarnOnChatControl { get; set; }
+    public bool WarnOnNetworkAccess { get; set; }
+    public bool WarnOnLocalListener { get; set; } = true;
+    public bool WarnOnClipboardAccess { get; set; } = true;
+    public bool WarnOnExternalFileAccess { get; set; } = true;
+    public bool WarnOnProcessExecution { get; set; } = true;
+    public bool WarnOnShellExecution { get; set; } = true;
+    public bool WarnOnCredentialAccess { get; set; } = true;
+    public bool WarnOnProcessMemoryAccess { get; set; } = true;
+    public bool WarnOnRemoteThreadCreation { get; set; } = true;
+    public bool WarnOnDynamicCodeLoading { get; set; } = true;
+    public bool WarnOnBundledExecutable { get; set; } = true;
+    public bool WarnOnWritableExecutableSection { get; set; } = true;
+    public bool WarnOnRegistryAccess { get; set; }
+    public bool WarnOnNativeInterop { get; set; }
+    public bool WarnOnGameMemoryAccess { get; set; }
     public bool WarnOnMenuControl { get; set; }
 
     // Last completed automatic central-catalog check. LastDailyUpdateCheckUtc is retained as a

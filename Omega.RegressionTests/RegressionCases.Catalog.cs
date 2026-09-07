@@ -110,11 +110,36 @@ internal static partial class RegressionCases
         Contains(source, "CatalogPluginId = GetLong(reader, 61)", "runtime variants retain their canonical database plugin id");
         Contains(source, "ValidateRuntimeSnapshot(candidate)", "downloaded database is fully readable before it can replace the last-known-good catalog");
         Contains(source, "ReadChangelogEntryCount", "runtime reads embedded catalog changelog identity without requiring a second format");
+        Contains(source, "TableExists(connection, \"plugin_search\")", "new Definitions can use the compact logical search projection while older databases retain runtime fallback");
+        Contains(source, "QueryDiscoverInternalNames", "catalog-native Discover predicates are evaluated in SQLite before managed filtering");
+        Contains(source, "json_each(tags_json)", "multi-tag AND filtering can be reduced in SQLite without building a RAM inverted index");
         Contains(source, "128L * 1024 * 1024", "runtime extracted marketplace database ceiling remains bounded well below the detailed evidence database size");
         var runtimeValidation = source.IndexOf("ValidateRuntimeSnapshot(candidate)", StringComparison.Ordinal);
         var backupMove = source.IndexOf("File.Move(DatabasePath, backup", StringComparison.Ordinal);
         True(runtimeValidation >= 0 && backupMove > runtimeValidation, "candidate runtime projection is validated before the existing database is moved");
         False(source.Contains("ManifestJson", StringComparison.Ordinal), "runtime SQLite store does not persist per-source manifest JSON files");
+    }
+
+    internal static void TestLazyDefinitionsReadModelContract()
+    {
+        var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
+        var catalog = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplaceCatalogService.cs"));
+        var refresh = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplaceCatalogService.Refresh.cs"));
+        var artwork = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Artwork.cs"));
+
+        Contains(store, "ReadVariants(connection, includeDetails: false)", "startup materializes lightweight marketplace summaries instead of full detail rows");
+        Contains(store, "ReadSecurityFindingSummaries", "startup keeps finding identity/severity without retaining verbose evidence bodies");
+        Contains(store, "website_license", "client reads optional enriched license metadata without requiring newer Definitions");
+        Contains(store, "includeDetails ? GetString(reader, 31) : string.Empty", "README excerpts stay on disk until a selected plugin is hydrated");
+        Contains(store, "includeDetails ? ReadProjectLinks", "project-link arrays stay on disk until detail hydration");
+        Contains(store, "ReadPluginChangelogHistory(connection, internalName)", "historical changelog text is queried for one plugin on demand");
+        Contains(store, "SearchInternalNames", "README-backed marketplace search can query Definitions without retaining every README");
+        Contains(catalog, "DetailedVariantCacheLimit = 64", "full detail hydration is bounded");
+        Contains(catalog, "ChangelogCacheLimit = 32", "historical changelog hydration is bounded");
+        Contains(catalog, "HydrateVariant", "selected products can hydrate their exact full SQLite row");
+        Contains(catalog, "summary.OmegaWebsiteLicense = detailed.OmegaWebsiteLicense", "runtime manifest hydration retains enriched license metadata without replacing live package links");
+        Contains(artwork, "catalog.HydrateVariant", "opening a product page hydrates detail data instead of relying on the startup summary");
+        DoesNotContain(refresh, "snapshot.PluginChangelogHistory", "startup no longer retains all historical changelogs");
     }
 
     internal static void TestPersistentCatalogContract()
@@ -159,13 +184,15 @@ internal static partial class RegressionCases
         Contains(plugin, "catalog.LoadCached", "startup loads the local catalog once");
         Contains(plugin, "INotificationManager Notifications", "Dalamud notification manager is injected");
         Contains(plugin, "DailyCatalogUpdateService", "Definitions polling job is wired into plugin lifetime");
+        Contains(plugin, "DalamudUpdateNotificationBridge", "Dalamud plugin-update notification routing is wired into plugin lifetime");
+        Contains(plugin, "OpenUpdatesUi", "notification routing has a direct Omega Updates navigation target");
         Contains(plugin, "dailyCatalogUpdate.TriggerIfDue", "opening Omega can trigger an overdue hourly check");
     }
 
     internal static void TestCuratedEnableMigration()
     {
         var configuration = File.ReadAllText(Path.Combine(Root, "Omega", "Configuration.cs"));
-        Contains(configuration, "Version { get; set; } = 18", "configuration schema 18");
+        Contains(configuration, "Version { get; set; } = 24", "configuration schema 24");
 
         var curated = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "CuratedSourceCatalog.cs"));
         Contains(curated, "enableAllCuratedMigration", "one-time all-enabled migration");
@@ -318,6 +345,20 @@ internal static partial class RegressionCases
         Contains(ui, "catalog.LoadCached(configuration.Repositories)", "deselecting a repository immediately rebuilds local catalog");
         Contains(ui, "ImGuiTableFlags.ScrollY", "repository table owns its own vertical scrolling");
         Contains(ui, "ImGui.TableSetupScrollFreeze(0, 1)", "repository table keeps its header visible while scrolling");
+        Contains(ui, "ImGui.ImGuiListClipper()", "repository table virtualizes off-screen rows");
+        Contains(ui, "clipper.Begin(shownSources.Count", "repository clipper is bounded to the filtered row count");
+        False(ui.Contains("foreach (var source in shownSources)\n        {\n            var normalized = NormalizeUrl(source.Url);", StringComparison.Ordinal), "repository table no longer performs its former full-row render loop each frame");
+        Contains(ui, "RepositoryApiLevelsCustomized", "repository manager persists API-version filter customization");
+        Contains(ui, "repository-api-selector", "repository API versions stay collapsed until the selector is opened");
+        Contains(ui, "Current only (API", "repository API selector keeps the current-API shortcut inside its popup");
+        Contains(ui, "All APIs##repository-api-all", "repository API selector keeps the All shortcut inside its popup");
+        Contains(ui, "ImGuiSelectableFlags.DontClosePopups", "repository API selector stays open while multi-selecting");
+        Contains(ui, "io.KeyShift", "repository API list supports Shift range selection");
+        Contains(ui, "io.KeyCtrl", "repository API list supports Ctrl toggling");
+        Contains(ui, "repositoryApiSelectionAnchor", "repository API range selection remembers its anchor");
+        DoesNotContain(ui, "repository-api-multiselect", "repository API list is no longer permanently expanded in Settings");
+        Contains(ui, "Don't use shown##repository-disable-shown", "repository manager exposes bulk deselection for the filtered list");
+        Contains(ui, "protectedByDalamud", "repository manager protects existing Dalamud registrations from disable actions");
         Contains(ui, "settings-tab-repositories", "Repositories is a fixed top-level Settings tab");
         Contains(ui, "ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse", "Settings modal itself does not scroll its close control out of view");
         False(ui.Contains("[Curated (", StringComparison.Ordinal), "selected Curated tab must not use decorative brackets");

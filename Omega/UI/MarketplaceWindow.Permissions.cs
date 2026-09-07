@@ -14,14 +14,15 @@ internal sealed partial class MarketplaceWindow
 
     private void TryStartSelectedInstall(MarketplacePlugin plugin)
     {
-        var concerns = MarketplacePermissionRules.FindBlockedCapabilities(plugin, configuration);
+        var reviewedPlugin = catalog.HydrateVariant(plugin);
+        var concerns = MarketplacePermissionRules.FindBlockedCapabilities(reviewedPlugin, configuration);
         if (concerns.Count == 0)
         {
             StartSelectedInstall(plugin);
             return;
         }
 
-        pendingInstallPermissionSourceUrl = plugin.SourceUrl;
+        pendingInstallPermissionSourceUrl = reviewedPlugin.SourceUrl;
         pendingInstallPermissionAcknowledgementChecked = false;
         installPopupOpen = false;
         installPermissionPopupOpen = true;
@@ -56,6 +57,8 @@ internal sealed partial class MarketplaceWindow
         var selected = GetInstallCandidates(plugin.InternalName, currentApi, currentDalamudVersion)
             .FirstOrDefault(x => NormalizeUrl(x.SourceUrl)
                 .Equals(NormalizeUrl(pendingInstallPermissionSourceUrl), StringComparison.OrdinalIgnoreCase));
+        if (selected is not null)
+            selected = catalog.HydrateVariant(selected);
         if (selected is null)
         {
             ImGui.TextWrapped("This plugin package is no longer available. Go back and choose a repository again.");
@@ -78,10 +81,10 @@ internal sealed partial class MarketplaceWindow
 
         ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.24f, 0.12f, 0.025f, 0.90f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.88f, 0.50f, 0.12f, 0.92f));
-        var panelHeight = Ui(76f + (concerns.Count * 54f));
+        var panelHeight = Math.Min(Ui(76f + (concerns.Count * 54f)), Ui(360f));
         ImGui.BeginChild("install-permission-summary", new Vector2(0f, panelHeight), true,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.TextWrapped($"{selected.Name} can do things you asked Omega to warn you about.");
+            ImGuiWindowFlags.None);
+        ImGui.TextWrapped($"{selected.Name} matches install warnings you asked Omega to stop for.");
         ImGui.Spacing();
         foreach (var concern in concerns)
         {

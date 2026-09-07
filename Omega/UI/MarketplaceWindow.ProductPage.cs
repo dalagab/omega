@@ -86,7 +86,10 @@ internal sealed partial class MarketplaceWindow
         ImGui.SameLine(0f, Ui(24f));
         ImGui.BeginGroup();
         ImGui.SetCursorPosY(Ui(27f));
-        ImGui.TextUnformatted(plugin.Name);
+        var heroTextWidth = Math.Max(Ui(260f), heroWidth - Ui(ProductHeroIconSize + 92f));
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + heroTextWidth);
+        ImGui.TextWrapped(plugin.Name);
+        ImGui.PopTextWrapPos();
         DrawProductAuthors(plugin);
 
         var category = PrimaryPluginCategory(plugin);
@@ -396,7 +399,28 @@ internal sealed partial class MarketplaceWindow
             if (drewAny)
                 ImGui.SameLine(0f, Ui(8f));
             DrawDiscoverTextBadge("18+", new Vector4(0.56f, 0.16f, 0.22f, 0.96f));
+            drewAny = true;
         }
+
+        var license = ProductLicenseLabel(plugin.OmegaWebsiteLicense);
+        if (!string.IsNullOrWhiteSpace(license))
+        {
+            if (drewAny)
+                ImGui.SameLine(0f, Ui(8f));
+            DrawDiscoverTextBadge($"License · {FitTextToWidth(license, Ui(120f))}", new Vector4(0.12f, 0.30f, 0.42f, 0.96f));
+            if (ImGui.IsItemHovered())
+                SetReadableTooltip($"Project license: {license}");
+        }
+    }
+
+    private static string ProductLicenseLabel(string? value)
+    {
+        var license = (value ?? string.Empty).Trim();
+        return license.Equals("NOASSERTION", StringComparison.OrdinalIgnoreCase) ||
+               license.Equals("NONE", StringComparison.OrdinalIgnoreCase) ||
+               license.Equals("UNKNOWN", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : license;
     }
 
     private void DrawProductPrimaryAction(
@@ -472,7 +496,11 @@ internal sealed partial class MarketplaceWindow
         {
             DrawProductActionButton("Unavailable", $"product-unavailable-{plugin.InternalName}", enabled: false, accent: false);
             ImGui.SameLine(0f, Ui(10f));
-            ImGui.TextDisabled(DescribeInstallUnavailability(plugin.InternalName, currentApi, currentDalamudVersion));
+            var reason = DescribeInstallUnavailability(plugin.InternalName, currentApi, currentDalamudVersion);
+            var reasonWidth = Math.Max(Ui(180f), ImGui.GetContentRegionAvail().X - Ui(8f));
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + reasonWidth);
+            ImGui.TextWrapped(reason);
+            ImGui.PopTextWrapPos();
             return;
         }
 
@@ -631,6 +659,9 @@ internal sealed partial class MarketplaceWindow
                 "Compatibility",
                 plugin.GetCompatibilityText(currentApi, currentDalamudVersion, configuration.PreferTestingBuilds));
             DrawProductRepositoryMetadataRow(plugin, currentApi);
+            var license = ProductLicenseLabel(plugin.OmegaWebsiteLicense);
+            if (!string.IsNullOrWhiteSpace(license))
+                DrawProductMetadataRow("License", license);
             if (plugin.Tags.Count > 0)
                 DrawProductMetadataRow("Tags", string.Join(", ", plugin.Tags));
             ImGui.EndTable();

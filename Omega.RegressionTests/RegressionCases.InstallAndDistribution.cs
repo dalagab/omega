@@ -49,6 +49,9 @@ internal static partial class RegressionCases
         Contains(ui, "CheckForUpdates()", "Settings owns the dedicated update-check action");
         Contains(ui, "updates.CheckForUpdatesAsync()", "Settings update check delegates to the Definitions coordinator");
         Contains(ui, "##omega-about-version", "version remains visible and clickable at the icon-rail footer");
+        Contains(ui, "showCountBadge: true", "Discover requests a visible result-count badge");
+        Contains(ui, "DrawSidebarCountBadge", "Discover count uses a dedicated neutral badge");
+        Contains(ui, "GetFilteredPlugins(", "Discover count follows the same cached filtered shelf");
         Contains(ui, "OpenAbout()", "clicking the footer version opens About");
         Contains(ui, "DrawDefinitionsUpdateRow();", "Updates page renders Definitions as a normal update-list row");
         Contains(ui, "Omega Definitions", "pending Definitions state is clearly named for the user");
@@ -91,8 +94,6 @@ internal static partial class RegressionCases
         False(ui.Contains("content-minimize", StringComparison.Ordinal), "retired pill-style content minimize control must not return");
         False(ui.Contains("DrawPillButton(\"—\"", StringComparison.Ordinal), "window controls must not regress to pill buttons");
         Contains(ui, "##omega-minimized-icon", "minimized state is one icon-sized interaction");
-        Contains(ui, "var windowSize = Ui(68f)", "minimized icon window is large enough to remain readable");
-        Contains(ui, "var iconSize = Ui(64f)", "minimized Omega mark matches the title/start-menu asset scale");
         Contains(ui, "omegaIconTexture", "minimized state renders the Omega product icon");
         Contains(ui, "ImGui.IsMouseDragging(ImGuiMouseButton.Left, 3f)", "holding and dragging moves the minimized icon");
         Contains(ui, "ImGui.SetWindowPos(ImGui.GetWindowPos() + delta", "minimized drag repositions the icon window");
@@ -145,9 +146,31 @@ internal static partial class RegressionCases
         var installer = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudInstallerBridge.cs"));
         var permissions = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "MarketplacePermissionRules.cs"));
 
+        Contains(permissions, "NoOmegaScan", "install warning model can stop when the exact selected package has no Omega analysis yet");
+        Contains(permissions, "WarnWhenNoOmegaScan", "missing-analysis warning is controlled by the user preference");
+        Contains(permissions, "string.IsNullOrWhiteSpace(plugin.SecurityStatus)", "missing-analysis warning is limited to packages with no published analysis record rather than failed or pending scans");
         Contains(permissions, "BotLikeAutomation", "permission model includes bot-like automation");
         Contains(permissions, "CameraControl", "permission model includes camera control");
-        Contains(permissions, "ChatControl", "permission model includes chat control");
+        Contains(permissions, "ChatRead", "permission model distinguishes reading chat from sending it");
+        Contains(permissions, "game.chat.read", "chat-read detection follows SigmaScope's observed capability identifier");
+        Contains(permissions, "ChatControl", "permission model keeps chat send/control separate");
+        Contains(permissions, "network.listener", "local-server warning follows SigmaScope's explicit inbound listener capability ID");
+        Contains(permissions, "FindObservedListenerPorts", "local-server warnings can surface statically observed port numbers");
+        Contains(permissions, "configured/runtime port can still differ", "port wording does not claim static literals prove runtime binding");
+        Contains(permissions, "network.http", "outbound network warning follows SigmaScope's explicit network capability IDs");
+        Contains(permissions, "privacy.clipboard", "clipboard warning follows SigmaScope's privacy capability ID");
+        Contains(permissions, "filesystem.external-path", "external-file warning avoids treating ordinary plugin config access as equivalent");
+        Contains(permissions, "process.execute", "process warning follows SigmaScope's process-execution capability ID");
+        Contains(permissions, "privacy.credentials", "credential warning follows SigmaScope's protected-data capability ID");
+        Contains(permissions, "shell.powershell", "shell warning follows SigmaScope's command-shell capability ID");
+        Contains(permissions, "memory.process", "cross-process memory warning follows SigmaScope's process-memory capability ID");
+        Contains(permissions, "memory.remote-thread", "remote-thread warning follows SigmaScope's remote-thread capability ID");
+        Contains(permissions, "dynamic.code", "dynamic-code warning follows SigmaScope's dynamic-code capability ID");
+        Contains(permissions, "artifact.bundled-executable", "bundled-executable warning follows SigmaScope package capability ID");
+        Contains(permissions, "native.writable-executable-section", "writable-executable-section warning follows SigmaScope native capability ID");
+        Contains(permissions, "registry.access", "Registry access remains available as an opt-in warning");
+        Contains(permissions, "native.interop", "native interop remains available as an opt-in warning");
+        Contains(permissions, "game.memory.read", "game-memory access remains available as an opt-in warning");
         Contains(permissions, "MenuControl", "permission model includes menu control");
         Contains(permissions, "This is an install-time warning layer, not an API sandbox", "permission model does not claim sandbox enforcement");
 
@@ -157,9 +180,12 @@ internal static partial class RegressionCases
         Contains(ui, "ImGui.Button(actionLabel", "repository chooser keeps one explicit top action while allowing risk review to replace unsafe install");
         Contains(ui, "StartSelectedInstall", "selected source install flow");
         Contains(ui, "TryStartSelectedInstall", "selected source passes through install permission preferences before installation");
+        Contains(ui, "catalog.HydrateVariant(plugin)", "install permission review hydrates detailed evidence before evaluating listener ports and other concerns");
         Contains(ui, "DrawInstallPermissionModal", "permission concerns use an install-context confirmation popup");
         Contains(ui, "Check before installing", "permission warning uses plain user-facing language");
+        Contains(ui, "matches install warnings you asked Omega to stop for", "install warning modal wording covers capability and missing-analysis concerns without mislabeling either");
         Contains(ui, "Install anyway", "permission warning requires an explicit continue action");
+        Contains(ui, "Math.Min(Ui(76f + (concerns.Count * 54f)), Ui(360f))", "expanded capability warnings stay inside a bounded scrollable review panel");
         Contains(ui, "MarketplacePermissionRules.FindBlockedCapabilities", "install permission gate uses catalog/security capability observations");
         Contains(ui, "selectedNeedsRiskReview", "sources requiring acknowledgement cannot be installed by the normal Install action");
         Contains(ui, "NeedsInstallRepositoryReview", "install gating combines unrecognized-source consent with package-divergence review");

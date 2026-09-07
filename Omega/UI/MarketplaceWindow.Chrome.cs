@@ -49,13 +49,41 @@ internal sealed partial class MarketplaceWindow
     {
         var mainProjection = catalog.GetMainProjection(currentApi);
         var mainPlugins = mainProjection.Plugins;
-        var discoverPluginCount = MarketplaceCatalogRules.CountUniquePlugins(mainProjection.Variants);
         var counts = GetSidebarCounts(mainPlugins, installed, currentApi, currentDalamudVersion);
+
+        // Before Discover has rendered, seed the badge from the default current-API shelf.
+        // Once active, reuse the exact cached filtered list the Discover renderer consumes.
+        if (discoverVisiblePluginCountCatalogRevision != catalog.Revision ||
+            discoverVisiblePluginCountPreferTesting != configuration.PreferTestingBuilds)
+        {
+            discoverVisiblePluginCount = catalog.GetDiscoverCompatibleCount(
+                currentApi,
+                configuration.PreferTestingBuilds);
+            discoverVisiblePluginCountCatalogRevision = catalog.Revision;
+            discoverVisiblePluginCountPreferTesting = configuration.PreferTestingBuilds;
+        }
+
+        if (activeView == MarketplaceView.Discover)
+        {
+            var discoverProjection = catalog.GetMainProjection(currentApi, selectedSource);
+            discoverVisiblePluginCount = GetFilteredPlugins(
+                discoverProjection.Plugins,
+                installed,
+                currentApi,
+                currentDalamudVersion).Length;
+            discoverVisiblePluginCountCatalogRevision = catalog.Revision;
+            discoverVisiblePluginCountPreferTesting = configuration.PreferTestingBuilds;
+        }
 
         // Keep the primary destinations visually attached to the top application bar.
         ImGui.Dummy(Ui(0f, 6f));
         DrawSidebarViewIcon(MarketplaceView.Spotlight, FontAwesomeIcon.Star, "Spotlight", 0);
-        DrawSidebarViewIcon(MarketplaceView.Discover, FontAwesomeIcon.Search, "Discover", discoverPluginCount);
+        DrawSidebarViewIcon(
+            MarketplaceView.Discover,
+            FontAwesomeIcon.Search,
+            "Discover",
+            discoverVisiblePluginCount,
+            showCountBadge: true);
         DrawSidebarFooter(counts);
     }
 
@@ -78,7 +106,15 @@ internal sealed partial class MarketplaceWindow
             counts.Updates + applicationUpdateCount + definitionsUpdateCount,
             notificationCount: counts.Updates + applicationUpdateCount,
             definitionsAttention: updates.DefinitionsUpdateAvailable);
-        DrawSidebarUtilityIcon(MarketplaceView.Library, FontAwesomeIcon.List, "Library", counts.Installed);
+        var startupHealthAttention = startupHealth.Snapshot.IsComplete
+            ? startupHealth.Snapshot.ActionableCount
+            : 0;
+        DrawSidebarUtilityIcon(
+            MarketplaceView.Library,
+            FontAwesomeIcon.List,
+            "Library",
+            counts.Installed,
+            startupHealthCount: startupHealthAttention);
 
         ImGui.Spacing();
         var versionSize = ImGui.CalcTextSize(BuildInfo.Version);
@@ -105,12 +141,22 @@ internal sealed partial class MarketplaceWindow
         string label,
         int count,
         int notificationCount = 0,
-        bool definitionsAttention = false)
+        bool definitionsAttention = false,
+        int startupHealthCount = 0)
     {
         var tooltip = count > 0 ? $"{label} ({count})" : label;
         if (definitionsAttention)
             tooltip += " — Definitions update available";
-        if (!DrawSidebarIcon(icon, $"sidebar-utility-{view}", tooltip, activeView == view, notificationCount, definitionsAttention))
+        if (startupHealthCount > 0)
+            tooltip += $" — {startupHealthCount} startup item{(startupHealthCount == 1 ? "" : "s")} to review";
+        if (!DrawSidebarIcon(
+                icon,
+                $"sidebar-utility-{view}",
+                tooltip,
+                activeView == view,
+                notificationCount,
+                definitionsAttention,
+                startupHealthCount))
             return;
 
         if (activeView != view)
@@ -123,19 +169,39 @@ internal sealed partial class MarketplaceWindow
             RefreshCollectionsIfNeeded(force: true);
     }
 
+    internal void OpenUpdatesView()
+    {
+        if (activeView != MarketplaceView.Updates)
+            filtersOpen = false;
+        activeView = MarketplaceView.Updates;
+        detailsOpen = false;
+        selectedPlugin = null;
+        resetStorefrontScroll = true;
+        IsOpen = true;
+    }
+
     private void OpenSettings()
     {
-        // Settings opens on the lightweight preference list. Repository reflection and catalog
-        // inventory are only evaluated when the user explicitly opens the Repositories tab.
-        settingsSection = SettingsSection.General;
+        RefreshDalamudRepositoryAwareness();
+        InvalidateRepositorySettingsSnapshot();
         settingsOpen = true;
         requestSettingsPopup = true;
     }
 
-    private void DrawSidebarViewIcon(MarketplaceView view, FontAwesomeIcon icon, string label, int count)
+    private void DrawSidebarViewIcon(
+        MarketplaceView view,
+        FontAwesomeIcon icon,
+        string label,
+        int count,
+        bool showCountBadge = false)
     {
-        var tooltip = count > 0 ? $"{label} ({count})" : label;
-        if (!DrawSidebarIcon(icon, $"sidebar-view-{view}", tooltip, activeView == view))
+        var tooltip = $"{label} ({Math.Max(0, count)})";
+        if (!DrawSidebarIcon(
+                icon,
+                $"sidebar-view-{view}",
+                tooltip,
+                activeView == view,
+                countBadge: showCountBadge ? Math.Max(0, count) : null))
             return;
 
         if (activeView != view)
@@ -152,7 +218,9 @@ internal sealed partial class MarketplaceWindow
         string tooltip,
         bool active,
         int notificationCount = 0,
-        bool definitionsAttention = false)
+        bool definitionsAttention = false,
+        int startupHealthCount = 0,
+        int? countBadge = null)
     {
         var size = Ui(42f);
         var rounding = Ui(6f);
@@ -220,9 +288,69 @@ internal sealed partial class MarketplaceWindow
                 countText);
         }
 
+        if (startupHealthCount > 0)
+        {
+            var countText = startupHealthCount > 99 ? "99+" : startupHealthCount.ToString();
+            var countSize = ImGui.CalcTextSize(countText);
+
+            ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+            var heartGlyph = FontAwesomeIcon.Heart.ToIconString();
+            var heartSize = ImGui.CalcTextSize(heartGlyph);
+            ImGui.PopFont();
+
+            var badgeHeight = Ui(16f);
+            var badgeWidth = Math.Max(Ui(27f), heartSize.X + countSize.X + Ui(8f));
+            var badgeMax = screen + new Vector2(size + Ui(3f), Ui(12f));
+            var badgeMin = badgeMax - new Vector2(badgeWidth, badgeHeight);
+            var badgeBackground = ImGui.ColorConvertFloat4ToU32(new Vector4(0.035f, 0.045f, 0.060f, 0.97f));
+            var badgeBorder = ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.18f, 0.25f, 0.86f));
+            var heartColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.92f, 0.34f, 0.42f, 1f));
+            draw.AddRectFilled(badgeMin, badgeMax, badgeBackground, badgeHeight * 0.5f);
+            draw.AddRect(badgeMin, badgeMax, badgeBorder, badgeHeight * 0.5f, ImDrawFlags.None, 1f);
+
+            var contentX = badgeMin.X + Ui(4f);
+            ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+            draw.AddText(
+                new Vector2(contentX, badgeMin.Y + (badgeHeight - heartSize.Y) * 0.5f),
+                heartColor,
+                heartGlyph);
+            ImGui.PopFont();
+            draw.AddText(
+                new Vector2(contentX + heartSize.X + Ui(3f), badgeMin.Y + (badgeHeight - countSize.Y) * 0.5f),
+                0xFFFFFFFF,
+                countText);
+        }
+
+        if (countBadge.HasValue)
+            DrawSidebarCountBadge(draw, screen, size, countBadge.Value);
+
         if (hovered)
             ImGui.SetTooltip(tooltip);
         return clicked;
+    }
+
+    private static void DrawSidebarCountBadge(ImDrawListPtr draw, Vector2 screen, float size, int count)
+    {
+        var text = count > 999 ? "999+" : Math.Max(0, count).ToString();
+        var textSize = ImGui.CalcTextSize(text);
+        var height = Ui(15f);
+        var width = Math.Max(height, textSize.X + Ui(6f));
+        var max = screen + new Vector2(size + Ui(2f), size - Ui(1f));
+        var min = max - new Vector2(width, height);
+        draw.AddRectFilled(
+            min,
+            max,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.045f, 0.22f, 0.24f, 0.96f)),
+            height * 0.5f);
+        draw.AddRect(
+            min,
+            max,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.10f, 0.56f, 0.54f, 0.78f)),
+            height * 0.5f);
+        draw.AddText(
+            min + new Vector2((width - textSize.X) * 0.5f, (height - textSize.Y) * 0.5f),
+            0xFFFFFFFF,
+            text);
     }
 
     private void DrawContentHeader(
@@ -427,9 +555,8 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawMinimizedIconWindow()
     {
-        // Match the 64px title/start-menu asset more closely so the minimized mark stays readable.
-        var windowSize = Ui(68f);
-        var iconSize = Ui(64f);
+        var windowSize = Ui(58f);
+        var iconSize = Ui(54f);
         ImGui.SetWindowSize(new Vector2(windowSize, windowSize), ImGuiCond.Always);
         ImGui.SetCursorPos(Ui(2f, 2f));
 

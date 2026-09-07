@@ -142,9 +142,26 @@ internal static partial class RegressionCases
         Contains(configuration, "ShowAdvancedSecurityInformation { get; set; } = false", "advanced security details default off");
         Contains(configuration, "TrustUnrecognizedSources", "unrecognized-source trust preference is persisted and defaults off");
         Contains(configuration, "TutorialCompleted", "first-use tutorial completion is persisted");
+        Contains(configuration, "WarnWhenNoOmegaScan { get; set; } = true", "missing-analysis warning starts enabled");
         Contains(configuration, "WarnOnBotLikeAutomation { get; set; } = true", "bot-like automation warning starts enabled");
         Contains(configuration, "WarnOnCameraControl", "camera-control install preference is persisted");
-        Contains(configuration, "WarnOnChatControl", "chat-control install preference is persisted");
+        Contains(configuration, "WarnOnChatRead { get; set; } = true", "chat-reading warning starts enabled as a privacy-sensitive observation");
+        Contains(configuration, "WarnOnChatControl", "chat-send/control install preference is persisted separately");
+        Contains(configuration, "WarnOnNetworkAccess", "outbound network warning is persisted as an optional high-noise capability gate");
+        Contains(configuration, "WarnOnLocalListener { get; set; } = true", "inbound local/network server warning starts enabled");
+        Contains(configuration, "WarnOnClipboardAccess { get; set; } = true", "clipboard warning starts enabled");
+        Contains(configuration, "WarnOnExternalFileAccess { get; set; } = true", "external-file warning starts enabled");
+        Contains(configuration, "WarnOnProcessExecution { get; set; } = true", "process-execution warning starts enabled");
+        Contains(configuration, "WarnOnCredentialAccess { get; set; } = true", "credential warning starts enabled");
+        Contains(configuration, "WarnOnShellExecution { get; set; } = true", "shell warning starts enabled");
+        Contains(configuration, "WarnOnProcessMemoryAccess { get; set; } = true", "cross-process memory warning starts enabled");
+        Contains(configuration, "WarnOnRemoteThreadCreation { get; set; } = true", "remote-thread warning starts enabled");
+        Contains(configuration, "WarnOnDynamicCodeLoading { get; set; } = true", "dynamic-code warning starts enabled");
+        Contains(configuration, "WarnOnBundledExecutable { get; set; } = true", "bundled-executable warning starts enabled");
+        Contains(configuration, "WarnOnWritableExecutableSection { get; set; } = true", "writable-executable-section warning starts enabled");
+        Contains(configuration, "WarnOnRegistryAccess", "Registry warning is available as an opt-in preference");
+        Contains(configuration, "WarnOnNativeInterop", "native interop warning is available as an opt-in preference");
+        Contains(configuration, "WarnOnGameMemoryAccess", "game-memory warning is available as an opt-in preference");
         Contains(configuration, "WarnOnMenuControl", "menu-control install preference is persisted");
 
         var appBar = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.AppBar.cs"));
@@ -153,6 +170,9 @@ internal static partial class RegressionCases
         Contains(appBar, "ImGuiCol.FrameBg", "global search owns a dedicated lighter frame background");
         Contains(appBar, "configuration.SearchEverywhere || activeView == MarketplaceView.Discover", "search can be hidden outside Discover without losing Discover search");
         Contains(appBar, "EffectiveSearchQuery", "hidden global search cannot silently filter non-Discover pages");
+        Contains(appBar, "ImGuiKey.F", "Ctrl+F can focus global search");
+        Contains(appBar, "ImGuiKey.Slash", "slash can focus global search when text input is idle");
+        Contains(appBar, "SetKeyboardFocusHere", "keyboard search shortcuts move focus into the search field");
 
         var discover = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Discover.cs"));
         DoesNotContain(discover, "reported downloads / installations", "Discover keeps catalog-wide usage totals out of the header");
@@ -165,14 +185,16 @@ internal static partial class RegressionCases
         DoesNotContain(settings, "SettingsSection.Behavior", "Settings no longer has a dedicated Behavior area");
         DoesNotContain(settings, "settings-tab-behavior", "Behavior is removed from the Settings tab bar");
         Contains(settings, "DrawSettingsGeneralTab", "General owns the combined settings surface");
-        Contains(settings, "settingsSection = SettingsSection.General", "Settings opens on the lightweight General list instead of repository inventory");
-        Contains(settings, "ImGui.Checkbox($\"##settings-{id}\"", "General preferences render as a checkbox list");
-        Contains(settings, "Repository reflection and catalog", "opening Settings defers repository work until the Repositories tab is requested");
-        DoesNotContain(Capture(settings, @"private void OpenSettings\(\)\s*\{([\s\S]*?)\r?\n    \}"), "RefreshDalamudRepositoryAwareness()", "opening Settings must not synchronously refresh repository awareness");
+        Contains(settings, "private int selectedApi = -1", "Discover API filtering uses a view-default sentinel");
+        Contains(settings, "activeView == MarketplaceView.Discover ? currentApi : 0", "Discover defaults to the current API without filtering Library or Updates");
+        Contains(settings, "catalog.QueryDiscoverInternalNames", "Discover pushes catalog-native search/filter predicates into SQLite before local runtime filters");
+        Contains(settings, "catalog.SearchInternalNames(needle, selectedSource)", "non-Discover README search remains disk-backed instead of requiring startup README materialization");
+        Contains(settings, "API: Any", "explicit Any API remains visible as a Discover override");
         Contains(settings, "Minimize Omega as a bar", "General settings expose compact bar minimize mode");
         Contains(settings, "Show Omega in the ESC / System menu", "General settings expose ESC menu visibility");
         Contains(settings, "Show Omega before login", "General settings expose pre-login menu visibility");
         Contains(settings, "Search everywhere", "General settings expose the global-search visibility toggle");
+        Contains(settings, "Open Omega from Dalamud plugin-update notifications", "General can route Dalamud update-notification clicks into Omega Updates");
         Contains(settings, "Discover layout", "General settings expose the Discover presentation selector");
         Contains(settings, "Compact cards", "Discover presentation selector includes icon-only compact cards");
         Contains(settings, "One row per plugin", "Discover presentation selector includes a dense list mode");
@@ -184,12 +206,28 @@ internal static partial class RegressionCases
         Contains(settings, "Trust unrecognized sources", "General exposes the opt-in unrecognized-source trust preference");
         Contains(settings, "Skip only the extra source acknowledgement", "source trust explains that protection/reporting remains active");
         Contains(settings, "Install permissions", "General settings expose install permission preferences");
+        Contains(settings, "Warn when no Omega scan exists", "General can stop installs whose exact package has no published Omega analysis");
         Contains(settings, "Warn about gameplay automation", "General exposes the bot-like automation permission preference");
         Contains(settings, "Warn about camera control", "General exposes the camera permission preference");
-        Contains(settings, "Warn about chat control", "General exposes the chat permission preference");
+        Contains(settings, "Warn about reading chat", "General exposes chat observation separately from chat sending");
+        Contains(settings, "Warn about sending chat", "General exposes the chat-send/control permission preference");
+        Contains(settings, "Warn about local/network servers", "General exposes default-on inbound listener warnings separately from outbound networking");
+        Contains(settings, "Warn about outbound network access", "General exposes optional outbound-network warnings without forcing warning fatigue");
+        Contains(settings, "Warn about clipboard access", "General exposes clipboard-access warnings");
+        Contains(settings, "Warn about external file access", "General exposes external-file warnings");
+        Contains(settings, "Warn about starting other programs", "General exposes process-execution warnings");
+        Contains(settings, "Warn about credential access", "General exposes protected-credential warnings");
         Contains(settings, "Warn about menu control", "General exposes the menu permission preference");
         Contains(settings, "Show tutorial again", "General can replay the first-use tour");
         Contains(settings, "DrawMinimizedBar", "minimized bar presentation is implemented");
+
+        var startupUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.StartupHealth.cs"));
+        Contains(startupUi, "Search startup apps...", "Startup exposes a local search for large installed-plugin sets");
+        Contains(startupUi, "ImGuiTableFlags.ScrollY", "Startup keeps its rows inside a dedicated scroll viewport");
+        Contains(startupUi, "ImGui.TableSetupScrollFreeze(0, 1)", "Startup keeps the table header fixed while its rows scroll");
+        Contains(startupUi, "windowBottom - ImGui.GetCursorScreenPos().Y", "Startup consumes the actual remaining child-window height at high UI scale");
+        DoesNotContain(startupUi, "ImGui.ImGuiListClipper()", "Startup avoids fixed-height clipper estimates that make its scrollbar jump");
+        Contains(startupUi, "Omega is not monitoring gameplay activity", "Startup activity remains evidence-based and explicitly non-monitoring");
 
         var tutorial = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Tutorial.cs"));
         Contains(tutorial, "Welcome to Omega", "first-use tour introduces Omega");
@@ -249,6 +287,26 @@ internal static partial class RegressionCases
         Contains(plugin, "Configuration.DiscoverLayout = DiscoverLayoutMode.Dynamic", "schema 16 preserves the existing dynamic Discover layout on upgrade");
         Contains(plugin, "Configuration.Version < 17", "configuration migration advances clients to the source-trust schema");
         Contains(plugin, "Configuration.TrustUnrecognizedSources = false", "schema 17 keeps unrecognized-source trust opt-in by default");
+        Contains(plugin, "Configuration.Version < 19", "configuration migration advances clients to the repository API-filter schema");
+        Contains(plugin, "Configuration.RepositoryApiLevelsCustomized = false", "schema 19 defaults repository filtering to the current API dynamically");
+        Contains(plugin, "Configuration.Version < 20", "configuration migration advances clients to the chat-observation warning schema");
+        Contains(plugin, "Configuration.WarnOnChatRead = true", "schema 20 enables chat-read warnings for existing users");
+        Contains(plugin, "Configuration.Version < 21", "schema 21 introduces evidence-backed system capability warnings");
+        Contains(plugin, "Configuration.WarnOnCredentialAccess = true", "schema 21 enables the rare credential warning for existing users");
+        Contains(plugin, "Configuration.Version < 22", "schema 22 introduces the missing-Omega-analysis install warning");
+        Contains(plugin, "Configuration.WarnWhenNoOmegaScan = true", "schema 22 enables the missing-analysis warning for existing users");
+        Contains(plugin, "Configuration.Version < 23", "schema 23 separates local listeners and rare system capability warnings");
+        Contains(plugin, "Configuration.WarnOnLocalListener = true", "schema 23 enables inbound-listener warnings for existing users");
+        Contains(plugin, "Configuration.WarnOnDynamicCodeLoading = true", "schema 23 enables high-signal dynamic-code warnings for existing users");
+        Contains(plugin, "Configuration.WarnOnRegistryAccess = false", "schema 23 keeps common Registry access warning opt-in");
+        Contains(plugin, "Configuration.Version < 24", "schema 24 introduces Dalamud update-notification routing");
+        Contains(plugin, "Configuration.RouteDalamudUpdateNotificationsToOmega = true", "schema 24 enables update-notification routing for existing users");
+
+        var notificationBridge = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "DalamudUpdateNotificationBridge.cs"));
+        Contains(notificationBridge, "NotifyUpdatesAreAvailable", "notification routing identifies Dalamud's AutoUpdate availability notification instead of all notifications");
+        Contains(notificationBridge, "initiatorPlugin", "notification routing excludes plugin-origin notifications");
+        Contains(notificationBridge, "notification.Click += click", "notification body clicks are routed through the public active-notification click event");
+        Contains(notificationBridge, "notification.DismissNow()", "opening Omega dismisses the consumed Dalamud update notification");
         Contains(plugin, "Configuration.WarnOnBotLikeAutomation = true", "schema 15 applies the bot-like automation warning default");
         Contains(plugin, "Configuration.TutorialCompleted = false", "schema 15 shows the first-use tour once after upgrade");
         Contains(plugin, "Configuration.ShowInSystemMenu", "system-menu bridge reads the live preference");
@@ -297,6 +355,9 @@ internal static partial class RegressionCases
         Contains(product, "DrawProductPopularityMetadataRow", "product pages expose normalized popularity beside raw downloads");
         Contains(product, "Retry update", "product action becomes an explicit retry after a failed update");
         Contains(product, "DrawProductUpdateFailure", "product pages surface the last structured update failure");
+        Contains(product, "License ·", "product hero shows enriched license metadata as a compact badge");
+        Contains(product, "ImGui.TextWrapped(reason)", "long install-unavailability explanations wrap inside the hero");
+        Contains(product, "ProductLicenseLabel", "unknown/no-assertion licenses stay hidden instead of becoming misleading badges");
 
         var popularityUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Popularity.cs"));
         Contains(popularityUi, "DrawPopularityBar", "product popularity is rendered as a leader-relative bar");
@@ -328,6 +389,11 @@ internal static partial class RegressionCases
         Contains(updateUi, "Dalamud status:", "failure details preserve the underlying Dalamud status code");
 
         var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var repositoryPresentation = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.RepositoryPresentation.cs"));
+        Contains(library, "ImGui.IsRectVisible", "Updates cull off-screen rows without fixed-height clipper assumptions");
+        Contains(repositoryPresentation, "DrawInstalledSourceIndicator", "Library exposes installed repository provenance with icons and neutral text");
+        Contains(repositoryPresentation, "DrawRepositoryTrustIcon", "repository trust is carried by an icon instead of a colored source name");
+        Contains(repositoryPresentation, "RepositoryStateLabel", "installed-source indicator preserves the existing repository trust vocabulary");
         Contains(library, "previousFailure.Message", "Updates rows display the plugin-specific failure inline");
         Contains(library, "Retry this update through Dalamud", "Updates rows explain that the action is now a retry");
     }
@@ -582,7 +648,9 @@ internal static partial class RegressionCases
         Contains(ui, "##omega-tag-search", "tag picker has searchable input");
         Contains(ui, "all selected tags must match", "multi-tag semantics are explicit AND matching");
         Contains(ui, "Multiple authors use AND matching", "multi-author filters use AND matching too");
-        Contains(ui, "OmegaWebsiteReadmeExcerpt", "global search includes README enrichment text");
+        Contains(ui, "catalog.SearchInternalNames(needle, selectedSource)", "global search delegates README-inclusive matching to the disk-backed catalog");
+        var store = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "SqliteCatalogStore.cs"));
+        Contains(store, "website_readme_excerpt LIKE $pattern", "SQLite search still includes README enrichment text without retaining every README in memory");
         Contains(ui, "selected-filter-", "selected filters remain visible as removable pills");
         Contains(ui, "Take(needle.Length == 0 ? 120 : 250)", "tag popup draw work is bounded");
         Contains(ui, "catalog.GetTagIndex(currentApi, selectedSource)", "tag index respects repository filtering");

@@ -117,37 +117,69 @@ internal sealed partial class MarketplaceWindow
             collectionAddSearch = string.Empty;
         }
 
-        DrawFolderShape(screen, folderSize, collection.IsEnabled, hovered);
+        DrawCollectionFolderIcon(screen, folderSize, collection.IsEnabled, hovered, collection.Plugins.Count);
+        if (hovered)
+        {
+            var count = collection.Plugins.Count;
+            SetReadableTooltip($"{CollectionDisplayName(collection)}\n{count} plugin{(count == 1 ? string.Empty : "s")}\nClick to open");
+        }
         ImGui.SetCursorPosX(startX);
 
         DrawCenteredTileText(Shorten(CollectionDisplayName(collection), 22), width, false);
-        DrawCenteredTileText($"{collection.Plugins.Count} plugin{(collection.Plugins.Count == 1 ? string.Empty : "s")}", width, true);
         DrawCollectionToggle(collection, width);
         ImGui.SetCursorPosX(startX);
         ImGui.Dummy(new Vector2(width, Ui(1f)));
         ImGui.EndGroup();
     }
 
-    private static void DrawFolderShape(
+    private static void DrawCollectionFolderIcon(
         Vector2 min,
         Vector2 size,
         bool enabled,
-        bool hovered)
+        bool hovered,
+        int pluginCount)
     {
         var draw = ImGui.GetWindowDrawList();
-        var bodyMin = min + Ui(6f, 22f);
-        var bodyMax = min + new Vector2(size.X - Ui(6f), size.Y - Ui(6f));
-        var tabMax = min + new Vector2(Math.Min(size.X * 0.48f, Ui(78f)), Ui(30f));
-        var baseColor = enabled
-            ? new Vector4(0.16f, 0.58f, 0.62f, hovered ? 1f : 0.92f)
-            : new Vector4(0.20f, 0.24f, 0.30f, hovered ? 0.95f : 0.78f);
-        var edgeColor = enabled
-            ? new Vector4(0.24f, 0.84f, 0.78f, 0.95f)
-            : new Vector4(0.38f, 0.43f, 0.50f, 0.72f);
+        var cardMin = min + Ui(5f, 5f);
+        var cardMax = min + new Vector2(size.X - Ui(5f), size.Y - Ui(5f));
+        var background = enabled
+            ? new Vector4(0.045f, 0.15f, 0.17f, hovered ? 0.96f : 0.82f)
+            : new Vector4(0.07f, 0.08f, 0.10f, hovered ? 0.94f : 0.78f);
+        var border = enabled
+            ? new Vector4(0.16f, 0.72f, 0.71f, hovered ? 0.98f : 0.76f)
+            : new Vector4(0.29f, 0.32f, 0.37f, hovered ? 0.90f : 0.58f);
+        draw.AddRectFilled(cardMin, cardMax, ImGui.ColorConvertFloat4ToU32(background), Ui(12f));
+        draw.AddRect(cardMin, cardMax, ImGui.ColorConvertFloat4ToU32(border), Ui(12f), ImDrawFlags.None, Ui(1.2f));
 
-        draw.AddRectFilled(min + Ui(12f, 10f), tabMax, ImGui.ColorConvertFloat4ToU32(baseColor), Ui(7f));
-        draw.AddRectFilled(bodyMin, bodyMax, ImGui.ColorConvertFloat4ToU32(baseColor), Ui(10f));
-        draw.AddRect(bodyMin, bodyMax, ImGui.ColorConvertFloat4ToU32(edgeColor), Ui(10f), ImDrawFlags.None, Ui(1.4f));
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        var glyph = FontAwesomeIcon.Folder.ToIconString();
+        var baseSize = ImGui.CalcTextSize(glyph);
+        var font = ImGui.GetFont();
+        var fontSize = Ui(48f);
+        var scale = fontSize / Math.Max(1f, ImGui.GetFontSize());
+        var glyphSize = baseSize * scale;
+        var glyphPos = min + new Vector2((size.X - glyphSize.X) * 0.5f, Ui(15f));
+        var glyphColor = enabled
+            ? ImGui.ColorConvertFloat4ToU32(new Vector4(0.26f, 0.84f, 0.80f, 0.98f))
+            : ImGui.ColorConvertFloat4ToU32(new Vector4(0.46f, 0.50f, 0.57f, 0.88f));
+        draw.AddText(font, fontSize, glyphPos, glyphColor, glyph);
+        ImGui.PopFont();
+
+        var countText = pluginCount > 999 ? "999+" : Math.Max(0, pluginCount).ToString();
+        var countSize = ImGui.CalcTextSize(countText);
+        var badgeHeight = Ui(18f);
+        var badgeWidth = Math.Max(badgeHeight, countSize.X + Ui(8f));
+        var badgeMax = cardMax - Ui(7f, 7f);
+        var badgeMin = badgeMax - new Vector2(badgeWidth, badgeHeight);
+        draw.AddRectFilled(
+            badgeMin,
+            badgeMax,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.02f, 0.03f, 0.04f, 0.88f)),
+            badgeHeight * 0.5f);
+        draw.AddText(
+            badgeMin + new Vector2((badgeWidth - countSize.X) * 0.5f, (badgeHeight - countSize.Y) * 0.5f),
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.90f, 0.93f, 0.95f, 1f)),
+            countText);
     }
 
     private void DrawCollectionToggle(DalamudPluginCollection collection, float width)

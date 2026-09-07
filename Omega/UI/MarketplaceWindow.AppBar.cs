@@ -92,6 +92,26 @@ internal sealed partial class MarketplaceWindow
         resetDiscoverListScroll = false;
     }
 
+    private void HandleGlobalKeyboardShortcuts()
+    {
+        var io = ImGui.GetIO();
+        var blockingModal = settingsOpen || aboutOpen || installPopupOpen || installRiskPopupOpen ||
+                            updateMigrationPopupOpen || uninstallPopupOpen || addSourceOpen ||
+                            eulaRequiredOpen || eulaReviewOpen || tutorialOpen;
+        if (blockingModal || !ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows))
+            return;
+
+        var ctrlFind = io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.F, false);
+        var slashSearch = !io.KeyCtrl && !io.KeyAlt && !io.KeyShift && !io.WantTextInput &&
+                          ImGui.IsKeyPressed(ImGuiKey.Slash, false);
+        if (!ctrlFind && !slashSearch)
+            return;
+
+        if (activeView != MarketplaceView.Discover)
+            ActivateGlobalSearch();
+        requestGlobalSearchFocus = true;
+    }
+
     private void DrawGlobalSearch(float x, float searchWidth)
     {
         var hasSearch = !string.IsNullOrEmpty(search);
@@ -104,6 +124,12 @@ internal sealed partial class MarketplaceWindow
         ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.145f, 0.155f, 0.175f, 0.96f));
         ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, new Vector4(0.175f, 0.185f, 0.205f, 0.98f));
         ImGui.PushStyleColor(ImGuiCol.FrameBgActive, new Vector4(0.195f, 0.205f, 0.225f, 1f));
+
+        if (requestGlobalSearchFocus)
+        {
+            ImGui.SetKeyboardFocusHere();
+            requestGlobalSearchFocus = false;
+        }
 
         var previous = search;
         var changed = ImGui.InputTextWithHint(
@@ -149,7 +175,7 @@ internal sealed partial class MarketplaceWindow
         selectedSource = "All sources";
         selectedCategory = "All categories";
         selectedTags.Clear();
-        selectedApi = 0;
+        selectedApi = -1;
         statusFilter = MarketplaceStatusFilter.All;
         securityFilter = MarketplaceSecurityFilter.All;
         contentFilter = MarketplaceContentFilter.All;

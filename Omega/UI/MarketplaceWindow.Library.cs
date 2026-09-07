@@ -31,16 +31,6 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.SameLine(0f, 8f);
-        if (DrawRoundedButton(
-                SigmascopeInfo.Name,
-                "library-tab-sigmascope",
-                Ui(126f, 32f),
-                active: librarySection == LibrarySection.Sigmascope))
-        {
-            SetLibrarySection(LibrarySection.Sigmascope);
-        }
-
-        ImGui.SameLine(0f, 8f);
         var namedCollectionCount = collectionSnapshot.Count(x => !x.IsDefault);
         if (DrawRoundedButton(
                 $"Collections   {namedCollectionCount}",
@@ -49,6 +39,28 @@ internal sealed partial class MarketplaceWindow
                 active: librarySection == LibrarySection.Collections))
         {
             SetLibrarySection(LibrarySection.Collections);
+        }
+
+        ImGui.SameLine(0f, 8f);
+        var startupAttention = startupHealth.Snapshot.IsComplete ? startupHealth.Snapshot.ActionableCount : 0;
+        var startupLabel = startupAttention > 0 ? $"Startup   {startupAttention}" : "Startup";
+        if (DrawRoundedButton(
+                startupLabel,
+                "library-tab-startup",
+                Ui(startupAttention > 0 ? 122f : 112f, 32f),
+                active: librarySection == LibrarySection.Startup))
+        {
+            SetLibrarySection(LibrarySection.Startup);
+        }
+
+        ImGui.SameLine(0f, 8f);
+        if (DrawRoundedButton(
+                SigmascopeInfo.Name,
+                "library-tab-sigmascope",
+                Ui(126f, 32f),
+                active: librarySection == LibrarySection.Sigmascope))
+        {
+            SetLibrarySection(LibrarySection.Sigmascope);
         }
 
         var importWidth = Ui(152f);
@@ -85,6 +97,8 @@ internal sealed partial class MarketplaceWindow
         resetStorefrontScroll = true;
         if (section == LibrarySection.Collections)
             RefreshCollectionsIfNeeded(force: true);
+        if (section == LibrarySection.Startup)
+            startupAppsSnapshot = null;
     }
 
     private bool ShouldDrawMarketplaceFilters()
@@ -92,7 +106,7 @@ internal sealed partial class MarketplaceWindow
         {
             MarketplaceView.Spotlight => false,
             MarketplaceView.Discover when detailsOpen => false,
-            MarketplaceView.Library when librarySection is LibrarySection.Collections or LibrarySection.Sigmascope => false,
+            MarketplaceView.Library when librarySection is LibrarySection.Collections or LibrarySection.Startup or LibrarySection.Sigmascope => false,
             _ => true,
         };
 
@@ -127,12 +141,23 @@ internal sealed partial class MarketplaceWindow
         Version currentDalamudVersion)
     {
         ImGui.Spacing();
+        var rows = new List<(MarketplacePlugin Plugin, IExposedPlugin Installed)>();
         foreach (var plugin in plugins)
         {
-            if (!installed.TryGetValue(plugin.InternalName, out var installedPlugin))
-                continue;
-            DrawLibraryRow(plugin, installedPlugin, currentApi, currentDalamudVersion);
-            ImGui.Spacing();
+            if (installed.TryGetValue(plugin.InternalName, out var installedPlugin))
+                rows.Add((plugin, installedPlugin));
+        }
+
+        var clipper = ImGui.ImGuiListClipper();
+        clipper.Begin(rows.Count, Ui(MarketplaceLayoutRules.LibraryRowHeight) + ImGui.GetStyle().ItemSpacing.Y);
+        while (clipper.Step())
+        {
+            for (var index = clipper.DisplayStart; index < clipper.DisplayEnd; index++)
+            {
+                var row = rows[index];
+                DrawLibraryRow(row.Plugin, row.Installed, currentApi, currentDalamudVersion);
+                ImGui.Spacing();
+            }
         }
     }
 
@@ -168,7 +193,14 @@ internal sealed partial class MarketplaceWindow
         {
             if (!installed.TryGetValue(plugin.InternalName, out var installedPlugin))
                 continue;
-            DrawUpdateRow(plugin, installedPlugin, currentApi, currentDalamudVersion);
+
+            var rowHeight = updateFailures.ContainsKey(plugin.InternalName)
+                ? Ui(112f)
+                : Ui(MarketplaceLayoutRules.UpdatesRowHeight);
+            if (ImGui.IsRectVisible(new Vector2(Math.Max(Ui(1f), ImGui.GetContentRegionAvail().X), rowHeight)))
+                DrawUpdateRow(plugin, installedPlugin, currentApi, currentDalamudVersion);
+            else
+                ImGui.Dummy(new Vector2(Ui(1f), rowHeight));
             ImGui.Spacing();
         }
     }
@@ -199,7 +231,7 @@ internal sealed partial class MarketplaceWindow
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * 4f;
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
-        ImGui.TextUnformatted(Shorten(plugin.Name, 42));
+        DrawFittedLibraryPluginName(plugin.Name);
         DrawInstalledAuthorRepositoryLine(plugin, installedPlugin, currentApi);
         ImGui.TextDisabled(Shorten(
             $"{InstalledVersionText(installedPlugin)}  •  {(installedPlugin.IsLoaded ? "Loaded" : "Not loaded")}  •  {BuildCompactCompatibility(plugin, currentApi, currentDalamudVersion)}",
@@ -219,7 +251,9 @@ internal sealed partial class MarketplaceWindow
         var iconActionSize = Ui(34f);
         var actionWidth = Ui(92f);
         var actionGap = Ui(8f);
-        var actionGroupWidth = toggleWidth + (actionGap * 4f) + (iconActionSize * 2f) + (actionWidth * 2f);
+        // Keep frequent state + primary action visible. Settings, backup and uninstall live under
+        // one overflow menu so destructive/infrequent actions no longer compete with Open.
+        var actionGroupWidth = toggleWidth + (actionGap * 2f) + iconActionSize + actionWidth;
         ImGui.SameLine();
         var actionsX = Math.Max(
             textStart + Ui(240f),
@@ -240,57 +274,53 @@ internal sealed partial class MarketplaceWindow
                     : control.Reason);
 
         ImGui.SameLine(0f, actionGap);
-        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, iconActionSize));
-        var canOpenSettings = installedPlugin.IsLoaded && installedPlugin.HasConfigUi;
-        if (DrawLibraryActionIcon(
-                FontAwesomeIcon.Cog,
-                $"library-settings-{StableId(plugin.InternalName)}",
-                canOpenSettings ? $"Open {plugin.Name} settings" : "No settings UI is currently exposed by this plugin",
-                canOpenSettings))
-        {
-            try
-            {
-                installedPlugin.OpenConfigUi();
-            }
-            catch (Exception ex)
-            {
-                Plugin.Log.Debug(ex, "Unable to open config UI for {Plugin}", plugin.InternalName);
-                operationMessage = $"Could not open settings for {plugin.Name}.";
-            }
-        }
-
-        ImGui.SameLine(0f, actionGap);
-        ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, iconActionSize));
-        var canStartBackup = configBackupTask is null;
-        if (DrawLibraryActionIcon(
-                FontAwesomeIcon.FileArchive,
-                $"library-backup-{StableId(plugin.InternalName)}",
-                canStartBackup ? $"Back up {plugin.Name} configuration" : $"Backing up {backingUpPluginName}…",
-                canStartBackup))
-        {
-            StartPluginConfigBackup(plugin);
-        }
-
-        ImGui.SameLine(0f, actionGap);
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, Ui(32f)));
-        var uninstallingThisPlugin = uninstallTask is not null &&
-                                     uninstallingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase);
-        var canUninstallHere = uninstallTask is null && collectionOperationTask is null && !isSelf;
-        if (DrawRoundedButton(
-                uninstallingThisPlugin ? "Uninstalling…" : "Uninstall",
-                $"library-uninstall-{StableId(plugin.InternalName)}",
-                new Vector2(actionWidth, Ui(32f)),
-                enabled: canUninstallHere))
+        var menuId = $"library-more-{StableId(plugin.InternalName)}";
+        if (DrawRoundedButton("...", menuId, new Vector2(iconActionSize, Ui(32f))))
+            ImGui.OpenPopup(menuId);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip($"More actions for {plugin.Name}");
+
+        if (ImGui.BeginPopup(menuId))
         {
-            OpenUninstallConfirmation(plugin);
-        }
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) && !canUninstallHere)
-        {
-            ImGui.SetTooltip(isSelf
-                ? "Omega cannot uninstall itself while it is running. Use Dalamud to remove Omega."
-                : collectionOperationTask is not null
-                    ? "Another Dalamud collection change is still being applied."
-                    : "Another plugin uninstall is still in progress.");
+            var canOpenSettings = installedPlugin.IsLoaded && installedPlugin.HasConfigUi;
+            if (!canOpenSettings)
+                ImGui.BeginDisabled();
+            if (ImGui.MenuItem("Settings"))
+            {
+                try
+                {
+                    installedPlugin.OpenConfigUi();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Debug(ex, "Unable to open config UI for {Plugin}", plugin.InternalName);
+                    operationMessage = $"Could not open settings for {plugin.Name}.";
+                }
+            }
+            if (!canOpenSettings)
+                ImGui.EndDisabled();
+
+            var canStartBackup = configBackupTask is null;
+            if (!canStartBackup)
+                ImGui.BeginDisabled();
+            if (ImGui.MenuItem("Back up config"))
+                StartPluginConfigBackup(plugin);
+            if (!canStartBackup)
+                ImGui.EndDisabled();
+
+            ImGui.Separator();
+            var uninstallingThisPlugin = uninstallTask is not null &&
+                                         uninstallingInternalName.Equals(plugin.InternalName, StringComparison.OrdinalIgnoreCase);
+            var canUninstallHere = uninstallTask is null && collectionOperationTask is null && !isSelf;
+            if (!canUninstallHere)
+                ImGui.BeginDisabled();
+            if (ImGui.MenuItem(uninstallingThisPlugin ? "Uninstalling..." : "Uninstall"))
+                OpenUninstallConfirmation(plugin);
+            if (!canUninstallHere)
+                ImGui.EndDisabled();
+
+            ImGui.EndPopup();
         }
 
         ImGui.SameLine(0f, actionGap);
@@ -320,6 +350,14 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.EndChild();
+    }
+
+    private static void DrawFittedLibraryPluginName(string name)
+    {
+        var fitted = FitTextToWidth(name, Ui(270f));
+        ImGui.TextUnformatted(fitted);
+        if (!fitted.Equals(name, StringComparison.Ordinal) && ImGui.IsItemHovered())
+            SetReadableTooltip(name);
     }
 
     private void StartPluginConfigBackup(MarketplacePlugin plugin)
@@ -708,7 +746,7 @@ internal sealed partial class MarketplaceWindow
         var textHeight = ImGui.GetTextLineHeightWithSpacing() * (previousFailure is null ? 3f : 4f);
         ImGui.SetCursorPosY(MarketplaceLayoutRules.CenterY(rowHeight, textHeight));
         ImGui.BeginGroup();
-        ImGui.TextUnformatted(Shorten(plugin.Name, 42));
+        DrawFittedLibraryPluginName(plugin.Name);
         DrawInstalledAuthorRepositoryLine(plugin, installedPlugin, currentApi);
         if (offered is null)
         {

@@ -1,5 +1,6 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Plugin;
 
 namespace Dalagab.Omega;
@@ -10,9 +11,10 @@ internal sealed partial class MarketplaceWindow
         string sourceName,
         string sourceUrl,
         bool official,
-        int currentApi)
+        int currentApi,
+        int? knownPluginCount = null)
     {
-        var count = catalog.GetRepositoryStatus(sourceUrl, currentApi)?.PluginCount ?? 0;
+        var count = knownPluginCount ?? catalog.GetRepositoryStatus(sourceUrl, currentApi)?.PluginCount ?? 0;
         return RepositoryProviderRules.Classify(sourceName, sourceUrl, official, count);
     }
 
@@ -21,9 +23,10 @@ internal sealed partial class MarketplaceWindow
         string sourceUrl,
         bool official,
         int currentApi,
-        bool disabled = false)
+        bool disabled = false,
+        int? knownPluginCount = null)
     {
-        var provider = GetRepositoryProvider(sourceName, sourceUrl, official, currentApi);
+        var provider = GetRepositoryProvider(sourceName, sourceUrl, official, currentApi, knownPluginCount);
         DrawRepositoryProviderIcon(provider, 18f);
         if (!string.IsNullOrWhiteSpace(provider.IconUrl))
             ImGui.SameLine(0f, 7f);
@@ -43,26 +46,57 @@ internal sealed partial class MarketplaceWindow
 
     private void DrawRepositoryTrustLabel(string sourceName, string sourceUrl, bool official)
     {
+        DrawRepositoryTrustIcon(sourceName, sourceUrl, official, 15f);
+        ImGui.SameLine(0f, Ui(5f));
+        ImGui.TextDisabled(RepositoryStateLabel(sourceName, sourceUrl, official));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(RepositoryTrustExplanation(sourceName, sourceUrl, official));
+    }
+
+    private void DrawRepositoryTrustIcon(string sourceName, string sourceUrl, bool official, float size)
+    {
         var unmanaged = !official && !catalog.IsSourceInDefinitions(sourceUrl);
-        var label = RepositoryStateLabel(sourceName, sourceUrl, official);
+        var stable = RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official);
+        var icon = official || stable
+            ? FontAwesomeIcon.Check
+            : unmanaged
+                ? FontAwesomeIcon.InfoCircle
+                : FontAwesomeIcon.ExclamationTriangle;
         var color = official
             ? new Vector4(0.35f, 0.78f, 0.92f, 1f)
-            : unmanaged
-                ? new Vector4(0.34f, 0.64f, 0.98f, 1f)
-                : RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official)
-                    ? new Vector4(0.38f, 0.78f, 0.52f, 1f)
-                    : new Vector4(0.95f, 0.64f, 0.20f, 1f);
-        ImGui.TextColored(color, label);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(official
-                ? "Built into Dalamud."
+            : stable
+                ? new Vector4(0.38f, 0.78f, 0.52f, 1f)
                 : unmanaged
-                    ? "Configured in Dalamud; not in Omega Definitions."
-                    : RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official)
-                        ? "Recognized community source."
-                        : configuration.TrustUnrecognizedSources
-                            ? "Unrecognized community source. You chose to skip the generic source acknowledgement; Omega still reports security, permission, package, compatibility, and support concerns."
-                            : "Unrecognized community source; acknowledgement required before install.");
+                    ? new Vector4(0.34f, 0.64f, 0.98f, 1f)
+                    : new Vector4(0.95f, 0.64f, 0.20f, 1f);
+
+        var box = Ui(size);
+        var min = ImGui.GetCursorScreenPos();
+        ImGui.InvisibleButton($"##repository-trust-{StableId(sourceUrl)}", new Vector2(box, box));
+        ImGui.PushFont(UiBuilder.IconFontFixedWidth);
+        var glyph = icon.ToIconString();
+        var glyphSize = ImGui.CalcTextSize(glyph);
+        ImGui.GetWindowDrawList().AddText(
+            min + (new Vector2(box, box) - glyphSize) * 0.5f,
+            ImGui.ColorConvertFloat4ToU32(color),
+            glyph);
+        ImGui.PopFont();
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(RepositoryTrustExplanation(sourceName, sourceUrl, official));
+    }
+
+    private string RepositoryTrustExplanation(string sourceName, string sourceUrl, bool official)
+    {
+        var unmanaged = !official && !catalog.IsSourceInDefinitions(sourceUrl);
+        return official
+            ? "Built into Dalamud."
+            : unmanaged
+                ? "Configured in Dalamud; not in Omega Definitions."
+                : RepositoryProviderRules.IsStableProvider(sourceName, sourceUrl, official)
+                    ? "Recognized community source."
+                    : configuration.TrustUnrecognizedSources
+                        ? "Unrecognized community source. You chose to skip the generic source acknowledgement; Omega still reports security, permission, package, compatibility, and support concerns."
+                        : "Unrecognized community source; acknowledgement required before install.";
     }
 
     private void DrawRepositoryProviderIcon(RepositoryProviderPresentation provider, float size)
@@ -126,6 +160,34 @@ internal sealed partial class MarketplaceWindow
         return fallback;
     }
 
+    private void DrawInstalledSourceIndicator(
+        string sourceName,
+        string sourceUrl,
+        bool official,
+        int currentApi)
+    {
+        var label = string.IsNullOrWhiteSpace(sourceName) ? "Installed source" : FitTextToWidth(sourceName, Ui(150f));
+        var provider = GetRepositoryProvider(sourceName, sourceUrl, official, currentApi);
+
+        if (provider.Kind == RepositoryProviderKind.Dalamud || !string.IsNullOrWhiteSpace(provider.IconUrl))
+        {
+            DrawRepositoryProviderIcon(provider, 18f);
+            ImGui.SameLine(0f, Ui(5f));
+        }
+
+        DrawRepositoryTrustIcon(sourceName, sourceUrl, official, 15f);
+        ImGui.SameLine(0f, Ui(5f));
+        ImGui.TextDisabled(label);
+        if (ImGui.IsItemHovered())
+        {
+            var state = RepositoryStateLabel(sourceName, sourceUrl, official);
+            var fullName = string.IsNullOrWhiteSpace(sourceName) ? "Installed source" : sourceName;
+            SetReadableTooltip(string.IsNullOrWhiteSpace(sourceUrl)
+                ? $"{fullName}\n{state}"
+                : $"{fullName}\n{state}\n{sourceUrl}");
+        }
+    }
+
     private void DrawInstalledAuthorRepositoryLine(MarketplacePlugin fallback, IExposedPlugin installedPlugin, int currentApi)
     {
         var plugin = ResolveInstalledVariant(fallback, installedPlugin);
@@ -142,11 +204,11 @@ internal sealed partial class MarketplaceWindow
             var name = Uri.TryCreate(installedPlugin.Manifest.InstalledFromUrl, UriKind.Absolute, out var uri)
                 ? uri.Host
                 : "Installed source";
-            DrawRepositoryName(name, installedPlugin.Manifest.InstalledFromUrl ?? string.Empty, false, currentApi, disabled: true);
+            DrawInstalledSourceIndicator(name, installedPlugin.Manifest.InstalledFromUrl ?? string.Empty, false, currentApi);
             return;
         }
 
-        DrawRepositoryName(SourceLabel(plugin), plugin.SourceUrl, plugin.SourceIsOfficial, currentApi, disabled: true);
+        DrawInstalledSourceIndicator(SourceLabel(plugin), plugin.SourceUrl, plugin.SourceIsOfficial, currentApi);
     }
 
     private void DrawProductRepositoryMetadataRow(MarketplacePlugin plugin, int currentApi)

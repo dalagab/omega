@@ -240,7 +240,8 @@ internal static partial class RegressionCases
         Equal(1, MarketplaceCatalogRules.CountUniquePlugins(legacyOverlay), "legacy/live overlays fall back to case-insensitive InternalName identity");
 
         var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
-        Contains(chrome, "CountUniquePlugins(mainProjection.Variants)", "Discover rail count uses logical plugin identities rather than projected database entry count");
+        Contains(chrome, "discoverVisiblePluginCount = GetFilteredPlugins(", "Discover rail count follows the currently filtered logical-plugin shelf");
+        Contains(chrome, "discoverProjection.Plugins", "Discover rail count starts from the one-row-per-plugin presentation projection rather than repository variants");
         Contains(chrome, "CountUniquePlugins(projection.Variants)", "catalog status text uses the same logical plugin count");
     }
 

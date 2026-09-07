@@ -82,10 +82,14 @@ internal sealed partial class MarketplaceWindow
             listingPanelMax: cardMax);
 
 
+        var textWidth = Math.Max(Ui(32f), ImGui.GetContentRegionAvail().X - Ui(8f));
         ImGui.SetCursorPosY(contentStartY + Ui(112f));
-        CenterText(Shorten(plugin.Name, 24));
+        DrawCenteredFittedText(plugin.Name, textWidth);
         ImGui.SetCursorPosY(contentStartY + Ui(136f));
-        CenterText(Shorten(string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author, 26), disabled: true);
+        DrawCenteredFittedText(
+            string.IsNullOrWhiteSpace(plugin.Author) ? "Unknown author" : plugin.Author,
+            textWidth,
+            disabled: true);
 
         ImGui.SetCursorPosY(contentStartY + Ui(166f));
         ImGui.Separator();

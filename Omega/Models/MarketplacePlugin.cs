@@ -139,6 +139,7 @@ public sealed class MarketplacePlugin
     public string OmegaWebsiteTitle { get; init; } = string.Empty;
     public string OmegaWebsiteDescription { get; init; } = string.Empty;
     public string OmegaWebsiteReadmeExcerpt { get; init; } = string.Empty;
+    public string OmegaWebsiteLicense { get; set; } = string.Empty;
     public IReadOnlyList<string> OmegaWebsiteImageUrls { get; init; } = [];
     public string OmegaBannerUrl { get; init; } = string.Empty;
     public IReadOnlyList<MarketplaceProjectLink> OmegaProjectLinks { get; init; } = [];

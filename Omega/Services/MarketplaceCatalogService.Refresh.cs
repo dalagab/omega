@@ -20,7 +20,7 @@ internal sealed partial class MarketplaceCatalogService
                 DatabaseSizeBytes = 0L;
                 RevisionUpdatedAtUtc = null;
                 CatalogChangelogEntryCount = 0;
-                changelogHistoryByInternalName = new Dictionary<string, IReadOnlyList<MarketplaceChangelogEntry>>(StringComparer.OrdinalIgnoreCase);
+                ClearLazyCachesLocked();
                 RebuildProjectionLocked();
             }
             return;
@@ -160,7 +160,7 @@ internal sealed partial class MarketplaceCatalogService
             DatabaseSizeBytes = store.DatabaseSizeBytes;
             RevisionUpdatedAtUtc = snapshot.RevisionUpdatedAtUtc;
             CatalogChangelogEntryCount = snapshot.ChangelogEntryCount;
-            changelogHistoryByInternalName = snapshot.PluginChangelogHistory;
+            ClearLazyCachesLocked();
         }
         RebuildForConfiguration(repositories.Where(x => x.Enabled).ToArray(), preserveLastRefresh);
         if (!preserveLastRefresh && snapshot.GeneratedAtUtc is not null)

@@ -19,8 +19,9 @@ internal enum MarketplaceView
 internal enum LibrarySection
 {
     All,
-    Sigmascope,
     Collections,
+    Startup,
+    Sigmascope,
 }
 
 internal enum MarketplaceStatusFilter
@@ -107,6 +108,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly PluginLibraryLedger libraryLedger;
     private readonly PluginConfigBackupService configBackups;
     private readonly OmegaSelfUpdateService selfUpdates;
+    private readonly StartupHealthService startupHealth;
     private readonly Action behaviorConfigurationChanged;
     private readonly FileDialogManager fileDialogs = new();
     private readonly ISharedImmediateTexture? omegaIconTexture;
@@ -117,13 +119,18 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private readonly bool eulaDocumentAvailable;
 
     private string search = string.Empty;
+    private bool requestGlobalSearchFocus;
     private readonly List<string> selectedAuthors = [];
     private string authorSearch = string.Empty;
     private string selectedSource = "All sources";
     private string selectedCategory = "All categories";
     private readonly List<string> selectedTags = [];
     private string tagSearch = string.Empty;
-    private int selectedApi;
+    // -1 means use the view default: current API in Discover, any API elsewhere.
+    private int selectedApi = -1;
+    private int discoverVisiblePluginCount;
+    private long discoverVisiblePluginCountCatalogRevision = -1;
+    private bool discoverVisiblePluginCountPreferTesting;
     private MarketplaceView activeView;
     private LibrarySection librarySection;
     private MarketplaceStatusFilter statusFilter;
@@ -200,9 +207,10 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
     private Vector2 expandedWindowPosition;
     private bool migrateLegacyFullscreenGeometry;
 
-    private SettingsSection settingsSection = SettingsSection.General;
+    private SettingsSection settingsSection = SettingsSection.Repositories;
     private SourceManagerSection sourceSection = SourceManagerSection.Curated;
     private string sourceSearch = string.Empty;
+    private int? repositoryApiSelectionAnchor;
     private string pendingInstallRiskSourceUrl = string.Empty;
     private bool pendingInstallRiskAcknowledgementChecked;
     private string newRepositoryUrl = string.Empty;
@@ -273,6 +281,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         PluginLibraryLedger libraryLedger,
         PluginConfigBackupService configBackups,
         OmegaSelfUpdateService selfUpdates,
+        StartupHealthService startupHealth,
         string omegaIconPath,
         string sigmascopeBannerPath,
         string fallbackIconPath,
@@ -295,6 +304,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         this.libraryLedger = libraryLedger;
         this.configBackups = configBackups;
         this.selfUpdates = selfUpdates;
+        this.startupHealth = startupHealth;
         this.behaviorConfigurationChanged = behaviorConfigurationChanged;
         omegaIconTexture = File.Exists(omegaIconPath) ? Plugin.TextureProvider.GetFromFile(omegaIconPath) : null;
         sigmascopeBannerTexture = File.Exists(sigmascopeBannerPath) ? Plugin.TextureProvider.GetFromFile(sigmascopeBannerPath) : null;
@@ -332,7 +342,9 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
         var versionInfo = Plugin.PluginInterface.GetDalamudVersion();
         var currentApi = Plugin.PluginInterface.Manifest.DalamudApiLevel;
         var installed = Plugin.PluginInterface.InstalledPlugins
-            .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.InternalName))
+            .Where(x => x is not null &&
+                        !string.IsNullOrWhiteSpace(x.InternalName) &&
+                        !x.Manifest.ScheduledForDeletion)
             .GroupBy(x => x.InternalName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         libraryLedger.ObserveInstalled(installed.Keys);
@@ -349,6 +361,7 @@ internal sealed partial class MarketplaceWindow : Window, IDisposable
 
         CaptureExpandedWindowState();
         CompleteLegacyFullscreenGeometryMigration();
+        HandleGlobalKeyboardShortcuts();
         DrawApplicationBar();
         ImGui.Spacing();
 

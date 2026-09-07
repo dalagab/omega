@@ -125,7 +125,7 @@ internal static partial class RegressionCases
         Contains(artwork, "selectedVariantSource.Remove(plugin.InternalName)", "a fresh plugin selection clears stale repository overrides");
         Contains(artwork, "RepositoryProviderRules.SecurityBaselinePriority", "fresh product navigation uses the stable-provider package baseline ranking");
         DoesNotContain(artwork, ".Where(x => x.SourceIsOfficial)", "fresh product navigation no longer hard-codes an official-only metadata preference");
-        Contains(artwork, "selectedPlugin = ResolveDefaultVariant(plugin)", "fresh plugin selection starts from the canonical default repository variant");
+        Contains(artwork, "selectedPlugin = catalog.HydrateVariant(ResolveDefaultVariant(plugin))", "fresh plugin selection starts from the canonical default repository variant");
         Contains(product, "ResolveProductBaselineVariant(selectedPlugin, currentApi, currentDalamudVersion)", "product-page rendering stays anchored to the preferred stable package baseline");
         Contains(discover, "OpenPluginDetails(plugin)", "Discover selections use canonical product navigation");
         Contains(library, "OpenPluginDetails(plugin)", "Library and Updates selections use canonical product navigation");
@@ -165,8 +165,9 @@ internal static partial class RegressionCases
         Contains(update, "The old repository is not removed", "migration assistance does not break other plugins that may still use the old source");
         Contains(update, "CompareRepositorySecurity", "migration confirmation surfaces package/security differences between old and new repositories");
         Contains(product, "OpenUninstallConfirmation(plugin)", "installed product pages expose uninstall");
-        Contains(library, "library-uninstall-", "Library rows expose a dedicated uninstall button");
-        Contains(library, "OpenUninstallConfirmation(plugin)", "Library uninstall uses the canonical confirmation flow");
+        Contains(library, "library-more-", "Library rows move infrequent and destructive actions into an overflow menu");
+        Contains(library, "ImGui.MenuItem(uninstallingThisPlugin ? \"Uninstalling...\" : \"Uninstall\")", "Library overflow retains uninstall without making it a same-rank primary button");
+        Contains(library, "OpenUninstallConfirmation(plugin)", "Library uninstall still uses the canonical confirmation flow");
         Contains(popups, "Uninstall plugin###DalagabOmegaUninstall", "uninstall is explicitly confirmed");
         Contains(popups, "is also in this named collection", "uninstall confirmation explains named collection membership");
         Contains(popups, "Remove from collections", "uninstall confirmation offers optional named collection cleanup");
@@ -204,7 +205,7 @@ internal static partial class RegressionCases
         Contains(library, "BuildLibraryInstallDateLine", "Library rows expose user-local install timing metadata");
         Contains(library, "installedPlugin.HasConfigUi", "Library checks Dalamud's exposed config-UI capability");
         Contains(library, "installedPlugin.OpenConfigUi()", "Library opens plugin settings through Dalamud's public exposed-plugin API");
-        Contains(library, "FontAwesomeIcon.FileArchive", "Library exposes config backup as a compact icon action");
+        Contains(library, "ImGui.MenuItem(\"Back up config\")", "Library exposes config backup from the compact overflow menu");
         Contains(library, "configBackups.Backup", "Library delegates backup creation to the bounded config backup service");
         Contains(ledger, "library-metadata.json", "install timing stays in a user-local Omega ledger");
         Contains(ledger, "InstalledAtUtc", "the ledger distinguishes observed installation time from first-seen time");
@@ -341,6 +342,8 @@ internal static partial class RegressionCases
         Contains(content, "ownsPointer = ImGui.IsItemHovered() || ImGui.IsItemActive()", "the changelog icon suppresses parent-row navigation while hovered or active");
         Contains(content, "OpenUpdateChangelogPanel", "Updates changelog icon opens the dedicated changes panel instead of relying on a nested row popup");
         Contains(updateChangelog, "Update changes###DalagabOmegaUpdateChangelog", "update changes owns a stable dedicated modal identity");
+        var productContent = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.ProductContent.cs"));
+        Contains(productContent, "BuildUpdateChangelogPreview", "Updates hover can preview the first changelog entry without increasing row height");
         Contains(updateChangelog, "Installed v{installedText}  →  v{targetText}", "update changes panel explains the installed-to-target version transition");
         Contains(updateChangelog, "Repository: {SourceLabel(plugin)}", "update changes panel identifies the repository providing the update");
         Contains(updateChangelog, "DrawChangelogEntries(entries, maximumEntries: 12)", "update changes panel shows the bounded changelog history relevant to the update");
@@ -349,7 +352,8 @@ internal static partial class RegressionCases
         Contains(usage, "how to use", "usage extraction recognizes explicit how-to headings");
         Contains(usage, "command prefix", "usage extraction recognizes command metadata such as Questionable's command prefix");
         Contains(store, "ReadPluginChangelogHistory", "Definitions retains and loads historical plugin changelogs from historical variants");
-        Contains(store, "WHERE TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
+        Contains(store, "TRIM(v.changelog)<>''", "empty changelog records are not projected into client history");
+        Contains(store, "p.internal_name=$internalName", "historical changelogs are queried only for the selected plugin");
         Contains(changelog, "## [Unreleased]", "development changelog work remains versionless until a GitHub release tag is cut");
         Contains(changelog, "<sub>work build:", "versionless changelog work retains a small responsible-build marker");
         Contains(changelog, "Availability", "release notes can explain when Definitions-backed features become visible");
@@ -384,6 +388,7 @@ internal static partial class RegressionCases
         Contains(spotlight, "most recent known publication/update timestamp", "Latest updates explains its timestamp chronology");
         Contains(availability, "SetReadableTooltip", "listing tooltips have an independent readable style");
         Contains(availability, "ImGuiStyleVar.Alpha, 1f", "unavailable listing alpha no longer dims tooltip content");
+        Contains(availability, "ImGuiStyleVar.Alpha, 0.90f", "unavailable listings remain visually subordinate without looking like failed renders");
 
         Contains(bridge, "GetConfiguredRepositories", "Omega can enumerate repositories that already exist in Dalamud");
         Contains(pluginEntry, "MergeDalamudRepositoryAwareness", "startup imports existing Dalamud repository awareness");
@@ -496,5 +501,100 @@ internal static partial class RegressionCases
         Contains(sigmascope, "Current marketplace Definitions:", "security provenance distinguishes the current client Definitions snapshot from the historical scan itself");
         Contains(sigmascope, "Published evidence snapshot:", "security provenance exposes the currently projected Evidence-v2 publication revision");
     }
+
+    internal static void TestStartupHealthSnapshotContract()
+    {
+        var plugin = File.ReadAllText(Path.Combine(Root, "Omega", "Plugin.cs"));
+        var service = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "StartupHealthService.cs"));
+        var apps = File.ReadAllText(Path.Combine(Root, "Omega", "Services", "StartupAppsProjection.cs"));
+        var window = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.cs"));
+        var library = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Library.cs"));
+        var chrome = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Chrome.cs"));
+        var storefront = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Storefront.cs"));
+        var startupUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.StartupHealth.cs"));
+
+        Contains(plugin, "IFramework Framework", "Omega injects the framework only to schedule the bounded startup capture");
+        Contains(plugin, "startupHealth.Start()", "startup check is started once from plugin construction");
+        Contains(plugin, "startupHealth.Dispose()", "startup check cancellation is tied to plugin lifetime");
+
+        Contains(service, "Plugin.PluginInterface.Reason.HasFlag(PluginLoadReason.Boot)", "automatic startup checking only runs for a real game/Dalamud startup");
+        Contains(service, "MaxAutoUpdateWait", "startup capture has an explicit upper bound");
+        Contains(service, "Plugin.PluginInterface.IsAutoUpdateComplete", "startup capture waits for Dalamud automatic updates to settle");
+        Contains(service, "DalamudPluginsReady", "startup capture also waits for Dalamud plugin loading to finish before taking its final snapshot");
+        Contains(service, "Plugin.Framework.RunOnTick", "the final reflection snapshot runs once on a framework tick");
+        Contains(service, "DevPluginLoadLocations", "startup inspection can identify enabled absolute development paths that disappeared");
+        Contains(service, "DependencyResolutionFailed", "dependency-resolution startup failures remain actionable");
+        Contains(service, "LoadError", "plugin load failures remain actionable");
+        Contains(service, "Get(pluginManager, \"Repos\")", "repository final state is inspected without refreshing repositories");
+        Contains(service, "MaxStartupLogBytes", "startup log inspection has a hard two-megabyte ceiling");
+        Contains(service, "CaptureStartupLogBoundary", "Omega marks its own startup log boundary instead of tailing the log indefinitely");
+        Contains(service, "InspectStartupLog", "the bounded startup log slice is inspected once with the final snapshot");
+        Contains(service, "FileShare.ReadWrite | FileShare.Delete", "the one-shot log read never locks Dalamud's live log file");
+        Contains(service, "InvalidAssemblyVersionLogPattern", "malformed repository entries reported during startup can be summarized for recovery");
+        Contains(service, "UiBuilderHitchLogPattern", "startup-only UI hitch messages can be summarized without attaching a frame profiler");
+        False(service.Contains("Framework.Update +=", StringComparison.Ordinal), "startup checking must never become a per-frame Framework.Update observer");
+        False(service.Contains("FileSystemWatcher", StringComparison.Ordinal), "startup checking must not tail files during gameplay");
+        False(service.Contains("PeriodicTimer", StringComparison.Ordinal), "startup checking must not install a recurring timer");
+        False(service.Contains("HttpClient", StringComparison.Ordinal), "startup checking must not create another repository/network polling path");
+
+        Contains(apps, "Startup apps", "startup app projection is explicitly documented as the user-facing startup manager");
+        Contains(apps, "IsWantedByAnyProfile", "startup enablement mirrors Dalamud's own profile want-state");
+        Contains(apps, "LoadRequiredState", "advanced startup-stage detail comes from the actual plugin manifest");
+        Contains(apps, "LoadSync", "advanced blocking/background detail comes from the actual plugin manifest");
+        Contains(apps, "At launch", "startup timing is translated into plain launch language");
+        Contains(apps, "As game starts", "framework-stage startup is translated into normal user language");
+        Contains(apps, "After UI is ready", "draw-ready startup is translated into normal user language");
+        Contains(apps, "IsWantedByAnyProfile", "startup enablement still mirrors Dalamud's own profile state");
+        Contains(apps, "Background activity", "strong continuous/listener evidence is surfaced as background activity");
+        Contains(apps, "Reacts to events", "callback/hook evidence is surfaced as event-driven activity");
+        Contains(apps, "When triggered", "automation without a continuous trigger is presented as triggered activity");
+        Contains(apps, "No trigger identified", "unknown runtime behavior stays explicitly unknown rather than being guessed");
+        Contains(apps, "HasCompletedSecurityScan", "runtime-behavior summaries require exact-version SigmaScope evidence");
+        Contains(apps, "ScheduledForDeletion", "Startup apps exclude plugins Dalamud has already scheduled for deletion");
+        Contains(apps, "!exposed.ContainsKey(internalName)", "Startup apps only show plugins still present in the marketplace's authoritative installed-plugin snapshot");
+        False(apps.Contains("Framework.Update +=", StringComparison.Ordinal), "Startup apps must remain on-demand rather than gameplay monitored");
+        False(apps.Contains("PeriodicTimer", StringComparison.Ordinal), "Startup apps must not install a recurring refresh timer");
+        False(apps.Contains("FileSystemWatcher", StringComparison.Ordinal), "Startup apps must not add a filesystem watcher");
+        False(apps.Contains("HttpClient", StringComparison.Ordinal), "Startup apps must not add a network path");
+        DoesNotContain(apps, "Very heavy", "Startup apps do not assign simplistic heavy/very-heavy grades");
+        DoesNotContain(apps, "Slow last startup", "Startup status is reserved for actionable state rather than timing grades");
+
+        Contains(window, "StartupHealthService startupHealth", "the marketplace receives the immutable startup check service");
+        Contains(window, "!x.Manifest.ScheduledForDeletion", "Library counts and installed-plugin views hide entries already scheduled for deletion");
+        Contains(window, "Startup,", "Library owns Startup as a first-class section");
+        False(window.Contains("DrawStartupHealthBanner();", StringComparison.Ordinal), "startup checking must not consume the main marketplace page with a persistent banner");
+        Contains(library, "library-tab-startup", "Library exposes Startup as an in-panel destination");
+        Contains(library, "LibrarySection.Startup", "Startup replaces the medical-sounding Health tab");
+        Contains(library, "startupAttention", "the Startup tab can show a compact attention count");
+        False(chrome.Contains("sidebar-startup-health", StringComparison.Ordinal), "startup checking must not consume a standalone rail destination");
+        Contains(chrome, "startupHealthCount", "Library can carry startup attention without adding another navigation destination");
+        Contains(chrome, "FontAwesomeIcon.Heart", "Library retains the small requested startup-attention heart/count badge");
+        Contains(storefront, "DrawStartupHealthPage(installed);", "Library Startup reuses the already-built installed-plugin map instead of polling Dalamud again");
+
+        Contains(startupUi, "See what loads with FFXIV", "Startup opens with normal-user language");
+        Contains(startupUi, "Startup report available after restart", "mid-session installs explain simply why a complete startup report is unavailable");
+        Contains(startupUi, "Restart FFXIV to also check what happened during startup", "mid-session guidance avoids developer reinjection terminology");
+        Contains(startupUi, "Startup apps", "Startup includes a desktop-style startup application list");
+        Contains(startupUi, "Now", "Startup table shows whether each plugin is actually loaded now");
+        Contains(startupUi, "While playing", "Startup table explains the plugin's observed runtime activity model");
+        Contains(startupUi, "Status", "Startup table keeps a separate actionable status column");
+        DoesNotContain(startupUi, "Startup impact", "the unhelpful startup-impact grading is removed from the main table");
+        Contains(startupUi, "Open startup profiler", "the built-in Dalamud profiler is available from the top summary");
+        Contains(startupUi, "StartupAppsProjection.Capture(profileBridge, ResolveStartupAppPlugin, installed)", "the startup app list is captured only when the Startup page needs it and reuses the already-built installed-plugin map");
+        Contains(startupUi, "startupAppsSnapshot.Apps.Count != installed.Count", "the visible Startup list is invalidated when installed plugin membership changes");
+        Contains(startupUi, "!installed.ContainsKey(x.InternalName)", "plugins removed through Dalamud disappear from a visible Startup list without background polling");
+        var uninstallUi = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.UninstallAndSources.cs"));
+        Contains(uninstallUi, "startupAppsSnapshot = null;", "successful or failed uninstall completion invalidates the cached Startup apps snapshot before it can go stale");
+        Contains(startupUi, "OpenStartupHealthPlugin", "plugin-specific startup problems route into Omega's integrated product page");
+        Contains(startupUi, "OpenPluginDetails(plugin)", "startup recovery reuses the canonical Omega plugin-detail navigation");
+        Contains(startupUi, "SettingsOpenKind.Experimental", "development-path recovery opens Dalamud's Experimental page directly");
+        Contains(service, "Dev Plugin Locations", "development-path recovery targets the Dev Plugin Locations entry");
+        Contains(startupUi, "SettingsSection.Repositories", "repository failures route users to Omega's source manager");
+        Contains(startupUi, "ProcessCommand(\"/xlprofiler\")", "performance troubleshooting reuses Dalamud's startup profiler instead of profiling gameplay");
+        DoesNotContain(startupUi, "bounded snapshot", "developer-facing bounded-snapshot terminology is not shown to users");
+        DoesNotContain(startupUi, "live log tailing", "developer-facing log-tail terminology is not shown to users");
+        DoesNotContain(startupUi, "reinject Dalamud", "developer reinjection terminology is not shown to users");
+    }
+
 
 }

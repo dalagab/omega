@@ -21,6 +21,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ITitleScreenMenu TitleScreenMenu { get; private set; } = null!;
     [PluginService] internal static IGameInteropProvider GameInterop { get; private set; } = null!;
     [PluginService] internal static INotificationManager Notifications { get; private set; } = null!;
+    [PluginService] internal static IFramework Framework { get; private set; } = null!;
 
     private readonly WindowSystem windowSystem = new("DalagabOmega");
     private readonly MarketplaceCatalogService catalog;
@@ -33,9 +34,11 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MarketplaceWindow marketplaceWindow;
     private readonly DalamudSystemMenuBridge systemMenuBridge;
     private readonly DailyCatalogUpdateService dailyCatalogUpdate;
+    private readonly DalamudUpdateNotificationBridge dalamudUpdateNotifications;
     private readonly OmegaSelfUpdateService selfUpdates;
     private readonly OmegaRepositoryMigrationService repositoryMigration;
     private readonly RepositoryRemediationService repositoryRemediation;
+    private readonly StartupHealthService startupHealth;
     private readonly string assemblyDirectory;
     private IReadOnlyTitleScreenMenuEntry? titleScreenEntry;
 
@@ -76,6 +79,7 @@ public sealed class Plugin : IDalamudPlugin
             repositoryBridge);
         repositoryRemediation = new RepositoryRemediationService(
             Configuration, catalog, installCoordinator, repositoryBridge);
+        startupHealth = new StartupHealthService(catalog);
         var profileBridge = new DalamudProfileBridge();
         marketplaceWindow = CreateMarketplaceWindow(assemblyDirectory, repositoryBridge, profileBridge, installCoordinator, repositoryRemediation);
         windowSystem.AddWindow(marketplaceWindow);
@@ -86,7 +90,10 @@ public sealed class Plugin : IDalamudPlugin
             titleScreenEntry = TryRegisterTitleScreenEntry(assemblyDirectory);
         systemMenuBridge = new DalamudSystemMenuBridge(GameInterop, OpenMainUi, () => Configuration.ShowInSystemMenu);
         dailyCatalogUpdate = new DailyCatalogUpdateService(Configuration, catalog, catalogUpdates, Notifications);
+        dalamudUpdateNotifications = new DalamudUpdateNotificationBridge(
+            Configuration, Notifications, Framework, OpenUpdatesUi);
         catalogUpdates.SeedIfEmpty();
+        startupHealth.Start();
 
         Log.Information(
             "Omega {Version} by Dalagab Group loaded; buildStamp={BuildStamp}; titleMenu={TitleMenu}; systemMenu={SystemMenu}",
@@ -144,6 +151,77 @@ public sealed class Plugin : IDalamudPlugin
             // Existing users start with no pending cleanup.
             Configuration.RepositoryRemediationCleanup ??= [];
             Configuration.Version = 18;
+            changed = true;
+        }
+
+        if (Configuration.Version < 19)
+        {
+            // Schema 19 adds the Repository Manager API-level filter. Existing users start on the
+            // dynamic default: only the current full Dalamud API level is shown until customized.
+            Configuration.RepositoryApiLevelsCustomized = false;
+            Configuration.RepositoryApiLevels = [];
+            Configuration.Version = 19;
+            changed = true;
+        }
+
+        if (Configuration.Version < 20)
+        {
+            // Schema 20 separates chat observation from chat control. Reading chat is privacy-
+            // sensitive enough to warn by default; sending/changing chat remains a separate opt-in gate.
+            Configuration.WarnOnChatRead = true;
+            Configuration.Version = 20;
+            changed = true;
+        }
+
+        if (Configuration.Version < 21)
+        {
+            // Schema 21 adds system-access warnings backed by SigmaScope capability IDs. Network
+            // access remains opt-in to avoid warning fatigue; rarer privacy/process capabilities
+            // start enabled so existing users see them before install.
+            Configuration.WarnOnNetworkAccess = false;
+            Configuration.WarnOnClipboardAccess = true;
+            Configuration.WarnOnExternalFileAccess = true;
+            Configuration.WarnOnProcessExecution = true;
+            Configuration.WarnOnCredentialAccess = true;
+            Configuration.Version = 21;
+            changed = true;
+        }
+
+        if (Configuration.Version < 22)
+        {
+            // Schema 22 can stop an install when Omega has no published analysis record at all for
+            // the exact selected plugin version/source. Queued/running/failed scans keep their own
+            // explicit lifecycle states and are not mislabeled as never scanned.
+            Configuration.WarnWhenNoOmegaScan = true;
+            Configuration.Version = 22;
+            changed = true;
+        }
+
+        if (Configuration.Version < 23)
+        {
+            // Schema 23 separates inbound listener/server capability from ordinary outbound network
+            // access and adds rare/high-signal system capability gates. Common capabilities such as
+            // registry/native/game-memory access remain opt-in to avoid turning warnings into noise.
+            Configuration.WarnOnLocalListener = true;
+            Configuration.WarnOnShellExecution = true;
+            Configuration.WarnOnProcessMemoryAccess = true;
+            Configuration.WarnOnRemoteThreadCreation = true;
+            Configuration.WarnOnDynamicCodeLoading = true;
+            Configuration.WarnOnBundledExecutable = true;
+            Configuration.WarnOnWritableExecutableSection = true;
+            Configuration.WarnOnRegistryAccess = false;
+            Configuration.WarnOnNativeInterop = false;
+            Configuration.WarnOnGameMemoryAccess = false;
+            Configuration.Version = 23;
+            changed = true;
+        }
+
+        if (Configuration.Version < 24)
+        {
+            // Schema 24 routes the body-click of Dalamud's own plugin-update notification to
+            // Omega > Updates. The bridge is fail-closed and leaves Dalamud action buttons intact.
+            Configuration.RouteDalamudUpdateNotificationsToOmega = true;
+            Configuration.Version = 24;
             changed = true;
         }
 
@@ -227,6 +305,7 @@ public sealed class Plugin : IDalamudPlugin
             libraryLedger,
             configBackups,
             selfUpdates,
+            startupHealth,
             Path.Combine(assemblyDirectory, "icon.png"),
             Path.Combine(assemblyDirectory, "sigmascope-banner.png"),
             Path.Combine(assemblyDirectory, "company-fallback.png"),
@@ -277,6 +356,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        startupHealth.Dispose();
+        dalamudUpdateNotifications.Dispose();
         dailyCatalogUpdate.Dispose();
         repositoryRemediation.Dispose();
         repositoryMigration.Dispose();
@@ -345,6 +426,14 @@ public sealed class Plugin : IDalamudPlugin
     {
         RefreshDefaultCatalog();
         marketplaceWindow.IsOpen = true;
+        dailyCatalogUpdate.TriggerIfDue();
+        selfUpdates.TriggerIfDue();
+    }
+
+    private void OpenUpdatesUi()
+    {
+        RefreshDefaultCatalog();
+        marketplaceWindow.OpenUpdatesView();
         dailyCatalogUpdate.TriggerIfDue();
         selfUpdates.TriggerIfDue();
     }
