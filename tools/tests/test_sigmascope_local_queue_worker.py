@@ -17,6 +17,12 @@ class SigmaScopeLocalQueueWorkerContractTests(unittest.TestCase):
         self.assertIn("\"--history-mode\", \"fast-forward\"", text)
         self.assertIn("\"--expected-parent-sha\", evidence_head", text)
         self.assertIn("if args.push:", text)
+        self.assertIn("if args.push and args.sparse_evidence:", text)
+        self.assertIn("--push cannot be combined with --sparse-evidence", text)
+        self.assertLess(
+            text.index("if args.push and args.sparse_evidence:"),
+            text.index('phase("fetch catalog-data")'),
+        )
         self.assertIn("--preflight-only", text)
         self.assertIn("--sparse-evidence", text)
         self.assertIn("sigmascope_sparse_evidence.py", text)
