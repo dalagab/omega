@@ -1,8 +1,13 @@
 # Omega
 
+[![Latest Omega release](https://img.shields.io/github/v/release/dalagab/omega?display_name=tag&sort=semver&label=Omega%20release)](https://github.com/dalagab/omega/releases/latest)
+[![Omega client regression tests](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml/badge.svg?branch=omega)](https://github.com/dalagab/omega/actions/workflows/regression-tests.yml?query=branch%3Aomega)
+[![SigmaScope production drain](https://github.com/dalagab/omega/actions/workflows/sigmascope-drain-wake.yml/badge.svg?branch=sigmascope)](https://github.com/dalagab/omega/actions/workflows/sigmascope-drain-wake.yml?query=branch%3Asigmascope)
+[![Omega website deployment](https://github.com/dalagab/omega/actions/workflows/pages.yml/badge.svg?branch=website)](https://github.com/dalagab/omega/actions/workflows/pages.yml?query=branch%3Awebsite)
+
 **Omega is a discovery and security-information layer for public Dalamud plugins.** It brings plugin sources into one marketplace, shows provenance and published security findings, and hands installation back to Dalamud.
 
-[Install Omega](https://dalagab.github.io/omega/#install) · [Open the website](https://dalagab.github.io/omega/) · [View releases](https://github.com/dalagab/omega/releases) · [Get support on Discord](https://discord.gg/rMBHbJTjp)
+[Install Omega](https://dalagab.github.io/omega/#install) | [Open the website](https://dalagab.github.io/omega/) | [View releases](https://github.com/dalagab/omega/releases) | [Get support on Discord](https://discord.gg/rMBHbJTjp)
 
 > A plugin appearing in Omega is not an approval or safety guarantee. Omega publishes evidence and context so users can make better-informed decisions.
 
@@ -63,12 +68,12 @@ If the evidence or classification is wrong, [report an incorrect scanner result]
 
 The platform retains artifact identities, observations, findings, dependencies, endpoints, provenance, rule projections, source coverage, and historical snapshots. DeltaScope presents that material without authority to rewrite production evidence.
 
-- [Security Researcher guide](https://github.com/dalagab/omega/blob/sigmascope/docs/security-researchers/README.md) — ecosystem-wide analysis and research discipline.
-- [Investigator guide](https://github.com/dalagab/omega/blob/sigmascope/docs/investigators/README.md) — investigation of one plugin or signal.
-- [Finding lineage](https://github.com/dalagab/omega/blob/sigmascope/docs/platform/FINDING-LINEAGE.md) — tracing conclusions through observations and rule evaluation.
-- [Detection coverage](https://github.com/dalagab/omega/blob/sigmascope/docs/platform/DETECTION-COVERAGE.md) — collection gaps and stale producers.
-- [Rule authoring](https://github.com/dalagab/omega/blob/sigmascope/docs/rule-authors/README.md) and [SRL reference](https://github.com/dalagab/omega/blob/sigmascope/docs/SIGMASCOPE-RULE-LANGUAGE.md) — local rule development and replay.
-- [Extending Omega security logic](https://github.com/dalagab/omega/blob/sigmascope/docs/platform/EXTENDING-OMEGA.md) — collectors, observations, capabilities, rules, Definition Packs, YARA, and classification.
+- [Security Researcher guide](https://github.com/dalagab/omega/blob/sigmascope/docs/security-researchers/README.md) - ecosystem-wide analysis and research discipline.
+- [Investigator guide](https://github.com/dalagab/omega/blob/sigmascope/docs/investigators/README.md) - investigation of one plugin or signal.
+- [Finding lineage](https://github.com/dalagab/omega/blob/sigmascope/docs/platform/FINDING-LINEAGE.md) - tracing conclusions through observations and rule evaluation.
+- [Detection coverage](https://github.com/dalagab/omega/blob/sigmascope/docs/platform/DETECTION-COVERAGE.md) - collection gaps and stale producers.
+- [Rule authoring](https://github.com/dalagab/omega/blob/sigmascope/docs/rule-authors/README.md) and [SRL reference](https://github.com/dalagab/omega/blob/sigmascope/docs/SIGMASCOPE-RULE-LANGUAGE.md) - local rule development and replay.
+- [Extending Omega security logic](https://github.com/dalagab/omega/blob/sigmascope/docs/platform/EXTENDING-OMEGA.md) - collectors, observations, capabilities, rules, Definition Packs, YARA, and classification.
 
 Static capability evidence is not automatically proof of runtime behavior. Absence is meaningful only when the relevant observation coverage is complete, and source claims remain separate from artifact claims unless correspondence is verified.
 
@@ -89,7 +94,7 @@ Start with [CONTRIBUTING.md](CONTRIBUTING.md). Choose the branch that owns the c
 | [`security-evidence-v2`](https://github.com/dalagab/omega/tree/security-evidence-v2) | Generated evidence and indexes. Do not edit as ordinary source. |
 | [`deep-scan-state`](https://github.com/dalagab/omega/tree/deep-scan-state) | Generated deep-scan state. Do not edit as ordinary source. |
 
-Scheduled and manually dispatched workflows must be registered on the default branch, but several `main` workflows delegate to the branch that owns the implementation. The [Actions page](https://github.com/dalagab/omega/actions) is the authoritative view of individual runs. This README intentionally has no workflow badges: a launcher badge does not accurately represent the health of the delegated service or the platform as a whole.
+Scheduled and manually dispatched workflows must be registered on the default branch, but several `main` workflows delegate to the branch that owns the implementation. The [Actions page](https://github.com/dalagab/omega/actions) is the authoritative view of individual runs. The badges at the top intentionally follow the owning branches: client regression on `omega`, the production drain on `sigmascope`, and website deployment on `website`. They report those specific contracts, not a single platform-wide health verdict.
 
 ## Project links
 
