@@ -14,6 +14,7 @@ import deltascope_workflow_center
 import deltascope_availability
 import deltascope_delivery_dashboard
 import deltascope_scan_report
+import deltascope_scan_queue
 import deltascope_platform_comprehension
 import deltascope_orchestration_alignment
 
@@ -22,6 +23,7 @@ deltascope_workflow_center.install()
 deltascope_availability.install()
 deltascope_delivery_dashboard.install()
 deltascope_scan_report.install()
+deltascope_scan_queue.install()
 deltascope_platform_comprehension.install()
 deltascope_orchestration_alignment.install()
 
