@@ -21,12 +21,15 @@ import urllib.parse
 import urllib.request
 
 import deltascope_operations
+import omega_actions_telemetry
 
 LIVE_SCHEMA = "omega.deltascope.live-operations.v1"
 LIVE_CAPABILITY_SCHEMA = "omega.deltascope.github-live-capabilities.v1"
 LIVE_RATE_SCHEMA = "omega.deltascope.github-rate-limit.v1"
 RUNNER_DASHBOARD_SCHEMA = "omega.deltascope.runner-dashboard.v1"
 WORKER_ROLE_SCHEMA = "omega.deltascope.worker-role-observation.v1"
+JOB_TELEMETRY_SCHEMA = "omega.deltascope.job-telemetry.v1"
+TELEMETRY_VIEW_SCHEMA = "omega.deltascope.actions-telemetry-view.v1"
 
 FOREGROUND_POLL_SECONDS = 15
 BACKGROUND_POLL_SECONDS = 60
@@ -37,6 +40,9 @@ MAX_ACTIVE_RUNS = 6
 MAX_LIVE_JOBS = 200
 LOW_RATE_REMAINING = 1000
 VERY_LOW_RATE_REMAINING = 500
+TELEMETRY_LOG_SECONDS = 30
+MAX_TELEMETRY_JOBS = 4
+MAX_TELEMETRY_LOG_BYTES = 256 * 1024
 
 
 def _utc_now() -> str:
@@ -98,8 +104,8 @@ def _empty_capabilities(authenticated: bool) -> dict[str, Any]:
         "jobLogsRead": _capability(
             True if authenticated else False,
             observed=False,
-            source="on-demand-existing-workflow-center" if authenticated else "not-authenticated",
-            detail="Raw job logs remain lazy/on-demand; live mode does not continuously download them.",
+            source="active-job-telemetry-or-on-demand" if authenticated else "not-authenticated",
+            detail="Active jobs may fetch bounded telemetry markers; full raw logs remain lazy/on-demand in Workflow Center.",
         ),
         "runnerInventoryRead": _capability(None if authenticated else False, observed=False, source="not-probed"),
         "workflowDispatch": _capability(
@@ -139,6 +145,7 @@ def _ensure_state(client: Any) -> None:
             client._live_runner_inventory_at = 0.0
             client._live_runner_inventory_error = ""
             client._live_runner_inventory_observed = False
+            client._live_telemetry_cache = {}
 
 
 def _reset_state(client: Any) -> None:
@@ -162,6 +169,7 @@ def _reset_state(client: Any) -> None:
         client._live_runner_inventory_at = 0.0
         client._live_runner_inventory_error = ""
         client._live_runner_inventory_observed = False
+        client._live_telemetry_cache = {}
 
 
 def _record_rate(client: Any, headers: Any) -> None:
@@ -193,6 +201,190 @@ def _live_request_json(client: Any, url: str, *, timeout: float = 6.0, maximum: 
     if not isinstance(payload, Mapping):
         raise RuntimeError("GitHub live operations response was not an object")
     return payload
+
+
+
+def _live_request_text(
+    client: Any,
+    url: str,
+    *,
+    timeout: float = 6.0,
+    maximum: int = MAX_TELEMETRY_LOG_BYTES,
+) -> str:
+    request = urllib.request.Request(url, headers=client._headers(accept="text/plain"))
+    try:
+        with client._opener(request, timeout=timeout) as response:
+            _record_rate(client, getattr(response, "headers", None))
+            raw = response.read(maximum + 1)
+    except urllib.error.HTTPError as exc:
+        _record_rate(client, getattr(exc, "headers", None))
+        raise
+    if len(raw) > maximum:
+        raw = raw[:maximum]
+    return raw.decode("utf-8", "replace")
+
+
+def _job_telemetry(client: Any, job: Mapping[str, Any], *, force: bool = False) -> dict[str, Any]:
+    """Acquire only the bounded marker-bearing log preview for one active job."""
+    _ensure_state(client)
+    job_id = _int(job.get("jobId"))
+    if job_id <= 0:
+        return {
+            "schema": JOB_TELEMETRY_SCHEMA, "available": False, "jobId": 0,
+            "eventCount": 0, "events": [], "error": "jobId unavailable",
+        }
+    now = time.monotonic()
+    with client._lock:
+        cached = client._live_telemetry_cache.get(job_id)
+    if (
+        not force
+        and isinstance(cached, tuple)
+        and len(cached) == 2
+        and now - float(cached[0] or 0.0) < TELEMETRY_LOG_SECONDS
+        and isinstance(cached[1], Mapping)
+    ):
+        result = dict(cached[1])
+        result["servedFromCache"] = True
+        return result
+
+    repository = urllib.parse.quote(client.repository, safe="/")
+    url = f"https://api.github.com/repos/{repository}/actions/jobs/{job_id}/logs"
+    try:
+        text = _live_request_text(client, url)
+        parsed = omega_actions_telemetry.parse_log(text)
+        result = {
+            "schema": JOB_TELEMETRY_SCHEMA,
+            "available": True,
+            "jobId": job_id,
+            "contract": omega_actions_telemetry.SCHEMA,
+            "source": "github-actions-job-log",
+            "fetchedAtUtc": _utc_now(),
+            "eventCount": _int(parsed.get("eventCount")),
+            "invalidCount": _int(parsed.get("invalidCount")),
+            "truncated": bool(parsed.get("truncated")),
+            "events": [dict(row) for row in parsed.get("events") or [] if isinstance(row, Mapping)],
+            "readOnly": True,
+            "mutationAuthority": "none",
+        }
+    except Exception as exc:
+        # Telemetry is an optional enrichment layer. A log endpoint can be temporarily
+        # unavailable for running jobs or forbidden by token scope without breaking the
+        # authoritative Actions run/job snapshot.
+        result = {
+            "schema": JOB_TELEMETRY_SCHEMA,
+            "available": False,
+            "jobId": job_id,
+            "contract": omega_actions_telemetry.SCHEMA,
+            "source": "github-actions-job-log",
+            "fetchedAtUtc": _utc_now(),
+            "eventCount": 0,
+            "invalidCount": 0,
+            "truncated": False,
+            "events": [],
+            "error": str(exc)[:512],
+            "readOnly": True,
+            "mutationAuthority": "none",
+        }
+    with client._lock:
+        client._live_telemetry_cache[job_id] = (time.monotonic(), dict(result))
+    return result
+
+
+def _telemetry_worker_role(job: Mapping[str, Any], telemetry: Mapping[str, Any]) -> dict[str, Any] | None:
+    events = [dict(row) for row in telemetry.get("events") or [] if isinstance(row, Mapping)]
+    if not events:
+        return None
+    latest = events[-1]
+    worker = latest.get("worker") if isinstance(latest.get("worker"), Mapping) else {}
+    inferred = _worker_role(job)
+    role_id = str(worker.get("roleId") or latest.get("component") or inferred.get("roleId") or "workflow-worker")
+    label = str(worker.get("label") or inferred.get("label") or role_id)
+    state = str(worker.get("state") or latest.get("state") or latest.get("stage") or latest.get("event") or "running")
+    return {
+        "schema": WORKER_ROLE_SCHEMA,
+        "roleId": role_id,
+        "label": label,
+        "state": state,
+        "currentStep": dict(job.get("currentStep") or {}),
+        "source": "omega-actions-telemetry",
+        "inferred": False,
+        "workerPublished": True,
+        "authoritative": False,
+        "authority": "github-actions-job-log-self-report",
+        "telemetryEvent": latest,
+        "note": "Worker activity is explicitly self-reported through omega.actions.telemetry.v1. It is operational context, not Security Evidence authority.",
+    }
+
+
+def _enrich_jobs_with_telemetry(client: Any, jobs: list[dict[str, Any]]) -> dict[str, Any]:
+    attempted = 0
+    successful = 0
+    telemetry_jobs = 0
+    invalid = 0
+    recent: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for job in jobs:
+        if str(job.get("state") or "") != "running":
+            continue
+        if attempted >= MAX_TELEMETRY_JOBS:
+            job["telemetry"] = {
+                "schema": JOB_TELEMETRY_SCHEMA, "available": False, "deferred": True,
+                "jobId": _int(job.get("jobId")), "eventCount": 0, "events": [],
+                "error": "bounded live telemetry job limit reached",
+            }
+            continue
+        attempted += 1
+        projection = _job_telemetry(client, job)
+        job["telemetry"] = projection
+        if projection.get("available"):
+            successful += 1
+        invalid += _int(projection.get("invalidCount"))
+        events = [dict(row) for row in projection.get("events") or [] if isinstance(row, Mapping)]
+        if events:
+            telemetry_jobs += 1
+            explicit = _telemetry_worker_role(job, projection)
+            if explicit:
+                job["workerRole"] = explicit
+            latest = events[-1]
+            job["latestTelemetry"] = latest
+            job["telemetryEventCount"] = len(events)
+            for event in events:
+                recent.append({
+                    **event,
+                    "runId": _int(job.get("runId")),
+                    "runNumber": _int(job.get("runNumber")),
+                    "jobId": _int(job.get("jobId")),
+                    "jobName": str(job.get("name") or ""),
+                    "runnerId": _int(job.get("runnerId")),
+                    "runnerName": str(job.get("runnerName") or ""),
+                    "workflow": str(job.get("workflow") or ""),
+                    "workflowPath": str(job.get("workflowPath") or ""),
+                })
+        elif projection.get("error"):
+            errors.append(f"job {_int(job.get('jobId'))}: {str(projection.get('error'))[:180]}")
+    recent.sort(key=lambda row: (
+        str(row.get("emittedAtUtc") or ""),
+        _int(row.get("runId")),
+        _int(row.get("jobId")),
+    ), reverse=True)
+    recent = recent[: omega_actions_telemetry.MAX_EVENTS]
+    return {
+        "schema": TELEMETRY_VIEW_SCHEMA,
+        "available": bool(recent),
+        "contract": omega_actions_telemetry.SCHEMA,
+        "marker": omega_actions_telemetry.MARKER.rstrip(),
+        "source": "bounded-active-job-logs",
+        "attemptedJobs": attempted,
+        "successfulLogJobs": successful,
+        "telemetryJobs": telemetry_jobs,
+        "eventCount": len(recent),
+        "invalidCount": invalid,
+        "recentEvents": recent,
+        "warnings": errors[:8],
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "securityAuthority": False,
+    }
 
 
 def _job_state(job: Mapping[str, Any]) -> str:
@@ -429,6 +621,8 @@ def _merge_runners(inventory: list[Mapping[str, Any]], jobs: list[Mapping[str, A
             "startedAtUtc": str(job.get("startedAtUtc") or ""),
             "currentStep": dict(job.get("currentStep") or {}),
             "workerRole": dict(job.get("workerRole") or {}),
+            "latestTelemetry": dict(job.get("latestTelemetry") or {}),
+            "telemetryEventCount": _int(job.get("telemetryEventCount")),
             "url": str(job.get("url") or ""),
         })
     rows = list(by_key.values())
@@ -440,6 +634,32 @@ def _merge_runners(inventory: list[Mapping[str, Any]], jobs: list[Mapping[str, A
     ))
     return rows
 
+
+
+
+def project_actions_telemetry(
+    client: Any,
+    *,
+    foreground: bool = True,
+    force: bool = False,
+) -> dict[str, Any]:
+    live = live_status(client, foreground=foreground, force=force)
+    result = dict(live.get("telemetry") or {})
+    result.update({
+        "schema": TELEMETRY_VIEW_SCHEMA,
+        "repository": str(live.get("repository") or getattr(client, "repository", "")),
+        "fetchedAtUtc": str(live.get("fetchedAtUtc") or ""),
+        "live": bool(live.get("live")),
+        "authenticated": bool(live.get("authenticated")),
+        "nextPollSeconds": _int(live.get("nextPollSeconds")) or BACKGROUND_POLL_SECONDS,
+        "servedFromCache": bool(live.get("servedFromCache")),
+        "stale": bool(live.get("stale")),
+        "rateLimit": dict(live.get("rateLimit") or {}),
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "securityAuthority": False,
+    })
+    return result
 
 
 def project_runner_dashboard(client: Any, *, foreground: bool = True, force: bool = False) -> dict[str, Any]:
@@ -483,7 +703,7 @@ def project_runner_dashboard(client: Any, *, foreground: bool = True, force: boo
         "rateLimit": dict(live.get("rateLimit") or {}), "capabilities": dict(live.get("capabilities") or {}),
         "counts": {"runners":len(rows),"online":online,"offline":offline,"observedOnly":observed_only,"busy":busy,"idle":max(0,len(rows)-busy),"workers":worker_count},
         "runners": rows, "message": message,
-        "semanticBoundary": {"runnerIsInfrastructure":True,"workerIsExecutionRole":True,"workerRoleIsInferredUntilStructuredTelemetry":True,"runnerStatusNeverDerivedFromWorkerRole":True},
+        "semanticBoundary": {"runnerIsInfrastructure":True,"workerIsExecutionRole":True,"workerRoleMayBeInferredWhenTelemetryMissing":True,"structuredTelemetryOverridesInference":True,"runnerStatusNeverDerivedFromWorkerRole":True},
         "readOnly": True, "mutationAuthority": "none",
     }
 
@@ -517,11 +737,12 @@ def _live_unavailable(client: Any, *, foreground: bool, reason: str = "") -> dic
         "cachePolicy": "adaptive-authenticated-live" if authenticated else "explicit-public-snapshot",
         "foreground": bool(foreground),
         "nextPollSeconds": BACKGROUND_POLL_SECONDS if not authenticated else _base_interval(client, foreground),
-        "counts": {"activeRuns": 0, "queuedRuns": 0, "jobs": 0, "runners": 0, "busyRunners": 0},
+        "counts": {"activeRuns": 0, "queuedRuns": 0, "jobs": 0, "runners": 0, "busyRunners": 0, "telemetryEvents": 0, "telemetryJobs": 0},
         "activeRuns": [],
         "queuedRuns": [],
         "jobs": [],
         "runners": [],
+        "telemetry": {"schema": TELEMETRY_VIEW_SCHEMA, "available": False, "contract": omega_actions_telemetry.SCHEMA, "eventCount": 0, "telemetryJobs": 0, "recentEvents": [], "securityAuthority": False},
         "capabilities": _empty_capabilities(authenticated),
         "rateLimit": dict(getattr(client, "_live_rate_limit", {}) or {}),
         "access": client.access_status(),
@@ -568,6 +789,15 @@ def _acquire_live(client: Any, *, foreground: bool) -> dict[str, Any]:
         detail="; ".join(job_errors[:4]),
     )
 
+    telemetry = _enrich_jobs_with_telemetry(client, jobs)
+    if telemetry.get("attemptedJobs"):
+        capabilities["jobLogsRead"] = _capability(
+            bool(telemetry.get("successfulLogJobs")),
+            observed=True,
+            source="bounded-active-job-telemetry",
+            detail="; ".join(str(row) for row in telemetry.get("warnings") or [])[:512],
+        )
+
     inventory, runner_capability = _runner_inventory(client)
     capabilities["runnerInventoryRead"] = runner_capability
     runners = _merge_runners(inventory, jobs)
@@ -593,11 +823,14 @@ def _acquire_live(client: Any, *, foreground: bool) -> dict[str, Any]:
             "jobs": len(jobs),
             "runners": len(runners),
             "busyRunners": sum(1 for row in runners if bool(row.get("busy"))),
+            "telemetryEvents": _int(telemetry.get("eventCount")),
+            "telemetryJobs": _int(telemetry.get("telemetryJobs")),
         },
         "activeRuns": active[:20],
         "queuedRuns": queued[:20],
         "jobs": jobs,
         "runners": runners,
+        "telemetry": telemetry,
         "capabilities": capabilities,
         "rateLimit": rate,
         "access": client.access_status(),
@@ -680,6 +913,7 @@ def _install_client_extensions(cls: Any) -> None:
     cls.configure_token = configure_token
     cls.live_status = live_status
     cls.runner_dashboard = project_runner_dashboard
+    cls.actions_telemetry = project_actions_telemetry
     cls._deltascope_live_operations_installed = True
 
 
@@ -709,11 +943,11 @@ setTimeout(function(){
  var timer=0,inFlight=false,last=null,lastRunner=null,runnerSearch='',runnerState='';
  function liveHost(){var view=document.getElementById('workbench-workflows');if(!view)return null;var host=document.getElementById('workflowLiveOperations');if(host)return host;host=document.createElement('div');host.id='workflowLiveOperations';var head=view.querySelector('.workflow-center-head');if(head)head.insertAdjacentElement('afterend',host);return host}
  function capText(cap){if(!cap)return'unknown';if(cap.available===true)return'yes';if(cap.available===false)return'no';return'not observed'}
- function renderLive(r){last=r;var host=liveHost();if(!host)return;var c=r.counts||{},rate=r.rateLimit||{},caps=r.capabilities||{},remaining=rate.limit?`${fmt(rate.remaining||0)} / ${fmt(rate.limit||0)}`:'not reported',mode=r.live?'LIVE':r.authenticated?'WAITING':'NOT CONNECTED';host.innerHTML=`<div class=workflow-live-strip><div class="workflow-live-cell ${r.live?'live':'offline'}"><span>GitHub telemetry</span><b>${esc(mode)}</b></div><div class=workflow-live-cell><span>Active runs</span><b>${fmt(c.activeRuns||0)}</b></div><div class=workflow-live-cell><span>Jobs</span><b>${fmt(c.jobs||0)}</b></div><div class=workflow-live-cell><span>Runners</span><b>${fmt(c.runners||0)} · ${fmt(c.busyRunners||0)} busy</b></div><div class=workflow-live-cell><span>Rate remaining</span><b>${esc(remaining)}</b></div><div class=workflow-live-cell><span>Capabilities</span><b>jobs ${esc(capText(caps.jobsRead))} · runners ${esc(capText(caps.runnerInventoryRead))}</b></div></div>${(r.runners||[]).length?`<div class=workflow-live-runners>${r.runners.slice(0,12).map(x=>`<span class="workflow-live-runner ${x.busy?'busy':''}" title="${esc((x.activeJobs||[]).map(j=>`${j.workflow} · ${j.name}`).join(' | '))}">${esc(x.runnerName||`runner ${x.runnerId||'?'}`)} · ${x.busy?'BUSY':esc(x.status||'observed')}</span>`).join('')}</div>`:''}${r.error?`<div class=workflow-live-warning>${esc(r.error)}</div>`:''}`;var snap=document.getElementById('workflowCenterSnapshot');if(snap&&r.live)snap.textContent=`Live · ${esc(r.fetchedAtUtc||'')}`}
+ function renderLive(r){last=r;var host=liveHost();if(!host)return;var c=r.counts||{},rate=r.rateLimit||{},caps=r.capabilities||{},remaining=rate.limit?`${fmt(rate.remaining||0)} / ${fmt(rate.limit||0)}`:'not reported',mode=r.live?'LIVE':r.authenticated?'WAITING':'NOT CONNECTED';host.innerHTML=`<div class=workflow-live-strip><div class="workflow-live-cell ${r.live?'live':'offline'}"><span>GitHub telemetry</span><b>${esc(mode)}</b></div><div class=workflow-live-cell><span>Active runs</span><b>${fmt(c.activeRuns||0)}</b></div><div class=workflow-live-cell><span>Jobs / telemetry</span><b>${fmt(c.jobs||0)} · ${fmt(c.telemetryEvents||0)} events</b></div><div class=workflow-live-cell><span>Runners</span><b>${fmt(c.runners||0)} · ${fmt(c.busyRunners||0)} busy</b></div><div class=workflow-live-cell><span>Rate remaining</span><b>${esc(remaining)}</b></div><div class=workflow-live-cell><span>Capabilities</span><b>jobs ${esc(capText(caps.jobsRead))} · runners ${esc(capText(caps.runnerInventoryRead))}</b></div></div>${(r.runners||[]).length?`<div class=workflow-live-runners>${r.runners.slice(0,12).map(x=>`<span class="workflow-live-runner ${x.busy?'busy':''}" title="${esc((x.activeJobs||[]).map(j=>`${j.workflow} · ${j.name}`).join(' | '))}">${esc(x.runnerName||`runner ${x.runnerId||'?'}`)} · ${x.busy?'BUSY':esc(x.status||'observed')}</span>`).join('')}</div>`:''}${r.error?`<div class=workflow-live-warning>${esc(r.error)}</div>`:''}`;var snap=document.getElementById('workflowCenterSnapshot');if(snap&&r.live)snap.textContent=`Live · ${esc(r.fetchedAtUtc||'')}`}
  function infraState(r){var i=r.infrastructure||{};if(i.onlineObserved===true)return'online';if(i.onlineObserved===false)return'offline';return'observed'}
  function runnerRows(){var q=runnerSearch.toLowerCase();return (lastRunner?.runners||[]).filter(r=>{var i=r.infrastructure||{},state=infraState(r),busy=!!i.busy;if(runnerState==='busy'&&!busy)return false;if(runnerState==='idle'&&busy)return false;if(['online','offline','observed'].includes(runnerState)&&state!==runnerState)return false;if(!q)return true;var text=[r.runnerName,i.os,i.version,(i.labels||[]).join(' '),(i.groups||[]).join(' '),(r.workers||[]).map(w=>`${w.workflow} ${w.name} ${w.workerRole?.label||''} ${w.workerRole?.state||''} ${w.currentStep?.name||''}`).join(' ')].join(' ').toLowerCase();return text.includes(q)})}
  function renderRunnerStats(){var host=$('runnerDashboardStats'),c=lastRunner?.counts||{};if(!host)return;host.innerHTML=`<div class=runner-stat><b>${fmt(c.runners||0)}</b><span>runners</span></div><div class=runner-stat><b>${fmt(c.online||0)}</b><span>online</span></div><div class=runner-stat><b>${fmt(c.offline||0)}</b><span>offline</span></div><div class=runner-stat><b>${fmt(c.observedOnly||0)}</b><span>job-observed</span></div><div class=runner-stat><b>${fmt(c.busy||0)}</b><span>busy</span></div><div class=runner-stat><b>${fmt(c.workers||0)}</b><span>Omega workers</span></div>`}
- function workerHtml(w){var role=w.workerRole||{},step=w.currentStep||{},label=role.label||w.component||'Workflow worker',state=role.state||w.state||'unknown';return `<div class=runner-worker><div><div class=runner-worker-role>${esc(label)} · ${esc(String(state).toUpperCase())}</div><div class=runner-worker-meta>${esc(w.workflow||'workflow')} · run #${fmt(w.runNumber||0)} · ${esc(w.name||'job')}</div>${step.name?`<div class=runner-worker-step><b>Stage:</b> ${esc(step.name)} · ${esc(step.status||step.conclusion||'')}</div>`:''}<div class="muted tiny">${esc(role.note||'Worker role inferred from GitHub job metadata.')}</div></div><button data-runner-open-job="${String(w.runId||0)}" data-runner-workflow="${esc(w.workflow||'')}" data-runner-workflow-path="${esc(w.workflowPath||'')}">Open run</button></div>`}
+ function workerHtml(w){var role=w.workerRole||{},step=w.currentStep||{},tele=w.latestTelemetry||role.telemetryEvent||{},subject=tele.subject||{},queue=tele.queue||{},progress=tele.progress||{},label=role.label||w.component||'Workflow worker',state=role.state||w.state||'unknown',source=role.inferred===false?'TELEMETRY':'INFERRED',subjectText=subject.internalName?`${subject.internalName}${subject.version?` · ${subject.version}`:''}${subject.workType?` · ${subject.workType}`:''}`:'',progressText=progress.total?`${fmt(progress.current||0)} / ${fmt(progress.total)} ${esc(progress.unit||'')}`:queue.remaining!==undefined?`${fmt(queue.remaining)} queue remaining`:'';return `<div class=runner-worker><div><div class=runner-worker-role>${esc(label)} · ${esc(String(state).toUpperCase())} <span class=runner-label>${source}</span></div><div class=runner-worker-meta>${esc(w.workflow||'workflow')} · run #${fmt(w.runNumber||0)} · ${esc(w.name||'job')}</div>${tele.event?`<div class=runner-worker-step><b>${esc(tele.event)}</b>${tele.stage?` · ${esc(tele.stage)}`:''}</div>`:step.name?`<div class=runner-worker-step><b>Stage:</b> ${esc(step.name)} · ${esc(step.status||step.conclusion||'')}</div>`:''}${subjectText?`<div class=runner-worker-step><b>Subject:</b> ${esc(subjectText)}</div>`:''}${progressText?`<div class=runner-worker-step><b>Progress:</b> ${progressText}</div>`:''}<div class="muted tiny">${esc(role.note||'Worker role inferred from GitHub job metadata.')}</div></div><button data-runner-open-job="${String(w.runId||0)}" data-runner-workflow="${esc(w.workflow||'')}" data-runner-workflow-path="${esc(w.workflowPath||'')}">Open run</button></div>`}
  function runnerCard(r){var i=r.infrastructure||{},state=infraState(r),workers=r.workers||[],groups=(i.groups||[]).join(', ')||'—',version=i.version||'not reported',os=i.os||'not reported';return `<article class="runner-card ${i.busy?'busy':''} ${state==='offline'?'offline':''}"><div class=runner-card-head><div><div class=eyebrow>GITHUB RUNNER</div><h2>${esc(r.runnerName||`Runner ${r.runnerId||'?'}`)}</h2></div><div class=runner-card-badges><span class="runner-state-badge ${state}">${esc(state)}</span><span class="runner-state-badge ${i.busy?'busy':''}">${i.busy?'busy':'idle'}</span></div></div><div class=runner-infra><div class=runner-section-label>Infrastructure state</div><div class=runner-facts><div class=runner-fact><span>OS</span><b>${esc(os)}</b></div><div class=runner-fact><span>Version</span><b>${esc(version)}</b></div><div class=runner-fact><span>Runner group</span><b>${esc(groups)}</b></div><div class=runner-fact><span>State source</span><b>${esc(i.source||'unknown')}</b></div></div>${(i.labels||[]).length?`<div class=runner-labels>${i.labels.map(x=>`<span class=runner-label>${esc(x)}</span>`).join('')}</div>`:''}<div class=runner-boundary>${i.inventoryBacked?'ONLINE/OFFLINE comes from GitHub runner inventory.':'This runner was observed through an active job. DeltaScope intentionally does not infer ONLINE/OFFLINE from the worker job.'}</div></div><div class=runner-workers><div class=runner-section-label>Omega worker activity</div>${workers.length?workers.map(workerHtml).join(''):'<div class=runner-no-worker>No Omega worker is currently correlated with this runner.</div>'}</div></article>`}
  function renderRunnerDashboard(r){lastRunner=r;renderRunnerStats();var notice=$('runnerDashboardNotice'),grid=$('runnerDashboardGrid'),snap=$('runnerDashboardSnapshot');if(notice)notice.textContent=r.message||'';if(snap)snap.textContent=r.fetchedAtUtc?`${r.live?'Live':'Snapshot'} · ${r.fetchedAtUtc}`:'Live snapshot not loaded';if(!grid)return;var rows=runnerRows();grid.innerHTML=rows.map(runnerCard).join('')||'<div class=workspace-empty>No runners match the current filter.</div>';grid.querySelectorAll('[data-runner-open-job]').forEach(button=>button.addEventListener('click',()=>openWorkflowRun({runId:Number(button.dataset.runnerOpenJob||0),workflow:button.dataset.runnerWorkflow||'',workflowPath:button.dataset.runnerWorkflowPath||''})))}
  async function openWorkflowRun(job){var item=(perspectiveConfig.operations?.groups||[]).flatMap(group=>group.items||[]).find(candidate=>candidate.view==='workflows');if(item&&typeof navigatePerspective==='function')navigatePerspective(item);else if(typeof setWorkbenchView==='function')setWorkbenchView('workflows');var wantedPath=String(job.workflowPath||'').replace(/\\/g,'/').split('/').pop().toLowerCase(),wantedName=String(job.workflow||'').toLowerCase();for(var tries=0;tries<24;tries++){await new Promise(resolve=>setTimeout(resolve,100));var buttons=[...document.querySelectorAll('#workflowCenterList [data-workflow-id]')],match=buttons.find(b=>{var path=String(b.querySelector('.workflow-list-path')?.textContent||'').toLowerCase(),name=String(b.querySelector('.workflow-list-name')?.textContent||'').toLowerCase();return(wantedPath&&path===wantedPath)||(wantedName&&name===wantedName)});if(match){match.click();break}}for(var tries=0;tries<24;tries++){await new Promise(resolve=>setTimeout(resolve,100));var run=document.querySelector(`#workflowCenterRunList [data-wc-run="${String(job.runId||0)}"]`);if(run){run.click();return}}}
@@ -754,13 +988,13 @@ def install() -> None:
 
     def patched_get(self: Any) -> None:
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path not in {"/api/operations/live", "/api/operations/runners"}:
+        if parsed.path not in {"/api/operations/live", "/api/operations/runners", "/api/operations/telemetry"}:
             return original_get(self)
         try:
             client = getattr(self, "operations_client", None)
             if client is None:
                 return self.json_response({
-                    "schema": RUNNER_DASHBOARD_SCHEMA if parsed.path.endswith("/runners") else LIVE_SCHEMA,
+                    "schema": RUNNER_DASHBOARD_SCHEMA if parsed.path.endswith("/runners") else TELEMETRY_VIEW_SCHEMA if parsed.path.endswith("/telemetry") else LIVE_SCHEMA,
                     "available": False,
                     "live": False,
                     "authenticated": False,
@@ -773,6 +1007,8 @@ def install() -> None:
             force = str((query.get("force") or ["0"])[0]).casefold() in {"1", "true", "yes"}
             if parsed.path.endswith("/runners"):
                 return self.json_response(client.runner_dashboard(foreground=foreground, force=force))
+            if parsed.path.endswith("/telemetry"):
+                return self.json_response(client.actions_telemetry(foreground=foreground, force=force))
             return self.json_response(client.live_status(foreground=foreground, force=force))
         except Exception as exc:
             return self.json_response({"error": str(exc)}, 500)

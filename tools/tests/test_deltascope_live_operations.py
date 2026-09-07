@@ -107,6 +107,15 @@ def _jobs_payload():
     }
 
 
+def _telemetry_log():
+    return (
+        "normal action output\n"
+        '@@omega {"schema":"omega.actions.telemetry.v1","event":"queue.claimed","emittedAtUtc":"2026-09-07T20:00:22Z","component":"sigmascope","worker":{"roleId":"sigmascope","label":"SigmaScope worker","state":"claiming"},"subject":{"variantId":8291,"internalName":"Example.Plugin","version":"1.2.3","workType":"artifact"},"queue":{"reason":"first-plugin-coverage","remaining":1284}}\n'
+        '@@omega {"schema":"omega.actions.telemetry.v1","event":"scan.progress","emittedAtUtc":"2026-09-07T20:01:00Z","component":"sigmascope","worker":{"roleId":"sigmascope","label":"SigmaScope worker","state":"scanning"},"stage":"managed assembly analysis","subject":{"variantId":8291,"internalName":"Example.Plugin","version":"1.2.3","workType":"artifact"},"progress":{"current":18,"total":31,"unit":"analysis stages"}}\n'
+    )
+
+
+
 class DeltaScopeLiveOperationsTests(unittest.TestCase):
     def client(self, opener, token="github_pat_" + "x" * 32):
         client = deltascope_operations.GitHubOperationsClient(
@@ -305,6 +314,117 @@ class DeltaScopeLiveOperationsTests(unittest.TestCase):
     def test_runner_ui_adds_dedicated_view_filters_and_workflow_navigation(self):
         html=live._patch_html("<html><body><main></main><script>const currentWorkbenchView='runners';const currentPerspective='operations';</script></body></html>")
         self.assertIn('id="workbench-runners"',html); self.assertIn("Runner Dashboard",html); self.assertIn("Infrastructure state",html); self.assertIn("Omega worker activity",html); self.assertIn("data-runner-open-job",html); self.assertIn("workflowCenterList",html); self.assertIn("workflowCenterRunList",html); self.assertIn("runnerInventoryRead",html); self.assertNotIn("Authorization",html); self.assertNotIn("Bearer",html)
+
+
+    def test_explicit_telemetry_overrides_inferred_worker_stage(self):
+        def opener(request, timeout=0):
+            url = request.full_url
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(_telemetry_log().encode("utf-8"), headers=_rate_headers(4898))
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers(4897))
+            raise AssertionError(url)
+
+        result = self.client(opener).live_status()
+        job = result["jobs"][0]
+        self.assertEqual(2, job["telemetry"]["eventCount"])
+        self.assertEqual("scan.progress", job["latestTelemetry"]["event"])
+        self.assertFalse(job["workerRole"]["inferred"])
+        self.assertTrue(job["workerRole"]["workerPublished"])
+        self.assertEqual("omega-actions-telemetry", job["workerRole"]["source"])
+        self.assertEqual("scanning", job["workerRole"]["state"])
+        self.assertFalse(job["workerRole"]["authoritative"])
+        self.assertEqual("Example.Plugin", job["latestTelemetry"]["subject"]["internalName"])
+        self.assertEqual(18, job["latestTelemetry"]["progress"]["current"])
+        self.assertEqual(2, result["counts"]["telemetryEvents"])
+        self.assertEqual(1, result["counts"]["telemetryJobs"])
+        self.assertTrue(result["capabilities"]["jobLogsRead"]["observed"])
+        self.assertTrue(result["capabilities"]["jobLogsRead"]["available"])
+
+    def test_telemetry_log_acquisition_is_cached_independently(self):
+        calls = []
+        def opener(request, timeout=0):
+            url = request.full_url
+            calls.append(url)
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(_telemetry_log().encode("utf-8"), headers=_rate_headers())
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers())
+            raise AssertionError(url)
+
+        client = self.client(opener)
+        first = client.live_status()
+        self.assertEqual(1, sum("/actions/jobs/201/logs" in url for url in calls))
+        client._live_cached_at = 0.0
+        client._live_last_attempt_at = 0.0
+        second = client.live_status(force=True)
+        self.assertEqual(1, sum("/actions/jobs/201/logs" in url for url in calls))
+        self.assertEqual(first["telemetry"]["eventCount"], second["telemetry"]["eventCount"])
+
+    def test_telemetry_endpoint_projection_reuses_live_snapshot(self):
+        calls = []
+        def opener(request, timeout=0):
+            url = request.full_url
+            calls.append(url)
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(_telemetry_log().encode("utf-8"), headers=_rate_headers())
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers())
+            raise AssertionError(url)
+
+        client = self.client(opener)
+        client.live_status()
+        before = len(calls)
+        view = client.actions_telemetry()
+        self.assertEqual(before, len(calls))
+        self.assertEqual(live.TELEMETRY_VIEW_SCHEMA, view["schema"])
+        self.assertEqual("omega.actions.telemetry.v1", view["contract"])
+        self.assertEqual(2, view["eventCount"])
+        self.assertFalse(view["securityAuthority"])
+
+    def test_runner_dashboard_carries_explicit_latest_telemetry(self):
+        def opener(request, timeout=0):
+            url = request.full_url
+            if "/actions/runs?" in url:
+                return _Response(_run_payload(), headers=_rate_headers())
+            if "/actions/runs/101/jobs" in url:
+                return _Response(_jobs_payload(), headers=_rate_headers())
+            if "/actions/jobs/201/logs" in url:
+                return _Response(_telemetry_log().encode("utf-8"), headers=_rate_headers())
+            if "/actions/runners?" in url:
+                return _Response({"total_count": 0, "runners": []}, headers=_rate_headers())
+            raise AssertionError(url)
+
+        dashboard = self.client(opener).runner_dashboard()
+        worker = dashboard["runners"][0]["workers"][0]
+        self.assertEqual("scan.progress", worker["latestTelemetry"]["event"])
+        self.assertFalse(worker["workerRole"]["inferred"])
+        self.assertTrue(dashboard["semanticBoundary"]["structuredTelemetryOverridesInference"])
+
+    def test_runner_ui_distinguishes_telemetry_from_inferred_state(self):
+        html = live._patch_html(
+            "<html><body><main></main><script>"
+            "const currentWorkbenchView='runners';const currentPerspective='operations';"
+            "</script></body></html>"
+        )
+        self.assertIn("TELEMETRY", html)
+        self.assertIn("INFERRED", html)
+        self.assertIn("Subject:", html)
+        self.assertIn("Progress:", html)
+        self.assertIn("telemetryEvents", html)
+        self.assertTrue(hasattr(live, "project_actions_telemetry"))
 
     def test_entrypoint_installs_live_operations_after_workflow_center(self):
         source = (SECURITY / "deltascope.py").read_text(encoding="utf-8")
