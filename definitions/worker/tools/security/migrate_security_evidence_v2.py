@@ -456,14 +456,17 @@ def _export_nuget_index(db: sqlite3.Connection, output: Path) -> tuple[dict[str,
     return file_entry(output, path, records=len(packages), encoding="json"), len(packages)
 
 
-def _export_plugin_dependency_graph(db: sqlite3.Connection, output: Path) -> tuple[dict[str, Any], int, int, str]:
+def _export_plugin_dependency_graph(db: sqlite3.Connection, output: Path) -> tuple[dict[str, Any], int, int, int, int, str]:
     graph = plugin_dependency_graph.build_graph(db)
+    counts = graph.get("counts") if isinstance(graph.get("counts"), dict) else {}
     path = output / "indexes" / "plugin-dependencies.json"
     _write_json(path, graph)
     return (
-        file_entry(output, path, records=int((graph.get("counts") or {}).get("edges") or 0), encoding="json"),
-        int((graph.get("counts") or {}).get("edges") or 0),
-        int((graph.get("counts") or {}).get("providers") or 0),
+        file_entry(output, path, records=int(counts.get("edges") or 0), encoding="json"),
+        int(counts.get("edges") or 0),
+        int(counts.get("providers") or 0),
+        int(counts.get("unresolvedEdges") or 0),
+        int(counts.get("blockedRequiredEdges") or 0),
         str(graph.get("dependencyGraphRevision") or ""),
     )
 
@@ -925,7 +928,9 @@ def migrate(
 
         identity_entry = _export_identity_index(db, output)
         nuget_entry, nuget_count = _export_nuget_index(db, output)
-        plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, dependency_graph_revision = _export_plugin_dependency_graph(db, output)
+        plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, plugin_dependency_unresolved_count, plugin_dependency_blocked_required_count, dependency_graph_revision = (
+            _export_plugin_dependency_graph(db, output)
+        )
         ipc_entry, ipc_count = _export_ipc_index(db, output)
         component_entry, component_count = _export_global_table(db, output, "plugin_security_dependency_components", "dependency-components")
         advisory_entry, advisory_count = _export_global_table(db, output, "plugin_security_dependency_advisory_matches", "advisories")
@@ -984,6 +989,8 @@ def migrate(
                 "nugetPackageVersionPairs": nuget_count,
                 "pluginDependencyEdges": plugin_dependency_edge_count,
                 "pluginDependencyProviders": plugin_dependency_provider_count,
+                "pluginDependencyUnresolvedEdges": plugin_dependency_unresolved_count,
+                "pluginDependencyBlockedRequiredEdges": plugin_dependency_blocked_required_count,
                 "ipcProviders": ipc_count,
                 "dependencyComponents": component_count,
                 "advisories": advisory_count,
