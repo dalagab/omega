@@ -23,6 +23,7 @@ import urllib.parse
 LABEL = "omega-source-followup"
 DEFAULT_MAX_NEW = 25
 DEFAULT_MAX_CLOSE = 100
+DEFAULT_MAX_UPDATE = 100
 MAX_MANAGED_OPEN_ISSUES = 10_000
 FOLLOWUP_KEY_RE = re.compile(r"omega-source-followup:([A-Za-z0-9_-]+)")
 OVERRIDE_KEY_RE = re.compile(r"omega-source-override:([A-Za-z0-9_-]+)")
@@ -209,12 +210,12 @@ def _close_issue(repository: str, issue: dict) -> bool:
     return True
 
 
-def _update_issue(repository: str, issue: dict, title: str, body: str) -> None:
+def _update_issue(repository: str, issue: dict, title: str, body: str) -> bool:
     number = str(issue.get("number") or "")
     if not number:
-        return
+        return False
     if str(issue.get("title") or "") == title and str(issue.get("body") or "") == body:
-        return
+        return False
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md", delete=False) as stream:
         stream.write(body)
         body_file = stream.name
@@ -222,6 +223,7 @@ def _update_issue(repository: str, issue: dict, title: str, body: str) -> None:
         gh("issue", "edit", number, "--repo", repository, "--title", title, "--body-file", body_file)
     finally:
         Path(body_file).unlink(missing_ok=True)
+    return True
 
 
 def reconcile_issues(
@@ -229,6 +231,7 @@ def reconcile_issues(
     repository: str,
     max_new: int = DEFAULT_MAX_NEW,
     max_close: int = DEFAULT_MAX_CLOSE,
+    max_update: int = DEFAULT_MAX_UPDATE,
 ) -> tuple[int, int]:
     gh("label", "create", LABEL, "--color", "D4C5F9", "--description", "Public source needed for an Omega scan", "--force", "--repo", repository)
     existing = _open_followup_issues(repository)
@@ -251,6 +254,7 @@ def reconcile_issues(
         issues.sort(key=lambda issue: int(issue.get("number") or 0))
 
     closed = 0
+    updated = 0
 
     def close(issue: dict) -> bool:
         nonlocal closed
@@ -290,9 +294,10 @@ def reconcile_issues(
         for duplicate in issues[1:]:
             close(duplicate)
         current_items = actionable_by_internal.get(internal_key) or []
-        if current_items:
+        if current_items and updated < max(0, max_update):
             internal_name = str(current_items[0].get("internalName") or "")
-            _update_issue(repository, canonical, f"Source needed: {internal_name}", issue_body(current_items))
+            if _update_issue(repository, canonical, f"Source needed: {internal_name}", issue_body(current_items)):
+                updated += 1
         open_by_internal[internal_key] = [canonical]
 
     created = 0
@@ -325,11 +330,14 @@ def main() -> int:
     parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", ""))
     parser.add_argument("--max-new", type=int, default=DEFAULT_MAX_NEW)
     parser.add_argument("--max-close", type=int, default=DEFAULT_MAX_CLOSE)
+    parser.add_argument("--max-update", type=int, default=DEFAULT_MAX_UPDATE)
     args = parser.parse_args()
     if not args.repository:
         parser.error("--repository or GITHUB_REPOSITORY is required")
     document = json.loads(Path(args.input).read_text(encoding="utf-8"))
-    created, closed = reconcile_issues(document, args.repository, args.max_new, args.max_close)
+    created, closed = reconcile_issues(
+        document, args.repository, args.max_new, args.max_close, args.max_update,
+    )
     print(f"Created {created} and closed {closed} source follow-up issue(s)")
     return 0
 

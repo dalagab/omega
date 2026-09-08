@@ -139,6 +139,50 @@ class SourceFollowupIssueSafetyTests(unittest.TestCase):
         self.assertEqual(2, sum(call[:2] == ("issue", "close") for call in calls))
         self.assertFalse(any(call[:2] == ("issue", "create") for call in calls))
 
+    def test_reconciliation_bounds_actual_issue_updates(self) -> None:
+        items = []
+        existing = []
+        for number in range(1, 5):
+            internal_name = f"Plugin{number}"
+            item = {
+                "key": f"omega-source-followup:src-{number}",
+                "overrideKey": f"src-{number}",
+                "variantId": number,
+                "internalName": internal_name,
+                "pluginName": internal_name,
+                "assemblyVersion": "1.0.0",
+                "catalogSource": "Mirror",
+                "catalogSourceUrl": "https://example.invalid/repo.json",
+                "artifactUrl": f"https://example.invalid/plugin-{number}.zip",
+                "reason": "source missing",
+                "sourceCandidates": [],
+                "actionable": True,
+            }
+            items.append(item)
+            existing.append(managed_issue(number, internal_name))
+
+        # No-op refreshes do not consume the mutation budget.
+        existing[0]["title"] = "Source needed: Plugin1"
+        existing[0]["body"] = create_source_followup_issues.issue_body([items[0]])
+
+        calls = []
+        with mock.patch.object(
+            create_source_followup_issues, "_open_followup_issues", return_value=existing,
+        ), mock.patch.object(
+            create_source_followup_issues, "gh", side_effect=lambda *args: calls.append(args) or "",
+        ):
+            result = create_source_followup_issues.reconcile_issues(
+                {"followups": items, "resolved": [], "resolvedKeys": []},
+                "example/omega",
+                max_new=0,
+                max_close=0,
+                max_update=2,
+            )
+
+        self.assertEqual((0, 0), result)
+        edit_calls = [call for call in calls if call[:2] == ("issue", "edit")]
+        self.assertEqual(["2", "3"], [call[2] for call in edit_calls])
+
     def test_cleanup_plan_keeps_oldest_and_apply_is_bounded(self) -> None:
         plan = cleanup_source_followup_issues.cleanup_plan([
             managed_issue(8, "Alpha"),
