@@ -30,7 +30,21 @@ INTERNAL_RE = re.compile(r"omega-source-internal:([^\s<>]+)")
 
 
 def gh(*args: str) -> str:
-    completed = subprocess.run(["gh", *args], check=True, text=True, encoding="utf-8", errors="strict", capture_output=True)
+    completed = subprocess.run(
+        ["gh", *args],
+        check=False,
+        text=True,
+        encoding="utf-8",
+        errors="strict",
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        diagnostic = str(completed.stderr or completed.stdout or "no diagnostic output").strip()
+        if len(diagnostic) > 2000:
+            diagnostic = diagnostic[:2000] + "..."
+        raise RuntimeError(
+            f"GitHub CLI failed with exit code {completed.returncode}: {diagnostic}"
+        )
     return completed.stdout
 
 
@@ -161,16 +175,19 @@ Finding source for the plugin resolves this human source-discovery request acros
 def _open_followup_issues(repository: str) -> list[dict]:
     owner_repo = "/".join(urllib.parse.quote(part, safe="") for part in repository.split("/"))
     label = urllib.parse.quote(LABEL, safe="")
-    raw = gh(
-        "api", "--paginate", "--slurp",
-        f"repos/{owner_repo}/issues?state=open&labels={label}&per_page=100",
-    )
-    pages = json.loads(raw)
-    if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
-        raise RuntimeError("GitHub returned an incomplete or malformed source-followup issue listing")
     issues: list[dict] = []
-    for page in pages:
-        for issue in page:
+    page = 1
+    while True:
+        # Page explicitly instead of depending on `gh api --slurp`, which is absent
+        # from the Debian Bookworm GitHub CLI used by the frozen publisher worker.
+        raw = gh(
+            "api",
+            f"repos/{owner_repo}/issues?state=open&labels={label}&per_page=100&page={page}",
+        )
+        rows = json.loads(raw)
+        if not isinstance(rows, list):
+            raise RuntimeError("GitHub returned an incomplete or malformed source-followup issue listing")
+        for issue in rows:
             if not isinstance(issue, dict):
                 raise RuntimeError("GitHub returned a malformed source-followup issue")
             if issue.get("pull_request"):
@@ -178,6 +195,9 @@ def _open_followup_issues(repository: str) -> list[dict]:
             issues.append({key: issue.get(key) for key in ("number", "body", "title")})
             if len(issues) > MAX_MANAGED_OPEN_ISSUES:
                 raise RuntimeError(f"managed source-followup issue count exceeds {MAX_MANAGED_OPEN_ISSUES}")
+        if len(rows) < 100:
+            break
+        page += 1
     return issues
 
 
