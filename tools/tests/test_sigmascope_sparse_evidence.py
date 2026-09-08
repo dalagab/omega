@@ -78,6 +78,104 @@ class SparseEvidenceTests(unittest.TestCase):
         validation = validate_snapshot(out, require_no_orphans=False)
         self.assertTrue(validation.get("ok"), validation.get("errors"))
 
+    def test_shared_completed_analysis_is_counted_once(self) -> None:
+        artifact_sha = "b" * 64
+        analysis_id = "analysis-shared"
+        analysis_path = f"artifacts/{artifact_sha[:2]}/{artifact_sha}/analyses/{analysis_id}"
+        current_rows = []
+        queue_items = {}
+        for variant_id in (7, 8):
+            variant_path = f"variants/0000/{variant_id}.json"
+            self.write_json(variant_path, {
+                "schema": "omega.security-evidence.variant.v2",
+                "variantId": variant_id,
+                "analysis": {
+                    "analysisId": analysis_id,
+                    "artifactSha256": artifact_sha,
+                    "path": analysis_path,
+                },
+                "current": {
+                    "scan_id": variant_id,
+                    "status": "complete",
+                    "artifact_sha256": artifact_sha,
+                    "report_json": {},
+                },
+                "lifecycle": {
+                    "schema": "omega.security-evidence.variant-lifecycle.v1",
+                    "state": "active",
+                    "terminal": False,
+                    "rescanEligible": True,
+                },
+            })
+            current_rows.append({
+                "variantId": variant_id,
+                "variantPath": variant_path,
+                "artifactSha256": artifact_sha,
+                "analysisId": analysis_id,
+                "summary": None,
+            })
+            queue_items[f"variant-{variant_id}"] = {
+                "queueKey": f"variant-{variant_id}",
+                "variantId": variant_id,
+                "workType": "artifact",
+            }
+
+        self.write_json(f"{analysis_path}/manifest.json", {
+            "analysisId": analysis_id,
+            "artifactSha256": artifact_sha,
+            "datasets": {},
+        })
+        self.write_json("indexes/plugins.json", {
+            "schema": "omega.security-evidence.plugins-index.v2",
+            "lifecycleContractVersion": 1,
+            "currentVariants": current_rows,
+            "terminalVariants": [],
+            "historicalSnapshots": [],
+        })
+        self.write_json("indexes/artifacts.json", {
+            "schema": "omega.security-evidence.artifacts-index.v2",
+            "artifacts": [{
+                "artifactSha256": artifact_sha,
+                "variants": [7, 8],
+                "currentVariants": [7, 8],
+                "terminalSnapshots": [],
+                "historicalSnapshots": [],
+                "analyses": [{"analysisId": analysis_id}],
+            }],
+        })
+        self.write_json("scanner-queue.json", {
+            "schema": "omega.sigmascope.queue-state.v2",
+            "catalogIdentityEpoch": "epoch",
+            "items": queue_items,
+        })
+        self.write_json("index.json", {
+            "schema": "omega.security-evidence.v2",
+            "formatVersion": 2,
+            "counts": {
+                "analyses": 1,
+                "artifactGroups": 1,
+                "currentVariants": 2,
+                "terminalVariants": 0,
+                "historicalSnapshots": 0,
+            },
+            "indexes": {
+                "plugins": {"path": "indexes/plugins.json"},
+                "artifacts": {"path": "indexes/artifacts.json"},
+            },
+            "revisions": {"evidenceRevision": "ev-shared", "catalogIdentityEpoch": "epoch"},
+            "scannerQueue": {"path": "scanner-queue.json"},
+        })
+        subprocess.run(["git", "add", "."], cwd=self.repo, check=True)
+        subprocess.run(["git", "commit", "-m", "shared-analysis-fixture"], cwd=self.repo, check=True, stdout=subprocess.PIPE)
+
+        out = self.root / "sparse-shared"
+        sigmascope_sparse_evidence.build_sparse_view(
+            self.repo, "HEAD", ["variant-7", "variant-8"], out
+        )
+        sparse_index = json.loads((out / "index.json").read_text(encoding="utf-8"))
+        self.assertEqual(2, sparse_index["counts"]["currentVariants"])
+        self.assertEqual(1, sparse_index["counts"]["analyses"])
+
 
 if __name__ == "__main__":
     unittest.main()
