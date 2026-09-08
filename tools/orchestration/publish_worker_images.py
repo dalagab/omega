@@ -5,7 +5,7 @@ import argparse, json, re, shutil, subprocess, tempfile
 from pathlib import Path
 
 SCHEMA="omega.worker-images.v1"
-EXPECTED_IMAGES=("catalog-worker","sigmascope-worker","intelligence-worker","publisher-worker")
+EXPECTED_IMAGES=("catalog-worker","sigmascope-worker","intelligence-worker","publisher-worker","secondary-security-worker")
 IMAGE_REF_RE=re.compile(r"^ghcr\.io/[^@\s]+@sha256:[0-9a-f]{64}$")
 
 def run(cmd, cwd=None, capture=False):
@@ -16,7 +16,7 @@ def validate_manifest(index):
         raise RuntimeError('invalid worker image manifest')
     images=index.get('images')
     if not isinstance(images,dict) or set(images)!=set(EXPECTED_IMAGES):
-        raise RuntimeError('worker image manifest must contain exactly the four expected toolchain images')
+        raise RuntimeError('worker image manifest must contain exactly the five expected toolchain images')
     for name in EXPECTED_IMAGES:
         ref=images.get(name)
         if not isinstance(ref,str) or not IMAGE_REF_RE.fullmatch(ref):

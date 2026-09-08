@@ -9,6 +9,7 @@ on:
       - "containers/**"
       - ".github/workflows/worker-images.yml"
       - "tools/orchestration/publish_worker_images.py"
+      - "tools/orchestration/worker_image_plan.py"
 
 permissions:
   contents: write
@@ -19,21 +20,67 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  plan:
+    name: Plan changed worker image builds
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      build_count: ${{ steps.plan.outputs.build_count }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Checkout previous worker image manifest when available
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: security-worker-images
+          path: image-state
+          fetch-depth: 1
+          persist-credentials: false
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p catalog
+          changed_paths="catalog/worker-image-changed-paths.txt"
+          : > "$changed_paths"
+          full_rebuild=false
+          if [ "$EVENT_NAME" = "push" ] && [[ "$BEFORE_SHA" =~ ^[0-9a-f]{40}$ ]] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
+            fi
+            git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA" > "$changed_paths"
+          else
+            full_rebuild=true
+          fi
+          args=(
+            --changed-paths "$changed_paths"
+            --output catalog/worker-image-plan.json
+          )
+          if [ -f image-state/index.json ]; then
+            args+=(--previous-manifest image-state/index.json)
+          fi
+          if [ "$full_rebuild" = true ]; then
+            args+=(--full-rebuild)
+          fi
+          python tools/orchestration/worker_image_plan.py "${args[@]}"
+          echo "matrix=$(jq -c '.matrix' catalog/worker-image-plan.json)" >> "$GITHUB_OUTPUT"
+          echo "build_count=$(jq -r '.buildCount' catalog/worker-image-plan.json)" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build ${{ matrix.image }}
+    needs: plan
+    if: fromJSON(needs.plan.outputs.build_count || '0') > 0
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - image: catalog-worker
-            dockerfile: containers/catalog-worker/Dockerfile
-          - image: sigmascope-worker
-            dockerfile: containers/sigmascope-worker/Dockerfile
-          - image: intelligence-worker
-            dockerfile: containers/intelligence-worker/Dockerfile
-          - image: publisher-worker
-            dockerfile: containers/publisher-worker/Dockerfile
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -77,7 +124,8 @@ jobs:
 
   publish-manifest:
     name: Publish digest-pinned worker image manifest
-    needs: build
+    needs: [plan, build]
+    if: needs.plan.result == 'success' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -85,6 +133,14 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: true
+      - name: Checkout previous worker image manifest
+        continue-on-error: true
+        uses: actions/checkout@v6
+        with:
+          ref: security-worker-images
+          path: image-state
+          fetch-depth: 1
+          persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
           pattern: worker-image-digest-*
@@ -97,17 +153,44 @@ jobs:
           import hashlib, json, re
           from pathlib import Path
           root=Path('image-digests')
+          previous_path=Path('image-state/index.json')
           image_ref_re=re.compile(r'^ghcr\.io/[^@\s]+@sha256:[0-9a-f]{64}$')
+          commit_re=re.compile(r'^[0-9a-f]{40}$')
+          expected=('catalog-worker','sigmascope-worker','intelligence-worker','publisher-worker','secondary-security-worker')
           images={}
-          for name in ('catalog-worker','sigmascope-worker','intelligence-worker','publisher-worker'):
+          provenance={}
+          if previous_path.is_file():
+              previous=json.loads(previous_path.read_text())
+              if previous.get('schema')!='omega.worker-images.v1':
+                  raise SystemExit('previous worker image manifest schema is unsupported')
+              previous_images=previous.get('images')
+              if not isinstance(previous_images,dict) or set(previous_images)-set(expected):
+                  raise SystemExit('previous worker image manifest contains unexpected images')
+              previous_provenance=previous.get('imageBuiltFromCommit')
+              if not isinstance(previous_provenance,dict):
+                  previous_provenance={}
+              fallback=str(previous.get('builtFromCommit') or '')
+              for name,ref in previous_images.items():
+                  if not image_ref_re.fullmatch(str(ref)):
+                      raise SystemExit(f'invalid previous immutable worker image reference for {name}: {ref!r}')
+                  commit=str(previous_provenance.get(name) or fallback)
+                  if not commit_re.fullmatch(commit):
+                      raise SystemExit(f'missing carried-forward image provenance for {name}')
+                  images[name]=ref
+                  provenance[name]=commit
+          for name in expected:
               matches=list(root.glob(f'worker-image-digest-{name}/image-ref.txt'))
-              if len(matches)!=1:
-                  raise SystemExit(f'missing digest artifact for {name}')
-              ref=matches[0].read_text().strip()
-              if not image_ref_re.fullmatch(ref):
-                  raise SystemExit(f'invalid immutable worker image reference for {name}: {ref!r}')
-              images[name]=ref
-          semantic={'schema':'omega.worker-images.v1','images':images}
+              if len(matches)>1:
+                  raise SystemExit(f'multiple digest artifacts for {name}')
+              if len(matches)==1:
+                  ref=matches[0].read_text().strip()
+                  if not image_ref_re.fullmatch(ref):
+                      raise SystemExit(f'invalid immutable worker image reference for {name}: {ref!r}')
+                  images[name]=ref
+                  provenance[name]='${{ github.sha }}'
+          if set(images)!=set(expected):
+              raise SystemExit(f'incomplete worker image manifest; missing={sorted(set(expected)-set(images))}')
+          semantic={'schema':'omega.worker-images.v1','images':images,'imageBuiltFromCommit':provenance}
           digest=hashlib.sha256(json.dumps(semantic,sort_keys=True,separators=(',',':')).encode()).hexdigest()
           document={**semantic,'workerImagesRevision':f'worker-images-v1-{digest[:20]}','builtFromCommit':'${{ github.sha }}'}
           out=Path('catalog/worker-images');out.mkdir(parents=True,exist_ok=True)

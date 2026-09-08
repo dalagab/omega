@@ -2,7 +2,7 @@ ARG PYTHON_IMAGE=python:3.13.15-slim-bookworm
 FROM ${PYTHON_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1
 RUN apt-get update \
- && apt-get install -y --no-install-recommends binutils ca-certificates clamav clamav-freshclam curl file gh git jq unzip yara \
+ && apt-get install -y --no-install-recommends binutils ca-certificates clamav curl file gh git jq unzip yara \
  && rm -rf /var/lib/apt/lists/*
 COPY containers/sigmascope-worker/requirements-security.txt /tmp/omega-sigmascope-requirements-security.txt
 RUN python -m pip install --no-cache-dir -r /tmp/omega-sigmascope-requirements-security.txt \
