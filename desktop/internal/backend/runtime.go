@@ -22,11 +22,12 @@ type PythonCommand struct {
 }
 
 type Runtime struct {
-	Root       string
-	PythonHint string
-	Stdout     io.Writer
-	Stderr     io.Writer
-	Logf       func(string, ...any)
+	Root           string
+	EnvironmentDir string
+	PythonHint     string
+	Stdout         io.Writer
+	Stderr         io.Writer
+	Logf           func(string, ...any)
 }
 
 func (r Runtime) Ensure(ctx context.Context) (string, error) {
@@ -35,7 +36,7 @@ func (r Runtime) Ensure(ctx context.Context) (string, error) {
 	if !isFile(requirements) || !isFile(entrypoint) {
 		return "", errors.New("DeltaScope runtime files are incomplete")
 	}
-	venvDir := filepath.Join(r.Root, ".deltascope-venv")
+	venvDir := r.environmentDir()
 	venvPython := venvPythonPath(venvDir)
 	marker := filepath.Join(venvDir, ".deltascope-requirements.sha256")
 	digest, err := fileDigest(requirements)
@@ -83,7 +84,7 @@ func (r Runtime) EnsureDesktop(ctx context.Context) (string, error) {
 	if !isFile(requirements) {
 		return python, nil
 	}
-	marker := filepath.Join(r.Root, ".deltascope-venv", ".deltascope-desktop-requirements.sha256")
+	marker := filepath.Join(r.environmentDir(), ".deltascope-desktop-requirements.sha256")
 	digest, err := fileDigest(requirements)
 	if err != nil {
 		return "", err
@@ -191,6 +192,16 @@ func (r Runtime) stderr() io.Writer {
 		return r.Stderr
 	}
 	return os.Stderr
+}
+
+func (r Runtime) environmentDir() string {
+	if dir := strings.TrimSpace(r.EnvironmentDir); dir != "" {
+		if absolute, err := filepath.Abs(dir); err == nil {
+			return absolute
+		}
+		return filepath.Clean(dir)
+	}
+	return filepath.Join(r.Root, ".deltascope-venv")
 }
 
 func venvPythonPath(venv string) string {

@@ -22,6 +22,7 @@ var readyURLPattern = regexp.MustCompile(`Omega security research workbench:\s*(
 
 type Supervisor struct {
 	Root           string
+	EnvironmentDir string
 	PythonHint     string
 	StartupTimeout time.Duration
 	Stdout         io.Writer
@@ -41,7 +42,7 @@ func (s Supervisor) Start(ctx context.Context) (*Process, error) {
 	if timeout <= 0 {
 		timeout = 90 * time.Second
 	}
-	runtimeManager := Runtime{Root: s.Root, PythonHint: s.PythonHint, Stdout: s.Stdout, Stderr: s.Stderr, Logf: func(format string, args ...any) {
+	runtimeManager := Runtime{Root: s.Root, EnvironmentDir: s.EnvironmentDir, PythonHint: s.PythonHint, Stdout: s.Stdout, Stderr: s.Stderr, Logf: func(format string, args ...any) {
 		if s.Stderr != nil {
 			_, _ = fmt.Fprintf(s.Stderr, "DeltaScope Desktop: "+format+"\n", args...)
 		}

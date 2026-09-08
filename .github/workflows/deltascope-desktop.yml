@@ -1,0 +1,211 @@
+name: DeltaScope desktop - build launcher
+
+on:
+  push:
+    branches:
+      - deltascope
+    paths:
+      - "desktop/**"
+      - ".github/workflows/deltascope-desktop.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: deltascope-desktop-launcher
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Windows amd64
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.23.x"
+      - name: Build launcher with embedded DeltaScope icon
+        shell: pwsh
+        run: .\desktop\build.ps1
+      - name: Package Windows launcher
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'desktop/assets/deltascope.ico')) { throw 'Canonical DeltaScope icon is missing.' }
+          Compress-Archive -Path 'dist/DeltaScope.exe','dist/DeltaScope-console.exe' -DestinationPath 'dist/DeltaScope-windows-amd64.zip' -CompressionLevel Optimal
+          $hash = (Get-FileHash 'dist/DeltaScope-windows-amd64.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  DeltaScope-windows-amd64.zip" | Set-Content 'dist/DeltaScope-windows-amd64.zip.sha256' -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deltascope-windows-amd64
+          path: |
+            dist/DeltaScope-windows-amd64.zip
+            dist/DeltaScope-windows-amd64.zip.sha256
+
+  linux:
+    name: Linux ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.23.x"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Build and package Linux launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow
+          version=$(tr -d '\r\n ' < desktop/launcher-version.txt)
+          mkdir -p "dist/linux-${{ matrix.arch }}"
+          GOOS=linux GOARCH='${{ matrix.arch }}' CGO_ENABLED=0 go build -C desktop -trimpath -ldflags "-s -w -X main.launcherVersion=$version -X main.buildFlavor=console" -o "../dist/linux-${{ matrix.arch }}/deltascope-desktop" ./cmd/deltascope-desktop
+          python - <<'PY'
+          from PIL import Image
+          image = Image.open('desktop/assets/deltascope.ico').convert('RGBA')
+          image.save('dist/linux-${{ matrix.arch }}/deltascope.png')
+          PY
+          cat > "dist/linux-${{ matrix.arch }}/deltascope.desktop" <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=DeltaScope
+          Exec=deltascope-desktop
+          Icon=deltascope
+          Categories=Development;Security;
+          Terminal=false
+          DESKTOP
+          tar -C "dist/linux-${{ matrix.arch }}" -czf "dist/DeltaScope-linux-${{ matrix.arch }}.tar.gz" .
+          sha256sum "dist/DeltaScope-linux-${{ matrix.arch }}.tar.gz" | sed 's#  dist/#  #' > "dist/DeltaScope-linux-${{ matrix.arch }}.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deltascope-linux-${{ matrix.arch }}
+          path: |
+            dist/DeltaScope-linux-${{ matrix.arch }}.tar.gz
+            dist/DeltaScope-linux-${{ matrix.arch }}.tar.gz.sha256
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: macos-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.23.x"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Build app bundle with DeltaScope icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow
+          version=$(tr -d '\r\n ' < desktop/launcher-version.txt)
+          app="dist/macos-${{ matrix.arch }}/DeltaScope.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          GOOS=darwin GOARCH='${{ matrix.arch }}' CGO_ENABLED=0 go build -C desktop -trimpath -ldflags "-s -w -X main.launcherVersion=$version -X main.buildFlavor=gui" -o "../$app/Contents/MacOS/DeltaScope" ./cmd/deltascope-desktop
+          mkdir -p dist/DeltaScope.iconset
+          python - <<'PY'
+          from PIL import Image
+          src = Image.open('desktop/assets/deltascope.ico').convert('RGBA')
+          sizes = [(16,'icon_16x16.png'),(32,'icon_16x16@2x.png'),(32,'icon_32x32.png'),(64,'icon_32x32@2x.png'),(128,'icon_128x128.png'),(256,'icon_128x128@2x.png'),(256,'icon_256x256.png'),(512,'icon_256x256@2x.png'),(512,'icon_512x512.png'),(1024,'icon_512x512@2x.png')]
+          for size, name in sizes:
+              src.resize((size,size), Image.Resampling.LANCZOS).save('dist/DeltaScope.iconset/' + name)
+          PY
+          iconutil -c icns dist/DeltaScope.iconset -o "$app/Contents/Resources/DeltaScope.icns"
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleExecutable</key><string>DeltaScope</string>
+            <key>CFBundleIdentifier</key><string>com.dalagab.deltascope</string>
+            <key>CFBundleName</key><string>DeltaScope</string>
+            <key>CFBundleDisplayName</key><string>DeltaScope</string>
+            <key>CFBundleIconFile</key><string>DeltaScope</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>$version</string>
+            <key>CFBundleVersion</key><string>$version</string>
+          </dict></plist>
+          PLIST
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/DeltaScope-macos-${{ matrix.arch }}.zip"
+          shasum -a 256 "dist/DeltaScope-macos-${{ matrix.arch }}.zip" | sed 's#  dist/#  #' > "dist/DeltaScope-macos-${{ matrix.arch }}.zip.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deltascope-macos-${{ matrix.arch }}
+          path: |
+            dist/DeltaScope-macos-${{ matrix.arch }}.zip
+            dist/DeltaScope-macos-${{ matrix.arch }}.zip.sha256
+
+  publish:
+    name: Publish launcher release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [windows, linux, macos]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Resolve launcher version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(tr -d '\r\n ' < desktop/launcher-version.txt)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid launcher version: $version" >&2; exit 2; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=deltascope-desktop-v$version" >> "$GITHUB_OUTPUT"
+      - name: Refuse to overwrite immutable launcher version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view '${{ steps.version.outputs.tag }}' >/dev/null 2>&1; then
+            echo "Launcher release ${{ steps.version.outputs.tag }} already exists. Bump desktop/launcher-version.txt for shell changes." >&2
+            exit 2
+          fi
+      - name: Attest launcher packages
+        uses: actions/attest@v4
+        with:
+          subject-path: "dist/DeltaScope-*"
+      - name: Publish immutable launcher version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create '${{ steps.version.outputs.tag }}' dist/DeltaScope-* \
+            --target '${{ github.sha }}' \
+            --title 'DeltaScope launcher ${{ steps.version.outputs.version }}' \
+            --notes 'DeltaScope desktop launcher. The launcher retrieves and manages the Python/web application from the deltascope branch at runtime.'
+      - name: Publish latest launcher mirror
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release view deltascope-desktop-latest >/dev/null 2>&1; then
+            gh release create deltascope-desktop-latest --target '${{ github.sha }}' --title 'DeltaScope launcher latest' --notes 'Latest DeltaScope desktop launcher.'
+          fi
+          gh release upload deltascope-desktop-latest dist/DeltaScope-* --clobber
+          gh release edit deltascope-desktop-latest --title 'DeltaScope launcher latest (${{ steps.version.outputs.version }})'

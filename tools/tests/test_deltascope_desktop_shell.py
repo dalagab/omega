@@ -14,6 +14,8 @@ class DeltaScopeDesktopShellTests(unittest.TestCase):
             root / "desktop" / "requirements.txt",
             root / "desktop" / "window_host.py",
             root / "desktop" / "cmd" / "deltascope-desktop" / "main.go",
+            root / "desktop" / "cmd" / "deltascope-desktop" / "managed_source.go",
+            root / "desktop" / "launcher-version.txt",
             root / "desktop" / "internal" / "backend" / "backend.go",
             root / "desktop" / "internal" / "download" / "manager.go",
             root / "desktop" / "internal" / "host" / "server.go",
@@ -53,9 +55,13 @@ class DeltaScopeDesktopShellTests(unittest.TestCase):
         contract = json.loads((root / "deltascope" / "runtime-contract.json").read_text(encoding="utf-8"))
         self.assertEqual("4.21.17", contract["runtime"]["deltascopeVersion"])
         self.assertEqual("1.0.1", contract["runtime"]["consumerSdkVersion"])
-        self.assertIn('var version = "4.21.17-dev"', main)
-        self.assertIn("main.version=4.21.17", windows_build)
-        self.assertIn("main.version=4.21.17", unix_build)
+        launcher_version = (root / "desktop" / "launcher-version.txt").read_text(encoding="utf-8").strip()
+        self.assertEqual("1.0.0", launcher_version)
+        self.assertIn('var launcherVersion = "1.0.0-dev"', main)
+        self.assertIn("main.launcherVersion=$LauncherVersion", windows_build)
+        self.assertIn("main.launcherVersion=$LAUNCHER_VERSION", unix_build)
+        self.assertNotIn("main.version=4.21.17", windows_build)
+        self.assertNotIn("main.version=4.21.17", unix_build)
 
 
 
@@ -103,6 +109,18 @@ class DeltaScopeDesktopShellTests(unittest.TestCase):
         self.assertIn("DeltaScope 4.21.17 fixed navigation rail", view)
         self.assertIn("#perspectiveNav{overflow:hidden!important", view)
 
+
+    def test_managed_source_updater_keeps_python_updates_outside_launcher_build_trigger(self) -> None:
+        root = common.ROOT
+        updater = (root / "desktop" / "cmd" / "deltascope-desktop" / "managed_source.go").read_text(encoding="utf-8")
+        workflow = (root / ".github" / "workflows" / "deltascope-desktop.yml").read_text(encoding="utf-8")
+        self.assertIn("managedPollInterval = 30 * time.Minute", updater)
+        self.assertIn("branches:", workflow)
+        self.assertIn("- deltascope", workflow)
+        self.assertIn('- "desktop/**"', workflow)
+        self.assertNotIn("tools/security/**", workflow)
+        self.assertNotIn("deltascope/runtime-contract.json", workflow)
+        self.assertIn("desktop/assets/deltascope.ico", workflow)
 
 
 if __name__ == "__main__":

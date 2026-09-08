@@ -41,9 +41,11 @@ If the native helper is unavailable, the shell falls back to installed Edge/Chro
 
 ## Runtime ownership
 
-The shell prefers the repository-local `.deltascope-venv`. If its requirements marker is absent/stale, Go discovers Python 3.10+, creates the private environment, installs `deltascope/requirements.txt`, and starts `tools/security/deltascope.py` directly. Release packaging may place a self-contained interpreter under `runtime/python/`; the runtime resolver already prefers that location before system Python.
+Developer/source-tree launches keep the repository-local `.deltascope-venv`. Managed desktop launches keep one shared private environment under the per-user DeltaScope managed directory so a normal Python/HTML/JavaScript source revision does not rebuild the environment. The requirements digest still controls when pip is run.
 
-No third-party Python runtime is downloaded implicitly in this pass. A future release manifest can use the universal downloader below only after the runtime archive URL and SHA-256 are pinned by the release process.
+Go discovers Python 3.10+, installs `deltascope/requirements.txt`, and starts `tools/security/deltascope.py` directly. Release packaging may place a self-contained interpreter under `runtime/python/`; the runtime resolver already prefers that location before system Python.
+
+No third-party Python runtime is downloaded implicitly by the source updater. A future runtime package may use the universal downloader only after its URL and SHA-256 are pinned by the release process.
 
 ## Universal downloader
 
@@ -67,24 +69,29 @@ DeltaScope-console.exe fetch --url ... --out package.zip --extract-to runtime/py
 
 This package is intended to become the common transport for desktop runtime/update packages and other shell-owned downloads. Existing Evidence/Definitions acquisition remains in Python until a specific acquisition contract is migrated; merely adding the desktop shell must not change evidence semantics.
 
-## Planned managed DeltaScope source updater
+## Managed DeltaScope source updater
 
-The Go shell is intended to be long-lived while the Python/HTML/JavaScript DeltaScope application changes frequently. Ordinary application changes therefore should **not** require a new Go build.
+The Go shell is long-lived while the Python/HTML/JavaScript DeltaScope application changes frequently. Ordinary application changes therefore **do not require a new Go build**.
 
-The planned updater will keep the exact installed `deltascope` branch commit in local managed state, check GitHub on startup and periodically while the app is open, and acquire a newer standalone DeltaScope source package only when that branch commit changes. The existing HTTPS/SHA-256/archive primitives will stage the package, validate its runtime contract, and switch the active source atomically while retaining one last-known-good revision for rollback.
+When the executable is not launched from an existing source tree and no explicit `--root` is supplied, it uses managed-source mode. It stores the exact installed `deltascope` branch commit under the per-user DeltaScope cache, checks the public GitHub branch on startup, and checks again every 30 minutes while the application remains open. The branch response is ETag-aware; no GitHub credential is stored or required.
 
-If DeltaScope is already running when a newer source revision is found, the updater should stage it and activate it on restart rather than replacing Python files underneath the live backend. A requirements change may refresh the shared private Python environment; ordinary Python/UI source changes should reuse it.
+A newer exact commit is downloaded from GitHub's codeload endpoint over HTTPS and through the existing bounded archive extractor. The extracted tree must contain the DeltaScope runtime contract, Python entry point, requirements and canonical DeltaScope icon before it is accepted. The archive SHA-256 is retained as local acquisition provenance.
 
-The Go executable itself should be rebuilt only when the desktop shell changes: updater/download logic, process supervision, native-window behavior, runtime management, Go-side proxy/network behavior, commands, or embedded desktop resources. The canonical application artwork remains `desktop/assets/deltascope.ico`; platform packages must derive their application icon from that DeltaScope artwork rather than substituting the Omega icon.
+A startup update is activated before Python starts. An update discovered while DeltaScope is already running is only staged and becomes active on the next start, so source files are never replaced underneath a live backend. The immediately previous revision is retained as known-good; if a newly activated revision cannot start the Python backend, the launcher rolls back and quarantines that failed commit until the branch advances. Other old source directories are pruned.
 
-A workflow registered on the repository default branch is still required to build/publish the launcher when shell code changes and to publish the standalone source/update metadata consumed by the launcher. Until that workflow and managed-source resolver land, the current shell still requires an existing DeltaScope source root and this section describes planned work, not current behavior.
+`--no-update` skips the GitHub check and uses the already installed managed revision. If GitHub is unavailable, the launcher uses the installed valid revision and records the bounded acquisition error; first install still requires GitHub.
 
-Expected managed state includes the active source commit, previous known-good commit, last update check/success/error, and verified package hash. It must not contain GitHub credentials or security-authority state.
+Launcher and application versions are separate. `desktop/launcher-version.txt` versions the Go shell, while `deltascope/runtime-contract.json` versions the Python application. The Go executable therefore needs rebuilding only when `desktop/**` or launcher delivery behavior changes. The branch-local `.github/workflows/deltascope-desktop.yml` follows that rule and uses the canonical `desktop/assets/deltascope.ico` artwork for packaged launchers.
+
+A small default-branch registration copy of that workflow is still required so manual dispatch remains available from the repository default branch; it is intentionally a separate patch because it has a different base revision.
+
+Managed state contains only source/update provenance and health: active, previous and staged commits, archive hashes, ETag, timestamps and bounded errors. It contains no GitHub credentials and has no security-authority role.
 
 ## Commands
 
 ```text
-DeltaScope.exe                 # run desktop shell
+DeltaScope.exe                 # run desktop shell; managed mode checks deltascope branch when no source tree is present
+DeltaScope.exe run --no-update  # use the installed managed revision without a GitHub check
 DeltaScope.exe run -- --offline-resources
 DeltaScope-console.exe doctor
 DeltaScope-console.exe fetch ...

@@ -20,7 +20,7 @@ import (
 	"github.com/dalagab/omega/deltascope-desktop/internal/window"
 )
 
-var version = "4.21.17-dev"
+var launcherVersion = "1.0.0-dev"
 var buildFlavor = "console"
 
 type stringList []string
@@ -46,7 +46,7 @@ func run(args []string) int {
 	case "doctor":
 		return runDoctor(args)
 	case "version", "--version", "-version":
-		fmt.Println(version)
+		fmt.Println(launcherVersion)
 		return 0
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command %q. Use run, fetch, doctor, or version.\n", command)
@@ -70,6 +70,7 @@ func runDesktop(args []string) int {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
 	rootFlag := fs.String("root", "", "DeltaScope source root; auto-detected by default")
 	pythonFlag := fs.String("python", "", "Python 3.10+ executable override")
+	noUpdate := fs.Bool("no-update", false, "Use the installed managed DeltaScope source without checking GitHub")
 	portFlag := fs.Int("port", 8765, "Go loopback front-door port; default 8765 preserves DeltaScope browser/localStorage origin; 0 chooses an available port")
 	noWindow := fs.Bool("no-window", false, "Host DeltaScope without opening an app window")
 	systemBrowser := fs.Bool("system-browser", false, "Use the normal system browser instead of the native DeltaScope window")
@@ -87,13 +88,19 @@ func runDesktop(args []string) int {
 	if logPath != "" {
 		fmt.Fprintln(stderr, "DeltaScope Desktop log:", logPath)
 	}
-	root, err := resolveRoot(*rootFlag)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	sourceInfo, err := resolveLaunchSource(ctx, strings.TrimSpace(*rootFlag), *noUpdate)
 	if err != nil {
 		fmt.Fprintln(stderr, "DeltaScope Desktop:", err)
 		return 2
 	}
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
+	if sourceInfo.Warning != "" {
+		fmt.Fprintln(stderr, "DeltaScope Desktop:", sourceInfo.Warning)
+	}
+	if sourceInfo.Managed {
+		fmt.Fprintf(stderr, "DeltaScope Desktop managed source: %s (%s)\n", sourceInfo.Root, sourceInfo.Commit)
+	}
 
 	front, err := host.Start(*portFlag)
 	if err != nil && *portFlag == 8765 && !flagWasSet(fs, "port") {
@@ -110,7 +117,7 @@ func runDesktop(args []string) int {
 	var appWindow *window.Process
 	preparedPython := ""
 	if !*noWindow && !*systemBrowser {
-		runtimeManager := backend.Runtime{Root: root, PythonHint: *pythonFlag, Stdout: stdout, Stderr: stderr, Logf: func(format string, args ...any) {
+		runtimeManager := backend.Runtime{Root: sourceInfo.Root, EnvironmentDir: sourceInfo.EnvironmentDir, PythonHint: *pythonFlag, Stdout: stdout, Stderr: stderr, Logf: func(format string, args ...any) {
 			fmt.Fprintf(stderr, "DeltaScope Desktop: "+format+"\n", args...)
 		}}
 		preparedPython, err = runtimeManager.EnsureDesktop(ctx)
@@ -121,7 +128,7 @@ func runDesktop(args []string) int {
 	if !*noWindow {
 		cache, _ := os.UserCacheDir()
 		profile := filepath.Join(cache, "Omega", "DeltaScope", "desktop-browser")
-		appWindow, err = window.Launch(ctx, window.Options{URL: front.URL(), Title: "DeltaScope", ProfileDir: profile, Width: *width, Height: *height, SystemBrowser: *systemBrowser, Python: preparedPython, Root: root, Icon: *iconFlag, Stdout: stdout, Stderr: stderr})
+		appWindow, err = window.Launch(ctx, window.Options{URL: front.URL(), Title: "DeltaScope", ProfileDir: profile, Width: *width, Height: *height, SystemBrowser: *systemBrowser, Python: preparedPython, Root: sourceInfo.Root, Icon: *iconFlag, Stdout: stdout, Stderr: stderr})
 		if err != nil {
 			fmt.Fprintln(stderr, "DeltaScope Desktop: window launch failed; continuing headless:", err)
 		} else {
@@ -129,8 +136,20 @@ func runDesktop(args []string) int {
 		}
 	}
 
-	supervisor := backend.Supervisor{Root: root, PythonHint: *pythonFlag, StartupTimeout: 90 * time.Second, Stdout: stdout, Stderr: stderr, BackendArgs: backendArgs}
+	supervisor := backend.Supervisor{Root: sourceInfo.Root, EnvironmentDir: sourceInfo.EnvironmentDir, PythonHint: *pythonFlag, StartupTimeout: 90 * time.Second, Stdout: stdout, Stderr: stderr, BackendArgs: backendArgs}
 	pythonProcess, err := supervisor.Start(ctx)
+	if err != nil && sourceInfo.Managed && sourceInfo.Updated {
+		rolled, rollbackErr := rollbackLaunchSource(sourceInfo, err)
+		if rollbackErr == nil {
+			fmt.Fprintf(stderr, "DeltaScope Desktop: managed source %s failed startup; rolling back to %s.\n", sourceInfo.Commit, rolled.Commit)
+			sourceInfo = rolled
+			supervisor.Root = sourceInfo.Root
+			supervisor.EnvironmentDir = sourceInfo.EnvironmentDir
+			pythonProcess, err = supervisor.Start(ctx)
+		} else {
+			fmt.Fprintln(stderr, "DeltaScope Desktop: managed source rollback unavailable:", rollbackErr)
+		}
+	}
 	if err != nil {
 		front.SetError(err.Error())
 		fmt.Fprintln(stderr, "DeltaScope Desktop:", err)
@@ -142,6 +161,9 @@ func runDesktop(args []string) int {
 	defer pythonProcess.Stop(context.Background())
 	front.SetBackend(pythonProcess.URL)
 	fmt.Fprintln(stderr, "DeltaScope Python backend:", pythonProcess.URL.String())
+	if sourceInfo.Managed && !*noUpdate {
+		go pollManagedSource(ctx, sourceInfo, stderr)
+	}
 
 	windowDone := make(chan error, 1)
 	if appWindow != nil && appWindow.Dedicated {
@@ -185,7 +207,7 @@ func runFetch(args []string) int {
 		fmt.Fprintln(os.Stderr, "fetch requires --url and --out")
 		return 2
 	}
-	manager := download.Manager{UserAgent: "DeltaScope-Desktop/" + version}
+	manager := download.Manager{UserAgent: "DeltaScope-Desktop/" + launcherVersion}
 	result, err := manager.Fetch(context.Background(), download.Request{URL: *source, Destination: *destination, SHA256: *expected, MaxBytes: *maxMB << 20, AllowHTTP: *allowHTTP, AllowedHosts: hosts})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "DeltaScope fetch:", err)
@@ -217,14 +239,18 @@ func runDoctor(args []string) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	root, err := resolveRoot(*rootFlag)
+	sourceInfo, err := resolveLaunchSource(context.Background(), strings.TrimSpace(*rootFlag), true)
 	if err != nil {
 		fmt.Println("root: ERROR -", err)
 		return 1
 	}
-	fmt.Println("version:", version)
+	root := sourceInfo.Root
+	fmt.Println("launcher version:", launcherVersion)
+	if sourceInfo.Managed {
+		fmt.Println("source commit:", sourceInfo.Commit)
+	}
 	fmt.Println("root:", root)
-	runtimeManager := backend.Runtime{Root: root, PythonHint: *pythonFlag}
+	runtimeManager := backend.Runtime{Root: root, EnvironmentDir: sourceInfo.EnvironmentDir, PythonHint: *pythonFlag}
 	py, pyErr := runtimeManager.Discover(context.Background())
 	if pyErr != nil {
 		fmt.Println("python: ERROR -", pyErr)
@@ -272,7 +298,7 @@ func openDesktopLog() (*os.File, string) {
 	if err != nil {
 		return nil, ""
 	}
-	_, _ = fmt.Fprintf(file, "\n[%s] DeltaScope Desktop %s starting (%s build)\n", time.Now().Format(time.RFC3339), version, buildFlavor)
+	_, _ = fmt.Fprintf(file, "\n[%s] DeltaScope Desktop %s starting (%s build)\n", time.Now().Format(time.RFC3339), launcherVersion, buildFlavor)
 	return file, path
 }
 
