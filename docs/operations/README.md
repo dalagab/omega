@@ -77,3 +77,13 @@ Retained history is local convenience state. Evidence-v2, Definitions, collector
 Use **Operations → Diagnostics** to see what the connected GitHub credential has actually demonstrated. Successful bounded reads can prove Actions, jobs, active-job telemetry/log access and runner inventory visibility. A connected token alone does **not** prove dispatch/cancel/rerun permission: DeltaScope deliberately avoids a mutating permission probe, so those capabilities remain **configured / unverified** until an operator explicitly confirms a real action in GitHub Workflows.
 
 The page also shows the current GitHub rate budget, the last attempted and last successful live acquisition, stale-cache state, and the bounded retry/backoff reason after failures. Normal navigation does not perform a fresh GitHub request; **Refresh diagnostics** explicitly reuses the existing live Operations acquisition path. Credentials and raw job logs are never returned by this diagnostics projection, and none of these operational facts are Security Evidence authority.
+
+## Runner and workflow notifications
+
+DeltaScope projects meaningful GitHub Actions transitions into the existing global notification bell. It watches the same authenticated, rate-aware live Operations snapshot used by the Runner Dashboard; it does not create another GitHub credential or bypass live-acquisition backoff.
+
+Notifications cover newly queued/started/completed workflow runs, job-to-runner assignment, current step/structured progress changes, runner online/offline and busy/idle transitions, and a stale/backoff warning when live acquisition degrades. The first observed snapshot is a baseline rather than a notification flood. A bounded browser-local history preserves recent alerts across page reloads and the existing unread/mark-read behavior remains authoritative for the notification drawer.
+
+The notification drawer exposes local toggles for run, runner and progress alerts. Optional desktop notifications use the browser/WebView Notification API and are enabled only after an explicit user gesture grants permission; in-app notifications continue to work when the desktop API is unavailable or denied.
+
+These are operational convenience signals only. Runner state, workflow conclusions and structured worker progress remain diagnostic/self-report facts and do not become Security Evidence or collection-settlement authority.

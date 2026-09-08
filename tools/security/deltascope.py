@@ -12,6 +12,7 @@ from developer_view import main
 import deltascope_0015_compat
 import deltascope_workflow_center
 import deltascope_live_operations
+import deltascope_runner_notifications
 import deltascope_operations_history
 import deltascope_operations_correlation
 import deltascope_operations_diagnostics
@@ -26,6 +27,7 @@ import deltascope_orchestration_alignment
 deltascope_0015_compat.install()
 deltascope_workflow_center.install()
 deltascope_live_operations.install()
+deltascope_runner_notifications.install()
 deltascope_operations_history.install()
 deltascope_operations_correlation.install()
 deltascope_operations_diagnostics.install()

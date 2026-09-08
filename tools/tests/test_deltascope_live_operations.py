@@ -152,6 +152,8 @@ class DeltaScopeLiveOperationsTests(unittest.TestCase):
         result = client.live_status(foreground=True)
         self.assertTrue(result["live"])
         self.assertEqual(1, result["counts"]["activeRuns"])
+        self.assertEqual(1, len(result["recentRuns"]))
+        self.assertEqual(101, result["recentRuns"][0]["runId"])
         self.assertEqual(1, result["counts"]["jobs"])
         self.assertEqual(1, result["counts"]["runners"])
         self.assertEqual(1, result["counts"]["busyRunners"])

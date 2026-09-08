@@ -3075,7 +3075,7 @@ init().catch(e=>{document.body.innerHTML='<pre class=fail>'+esc(e.stack||e.messa
 class AppHandler(BaseHTTPRequestHandler):
     inspector: Any
     platform_resources: deltascope_resources.PublishedResources | None = None
-    server_version = "OmegaDeltaScope/4.21.17"
+    server_version = "OmegaDeltaScope/4.21.18"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"[{self.log_date_time_string()}] {fmt % args}", file=sys.stderr)
