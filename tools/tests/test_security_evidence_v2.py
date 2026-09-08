@@ -477,6 +477,17 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertGreater(reused["trustedAnalysisDatasets"], 0)
             self.assertEqual(0, reused["revalidatedAnalysisDatasets"])
 
+            (parent / "validation-report.json").unlink()
+            fallback = validate_snapshot(candidate, trusted_parent=parent)
+            self.assertTrue(fallback["ok"], fallback)
+            self.assertEqual("", fallback["trustedParentIndexSha256"])
+            self.assertEqual(0, fallback["trustedAnalysisDatasets"])
+            self.assertGreater(fallback["revalidatedAnalysisDatasets"], 0)
+            self.assertTrue(any("full validation used" in warning for warning in fallback["warnings"]), fallback)
+            (parent / "validation-report.json").write_text(
+                json.dumps(parent_report, indent=2) + "\n", encoding="utf-8"
+            )
+
             manifest_path = next((candidate / "artifacts").rglob("manifest.json"))
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             dataset = next(value for value in manifest["datasets"].values() if isinstance(value, dict))
