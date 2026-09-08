@@ -22,25 +22,49 @@ def managed_issue(number: int, internal_name: str) -> dict:
 
 class SourceFollowupIssueSafetyTests(unittest.TestCase):
     def test_open_followups_uses_complete_rest_pagination(self) -> None:
-        payload = [
-            [managed_issue(1, "One")],
-            [{"number": 9, "pull_request": {"url": "https://api.github.test/pulls/9"}}, managed_issue(2, "Two")],
-            [],
+        first_page = [managed_issue(number, f"Plugin{number}") for number in range(1, 101)]
+        second_page = [
+            {"number": 900, "pull_request": {"url": "https://api.github.test/pulls/900"}},
+            managed_issue(101, "Plugin101"),
         ]
         with mock.patch.object(
-            create_source_followup_issues, "gh", return_value=json.dumps(payload),
+            create_source_followup_issues,
+            "gh",
+            side_effect=(json.dumps(first_page), json.dumps(second_page)),
         ) as github:
             issues = create_source_followup_issues._open_followup_issues("example/omega")
-        self.assertEqual([1, 2], [row["number"] for row in issues])
-        arguments = github.call_args.args
-        self.assertEqual(("api", "--paginate", "--slurp"), arguments[:3])
-        self.assertTrue(any("per_page=100" in argument for argument in arguments))
+        self.assertEqual(101, len(issues))
+        self.assertEqual(1, issues[0]["number"])
+        self.assertEqual(101, issues[-1]["number"])
+        self.assertEqual(2, github.call_count)
+        first_arguments = github.call_args_list[0].args
+        second_arguments = github.call_args_list[1].args
+        self.assertEqual("api", first_arguments[0])
+        self.assertEqual("api", second_arguments[0])
+        self.assertNotIn("--paginate", first_arguments)
+        self.assertNotIn("--slurp", first_arguments)
+        self.assertIn("per_page=100&page=1", first_arguments[1])
+        self.assertIn("per_page=100&page=2", second_arguments[1])
 
     def test_open_followups_fails_closed_on_malformed_pagination(self) -> None:
         with mock.patch.object(
             create_source_followup_issues, "gh", return_value=json.dumps({"items": []}),
         ), self.assertRaisesRegex(RuntimeError, "incomplete or malformed"):
             create_source_followup_issues._open_followup_issues("example/omega")
+
+    def test_gh_surfaces_cli_stderr_on_failure(self) -> None:
+        completed = mock.Mock(
+            returncode=1,
+            stdout="",
+            stderr="unknown flag: --slurp\n",
+        )
+        with mock.patch.object(
+            create_source_followup_issues.subprocess,
+            "run",
+            return_value=completed,
+        ) as run, self.assertRaisesRegex(RuntimeError, "unknown flag: --slurp"):
+            create_source_followup_issues.gh("api", "repos/example/omega/issues")
+        self.assertFalse(run.call_args.kwargs["check"])
 
     def test_issue_beyond_old_thousand_item_window_is_not_recreated(self) -> None:
         existing = [managed_issue(number, f"Plugin{number}") for number in range(1, 1001)]
