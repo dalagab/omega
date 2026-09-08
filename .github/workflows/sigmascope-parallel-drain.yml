@@ -323,7 +323,7 @@ jobs:
             catalog/roboscope-effective-scan-queue.json
             catalog/roboscope-operations-report.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1
 
   workers:
     name: Scan ${{ matrix.lane }} / ${{ matrix.resourceClass }} slot ${{ matrix.slot }} (${{ matrix.assignmentCount }} exact queue keys)
@@ -424,7 +424,7 @@ jobs:
           name: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
           path: catalog/slot-result-bundles
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 1
 
   worker-orchestration-guard:
     name: Detect a skipped SigmaScope worker matrix
@@ -462,7 +462,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
-      actions: read
+      actions: write
       packages: read
     container:
       image: ${{ needs.resolve-images.outputs.scan_image }}
@@ -720,6 +720,41 @@ jobs:
           # spending runner CPU attempting to deflate the multi-GB gzip stream again.
           compression-level: 0
 
+      - name: Report transient storage and delete consumed merge inputs
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKERS_RESULT: ${{ needs.workers.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate_payload_bytes="$(stat -c '%s' catalog/drain-publication/candidate.tar.gz)"
+          delete_args=(
+            delete
+            --name omega-sigmascope-drain-plan
+            --output catalog/sigmascope-consumed-artifact-cleanup.json
+          )
+          # Successful waves no longer need their per-slot result artifacts. On a
+          # degraded wave retain them for the one-day fallback so failures stay debuggable.
+          if [ "$WORKERS_RESULT" = "success" ]; then
+            delete_args+=(--prefix "omega-sigmascope-drain-${GITHUB_RUN_ID}-slot-")
+          fi
+          python tools/actions/github_artifact_lifecycle.py "${delete_args[@]}"
+          python tools/actions/github_artifact_lifecycle.py report \
+            --name omega-sigmascope-drain-publication \
+            --output catalog/sigmascope-publication-artifact-report.json
+          deleted_count="$(jq -r '.deletedCount // 0' catalog/sigmascope-consumed-artifact-cleanup.json)"
+          deleted_bytes="$(jq -r '.deletedBytes // 0' catalog/sigmascope-consumed-artifact-cleanup.json)"
+          publication_stored_bytes="$(jq -r '.matchedBytes // 0' catalog/sigmascope-publication-artifact-report.json)"
+          {
+            echo "### SigmaScope transient artifact storage"
+            echo
+            echo "- Candidate payload before Actions upload: \`${candidate_payload_bytes}\` bytes"
+            echo "- Publication artifact stored by Actions: \`${publication_stored_bytes}\` bytes"
+            echo "- Consumed plan/worker artifacts deleted now: \`${deleted_count}\` (\`${deleted_bytes}\` bytes)"
+            echo "- Cleanup fallback retention: \`1 day\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   publish:
     name: One-writer publish merged Evidence and deferred security state
     needs: [resolve-images, plan, merge]
@@ -737,6 +772,7 @@ jobs:
       queue: max
     permissions:
       contents: write
+      actions: write
       issues: write
       packages: read
     container:
@@ -879,6 +915,26 @@ jobs:
             echo "- Next mode: \`${{ needs.merge.outputs.next_mode }}\`"
             echo "- Customer DB refresh this wave: \`${{ needs.merge.outputs.publish_client }}\`"
             echo "- Published parent: \`${{ needs.plan.outputs.base_head }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete consumed publication artifact
+        if: steps.authority.outputs.publish == 'true'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/actions/github_artifact_lifecycle.py delete \
+            --name omega-sigmascope-drain-publication \
+            --output catalog/sigmascope-publication-artifact-cleanup.json
+          deleted_bytes="$(jq -r '.deletedBytes // 0' catalog/sigmascope-publication-artifact-cleanup.json)"
+          deleted_count="$(jq -r '.deletedCount // 0' catalog/sigmascope-publication-artifact-cleanup.json)"
+          {
+            echo "### SigmaScope publication artifact cleanup"
+            echo
+            echo "- Publication artifacts deleted after authoritative push: \`${deleted_count}\`"
+            echo "- Actions storage released: \`${deleted_bytes}\` bytes"
           } >> "$GITHUB_STEP_SUMMARY"
 
   notify-discord:
