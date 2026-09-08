@@ -38,7 +38,7 @@ MAX_NOTE_CHARS = 32768
 MAX_LABELS = 32
 MAX_LABEL_CHARS = 80
 ALLOWED_STATUS = {"open", "watching", "resolved", "archived"}
-ALLOWED_ITEM_KINDS = {"bookmark", "finding", "observation", "pivot", "evidence-snapshot"}
+ALLOWED_ITEM_KINDS = {"bookmark", "finding", "observation", "pivot", "evidence-snapshot", "operations-event"}
 ALLOWED_REFERENCE_KEYS = {
     "variantId", "pluginId", "pluginName", "internalName", "version", "scanId",
     "findingId", "ruleId", "severity", "category", "title", "collection", "rowKey",
@@ -46,6 +46,8 @@ ALLOWED_REFERENCE_KEYS = {
     "snapshotPath", "snapshotSha256", "evidenceRevision", "definitionsRevision", "ruleSetRevision",
     "projectionRevision", "artifactSha256", "scannedAtUtc", "sourceName", "sourceUrl",
     "dataset", "datasetPath", "datasetSha256", "observationId", "observationLabel",
+    "operationsEventId", "runId", "runNumber", "jobId", "event", "emittedAtUtc",
+    "component", "stage", "workerRole", "workerState",
 }
 
 

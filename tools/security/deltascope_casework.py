@@ -145,6 +145,27 @@ def _resolve_item(item: Mapping[str, Any], inspector: Any, detail_cache: dict[in
         **_authority(),
     }
 
+    if kind == "operations-event":
+        event_id = str(ref.get("operationsEventId") or "")
+        event_name = str(ref.get("event") or "")
+        emitted_at = str(ref.get("emittedAtUtc") or "")
+        if event_id and event_name and emitted_at:
+            result.update(
+                state="retained",
+                stateLabel="Retained operation",
+                detail=(
+                    "This local case retains the sanitized operational event identity. "
+                    "Raw job logs are not stored, and the event is not Security Evidence."
+                ),
+            )
+        else:
+            result.update(
+                state="missing",
+                stateLabel="Operation reference incomplete",
+                detail="The local operations pin is missing its bounded event identity or timestamp.",
+            )
+        return result
+
     if kind == "pivot":
         present = _pivot_present(inspector, ref)
         if present is True:
@@ -238,9 +259,26 @@ def _timeline(case: Mapping[str, Any], resolved: list[dict[str, Any]]) -> list[d
         if not isinstance(item, Mapping):
             continue
         ref = dict(item.get("reference") or {})
-        scanned = str(ref.get("scannedAtUtc") or "")
-        if scanned:
-            events.append({"atUtc": scanned, "kind": "evidence-observed", "title": str(item.get("label") or "Pinned evidence"), "detail": f"Evidence context · {item.get('kind') or 'reference'}", "itemId": str(item.get("itemId") or "")})
+        operation_at = str(ref.get("emittedAtUtc") or "")
+        if str(item.get("kind") or "") == "operations-event" and operation_at:
+            operation_detail = " · ".join(
+                value for value in (
+                    str(ref.get("component") or ""),
+                    str(ref.get("event") or "operation"),
+                    str(ref.get("stage") or ""),
+                ) if value
+            )
+            events.append({
+                "atUtc": operation_at,
+                "kind": "operations-event",
+                "title": str(item.get("label") or "Operations event"),
+                "detail": f"Operations telemetry · {operation_detail}",
+                "itemId": str(item.get("itemId") or ""),
+            })
+        else:
+            scanned = str(ref.get("scannedAtUtc") or "")
+            if scanned:
+                events.append({"atUtc": scanned, "kind": "evidence-observed", "title": str(item.get("label") or "Pinned evidence"), "detail": f"Evidence context · {item.get('kind') or 'reference'}", "itemId": str(item.get("itemId") or "")})
         at = str(item.get("createdAtUtc") or "")
         if at:
             health = resolved_by_id.get(str(item.get("itemId") or ""), {})

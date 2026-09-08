@@ -12,6 +12,7 @@ This module never scans, queues, mutates Definitions, or changes evidence author
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
@@ -19,6 +20,7 @@ from deltascope_sdk import observation_projection
 from deltascope_sdk import rule_author_reference
 
 SCHEMA = "omega.deltascope.detection-coverage.v1"
+VARIANT_SCHEMA = "omega.deltascope.detection-coverage-variant.v1"
 
 
 def _now() -> str:
@@ -391,5 +393,102 @@ def project_detection_coverage(
             }
             for row in blind
         ],
+        "collections": rows,
+    }
+
+
+def project_variant_coverage(
+    inspector: Any,
+    variant_id: int,
+    *,
+    repository_library: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Project producer coverage for exactly one current variant."""
+    variant_id = _int(variant_id)
+    if variant_id <= 0:
+        raise ValueError("variant_id must be a positive integer")
+
+    summary = inspector.summary()
+    context = inspector.workbench_system_context() if hasattr(inspector, "workbench_system_context") else {
+        "evidence": {"revisions": dict(summary.get("revisions") or summary.get("meta") or {})},
+        "source": {}, "queue": {"available": False, "summary": {}},
+    }
+    try:
+        detail = inspector.plugin_detail(variant_id)
+    except (KeyError, ValueError) as exc:
+        raise ValueError(f"variant {variant_id} is not available in the current evidence view") from exc
+    identity = detail.get("identity") if isinstance(detail, Mapping) and isinstance(detail.get("identity"), Mapping) else {}
+    if _int(identity.get("variant_id") or identity.get("variantId")) != variant_id:
+        raise ValueError(f"variant {variant_id} did not resolve to an exact current identity")
+
+    asset = dict(identity)
+    report_value = identity.get("report_json")
+    if isinstance(report_value, Mapping):
+        report = dict(report_value)
+    elif isinstance(report_value, str) and report_value.strip():
+        try:
+            parsed_report = json.loads(report_value)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            parsed_report = {}
+        report = dict(parsed_report) if isinstance(parsed_report, Mapping) else {}
+    else:
+        report = {}
+    provenance = report.get("scanProvenance") if isinstance(report.get("scanProvenance"), Mapping) else {}
+    if not _row_revision(asset, "artifactAnalysisRevision"):
+        asset["artifact_analysis_revision"] = (
+            _rev(report, "artifactAnalysisRevision") or _rev(provenance, "artifactAnalysisRevision")
+        )
+    if not _row_revision(asset, "sourceAnalysisRevision"):
+        asset["source_analysis_revision"] = (
+            _rev(report, "sourceAnalysisRevision") or _rev(provenance, "sourceAnalysisRevision")
+        )
+
+    provenance_state = inspector.definition_provenance() if hasattr(inspector, "definition_provenance") else {}
+    by_collection, rule_authority = _rule_dependencies(provenance_state, repository_library)
+    revisions = _revisions(summary, context)
+    rows = [
+        _collection_row(name, spec, [asset], revisions, by_collection.get(name, []))
+        for name, spec in observation_projection.COLLECTIONS.items()
+        if bool(spec.get("srlEligible"))
+    ]
+    current = 0
+    outside = 0
+    gaps = 0
+    for row in rows:
+        if _int(row.get("targetVariants")) == 0 and _int(row.get("outsideScopeVariants")) > 0:
+            row["variantState"] = "outside-scope"
+            row["variantReason"] = "this variant is outside the source-conditional producer scope"
+            outside += 1
+        elif _int(row.get("gapVariants")) == 0:
+            row["variantState"] = "current"
+            row["variantReason"] = "current producer coverage is retained for this variant"
+            current += 1
+        else:
+            row["variantState"] = str(row.get("status") or "attention")
+            preview = next((item for item in row.get("gapPreview") or [] if isinstance(item, Mapping)), {})
+            row["variantReason"] = str(preview.get("reason") or row.get("remediation") or "producer coverage needs attention")
+            gaps += 1
+    rows.sort(key=lambda row: (
+        0 if str(row.get("variantState")) not in {"current", "outside-scope"} else 1 if row.get("variantState") == "outside-scope" else 2,
+        str(row.get("collection") or "").casefold(),
+    ))
+    exact_identity = _asset_identity(asset, "")
+    exact_identity.pop("reason", None)
+    return {
+        "schema": VARIANT_SCHEMA,
+        "readOnly": True,
+        "mutationAuthority": "none",
+        "policyInput": False,
+        "securityAuthority": False,
+        "generatedAtUtc": str(context.get("generatedAtUtc") or summary.get("generatedAtUtc") or _now()),
+        "identity": exact_identity,
+        "revisions": revisions,
+        "ruleDependencyAuthority": rule_authority,
+        "summary": {
+            "systems": len(rows),
+            "current": current,
+            "gaps": gaps,
+            "outsideScope": outside,
+        },
         "collections": rows,
     }
