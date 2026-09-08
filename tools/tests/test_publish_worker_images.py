@@ -35,7 +35,7 @@ class PublishWorkerImagesTests(unittest.TestCase):
     def test_rejects_missing_image_identity(self):
         doc=self.valid_manifest()
         del doc["images"]["intelligence-worker"]
-        with self.assertRaisesRegex(RuntimeError,"exactly the four expected"):
+        with self.assertRaisesRegex(RuntimeError,"expected toolchain images"):
             MODULE.validate_manifest(doc)
 
 if __name__ == "__main__":
