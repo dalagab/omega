@@ -215,6 +215,31 @@ class DiscordNoticeTests(unittest.TestCase):
         self.assertIn("😏", cocky["payload"]["embeds"][0]["description"])
         self.assertTrue(any(line in cocky["payload"]["embeds"][0]["description"] for line in discord_notice.VOICE_LINES["evidence"]))
 
+    def test_parallel_evidence_notice_summarises_one_authoritative_wave(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            report = Path(temporary) / "merge-report.json"
+            report.write_text(json.dumps({
+                "schema": "omega.sigmascope-result-merge.v1",
+                "mergeRevision": "merge-test",
+                "variantIds": [1, 2, 3],
+                "successfulVariantIds": [1, 3],
+                "candidateRevisions": {"evidenceRevision": "ev-test"},
+                "queueSummary": {"eligibleNow": 41},
+            }), encoding="utf-8")
+            result = discord_notice.build_sigmascope_parallel(
+                report, "dalagab/omega", "https://example.invalid/run"
+            )
+
+        self.assertTrue(result["shouldNotify"])
+        self.assertEqual("evidence", result["webhookKey"])
+        embed = result["payload"]["embeds"][0]
+        fields = {field["name"]: field["value"] for field in embed["fields"]}
+        self.assertEqual("2", fields["Reviews published"])
+        self.assertEqual("1", fields["Retained for retry"])
+        self.assertEqual("41", fields["Eligible queue remaining"])
+        self.assertIn("security-evidence-v2", fields["Evidence"])
+        self.assertEqual("https://example.invalid/run", fields["Run"])
+
     def test_toni_owns_the_personality_and_catalog_language_is_run_agnostic(self) -> None:
         source = (common.ROOT / "tools" / "notifications" / "discord_notice.py").read_text(encoding="utf-8")
         self.assertNotIn("Sigmascope is not amused", source)
@@ -393,7 +418,7 @@ class DiscordNoticeTests(unittest.TestCase):
 
     def test_notification_workflows_keep_webhook_secrets_in_isolated_jobs(self) -> None:
         workflow_root = common.ROOT / ".github" / "workflows"
-        for name in ("catalog-builder.yml", "sigmascope.yml"):
+        for name in ("catalog-builder.yml", "sigmascope.yml", "sigmascope-parallel-drain.yml"):
             workflow = (workflow_root / name).read_text(encoding="utf-8")
             self.assertIn("tools/notifications/discord_notice.py", workflow)
             if name == "sigmascope.yml":
@@ -405,6 +430,10 @@ class DiscordNoticeTests(unittest.TestCase):
             self.assertNotIn("DISCORD_CATALOG_WEBHOOK_URL", build_side)
             self.assertIn("DISCORD_SECURITY_WEBHOOK_URL", notify_side)
             self.assertIn("permissions: {}", notify_side)
+
+        parallel = (workflow_root / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        self.assertIn("needs.publish.outputs.published == 'true'", parallel)
+        self.assertIn("DISCORD_EVIDENCE_WEBHOOK_URL", parallel)
 
     def test_catalog_notification_merge_preserves_migration_and_v2_guards(self) -> None:
         freeze = (common.ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")

@@ -572,6 +572,40 @@ def build_sigmascope(
     return notice("security-evidence", webhook_key, payload, identity)
 
 
+def build_sigmascope_parallel(report_path: Path, repository: str, run_url: str) -> dict[str, Any]:
+    report = read_json(report_path)
+    variants = [int(value) for value in report.get("variantIds") or []]
+    successful = [int(value) for value in report.get("successfulVariantIds") or []]
+    revisions = report.get("candidateRevisions") if isinstance(report.get("candidateRevisions"), dict) else {}
+    queue = report.get("queueSummary") if isinstance(report.get("queueSummary"), dict) else {}
+    evidence_revision = str(revisions.get("evidenceRevision") or "")
+    identity: dict[str, object] = {
+        "repository": repository,
+        "mergeRevision": str(report.get("mergeRevision") or ""),
+        "evidenceRevision": evidence_revision,
+    }
+    if not successful:
+        return notice("security-evidence-wave", "evidence", {}, identity, False)
+    failed = max(0, len(variants) - len(successful))
+    remaining = int(queue.get("eligibleNow") or queue.get("coveredWorkPending") or 0)
+    payload = embed(
+        "SigmaScope parallel review wave published",
+        (
+            f"{voice_line('evidence', identity)} "
+            "A bounded parallel review wave is now part of the authoritative Evidence record."
+        ),
+        5_793_266,
+        [
+            ("Reviews published", len(successful)),
+            ("Retained for retry", failed),
+            ("Eligible queue remaining", remaining),
+            ("Evidence", evidence_revision_link(repository, evidence_revision)),
+            ("Run", run_url),
+        ],
+    )
+    return notice("security-evidence-wave", "evidence", payload, identity)
+
+
 def plugin_rows(catalog_index: Path) -> dict[str, dict[str, Any]]:
     index_path = catalog_index.parent / "plugins" / "index.json"
     if not index_path.is_file():
@@ -737,24 +771,29 @@ def main() -> int:
     security.add_argument("--report", required=True, type=Path)
     security.add_argument("--database", required=True, type=Path)
     security.add_argument("--definitions-index", type=Path)
+    parallel = subparsers.add_parser("sigmascope-parallel")
+    parallel.add_argument("--report", required=True, type=Path)
     catalog = subparsers.add_parser("catalog")
     catalog.add_argument("--catalog-index", required=True, type=Path)
     catalog.add_argument("--previous-catalog-index", required=True, type=Path)
     catalog.add_argument("--definitions-index", required=True, type=Path)
     catalog.add_argument("--previous-definitions-index", required=True, type=Path)
-    for command in (security, catalog):
+    for command in (security, parallel, catalog):
         command.add_argument("--repository", required=True)
         command.add_argument("--run-url", required=True)
         command.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    result = (
-        build_sigmascope(args.report, args.database, args.repository, args.run_url, args.definitions_index)
-        if args.command == "sigmascope"
-        else build_catalog(
+    if args.command == "sigmascope":
+        result = build_sigmascope(
+            args.report, args.database, args.repository, args.run_url, args.definitions_index
+        )
+    elif args.command == "sigmascope-parallel":
+        result = build_sigmascope_parallel(args.report, args.repository, args.run_url)
+    else:
+        result = build_catalog(
             args.catalog_index, args.previous_catalog_index, args.definitions_index,
             args.previous_definitions_index, args.repository, args.run_url,
         )
-    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Discord notice: {result['event']} ({'queued' if result['shouldNotify'] else 'no change'})")

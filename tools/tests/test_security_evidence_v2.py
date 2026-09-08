@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import closing
 import json
 from pathlib import Path
+import shutil
 import sqlite3
 import sys
 import tempfile
@@ -455,6 +456,43 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             broken = validate_snapshot(output)
             self.assertFalse(broken["ok"])
             self.assertTrue(any("sha256" in error or "record" in error for error in broken["errors"]))
+
+    def test_incremental_validator_reuses_only_exact_validated_parent_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            parent = root / "parent"
+            migrate(database, parent, reset=True, chunk_bytes=1024 * 1024)
+            parent_report = validate_snapshot(parent)
+            self.assertTrue(parent_report["ok"], parent_report)
+            (parent / "validation-report.json").write_text(
+                json.dumps(parent_report, indent=2) + "\n", encoding="utf-8"
+            )
+
+            candidate = root / "candidate"
+            shutil.copytree(parent, candidate)
+            reused = validate_snapshot(candidate, trusted_parent=parent)
+            self.assertTrue(reused["ok"], reused)
+            self.assertEqual(sha256_file(parent / "index.json"), reused["trustedParentIndexSha256"])
+            self.assertGreater(reused["trustedAnalysisDatasets"], 0)
+            self.assertEqual(0, reused["revalidatedAnalysisDatasets"])
+
+            manifest_path = next((candidate / "artifacts").rglob("manifest.json"))
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            dataset = next(value for value in manifest["datasets"].values() if isinstance(value, dict))
+            dataset["recordDigest"] = "0" * 64
+            manifest_path.write_text(json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+            changed = validate_snapshot(candidate, trusted_parent=parent)
+            self.assertFalse(changed["ok"], changed)
+            self.assertGreater(changed["revalidatedAnalysisDatasets"], 0)
+            self.assertTrue(any("semantic record digest mismatch" in error for error in changed["errors"]), changed)
+
+            parent_validation = json.loads((parent / "validation-report.json").read_text(encoding="utf-8"))
+            parent_validation["indexSha256"] = "0" * 64
+            (parent / "validation-report.json").write_text(json.dumps(parent_validation) + "\n", encoding="utf-8")
+            rejected = validate_snapshot(candidate, trusted_parent=parent)
+            self.assertFalse(rejected["ok"])
+            self.assertTrue(any("trusted parent rejected" in error for error in rejected["errors"]), rejected)
 
 
 

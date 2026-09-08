@@ -470,6 +470,7 @@ jobs:
       publish_client: ${{ steps.next.outputs.publish_client }}
       successful: ${{ steps.next.outputs.successful }}
       failed: ${{ steps.next.outputs.failed }}
+      discord_notice_ready: ${{ steps.discord_notice.outcome == 'success' }}
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
       OMEGA_SECONDARY_SECURITY_CACHE: catalog/secondary-security-runtime
@@ -667,6 +668,25 @@ jobs:
             echo "- Candidate is not authoritative until the one-writer publish job succeeds."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - id: discord_notice
+        name: Build a sanitised parallel Evidence notice
+        continue-on-error: true
+        run: >-
+          python tools/notifications/discord_notice.py sigmascope-parallel
+          --report catalog/sigmascope-drain-merge-report.json
+          --repository "${{ github.repository }}"
+          --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          --output catalog/sigmascope-parallel-discord-notice.json
+
+      - name: Upload parallel Evidence notice
+        if: steps.discord_notice.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-parallel-discord-notice-${{ github.run_id }}
+          path: catalog/sigmascope-parallel-discord-notice.json
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Package exact candidate and deferred side effects for one writer
         shell: bash
         run: |
@@ -723,6 +743,7 @@ jobs:
     outputs:
       next_mode: ${{ steps.authority.outputs.next_mode }}
       publish_client: ${{ steps.authority.outputs.publish_client }}
+      published: ${{ steps.authority.outputs.publish }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -855,6 +876,42 @@ jobs:
             echo "- Customer DB refresh this wave: \`${{ needs.merge.outputs.publish_client }}\`"
             echo "- Published parent: \`${{ needs.plan.outputs.base_head }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  notify-discord:
+    name: Post published parallel Evidence update to Discord
+    needs: [plan, merge, publish]
+    if: >-
+      needs.publish.result == 'success' &&
+      needs.publish.outputs.published == 'true' &&
+      needs.merge.outputs.discord_notice_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: discord-public
+    permissions: {}
+    steps:
+      - name: Checkout exact notification sender
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.dev_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Download sanitised parallel notice
+        uses: actions/download-artifact@v8
+        with:
+          name: omega-sigmascope-parallel-discord-notice-${{ github.run_id }}
+          path: discord-notice
+      - id: post
+        name: Post public update
+        continue-on-error: true
+        env:
+          DISCORD_CATALOG_WEBHOOK_URL: ${{ secrets.DISCORD_CATALOG_WEBHOOK_URL }}
+          DISCORD_SECURITY_WEBHOOK_URL: ${{ secrets.DISCORD_SECURITY_WEBHOOK_URL }}
+          DISCORD_DEFINITIONS_WEBHOOK_URL: ${{ secrets.DISCORD_DEFINITIONS_WEBHOOK_URL }}
+          DISCORD_EVIDENCE_WEBHOOK_URL: ${{ secrets.DISCORD_EVIDENCE_WEBHOOK_URL }}
+        run: python tools/notifications/post_discord_notice.py --notice discord-notice/sigmascope-parallel-discord-notice.json
+      - name: Surface Discord delivery failure without affecting Evidence authority
+        if: steps.post.outcome != 'success'
+        run: echo "::warning::Discord Evidence notice was not delivered; check the discord-public environment and DISCORD_EVIDENCE_WEBHOOK_URL."
 
   publish-client:
     name: Periodic customer DB projection

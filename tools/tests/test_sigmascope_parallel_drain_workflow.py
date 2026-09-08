@@ -74,6 +74,10 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         )
         publication_upload = text[text.index("name: omega-sigmascope-drain-publication"):]
         self.assertIn("compression-level: 0", publication_upload)
+        self.assertIn("discord_notice.py sigmascope-parallel", text)
+        self.assertIn("omega-sigmascope-parallel-discord-notice-${{ github.run_id }}", text)
+        self.assertIn("Post published parallel Evidence update to Discord", text)
+        self.assertIn("needs.publish.outputs.published == 'true'", text)
 
     def test_retention_recovery_gate_precedes_queue_planning(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
