@@ -514,7 +514,7 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
 
     validation = _timed(
         "validate complete Evidence candidate",
-        lambda: validate_snapshot(candidate, require_no_orphans=True),
+        lambda: validate_snapshot(candidate, require_no_orphans=True, trusted_parent=current_evidence),
     )
     write_json(candidate / "validation-report.json", validation)
     if not validation.get("ok"):

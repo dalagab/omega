@@ -1208,7 +1208,33 @@ def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors
                                 errors.append(f"variant {variant_id} YARA match target byte count is invalid")
 
 
-def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[str, Any]:
+def _validated_trusted_parent(parent: Path) -> tuple[Path, str]:
+    parent = parent.resolve()
+    index_path = parent / "index.json"
+    report_path = parent / "validation-report.json"
+    if not index_path.is_file() or not report_path.is_file():
+        raise ValueError("trusted Evidence parent lacks index.json or validation-report.json")
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if (
+        report.get("schema") != "omega.security-evidence.snapshot-validation.v2"
+        or report.get("ok") is not True
+        or report.get("mode") != "intrinsic"
+    ):
+        raise ValueError("trusted Evidence parent does not carry a successful intrinsic validation report")
+    actual_index_sha = sha256_file(index_path)
+    if str(report.get("indexSha256") or "") != actual_index_sha:
+        raise ValueError("trusted Evidence parent validation report does not match its index.json")
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    report_revision = str(report.get("evidenceRevision") or "")
+    index_revision = str((index.get("revisions") or {}).get("evidenceRevision") or "")
+    if report_revision and report_revision != index_revision:
+        raise ValueError("trusted Evidence parent validation report has a different Evidence revision")
+    return parent, actual_index_sha
+
+
+def validate_snapshot(
+    root: Path, *, require_no_orphans: bool = True, trusted_parent: Path | None = None
+) -> dict[str, Any]:
     """Validate a published/staged v2 tree without requiring the retired v1 SQLite DB.
 
     This is the production incremental publication gate. It verifies the atomic root,
@@ -1241,6 +1267,24 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
         }
     if index.get("schema") != SCHEMA or int(index.get("formatVersion") or 0) != FORMAT_VERSION:
         errors.append(f"unexpected root schema/version: {index.get('schema')!r}/{index.get('formatVersion')!r}")
+
+    trusted_parent_root: Path | None = None
+    trusted_parent_index_sha = ""
+    if trusted_parent is not None:
+        try:
+            trusted_parent_root, trusted_parent_index_sha = _validated_trusted_parent(trusted_parent)
+        except Exception as exc:
+            return {
+                "schema": "omega.security-evidence.snapshot-validation.v2",
+                "ok": False,
+                "mode": "intrinsic",
+                "indexSha256": sha256_file(index_path),
+                "evidenceRevision": str((index.get("revisions") or {}).get("evidenceRevision") or ""),
+                "checkedVariants": 0,
+                "checkedAnalyses": 0,
+                "errors": [f"trusted parent rejected: {type(exc).__name__}: {exc}"],
+                "warnings": [],
+            }
 
     scanner_queue = index.get("scannerQueue") or {}
     if scanner_queue:
@@ -1577,6 +1621,21 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
             except ValueError:
                 pass
 
+    trusted_analysis_datasets = 0
+    revalidated_analysis_datasets = 0
+
+    def trusted_analysis_manifest(rel: str) -> bool:
+        if trusted_parent_root is None:
+            return False
+        candidate_path = root / rel
+        parent_path = trusted_parent_root / rel
+        if not candidate_path.is_file() or not parent_path.is_file():
+            return False
+        try:
+            return candidate_path.stat().st_size == parent_path.stat().st_size and sha256_file(candidate_path) == sha256_file(parent_path)
+        except OSError:
+            return False
+
     def validate_record_descriptor(label: str, dataset: dict[str, Any]) -> None:
         declared_records = int(dataset.get("records") or 0)
         file_records = 0
@@ -1726,6 +1785,7 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                 manifest_rel = f"{analysis_path}/manifest.json"
                 referenced_files.add(manifest_rel)
                 manifest = read_json_file(root, manifest_rel)
+                manifest_is_trusted = trusted_analysis_manifest(manifest_rel)
                 if group is not None:
                     group_analysis_ids = {str(item.get("analysisId") or "") for item in (group.get("analyses") or []) if isinstance(item, dict)}
                     if analysis_id not in group_analysis_ids:
@@ -1755,6 +1815,8 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                             rel = safe_relpath(str(file_info.get("path") or ""))
                             referenced_files.add(rel)
                             path = root / rel
+                            if manifest_is_trusted:
+                                continue
                             encoding = str(file_info.get("encoding") or "")
                             if encoding == "json":
                                 value = json.loads(path.read_text(encoding="utf-8"))
@@ -1776,6 +1838,10 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                                 errors.append(f"analysis {analysis_id}/{dataset_name}: unsupported encoding {encoding!r}")
                         except Exception as exc:
                             errors.append(f"analysis {analysis_id}/{dataset_name}: cannot read records: {type(exc).__name__}: {exc}")
+                    if manifest_is_trusted:
+                        trusted_analysis_datasets += 1
+                        continue
+                    revalidated_analysis_datasets += 1
                     count, digest = dataset_record_digest_from_hashes(row_hashes)
                     if count != declared_records or file_records != declared_records:
                         errors.append(
@@ -1849,6 +1915,7 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                         manifest_rel = f"{analysis_rel}/manifest.json"
                         referenced_files.add(manifest_rel)
                         manifest = read_json_file(root, manifest_rel)
+                        manifest_is_trusted = trusted_analysis_manifest(manifest_rel)
                         if str(manifest.get("analysisId") or "") != analysis_id:
                             errors.append(f"{collection_name} analysis manifest ID mismatch for variant {variant_id}")
                         if str(manifest.get("artifactSha256") or "").strip().lower() != artifact_sha:
@@ -1877,6 +1944,8 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                                 )
                                 rel = safe_relpath(str(file_info.get("path") or ""))
                                 referenced_files.add(rel)
+                                if manifest_is_trusted:
+                                    continue
                                 data_path = root / rel
                                 encoding = str(file_info.get("encoding") or "")
                                 if encoding == "json":
@@ -1896,6 +1965,10 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
                                                 file_records += 1
                                 else:
                                     errors.append(f"{collection_name} analysis {analysis_id}/{dataset_name}: unsupported encoding {encoding!r}")
+                            if manifest_is_trusted:
+                                trusted_analysis_datasets += 1
+                                continue
+                            revalidated_analysis_datasets += 1
                             count, digest_value = dataset_record_digest_from_hashes(row_hashes)
                             if count != declared_records or file_records != declared_records:
                                 errors.append(f"{collection_name} analysis {analysis_id}/{dataset_name}: record count mismatch")
@@ -1947,6 +2020,9 @@ def validate_snapshot(root: Path, *, require_no_orphans: bool = True) -> dict[st
         "evidenceRevision": str((index.get("revisions") or {}).get("evidenceRevision") or ""),
         "checkedVariants": len(variant_ids),
         "checkedAnalyses": len(analysis_ids),
+        "trustedParentIndexSha256": trusted_parent_index_sha,
+        "trustedAnalysisDatasets": trusted_analysis_datasets,
+        "revalidatedAnalysisDatasets": revalidated_analysis_datasets,
         "errors": errors,
         "warnings": warnings,
     }
