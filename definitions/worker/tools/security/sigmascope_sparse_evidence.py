@@ -181,7 +181,7 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
 
     filtered_plugins: dict[str, Any] = dict(plugins)
     artifact_shas: set[str] = set()
-    completed_analysis_count = 0
+    completed_analysis_ids: set[str] = set()
     for collection in ("currentVariants", "terminalVariants", "historicalSnapshots"):
         rows = [row for row in (plugins.get(collection) or []) if isinstance(row, dict) and int(row.get("variantId") or 0) in selected_variant_ids]
         filtered_plugins[collection] = rows
@@ -196,7 +196,7 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
             current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
             analysis = payload.get("analysis") if isinstance(payload.get("analysis"), dict) else {}
             if str(current.get("status") or "") == "complete" and analysis.get("analysisId") and analysis.get("path"):
-                completed_analysis_count += 1
+                completed_analysis_ids.add(str(analysis["analysisId"]))
             copy_variant_payload_dependencies(repo, ref, output, payload)
 
     filtered_artifacts = dict(artifacts)
@@ -236,7 +236,7 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
     counts["currentVariants"] = current_count
     counts["terminalVariants"] = terminal_count
     counts["historicalSnapshots"] = historical_count
-    counts["analyses"] = completed_analysis_count
+    counts["analyses"] = len(completed_analysis_ids)
     counts["artifactGroups"] = len(filtered_artifacts.get("artifacts") or [])
     sparse_index["counts"] = counts
     write_json(output / "index.json", sparse_index)
