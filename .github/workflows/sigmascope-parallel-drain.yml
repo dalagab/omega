@@ -345,6 +345,7 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     permissions:
       contents: read
+      actions: read
       packages: read
     env:
       OMEGA_FROZEN_WORKER: catalog/active-state/definitions/worker
@@ -418,13 +419,58 @@ jobs:
           set -euo pipefail
           bash tools/security/sigmascope_parallel_worker_entrypoint.sh process
 
-      - uses: actions/upload-artifact@v7
+      - id: worker_artifact_primary
+        name: Upload worker result artifact
+        uses: actions/upload-artifact@v7
         if: always()
+        continue-on-error: true
         with:
           name: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
           path: catalog/slot-result-bundles
           if-no-files-found: warn
           retention-days: 1
+
+      - id: worker_artifact_registration
+        name: Check failed worker artifact registration
+        if: ${{ always() && steps.worker_artifact_primary.outcome == 'failure' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_NAME: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="catalog/worker-artifact-registration-${WORKER_SLOT}.json"
+          for attempt in 1 2 3; do
+            if python tools/actions/github_artifact_lifecycle.py report \
+              --repository "$GITHUB_REPOSITORY" \
+              --run-id "$GITHUB_RUN_ID" \
+              --name "$ARTIFACT_NAME" \
+              --output "$report"; then
+              matched="$(jq -r '.matchedCount // 0' "$report")"
+              if [ "$matched" -gt 0 ]; then
+                echo "registered=true" >> "$GITHUB_OUTPUT"
+                echo "::warning::Primary worker artifact step failed, but $ARTIFACT_NAME is registered; no retry required."
+                exit 0
+              fi
+            else
+              echo "::warning::Could not query worker artifact registration on attempt $attempt."
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 2; fi
+          done
+          echo "registered=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Primary worker artifact was not registered; retrying delivery without rescanning."
+
+      - name: Retry worker result artifact delivery
+        if: ${{ always() && steps.worker_artifact_primary.outcome == 'failure' && steps.worker_artifact_registration.outputs.registered != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          # Reuse the exact primary name and overwrite if GitHub registered it after
+          # the bounded check. This prevents duplicate bundle intake on eventual consistency.
+          name: omega-sigmascope-drain-${{ github.run_id }}-slot-${{ matrix.slot }}
+          path: catalog/slot-result-bundles
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
 
   worker-orchestration-guard:
     name: Detect a skipped SigmaScope worker matrix
@@ -691,14 +737,20 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Package exact candidate and deferred side effects for one writer
+      - name: Package parent-bound incremental candidate transport for one writer
         shell: bash
         run: |
           set -euo pipefail
           rm -rf catalog/drain-publication
           mkdir -p catalog/drain-publication
-          tar -cf - -C catalog/security-v2-drain-candidate . | gzip -1 > catalog/drain-publication/candidate.tar.gz
-          (cd catalog/drain-publication && sha256sum candidate.tar.gz > candidate.tar.gz.sha256)
+          expected_index="$(jq -er '.candidateIndexSha256' catalog/sigmascope-drain-merge-report.json)"
+          python tools/security/sigmascope_evidence_transport.py package \
+            --repository catalog/security-v2-current \
+            --candidate catalog/security-v2-drain-candidate \
+            --bundle catalog/drain-publication/candidate.bundle \
+            --metadata catalog/drain-publication/candidate-transport.json \
+            --expected-parent-sha "$BASE_EVIDENCE_HEAD" \
+            --expected-index-sha "$expected_index"
           cp catalog/sigmascope-drain-merge-report.json catalog/drain-publication/merge-report.json
           cp catalog/sigmascope-drain-developer-audit.json catalog/drain-publication/developer-audit.json
           cp catalog/sigmascope-drain-storage-audit.json catalog/drain-publication/storage-audit.json
@@ -710,15 +762,53 @@ jobs:
             cp -a catalog/security-v2-drain-work/deep-scan-state catalog/drain-publication/deep-scan-state
           fi
 
-      - uses: actions/upload-artifact@v7
+      - id: publication_artifact_primary
+        name: Upload compact publication transport
+        uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: omega-sigmascope-drain-publication
           path: catalog/drain-publication
           if-no-files-found: error
           retention-days: 1
-          # candidate.tar.gz already carries its own checksummed compression; avoid
-          # spending runner CPU attempting to deflate the multi-GB gzip stream again.
+          # Git bundle objects are already pack-compressed; avoid redundant deflation.
           compression-level: 0
+
+      - id: publication_artifact_registration
+        name: Check failed publication artifact registration
+        if: ${{ steps.publication_artifact_primary.outcome == 'failure' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="catalog/publication-artifact-registration.json"
+          for attempt in 1 2 3; do
+            if python tools/actions/github_artifact_lifecycle.py report \
+              --name omega-sigmascope-drain-publication \
+              --output "$report"; then
+              matched="$(jq -r '.matchedCount // 0' "$report")"
+              if [ "$matched" -gt 0 ]; then
+                echo "registered=true" >> "$GITHUB_OUTPUT"
+                echo "::warning::Primary publication artifact step failed, but the artifact is registered; no retry required."
+                exit 0
+              fi
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 2; fi
+          done
+          echo "registered=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Publication artifact was not registered; retrying compact transport upload."
+
+      - name: Retry compact publication transport delivery
+        if: ${{ steps.publication_artifact_primary.outcome == 'failure' && steps.publication_artifact_registration.outputs.registered != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: omega-sigmascope-drain-publication
+          path: catalog/drain-publication
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+          overwrite: true
 
       - name: Report transient storage and delete consumed merge inputs
         continue-on-error: true
@@ -728,7 +818,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          candidate_payload_bytes="$(stat -c '%s' catalog/drain-publication/candidate.tar.gz)"
+          candidate_logical_bytes="$(du -sb catalog/security-v2-drain-candidate | cut -f1)"
+          candidate_payload_bytes="$(stat -c '%s' catalog/drain-publication/candidate.bundle)"
+          changed_paths="$(jq -r '.changedPathCount // 0' catalog/drain-publication/candidate-transport.json)"
           delete_args=(
             delete
             --name omega-sigmascope-drain-plan
@@ -749,7 +841,9 @@ jobs:
           {
             echo "### SigmaScope transient artifact storage"
             echo
-            echo "- Candidate payload before Actions upload: \`${candidate_payload_bytes}\` bytes"
+            echo "- Full candidate logical tree: \`${candidate_logical_bytes}\` bytes"
+            echo "- Parent-bound Git transport: \`${candidate_payload_bytes}\` bytes"
+            echo "- Changed candidate paths: \`${changed_paths}\`"
             echo "- Publication artifact stored by Actions: \`${publication_stored_bytes}\` bytes"
             echo "- Consumed plan/worker artifacts deleted now: \`${deleted_count}\` (\`${deleted_bytes}\` bytes)"
             echo "- Cleanup fallback retention: \`1 day\`"
@@ -846,16 +940,22 @@ jobs:
             echo "publish_client=$PLANNED_PUBLISH_CLIENT" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Rehydrate exact candidate and re-check parent
+      - name: Rehydrate exact candidate from parent-bound Git transport
         if: steps.authority.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          (cd catalog/drain-publication && sha256sum -c candidate.tar.gz.sha256)
-          mkdir -p catalog/drain-publication/candidate
-          tar -xzf catalog/drain-publication/candidate.tar.gz -C catalog/drain-publication/candidate
-          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
           expected="${{ needs.plan.outputs.base_head }}"
+          expected_index="$(jq -er '.candidateIndexSha256' catalog/drain-publication/merge-report.json)"
+          python tools/security/sigmascope_evidence_transport.py rehydrate \
+            --repository catalog/security-v2-current \
+            --bundle catalog/drain-publication/candidate.bundle \
+            --metadata catalog/drain-publication/candidate-transport.json \
+            --output catalog/drain-publication/candidate \
+            --report catalog/drain-publication/rehydration-report.json \
+            --expected-parent-sha "$expected" \
+            --expected-index-sha "$expected_index"
+          current="$(git -C catalog/security-v2-current rev-parse HEAD)"
           test "$current" = "$expected" || {
             echo "::error::Evidence moved before one-writer publication: expected=$expected current=$current"
             exit 3
