@@ -19,6 +19,7 @@ for root in (common.ROOT / "tools" / "security", common.ROOT / "tools" / "catalo
 import scan_queue  # noqa: E402
 import sigmascope  # noqa: E402
 import sigmascope_result_bundle  # noqa: E402
+import sigmascope_parallel_drain_plan  # noqa: E402
 import sigmascope_result_merger  # noqa: E402
 import test_production_sigmascope_v2_pipeline as production_tests  # noqa: E402
 from migrate_security_evidence_v2 import migrate  # noqa: E402
@@ -51,6 +52,17 @@ class SigmascopeResultMergerTests(unittest.TestCase):
             "reasonContracts": {},
             "srlReprojection": {},
         }
+
+    def test_serialized_merge_bound_matches_standard_plus_large_artifact_capacity(self) -> None:
+        expected = (
+            sigmascope_parallel_drain_plan.MAX_ASSIGNMENTS
+            + sigmascope_parallel_drain_plan.MAX_LARGE_ASSIGNMENTS
+        )
+        self.assertEqual(65, expected)
+        self.assertEqual(64, sigmascope_result_merger.MAX_STANDARD_BUNDLES)
+        self.assertEqual(1, sigmascope_result_merger.MAX_LARGE_ARTIFACT_BUNDLES)
+        self.assertEqual(expected, sigmascope_result_merger.MAX_BUNDLES)
+        self.assertEqual(expected, sigmascope_result_merger.MAX_VARIANTS)
 
     def test_authoritative_tree_copy_drops_sparse_worker_marker(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-full-evidence-copy-") as td:

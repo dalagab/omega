@@ -54,11 +54,14 @@ from production_sigmascope_v2_pipeline import (  # noqa: E402
 from security_evidence_v2 import sha256_file, validate_snapshot  # noqa: E402
 
 SCHEMA = "omega.sigmascope-result-merge.v1"
-# Production drain waves are bounded to 64 exact persistent queue items. The default
-# coordinator wave is 8 workers x 8 items = 64 planned assignments; partial intake may
-# safely merge any validated non-empty subset while untouched keys remain pending.
-MAX_BUNDLES = 64
-MAX_VARIANTS = 64
+# Standard production drain capacity remains bounded to 64 exact persistent queue
+# items. The planner may add exactly one independently bounded large-artifact
+# assignment, so the serialized authority must accept 64 standard + 1 large bundle
+# without widening normal worker capacity.
+MAX_STANDARD_BUNDLES = 64
+MAX_LARGE_ARTIFACT_BUNDLES = 1
+MAX_BUNDLES = MAX_STANDARD_BUNDLES + MAX_LARGE_ARTIFACT_BUNDLES
+MAX_VARIANTS = MAX_BUNDLES
 
 
 def _utc_now() -> str:
