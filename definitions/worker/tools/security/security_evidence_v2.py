@@ -1208,12 +1208,18 @@ def _validate_identity_contract(variant_id: int, payload: dict[str, Any], errors
                                 errors.append(f"variant {variant_id} YARA match target byte count is invalid")
 
 
+class _TrustedParentUnavailable(ValueError):
+    """The optional parent validation proof is absent, so full validation is required."""
+
+
 def _validated_trusted_parent(parent: Path) -> tuple[Path, str]:
     parent = parent.resolve()
     index_path = parent / "index.json"
     report_path = parent / "validation-report.json"
-    if not index_path.is_file() or not report_path.is_file():
-        raise ValueError("trusted Evidence parent lacks index.json or validation-report.json")
+    if not index_path.is_file():
+        raise ValueError("trusted Evidence parent lacks index.json")
+    if not report_path.is_file():
+        raise _TrustedParentUnavailable("trusted Evidence parent lacks validation-report.json")
     report = json.loads(report_path.read_text(encoding="utf-8"))
     if (
         report.get("schema") != "omega.security-evidence.snapshot-validation.v2"
@@ -1273,6 +1279,8 @@ def validate_snapshot(
     if trusted_parent is not None:
         try:
             trusted_parent_root, trusted_parent_index_sha = _validated_trusted_parent(trusted_parent)
+        except _TrustedParentUnavailable as exc:
+            warnings.append(f"trusted parent acceleration unavailable; full validation used: {exc}")
         except Exception as exc:
             return {
                 "schema": "omega.security-evidence.snapshot-validation.v2",
