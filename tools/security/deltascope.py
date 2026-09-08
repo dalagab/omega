@@ -14,6 +14,7 @@ import deltascope_workflow_center
 import deltascope_live_operations
 import deltascope_operations_history
 import deltascope_operations_correlation
+import deltascope_operations_diagnostics
 import deltascope_availability
 import deltascope_delivery_dashboard
 import deltascope_scan_report
@@ -27,6 +28,7 @@ deltascope_workflow_center.install()
 deltascope_live_operations.install()
 deltascope_operations_history.install()
 deltascope_operations_correlation.install()
+deltascope_operations_diagnostics.install()
 deltascope_availability.install()
 deltascope_delivery_dashboard.install()
 deltascope_scan_report.install()

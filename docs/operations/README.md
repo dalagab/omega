@@ -11,6 +11,7 @@ The Operations perspective answers whether the Omega security platform is collec
 - **Evidence** — current publication health, evidence identity and how acquisition backlog affects coverage. Raw tables remain in Security Researcher → Data.
 - **Definitions & Gates** — the frozen interpretation set, Stigma-1 production state and explicit authority boundaries.
 - **Reports** — derived coverage/readiness summaries.
+- **Diagnostics** — authenticated GitHub read capabilities, runner/log visibility, rate budget, last successful acquisition and any stale/backoff reason. Opening it is snapshot-only; refresh is explicit.
 - **Documentation** — operational and architecture reference.
 
 ## Durable collection health
@@ -62,3 +63,9 @@ A gated state means a production authority is intentionally disabled or waiting 
 ## GitHub Workflow Center
 
 Use **Operations → GitHub Workflows** for workflow inventory, selected-workflow acquisition, guided `workflow_dispatch`, run/job/step/artifact/log inspection and explicitly confirmed cancel/rerun controls. Navigation reads the local snapshot only; see [GitHub Workflow Center](GITHUB-WORKFLOW-CENTER.md).
+
+## Operations diagnostics
+
+Use **Operations → Diagnostics** to see what the connected GitHub credential has actually demonstrated. Successful bounded reads can prove Actions, jobs, active-job telemetry/log access and runner inventory visibility. A connected token alone does **not** prove dispatch/cancel/rerun permission: DeltaScope deliberately avoids a mutating permission probe, so those capabilities remain **configured / unverified** until an operator explicitly confirms a real action in GitHub Workflows.
+
+The page also shows the current GitHub rate budget, the last attempted and last successful live acquisition, stale-cache state, and the bounded retry/backoff reason after failures. Normal navigation does not perform a fresh GitHub request; **Refresh diagnostics** explicitly reuses the existing live Operations acquisition path. Credentials and raw job logs are never returned by this diagnostics projection, and none of these operational facts are Security Evidence authority.

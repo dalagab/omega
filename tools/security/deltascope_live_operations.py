@@ -147,6 +147,12 @@ def _ensure_state(client: Any) -> None:
             client._live_runner_inventory_error = ""
             client._live_runner_inventory_observed = False
             client._live_telemetry_cache = {}
+        if not hasattr(client, "_live_last_attempt_utc"):
+            client._live_last_attempt_utc = ""
+            client._live_last_success_utc = ""
+            client._live_last_error = ""
+            client._live_last_error_utc = ""
+            client._live_backoff_reason = ""
 
 
 def _reset_state(client: Any) -> None:
@@ -155,6 +161,11 @@ def _reset_state(client: Any) -> None:
         client._live_cache = None
         client._live_cached_at = 0.0
         client._live_last_attempt_at = 0.0
+        client._live_last_attempt_utc = ""
+        client._live_last_success_utc = ""
+        client._live_last_error = ""
+        client._live_last_error_utc = ""
+        client._live_backoff_reason = ""
         client._live_rate_limit = {
             "schema": LIVE_RATE_SCHEMA,
             "limit": 0,
@@ -183,8 +194,10 @@ def _record_rate(client: Any, headers: Any) -> None:
         client._live_rate_limit = rate
         if retry > 0:
             client._live_backoff_until = max(client._live_backoff_until, now + retry)
+            client._live_backoff_reason = f"GitHub requested a {retry}-second retry delay."
         elif rate.get("limit") and rate.get("remaining") == 0:
             client._live_backoff_until = max(client._live_backoff_until, now + FAILURE_RETRY_SECONDS)
+            client._live_backoff_reason = "GitHub API rate budget is exhausted; acquisition is delayed until a later bounded retry."
 
 
 def _live_request_json(client: Any, url: str, *, timeout: float = 6.0, maximum: int = deltascope_operations.MAX_RESPONSE_BYTES) -> Mapping[str, Any]:
@@ -1023,6 +1036,19 @@ def _acquire_live(client: Any, *, foreground: bool) -> dict[str, Any]:
     }
 
 
+def _failure_backoff_reason(exc: Exception, rate: Mapping[str, Any]) -> str:
+    code = int(getattr(exc, "code", 0) or 0)
+    if code == 401:
+        return "GitHub rejected the credential (401); the token may be invalid, expired, or no longer authorized for this repository."
+    if code == 403 and _int(rate.get("limit")) > 0 and _int(rate.get("remaining")) == 0:
+        return "GitHub denied the read because the API rate budget is exhausted (403)."
+    if code == 403:
+        return "GitHub denied the bounded Actions read (403); the connected credential may not have access to this repository resource."
+    if code == 404:
+        return "GitHub did not expose the requested Actions resource (404) to this credential."
+    return f"Live GitHub acquisition failed; the next bounded retry is delayed by {FAILURE_RETRY_SECONDS} seconds."
+
+
 def live_status(client: Any, *, foreground: bool = True, force: bool = False) -> dict[str, Any]:
     _ensure_state(client)
     if not getattr(client, "token", ""):
@@ -1060,6 +1086,7 @@ def live_status(client: Any, *, foreground: bool = True, force: bool = False) ->
             cached = dict(client._live_cache) if isinstance(client._live_cache, Mapping) else None
             cached_at = float(client._live_cached_at or 0.0)
             client._live_last_attempt_at = now
+            client._live_last_attempt_utc = _utc_now()
         if cached and not force and now - cached_at < desired:
             cached["servedFromCache"] = True
             cached["nextPollSeconds"] = max(1, int(math.ceil(desired - (now - cached_at))))
@@ -1067,18 +1094,29 @@ def live_status(client: Any, *, foreground: bool = True, force: bool = False) ->
         try:
             result = _acquire_live(client, foreground=foreground)
         except (OSError, ValueError, RuntimeError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError) as exc:
+            failure = str(exc)[:500]
             with client._lock:
                 client._live_backoff_until = max(client._live_backoff_until, time.monotonic() + FAILURE_RETRY_SECONDS)
                 rate = dict(client._live_rate_limit or {})
+                client._live_last_error = failure
+                client._live_last_error_utc = _utc_now()
+                client._live_backoff_reason = _failure_backoff_reason(exc, rate)
             if cached:
                 cached["stale"] = True
                 cached["servedFromCache"] = True
-                cached["error"] = str(exc)
+                cached["error"] = failure
                 cached["rateLimit"] = rate
                 cached["nextPollSeconds"] = _base_interval(client, foreground)
                 return cached
-            result = _live_unavailable(client, foreground=foreground, reason=str(exc))
+            result = _live_unavailable(client, foreground=foreground, reason=failure)
             result["stale"] = False
+        else:
+            with client._lock:
+                client._live_last_success_utc = str(result.get("fetchedAtUtc") or _utc_now())
+                client._live_last_error = ""
+                client._live_last_error_utc = ""
+                if float(client._live_backoff_until or 0.0) <= time.monotonic():
+                    client._live_backoff_reason = ""
         with client._lock:
             client._live_cache = dict(result)
             client._live_cached_at = time.monotonic()
