@@ -20,7 +20,7 @@ import (
 	"github.com/dalagab/omega/deltascope-desktop/internal/window"
 )
 
-var version = "4.21.16-dev"
+var version = "4.21.17-dev"
 var buildFlavor = "console"
 
 type stringList []string

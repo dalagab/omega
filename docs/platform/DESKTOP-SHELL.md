@@ -67,6 +67,20 @@ DeltaScope-console.exe fetch --url ... --out package.zip --extract-to runtime/py
 
 This package is intended to become the common transport for desktop runtime/update packages and other shell-owned downloads. Existing Evidence/Definitions acquisition remains in Python until a specific acquisition contract is migrated; merely adding the desktop shell must not change evidence semantics.
 
+## Planned managed DeltaScope source updater
+
+The Go shell is intended to be long-lived while the Python/HTML/JavaScript DeltaScope application changes frequently. Ordinary application changes therefore should **not** require a new Go build.
+
+The planned updater will keep the exact installed `deltascope` branch commit in local managed state, check GitHub on startup and periodically while the app is open, and acquire a newer standalone DeltaScope source package only when that branch commit changes. The existing HTTPS/SHA-256/archive primitives will stage the package, validate its runtime contract, and switch the active source atomically while retaining one last-known-good revision for rollback.
+
+If DeltaScope is already running when a newer source revision is found, the updater should stage it and activate it on restart rather than replacing Python files underneath the live backend. A requirements change may refresh the shared private Python environment; ordinary Python/UI source changes should reuse it.
+
+The Go executable itself should be rebuilt only when the desktop shell changes: updater/download logic, process supervision, native-window behavior, runtime management, Go-side proxy/network behavior, commands, or embedded desktop resources. The canonical application artwork remains `desktop/assets/deltascope.ico`; platform packages must derive their application icon from that DeltaScope artwork rather than substituting the Omega icon.
+
+A workflow registered on the repository default branch is still required to build/publish the launcher when shell code changes and to publish the standalone source/update metadata consumed by the launcher. Until that workflow and managed-source resolver land, the current shell still requires an existing DeltaScope source root and this section describes planned work, not current behavior.
+
+Expected managed state includes the active source commit, previous known-good commit, last update check/success/error, and verified package hash. It must not contain GitHub credentials or security-authority state.
+
 ## Commands
 
 ```text

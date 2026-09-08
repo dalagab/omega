@@ -144,6 +144,9 @@ class OperationsDiagnosticsTests(unittest.TestCase):
         self.assertIn("Operations diagnostics", html)
         self.assertIn("/api/operations/diagnostics", html)
         self.assertIn("configured but intentionally not tested", html)
+        self.assertIn("Loading the current diagnostics snapshot", html)
+        self.assertIn("renderFailure", html)
+        self.assertIn("Diagnostics unavailable", html)
         self.assertNotIn("Authorization", html)
         self.assertNotIn("Bearer ", html)
 

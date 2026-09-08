@@ -64,6 +64,14 @@ A gated state means a production authority is intentionally disabled or waiting 
 
 Use **Operations → GitHub Workflows** for workflow inventory, selected-workflow acquisition, guided `workflow_dispatch`, run/job/step/artifact/log inspection and explicitly confirmed cancel/rerun controls. Navigation reads the local snapshot only; see [GitHub Workflow Center](GITHUB-WORKFLOW-CENTER.md).
 
+## Retained operations history and correlation
+
+DeltaScope retains only sanitized `omega.actions.telemetry.v1` worker events in a bounded local journal so useful operational context can survive a restart. The journal deliberately excludes raw job logs and credentials, does not become Security Evidence, and keeps the existing operational self-report authority boundary.
+
+When a structured event identifies a plugin or variant, Operations can pivot directly to that exact asset, its exact-variant Detection Coverage projection, or its Evidence view. The same sanitized event identity can be pinned into a local Investigator case as an `operations-event`; casework keeps the operational reference and timestamp without promoting it into a finding or production evidence.
+
+Retained history is local convenience state. Evidence-v2, Definitions, collector contracts and durable orchestration state remain authoritative for security conclusions and platform settlement.
+
 ## Operations diagnostics
 
 Use **Operations → Diagnostics** to see what the connected GitHub credential has actually demonstrated. Successful bounded reads can prove Actions, jobs, active-job telemetry/log access and runner inventory visibility. A connected token alone does **not** prove dispatch/cancel/rerun permission: DeltaScope deliberately avoids a mutating permission probe, so those capabilities remain **configured / unverified** until an operator explicitly confirms a real action in GitHub Workflows.
