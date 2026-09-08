@@ -1,63 +1,17 @@
 {
   "analysis": {
-    "analysisId": "523001a4c6fe47003270f1d2db9358cd49c3fcd9041c4600266e11669fb7fc00",
+    "analysisId": "070d51538d6c7f2b6c3077cf19b59ac684b039bdcee005d27586d4e6a571c881",
     "artifactSha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
-    "path": "artifacts/10/10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71/analyses/523001a4c6fe47003270f1d2db9358cd49c3fcd9041c4600266e11669fb7fc00",
-    "recordCount": 27384
+    "path": "artifacts/10/10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71/analyses/070d51538d6c7f2b6c3077cf19b59ac684b039bdcee005d27586d4e6a571c881",
+    "recordCount": 503
   },
   "current": {
     "artifact_channel": "stable",
     "artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
     "artifact_url": "https://github.com/FFXIV-CombatReborn/RebornToolbox/releases/download/7.5.0.0/RebornToolbox.zip",
     "assembly_version": "7.5.0.0",
-    "automation_capabilities_json": [
-      {
-        "automationLevel": "character-automation",
-        "capabilityId": "game.character.interact",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:<>c__DisplayClass1_0.<InteractWithObject>b__0+0x52: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
-        ],
-        "indirect": false,
-        "label": "World/NPC interaction control",
-        "reachable": false,
-        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
-      },
-      {
-        "automationLevel": "character-automation",
-        "capabilityId": "game.character.target",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
-          "il:ECommons.dll:<>c__DisplayClass0_0.<ApproachObjectViaAutomove>b__0+0xb5: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
-          "il:ECommons.dll:<>c__DisplayClass1_0.<InteractWithObject>b__0+0x72: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
-        ],
-        "indirect": false,
-        "label": "Character target control",
-        "reachable": false,
-        "reason": "References a target-setting API rather than only reading the current target."
-      },
-      {
-        "automationLevel": "ui-automation",
-        "capabilityId": "game.ui.callback",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxCreateDetour+0x4d: callvirt StaticVfxCreateCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxRunDetour+0x21: callvirt StaticVfxRunCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxDtorDetour+0x1f: callvirt StaticVfxDtorCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt FireCallback.Invoke"
-        ],
-        "indirect": false,
-        "label": "Game UI callback/control",
-        "reachable": false,
-        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
-      }
-    ],
-    "automation_level": "character-automation",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
     "capabilities_json": [
       "Character target control",
       "Clipboard access",
@@ -89,7 +43,7 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 24,
+    "caution_count": 26,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -133,10 +87,20 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: Process.Start",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: ProcessStartInfo",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: ShellExecute"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:ECommons.xml: https://egorbo.com/llvm-range-checks.html"
         ],
@@ -146,9 +110,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:OtterGui.dll: https://www.patreon.com/Ottermandias"
         ],
@@ -158,9 +120,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
         ],
@@ -170,9 +130,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
         ],
@@ -182,9 +140,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
         ],
@@ -194,9 +150,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Code_Analysis__Find_and_Update_Obsolete_APIs.html"
         ],
@@ -206,9 +160,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
         ],
@@ -218,9 +170,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
         ],
@@ -230,9 +180,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
         ],
@@ -242,9 +190,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:OtterGui.dll: https://ko-fi.com/ottermandias"
         ],
@@ -254,9 +200,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
         ],
@@ -266,9 +210,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:ECommons.xml: https://graphics.stanford.edu/~seander/bithacks.html"
         ],
@@ -278,9 +220,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:OtterGui.dll: https://reniguide.info/"
         ],
@@ -290,9 +230,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:ECommons.xml: http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
         ],
@@ -302,9 +240,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:JetBrains.Annotations.dll: http://www.jetbrains.com/"
         ],
@@ -314,9 +250,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
           "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/"
@@ -367,6 +301,17 @@
           "artifact:ECommons.dll: s://crypto.nightmarexiv.org/",
           "artifact:ECommons.dll: s://discord.nightmarexiv.org",
           "artifact:ECommons.dll: s://explore.nightmarexiv.org"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: s://github.com/NostraThomas99/SupermarketSweep",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: t:\\n"
         ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
@@ -443,9 +388,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
         ],
@@ -455,9 +398,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:RebornToolbox.dll: https://github.com/NostraThomas99/SupermarketSweep"
         ],
@@ -467,9 +408,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:RebornToolbox.dll: https://github.com/FFXIV-CombatReborn/RebornToolbox"
         ],
@@ -479,9 +418,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
           "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime"
@@ -492,9 +429,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:OtterGui.dll: https://github.com/Ottermandias/OtterGui.git"
         ],
@@ -504,9 +439,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Recognised public service: Universalis (FFXIV market data). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/Models/ShoppingListItem.cs: https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.590d735c6f89",
+        "severity": "informational",
+        "title": "Endpoint: universalis.app"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:RebornToolbox.dll: https://universalis.app/api/v2/"
         ],
@@ -516,9 +461,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: https://github.com/NostraThomas99/SupermarketSweep"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0b57b69aafd6",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
         ],
@@ -528,9 +483,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:OtterGui.dll: https://discord.gg/kVva7DHV4r"
         ],
@@ -556,6 +509,17 @@
         "title": "Filesystem write access"
       },
       {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:RebornToolbox/Common/Configuration.cs: WriteAllText",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
         "category": "privacy",
         "description": "References APIs that can read or modify clipboard contents.",
         "evidence": [
@@ -568,10 +532,10 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 11,
+    "informational_count": 14,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 4,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "artifactBytes": 2512099,
       "artifactIdentity": {
@@ -579,42 +543,17 @@
         "artifactBytes": 2512099,
         "artifactSha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
         "catalogAssemblyVersion": "7.5.0.0",
-        "manifestInternalName": "RebornToolbox",
+        "manifestInternalName": "",
         "manifestPath": "RebornToolbox/RebornToolbox.json",
         "manifestRepositoryUrl": "",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/868621098/4f4f6e0d-7d40-4968-a6d8-db7880a9c71a?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-08T16%3A18%3A34Z&rscd=attachment%3B+filename%3DRebornToolbox.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-08T15%3A18%3A21Z&ske=2026-09-08T16%3A18%3A34Z&sks=b&skv=2018-11-09&sig=UqSw7kdSG2kwR4w0PcuqD28w7kkHd4ydBeBlhVxroJY%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODg4MTA0NSwibmJmIjoxNzg4ODgwNzQ1LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.0BFcGSz3PoU9AX20bYtUKiJZaR9FKSqqsxTPPJqz78g&response-content-disposition=attachment%3B%20filename%3DRebornToolbox.zip&response-content-type=application%2Foctet-stream",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.interact",
-            "confidence": "high",
-            "indirect": false,
-            "label": "World/NPC interaction control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.target",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Character target control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "ui-automation",
-            "capabilityId": "game.ui.callback",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Game UI callback/control",
-            "reachable": false
-          }
-        ],
-        "level": "character-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -660,18 +599,6 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "filesystem.read",
-            "label": "Filesystem read access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "filesystem",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
             "id": "filesystem.write",
             "label": "Filesystem write access",
             "observed": true,
@@ -698,6 +625,18 @@
             "expected": null,
             "id": "game.character.target",
             "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.input.read",
+            "label": "Game input/key state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -763,18 +702,6 @@
             "state": "observed-no-profile"
           },
           {
-            "category": "network",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "network.outbound",
-            "label": "Outbound network access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
             "category": "privacy",
             "declared": false,
             "declaredDestinations": [],
@@ -819,306 +746,44 @@
           "observed": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "egorbo.com",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "graphics.stanford.edu",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "ko-fi.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "reniguide.info",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "universalis.app",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "VeryHigh",
-              "host": "www.boost.org",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http",
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.jetbrains.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
           "observedWithoutProfile": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "egorbo.com",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "graphics.stanford.edu",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "ko-fi.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "reniguide.info",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "universalis.app",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "VeryHigh",
-              "host": "www.boost.org",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http",
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.jetbrains.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -1139,11 +804,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 16,
-          "observedConcreteDestinationCount": 15,
-          "observedDestinationWithoutProfileCount": 15,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 16,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1182,364 +847,84 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
-        "filesystem.read",
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
+        "game.input.read",
         "game.memory.read",
         "game.ui.callback",
         "memory.process",
         "native.interop",
         "network.http",
-        "network.outbound",
         "privacy.clipboard",
         "process.execute",
         "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 26,
         "critical": 0,
         "high": 2,
-        "informational": 11
+        "informational": 14
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 119,
-          "exactVersionObservedCount": 114,
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 5,
           "families": {
-            "managed-assembly": 108,
-            "native": 5,
-            "nuget": 6
+            "nuget": 7,
+            "project": 2
           },
-          "fingerprint": "609361229262b10a35836706834cba26c69d4d0570eb66dfa269cfcf6b7c1717",
+          "fingerprint": "149016b14f2aed085fc526dcda7af3be9532fc4630d732438edc41b08a6c31c2",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 9,
-            "platformLibrary": 5
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
           },
-          "nativeRelationships": [
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayBack",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayBack",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayFront",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayFront",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igClosePopupToLevel",
-              "library": "cimgui",
-              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igFindWindowDisplayIndex",
-              "library": "cimgui",
-              "managedName": "igFindWindowDisplayIndex",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igGetCurrentWindow",
-              "library": "cimgui",
-              "managedName": "igGetCurrentWindow",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetOpenFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetOpenFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetSaveFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetSaveFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "DeviceIoControl",
-              "library": "kernel32.dll",
-              "managedName": "<DeviceIoControl>g____PInvoke|8_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetCompressedFileSizeW",
-              "library": "kernel32.dll",
-              "managedName": "<GetCompressedFileSizeW>g____PInvoke|9_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetDiskFreeSpaceW",
-              "library": "kernel32.dll",
-              "managedName": "<GetDiskFreeSpaceW>g____PInvoke|6_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "VirtualQuery",
-              "library": "kernel32.dll",
-              "managedName": "<VirtualQuery>g____PInvoke|1_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "SHGetKnownFolderPath",
-              "library": "shell32",
-              "managedName": "SHGetKnownFolderPath",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "WofIsExternalFile",
-              "library": "WoFUtil.dll",
-              "managedName": "<WofIsExternalFile>g____PInvoke|10_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "WofSetFileDataLocation",
-              "library": "WofUtil.dll",
-              "managedName": "WofSetFileDataLocation",
-              "targetPath": ""
-            }
-          ],
+          "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 6,
-            "observed": 107,
-            "required": 6
+            "required": 9
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 2
         },
         "coverage": {
-          "analyzed": 113,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 6,
+          "known": 9,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 6,
-            "observed": 107,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 6,
+            "required": 9,
             "soft": 0,
             "unknown": 0
           },
-          "total": 119
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 23,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
-          "hostCount": 20,
+          "hostCount": 3,
           "hosts": [
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl.microsoft.com",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "community-invite"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "discord.gg",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "egorbo.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
             {
               "classifications": [
                 "recognised-platform",
                 "source-reference"
               ],
-              "concreteCount": 6,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 8,
+              "literalCount": 4,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "graphics.stanford.edu",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ko-fi.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "documentation-reference"
-              ],
-              "concreteCount": 0,
-              "confidence": "VeryHigh",
-              "host": "learn.microsoft.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -1547,35 +932,11 @@
                 "source-reference"
               ],
               "concreteCount": 0,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "reniguide.info",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1583,465 +944,82 @@
                 "recognised-platform"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "universalis.app",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "www.boost.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http",
-                "unrecognised-host"
-              ],
-              "concreteCount": 3,
-              "confidence": "Low",
-              "host": "www.jetbrains.com",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "www.microsoft.com",
-              "literalCount": 8,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 38,
+          "literalCount": 6,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 14965
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
-            "classification": "certificate-infrastructure",
+            "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "crypto.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://crypto.nightmarexiv.org/"
-          },
-          {
-            "classification": "community-invite",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "discord.gg",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "community invite",
-            "url": "https://discord.gg/kVva7DHV4r"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "discord.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://discord.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "donate.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://donate.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "egorbo.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://egorbo.com/llvm-range-checks.html"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "explore.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://explore.nightmarexiv.org/"
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataListing.cs"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
-            "url": "https://github.com/0ceal0t/Dalamud-VFXEditor/blob/<redacted>/VFXEditor/Interop/Structs/Quat.cs"
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataRecentHistory.cs"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
-            "url": "https://github.com/0ceal0t/Dalamud-VFXEditor/blob/<redacted>/VFXEditor/Interop/Structs/Vfx/BaseVfx.cs"
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataResponse.cs"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/FFXIV-CombatReborn/RebornToolbox"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/JetBrains/JetBrains.Annotations/"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/ECommons"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/NostraThomas99/SupermarketSweep"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Ottermandias/OtterGui.git"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/dotnet/runtime"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "graphics.stanford.edu",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://graphics.stanford.edu/~seander/bithacks.html"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ko-fi.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://ko-fi.com/ottermandias"
-          },
-          {
-            "classification": "documentation-reference",
-            "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
-            "host": "learn.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "documentation/reference link",
-            "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-12.0/using-alias-types"
-          },
-          {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
             "url": "https://raw.githubusercontent.com/FFXIV-CombatReborn/RebornAssets/blob/main/IconAssets/BPR_Icon.png"
           },
           {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "reniguide.info",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://reniguide.info/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "subscribe.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://subscribe.nightmarexiv.org/"
-          },
-          {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "universalis.app",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "FFXIV market data",
-            "url": "https://universalis.app/api/v2/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "www.boost.org",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.jetbrains.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.jetbrains.com/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.jetbrains.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.jetbrains.com/help/resharper/Code_Analysis__Find_and_Update_Obsolete_APIs.html"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.jetbrains.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.microsoft.com0",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.microsoft.com0/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/NightmareXIV"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/Ottermandias"
+            "url": "https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
           }
         ]
       },
@@ -2067,7 +1045,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-        "attemptId": "attempt-v2-f75cbae9ee195cf0",
+        "attemptId": "attempt-v2-3bfc1eb177b881f5",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -2076,11 +1054,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-7701",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-7701",
         "queueSeedRevision": "queue-seed-v2-2f0de189a116ddf4",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
         "scannerBundleSha256": "1f58e9ae7a7350630a8e5979afed1eb1f197ee037e700248d27c227c72a2b5a1",
@@ -2088,11 +1066,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
         "sourceObservationRevision": "source-observations-v1-696f0aaa304f4d1a",
-        "targetFingerprint": "artifact-target-v2-b234cdaf416336116765",
+        "targetFingerprint": "source-target-v2-0858ab46d3ababe9c95c",
         "variantId": 7701,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T15:19:04Z",
+      "scannedAtUtc": "2026-09-08T15:44:06Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2134,20 +1112,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "7.5.0.0",
         "candidates": [
           "https://github.com/FFXIV-CombatReborn/RebornToolbox"
         ],
-        "commit": "",
+        "commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "428ca5f34dadd6fcc5b1d77bf7ebff323147da1f84400fcb3a3a1d3da1623918"
           }
         },
         "developerProfile": {
@@ -2155,57 +1138,559 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "RebornToolbox",
+          "manifestPath": "RebornToolbox/RebornToolbox.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "7.5.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "7.5.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
-        "treeSha256": ""
+        "treeSha256": "47db54d8fff0af854e71535fe872e7c7f6036362"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 3,
-    "scanned_at_utc": "2026-09-08T15:19:04Z",
+    "scan_id": 10,
+    "scanned_at_utc": "2026-09-08T15:44:06Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
     "source_repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 7701
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ecommons",
+        "current_json": {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ecommons",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "ecommons",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:jetbrains.annotations",
+        "current_json": {
+          "componentKey": "nuget:jetbrains.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "JetBrains.Annotations",
+          "normalizedName": "jetbrains.annotations",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "2024.3.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "2024.3.0"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "JetBrains.Annotations",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:microsoft.extensions.dependencyinjection",
+        "current_json": {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "normalizedName": "microsoft.extensions.dependencyinjection",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "9.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Microsoft.Extensions.DependencyInjection",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+        "current_json": {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "normalizedName": "microsoft.extensions.dependencyinjection.abstractions",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "9.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ottergui",
+        "current_json": {
+          "componentKey": "nuget:ottergui",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ottergui",
+          "normalizedName": "ottergui",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "ottergui",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:ecommons",
+        "current_json": {
+          "componentKey": "project:ecommons",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\ECommons\\ECommons\\ECommons.csproj",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/RebornToolbox.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\ECommons\\ECommons\\ECommons.csproj",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:ottergui",
+        "current_json": {
+          "componentKey": "project:ottergui",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\OtterGui\\OtterGui.csproj",
+          "normalizedName": "ottergui",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/RebornToolbox.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\OtterGui\\OtterGui.csproj",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.input.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.input.read",
+          "reasons": [
+            "Dalamud key-state APIs are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "permission",
+        "dependency_name": "game.input.read",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 7701
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 10,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-08T15:44:22Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 7701
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
       "current_assembly_version": "7.5.0.0",
-      "current_scan_id": 3,
+      "current_scan_id": 10,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-08T15:19:09Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
+      "detected_at_utc": "2026-09-08T15:44:22Z",
+      "previous_artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
+      "previous_assembly_version": "7.5.0.0",
+      "previous_scan_id": 8,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 7701
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 62,
-      "artifact_only_count": 62,
+      "artifact_only_count": 59,
       "artifact_only_json": [
         {
           "componentKey": "assembly:dalamud",
@@ -3040,63 +2525,98 @@
             "observed"
           ],
           "versions": []
-        },
-        {
-          "componentKey": "nuget:jetbrains.annotations",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "JetBrains.Annotations",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "2024.3.0"
-          ]
-        },
-        {
-          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Microsoft.Extensions.DependencyInjection",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "9.0.2"
-          ]
-        },
-        {
-          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "9.0.2"
-          ]
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-08T15:19:09Z",
-      "comparison_id": 3,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-08T15:44:22Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 3,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 3,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 10,
+      "source_available": 1,
+      "source_dependency_count": 9,
+      "source_only_count": 6,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ecommons",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:ottergui",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ottergui",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "project:ecommons",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\ECommons\\ECommons\\ECommons.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "project:ottergui",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\OtterGui\\OtterGui.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        }
+      ],
+      "source_project_sha256": "af8799369c1c39c6f7b6124da7dc1015b932ea0e719adc26edc6b370d5ae5186",
       "variant_id": 7701,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -3134,36 +2654,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 114841,
+          "bytes": 123386,
           "encoding": "json",
           "path": "derived/variants/0007/7701/dependency-resolutions.json",
-          "recordDigest": "88324b56010ee231686e2486419118b6a9f6b0b456963ff3963786f06e3d6752",
-          "records": 119,
-          "sha256": "763d2ee016186c6d14059089453a9e634343e4f8812464aa0970f75eae003cf4"
+          "recordDigest": "d2304c8af0da41155383ccffbb1e3d561d96defc1084e3d58d94a33dd5720d83",
+          "records": 128,
+          "sha256": "9df62542ebe3326e6f830e8ad6fb398579cd39e0e0abcc6390b87e986a820a03"
         }
       ],
-      "recordDigest": "88324b56010ee231686e2486419118b6a9f6b0b456963ff3963786f06e3d6752",
-      "records": 119
+      "recordDigest": "d2304c8af0da41155383ccffbb1e3d561d96defc1084e3d58d94a33dd5720d83",
+      "records": 128
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 147905,
           "encoding": "json",
           "path": "derived/variants/0007/7701/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "6b89f67436ddf111c2a6eeccc2e56a0caa82f68b29470e2dc1ab21dc998285b8",
+          "records": 1,
+          "sha256": "36bef5a80db12e5dbcb3b4ca9a3dd5ce435eddf6f023917ef856f51474dc7464"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "6b89f67436ddf111c2a6eeccc2e56a0caa82f68b29470e2dc1ab21dc998285b8",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "228f7a7ff0690e1006f20a3eec315398644f805bbbd0c9d5f76a15f899d3e9e8",
+    "identityFingerprint": "55a7036a28b683bf7a25e67d989f8f4e81bd9eefc181ea724d65da071f0e2510",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -3173,37 +2693,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "cc1c2a24a5aec352807b787732cfef33815818e5ebf52b2b9731c72ac823dd1b",
+        "recordDigest": "5ae082100297239f842c447d6801251cb406dffe88adb5921ce99ba8eb5f3069",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "48ab682b078e4eea49e053776d2625e77d88cdfdc17bb5c995cb093304946ba2",
-        "records": 6,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "a23a07e04e909c0849b1e64b2af4b49fc5c4aac240d37a75a43d20f7e0f9fc73",
-        "records": 119,
+        "recordDigest": "d8233053bb578de06e87eea30dc65b41fcc0bf58fd54c3f49ae81ad3fb6fe889",
+        "records": 128,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -3233,8 +2743,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "06fb81c830e404745b7968829c667448624ea85564d42f9688b45861cf81dc50",
-        "records": 20000,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3243,8 +2753,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "f25f32386c57dc07767a5f4754ec05c9e32529a37b76d0235bd7133e40c73eb8",
-        "records": 944,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3253,8 +2763,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "4ac0b289df330390824a8f7b80ec588797c70912a91991f200efcd2bb1e5a93b",
-        "records": 5849,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3273,18 +2783,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
-        "srlEligible": true
-      },
-      "nativeImports": {
-        "backingDataset": "nativeImports",
-        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
-        "completeness": "retained",
-        "recordDigest": "67468b4997a502f8f5ed41d1d0c2e3fc7f24503e7a8d51fac54a1df74fdffa2e",
-        "records": 14,
+        "recordDigest": "66188a30c195828700eb48c1c12e17d66eddeba8074565cb8d07465c93538f68",
+        "records": 110,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3293,8 +2793,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "04e25e222ce47aa746cff23e7182a20904dac06db2c00ba8ecd8a2ad54479a83",
-        "records": 38,
+        "recordDigest": "6b2229e107b2658bbcb40497f3ce4c2992b8b94d9823ed14d3624d1cd43fb6f1",
+        "records": 6,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3313,28 +2813,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "52d77080df15e36cade1de72b56f7cf1f1fac256d80cadeb4bd5348d8ae40207",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "c5d7490bba2c880f276180d962f38dc32a2f8390bb0826b94c0142a16f57e812",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "5dcead99ab481c097c1ebb4f6e3af1eaeb400289a131f9ace833f11fd5a4ae6f",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "298a5f0e5829a78e68098e02b7dcff64403295457b75d725417148b6ed4b1cd4",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "73507aa035ae095df5826edbe39ce067d48f5f4b1b0d6eed1873634dbc35f656",
+        "records": 97,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "eb1a8d006b09f650e04633a6aec4d85707c0f89a3811dd07f7ba4297b622a0c2",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "badf9ccf8ec946bb4f9b0ef093ab9ba9ca773f56c513a12f8afcebcd60b9eee1",
-        "records": 6,
+        "recordDigest": "1357df9d54146fb72528850d2ede1a99b26ac0c395807c48b5cd95c168f8f3f6",
+        "records": 21,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "568b13216b1b403c7126fef659eca4a67aaa826bdbe9481c4da7cba0331cc6a5",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "6a78f40d2d4635355d4ecbcd84f080f04a689594ca67871edd551036ded2f91a",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "650caa075c80622dfbce3d810b1e652dae84c95d4d46b05f5ca6db8919faeb39",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "b805eb0f7a6ec8d3e6b0d235980be50f112c19880bff8e98250346f040acbd0c",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "78eac85c44a07e7b387311972a7a7f19f7052b3da963cfe36075ec33f03bbc7d",
+        "records": 6,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "a6e39b73b20f4d584ee4f8cbe3e273e82c378edbab048878637c853a1bfdf1e2",
-        "records": 313,
+        "recordDigest": "8a0f16ee36dce5e2537ebbef8c8676b644f5e2452471e0209effbd5d0bb0f14b",
+        "records": 5,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3343,20 +2963,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-063227be05c9ffde559bc67a55827ad6e0a39cc5bc9dbbba246e922226eb5e5b",
+    "observationDigest": "obs-16a78ac121c20e38ad86a813228025f14e887a29e2b7f9d50abf5c678dbef7c8",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
@@ -3402,21 +3012,21 @@
     "contractRevision": "projection-contract-v1-f507480528a1e6af",
     "outputs": {
       "automation": {
-        "recordDigest": "d56d01d1574df18ba080500dadbce318c9cae3ae13c4e0485dea8006cc2b6deb",
-        "records": 3
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "7f1ea1c6d1c7cc019b3dc9c1c443436de6b0ec809e1aa9091c0d27bdf1bd6bce",
+        "recordDigest": "fdca41ebc859cc220f28858839e0a9a3654bb829ad5997f55c06eb97774369f0",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "1a3f3a39cf954e35c209baa368b107125745b82a6c162a6f84b1a18b777bb975",
-        "records": 16
+        "recordDigest": "c7e59134b34f648cf1320442c8f4c35f52b2d6ca24531064e2af7e87f8d8b88d",
+        "records": 15
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "7aa29ffc5cb8f6508e86e20c4c954d461c1103cb598b0bd89b9fc82f566a93a9",
-        "records": 37
+        "recordDigest": "45a62fa0629be9f278914efc31820ea19c01bfbff99dc808a1437d0b50af8ccc",
+        "records": 42
       }
     },
     "projectionRevision": "projection-v1-05013341cd43895f",
@@ -3465,16 +3075,16 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 24,
+    "caution_count": 26,
     "critical_count": 0,
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 11,
+    "informational_count": 14,
     "plugin_id": 7,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 4,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "artifactBytes": 2512099,
       "artifactIdentity": {
@@ -3482,42 +3092,17 @@
         "artifactBytes": 2512099,
         "artifactSha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
         "catalogAssemblyVersion": "7.5.0.0",
-        "manifestInternalName": "RebornToolbox",
+        "manifestInternalName": "",
         "manifestPath": "RebornToolbox/RebornToolbox.json",
         "manifestRepositoryUrl": "",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/868621098/4f4f6e0d-7d40-4968-a6d8-db7880a9c71a?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-08T16%3A18%3A34Z&rscd=attachment%3B+filename%3DRebornToolbox.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-08T15%3A18%3A21Z&ske=2026-09-08T16%3A18%3A34Z&sks=b&skv=2018-11-09&sig=UqSw7kdSG2kwR4w0PcuqD28w7kkHd4ydBeBlhVxroJY%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODg4MTA0NSwibmJmIjoxNzg4ODgwNzQ1LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.0BFcGSz3PoU9AX20bYtUKiJZaR9FKSqqsxTPPJqz78g&response-content-disposition=attachment%3B%20filename%3DRebornToolbox.zip&response-content-type=application%2Foctet-stream",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.interact",
-            "confidence": "high",
-            "indirect": false,
-            "label": "World/NPC interaction control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.target",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Character target control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "ui-automation",
-            "capabilityId": "game.ui.callback",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Game UI callback/control",
-            "reachable": false
-          }
-        ],
-        "level": "character-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -3563,18 +3148,6 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "filesystem.read",
-            "label": "Filesystem read access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "filesystem",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
             "id": "filesystem.write",
             "label": "Filesystem write access",
             "observed": true,
@@ -3601,6 +3174,18 @@
             "expected": null,
             "id": "game.character.target",
             "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.input.read",
+            "label": "Game input/key state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -3666,18 +3251,6 @@
             "state": "observed-no-profile"
           },
           {
-            "category": "network",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "network.outbound",
-            "label": "Outbound network access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
             "category": "privacy",
             "declared": false,
             "declaredDestinations": [],
@@ -3722,306 +3295,44 @@
           "observed": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "egorbo.com",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "graphics.stanford.edu",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "ko-fi.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "reniguide.info",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "universalis.app",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "VeryHigh",
-              "host": "www.boost.org",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http",
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.jetbrains.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
           "observedWithoutProfile": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "egorbo.com",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
-              "host": "graphics.stanford.edu",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "ko-fi.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "reniguide.info",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "universalis.app",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "VeryHigh",
-              "host": "www.boost.org",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http",
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.jetbrains.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -4042,11 +3353,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 16,
-          "observedConcreteDestinationCount": 15,
-          "observedDestinationWithoutProfileCount": 15,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 16,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -4085,364 +3396,84 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
-        "filesystem.read",
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
+        "game.input.read",
         "game.memory.read",
         "game.ui.callback",
         "memory.process",
         "native.interop",
         "network.http",
-        "network.outbound",
         "privacy.clipboard",
         "process.execute",
         "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 26,
         "critical": 0,
         "high": 2,
-        "informational": 11
+        "informational": 14
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 119,
-          "exactVersionObservedCount": 114,
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 5,
           "families": {
-            "managed-assembly": 108,
-            "native": 5,
-            "nuget": 6
+            "nuget": 7,
+            "project": 2
           },
-          "fingerprint": "609361229262b10a35836706834cba26c69d4d0570eb66dfa269cfcf6b7c1717",
+          "fingerprint": "149016b14f2aed085fc526dcda7af3be9532fc4630d732438edc41b08a6c31c2",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 9,
-            "platformLibrary": 5
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
           },
-          "nativeRelationships": [
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayBack",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayBack",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayFront",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayFront",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igClosePopupToLevel",
-              "library": "cimgui",
-              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igFindWindowDisplayIndex",
-              "library": "cimgui",
-              "managedName": "igFindWindowDisplayIndex",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igGetCurrentWindow",
-              "library": "cimgui",
-              "managedName": "igGetCurrentWindow",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetOpenFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetOpenFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetSaveFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetSaveFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "DeviceIoControl",
-              "library": "kernel32.dll",
-              "managedName": "<DeviceIoControl>g____PInvoke|8_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetCompressedFileSizeW",
-              "library": "kernel32.dll",
-              "managedName": "<GetCompressedFileSizeW>g____PInvoke|9_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetDiskFreeSpaceW",
-              "library": "kernel32.dll",
-              "managedName": "<GetDiskFreeSpaceW>g____PInvoke|6_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "VirtualQuery",
-              "library": "kernel32.dll",
-              "managedName": "<VirtualQuery>g____PInvoke|1_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "SHGetKnownFolderPath",
-              "library": "shell32",
-              "managedName": "SHGetKnownFolderPath",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "WofIsExternalFile",
-              "library": "WoFUtil.dll",
-              "managedName": "<WofIsExternalFile>g____PInvoke|10_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "OtterGui.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "WofSetFileDataLocation",
-              "library": "WofUtil.dll",
-              "managedName": "WofSetFileDataLocation",
-              "targetPath": ""
-            }
-          ],
+          "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 6,
-            "observed": 107,
-            "required": 6
+            "required": 9
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 2
         },
         "coverage": {
-          "analyzed": 113,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 6,
+          "known": 9,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 6,
-            "observed": 107,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 6,
+            "required": 9,
             "soft": 0,
             "unknown": 0
           },
-          "total": 119
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 23,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
-          "hostCount": 20,
+          "hostCount": 3,
           "hosts": [
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl.microsoft.com",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "community-invite"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "discord.gg",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "egorbo.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
             {
               "classifications": [
                 "recognised-platform",
                 "source-reference"
               ],
-              "concreteCount": 6,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 8,
+              "literalCount": 4,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "graphics.stanford.edu",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ko-fi.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "documentation-reference"
-              ],
-              "concreteCount": 0,
-              "confidence": "VeryHigh",
-              "host": "learn.microsoft.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -4450,35 +3481,11 @@
                 "source-reference"
               ],
               "concreteCount": 0,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "reniguide.info",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -4486,465 +3493,82 @@
                 "recognised-platform"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "universalis.app",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "www.boost.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http",
-                "unrecognised-host"
-              ],
-              "concreteCount": 3,
-              "confidence": "Low",
-              "host": "www.jetbrains.com",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "www.microsoft.com",
-              "literalCount": 8,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 38,
+          "literalCount": 6,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 14965
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
-            "classification": "certificate-infrastructure",
+            "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "crypto.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://crypto.nightmarexiv.org/"
-          },
-          {
-            "classification": "community-invite",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "discord.gg",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "community invite",
-            "url": "https://discord.gg/kVva7DHV4r"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "discord.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://discord.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "donate.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://donate.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "egorbo.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://egorbo.com/llvm-range-checks.html"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "explore.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://explore.nightmarexiv.org/"
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataListing.cs"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
-            "url": "https://github.com/0ceal0t/Dalamud-VFXEditor/blob/<redacted>/VFXEditor/Interop/Structs/Quat.cs"
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataRecentHistory.cs"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
-            "url": "https://github.com/0ceal0t/Dalamud-VFXEditor/blob/<redacted>/VFXEditor/Interop/Structs/Vfx/BaseVfx.cs"
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataResponse.cs"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/FFXIV-CombatReborn/RebornToolbox"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/JetBrains/JetBrains.Annotations/"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/ECommons"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/NostraThomas99/SupermarketSweep"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Ottermandias/OtterGui.git"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/dotnet/runtime"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "graphics.stanford.edu",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://graphics.stanford.edu/~seander/bithacks.html"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ko-fi.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://ko-fi.com/ottermandias"
-          },
-          {
-            "classification": "documentation-reference",
-            "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
-            "host": "learn.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "documentation/reference link",
-            "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-12.0/using-alias-types"
-          },
-          {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
             "url": "https://raw.githubusercontent.com/FFXIV-CombatReborn/RebornAssets/blob/main/IconAssets/BPR_Icon.png"
           },
           {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "reniguide.info",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://reniguide.info/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "subscribe.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://subscribe.nightmarexiv.org/"
-          },
-          {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "universalis.app",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "FFXIV market data",
-            "url": "https://universalis.app/api/v2/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "www.boost.org",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.jetbrains.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.jetbrains.com/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.jetbrains.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.jetbrains.com/help/resharper/Code_Analysis__Find_and_Update_Obsolete_APIs.html"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.jetbrains.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.microsoft.com0",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.microsoft.com0/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/NightmareXIV"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/Ottermandias"
+            "url": "https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
           }
         ]
       },
@@ -4970,7 +3594,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-        "attemptId": "attempt-v2-f75cbae9ee195cf0",
+        "attemptId": "attempt-v2-3bfc1eb177b881f5",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -4979,11 +3603,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-7701",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-7701",
         "queueSeedRevision": "queue-seed-v2-2f0de189a116ddf4",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
         "scannerBundleSha256": "1f58e9ae7a7350630a8e5979afed1eb1f197ee037e700248d27c227c72a2b5a1",
@@ -4991,11 +3615,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
         "sourceObservationRevision": "source-observations-v1-696f0aaa304f4d1a",
-        "targetFingerprint": "artifact-target-v2-b234cdaf416336116765",
+        "targetFingerprint": "source-target-v2-0858ab46d3ababe9c95c",
         "variantId": 7701,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T15:19:04Z",
+      "scannedAtUtc": "2026-09-08T15:44:06Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -5037,20 +3661,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "7.5.0.0",
         "candidates": [
           "https://github.com/FFXIV-CombatReborn/RebornToolbox"
         ],
-        "commit": "",
+        "commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "428ca5f34dadd6fcc5b1d77bf7ebff323147da1f84400fcb3a3a1d3da1623918"
           }
         },
         "developerProfile": {
@@ -5058,28 +3687,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "RebornToolbox",
+          "manifestPath": "RebornToolbox/RebornToolbox.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "7.5.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "7.5.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
-        "treeSha256": ""
+        "treeSha256": "47db54d8fff0af854e71535fe872e7c7f6036362"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 3,
-    "scanned_at_utc": "2026-09-08T15:19:04Z",
+    "scan_id": 10,
+    "scanned_at_utc": "2026-09-08T15:44:06Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
     "source_id": 909,
     "source_repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
     "source_to_binary_verified": 0,
