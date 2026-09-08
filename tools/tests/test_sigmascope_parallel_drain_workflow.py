@@ -20,7 +20,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
             "evidence_storage_audit.py", "publish_security_evidence_v2.py", "--expected-parent-sha",
             "publish_deep_scan_state.py", "catalog-client-publish.yml", "authority_lock_held: false",
             "gh workflow run sigmascope-parallel-drain.yml",
-            "Capacity used:", "Assignments by lane:", "Eligible queue items now:",
+            "Capacity used:", "Assignments by lane:", "Assignments by resource class:", "Eligible queue items now:",
             "Deferred by retry backoff:", "Oldest eligible enqueue:", "Highest pending attempt count:",
         ):
             self.assertIn(required, text)
@@ -78,6 +78,13 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertIn("omega-sigmascope-parallel-discord-notice-${{ github.run_id }}", text)
         self.assertIn("Post published parallel Evidence update to Discord", text)
         self.assertIn("needs.publish.outputs.published == 'true'", text)
+        self.assertIn("WORKER_RESOURCE_CLASS: ${{ matrix.resourceClass }}", text)
+        self.assertIn("OMEGA_SIGMASCOPE_MAX_ARTIFACT_BYTES: ${{ matrix.maxArtifactBytes }}", text)
+        self.assertIn("OMEGA_SIGMASCOPE_MAX_ARCHIVE_UNCOMPRESSED: ${{ matrix.maxArchiveUncompressedBytes }}", text)
+        self.assertIn("[.assignments[].resourceClass]", text)
+        scanner = (common.ROOT / "tools" / "catalog" / "sigmascope.py").read_text(encoding="utf-8")
+        self.assertIn("MAX_LARGE_ARTIFACT_BYTES = 1024 * 1024 * 1024", scanner)
+        self.assertIn("MAX_LARGE_ARCHIVE_UNCOMPRESSED = 2 * 1024 * 1024 * 1024", scanner)
 
     def test_retention_recovery_gate_precedes_queue_planning(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")

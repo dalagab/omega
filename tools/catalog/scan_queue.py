@@ -20,6 +20,7 @@ import datetime as dt
 import hashlib
 import json
 from pathlib import Path
+import re
 import sqlite3
 import sys
 from typing import Any, Iterable
@@ -41,6 +42,50 @@ SEED_SCHEMA = "omega.sigmascope.queue-seed.v2"
 STATE_SCHEMA = "omega.sigmascope.queue-state.v2"
 ATTEMPT_SCHEMA = "omega.sigmascope.queue-attempt.v2"
 MAX_RECENT_ATTEMPTS = 16
+STANDARD_ARTIFACT_MAX_BYTES = 256 * 1024 * 1024
+LARGE_ARTIFACT_MAX_BYTES = 1024 * 1024 * 1024
+STANDARD_ARCHIVE_MAX_BYTES = 512 * 1024 * 1024
+LARGE_ARCHIVE_MAX_BYTES = 2 * 1024 * 1024 * 1024
+STANDARD_ARTIFACT_RESOURCE_CLASS = "standard"
+LARGE_ARTIFACT_RESOURCE_CLASS = "large-artifact"
+OVERSIZED_ARTIFACT_RESOURCE_CLASS = "oversized-artifact"
+ARTIFACT_RESOURCE_CLASSES = frozenset({
+    STANDARD_ARTIFACT_RESOURCE_CLASS,
+    LARGE_ARTIFACT_RESOURCE_CLASS,
+    OVERSIZED_ARTIFACT_RESOURCE_CLASS,
+})
+_RESOURCE_LIMIT_ERROR = re.compile(r"(Download exceeds|Archive exceeds) ([0-9]+) byte")
+
+
+def resource_class_from_artifact_error(error: str) -> str:
+    """Classify a deterministic acquisition ceiling without weakening transient retries."""
+    text = str(error or "")
+    match = _RESOURCE_LIMIT_ERROR.search(text)
+    if not match:
+        return STANDARD_ARTIFACT_RESOURCE_CLASS
+    kind, raw_limit = match.groups()
+    attempted_limit = int(raw_limit)
+    if kind == "Archive exceeds":
+        if attempted_limit >= LARGE_ARCHIVE_MAX_BYTES:
+            return OVERSIZED_ARTIFACT_RESOURCE_CLASS
+        if attempted_limit >= STANDARD_ARCHIVE_MAX_BYTES:
+            return LARGE_ARTIFACT_RESOURCE_CLASS
+        return STANDARD_ARTIFACT_RESOURCE_CLASS
+    if attempted_limit >= LARGE_ARTIFACT_MAX_BYTES:
+        return OVERSIZED_ARTIFACT_RESOURCE_CLASS
+    if attempted_limit >= STANDARD_ARTIFACT_MAX_BYTES:
+        return LARGE_ARTIFACT_RESOURCE_CLASS
+    return STANDARD_ARTIFACT_RESOURCE_CLASS
+
+
+def artifact_resource_class(item: dict[str, Any]) -> str:
+    if str(item.get("workType") or "") != "artifact":
+        return STANDARD_ARTIFACT_RESOURCE_CLASS
+    explicit = str(item.get("resourceClass") or "").strip()
+    if explicit in ARTIFACT_RESOURCE_CLASSES:
+        return explicit
+    return resource_class_from_artifact_error(str(item.get("lastError") or ""))
+
 
 REASON_PRIORITIES = {
     "manual": 1000,
@@ -945,9 +990,22 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
             continue
         old = previous_items.get(key) if isinstance(previous_items.get(key), dict) else {}
         same_target = str(old.get("targetFingerprint") or "") == str(seeded.get("targetFingerprint") or "")
+        same_artifact_target = (
+            str(seeded.get("workType") or "") == "artifact"
+            and str(old.get("workType") or "") == "artifact"
+            and str(old.get("artifactUrl") or "") == str(seeded.get("artifactUrl") or "")
+            and str(old.get("artifactChannel") or "") == str(seeded.get("artifactChannel") or "")
+            and str(old.get("assemblyVersion") or "") == str(seeded.get("assemblyVersion") or "")
+        )
+        retained_resource_class = (
+            artifact_resource_class(old)
+            if (same_target or same_artifact_target)
+            else artifact_resource_class(seeded)
+        )
         state = {
             **seeded,
             "releaseUpdate": bool(seeded.get("releaseUpdate") or (same_target and old.get("releaseUpdate"))),
+            "resourceClass": retained_resource_class,
             "state": "pending",
             "attemptCount": int(old.get("attemptCount") or 0) if same_target else 0,
             "nextEligibleAtUtc": str(old.get("nextEligibleAtUtc") or "") if same_target else "",
@@ -1116,19 +1174,35 @@ def select_key(state: dict[str, Any], queue_key: str, *, now: dt.datetime | None
     return _select_item(state, item, now_dt=now or dt.datetime.now(dt.timezone.utc))
 
 
-def select_next(state: dict[str, Any], *, now: dt.datetime | None = None, preferred_lane: str = "") -> dict[str, Any] | None:
+def select_next(
+    state: dict[str, Any],
+    *,
+    now: dt.datetime | None = None,
+    preferred_lane: str = "",
+    resource_class: str = "",
+) -> dict[str, Any] | None:
     """Select one eligible item under the single Sigmascope workflow lock.
 
     There is deliberately no lease/expiry state. If a runner dies before publication,
     its mutation is never committed to Security Evidence v2 and the next worker simply
-    selects the same previously-published item again.
+    selects the same previously-published item again. Resource classes constrain worker
+    capability only; they do not change Evidence authority or source provenance.
     """
     if preferred_lane not in {"", "updates", "baseline"}:
         raise ValueError(f"unknown worker lane: {preferred_lane}")
+    if resource_class and resource_class not in {
+        STANDARD_ARTIFACT_RESOURCE_CLASS, LARGE_ARTIFACT_RESOURCE_CLASS,
+    }:
+        raise ValueError(f"unknown worker resource class: {resource_class}")
     now_dt = now or dt.datetime.now(dt.timezone.utc)
     eligible: list[dict[str, Any]] = []
     for item in (state.get("items") or {}).values():
         if not isinstance(item, dict) or str(item.get("state") or "") == "complete":
+            continue
+        item_resource_class = artifact_resource_class(item)
+        if item_resource_class == OVERSIZED_ARTIFACT_RESOURCE_CLASS:
+            continue
+        if resource_class and item_resource_class != resource_class:
             continue
         next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
         if next_at is not None and now_dt < next_at:
@@ -1183,6 +1257,13 @@ def finish_attempt(
     item["recentAttempts"] = attempts[-MAX_RECENT_ATTEMPTS:]
     item["lastAttemptStatus"] = status
     item["lastError"] = str(error or "")[:4096]
+    escalated_resource_class = STANDARD_ARTIFACT_RESOURCE_CLASS
+    if status != "complete" and str(item.get("workType") or "") == "artifact":
+        escalated_resource_class = resource_class_from_artifact_error(error)
+        if escalated_resource_class != STANDARD_ARTIFACT_RESOURCE_CLASS:
+            item["resourceClass"] = escalated_resource_class
+        else:
+            item.setdefault("resourceClass", STANDARD_ARTIFACT_RESOURCE_CLASS)
     if status == "complete":
         item["state"] = "complete"
         item["completedAtUtc"] = utc_now(now_dt)
@@ -1199,8 +1280,11 @@ def finish_attempt(
         })
         state["recentCompleted"] = completed[-64:]
     else:
-        item["state"] = "retry"
-        item["nextEligibleAtUtc"] = _retry_at(now_dt, int(item.get("attemptCount") or 1))
+        item["state"] = "pending" if escalated_resource_class == LARGE_ARTIFACT_RESOURCE_CLASS else "retry"
+        item["nextEligibleAtUtc"] = (
+            "" if escalated_resource_class in {LARGE_ARTIFACT_RESOURCE_CLASS, OVERSIZED_ARTIFACT_RESOURCE_CLASS}
+            else _retry_at(now_dt, int(item.get("attemptCount") or 1))
+        )
     state["updatedAtUtc"] = utc_now(now_dt)
 
 
@@ -1225,8 +1309,11 @@ def state_summary(state: dict[str, Any], *, now: dt.datetime | None = None) -> d
         counts[status] = counts.get(status, 0) + 1
         if status != "complete":
             max_pending_attempt_count = max(max_pending_attempt_count, int(item.get("attemptCount") or 0))
+            resource_class = artifact_resource_class(item)
             next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
-            if next_at is not None and now_dt < next_at:
+            if resource_class == OVERSIZED_ARTIFACT_RESOURCE_CLASS:
+                retry_deferred += 1
+            elif next_at is not None and now_dt < next_at:
                 retry_deferred += 1
             else:
                 eligible_now += 1

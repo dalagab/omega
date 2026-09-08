@@ -70,6 +70,29 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
             self.assertEqual(70, result["queueSummaryBefore"]["eligibleNow"])
             self.assertEqual(0, result["queueSummaryBefore"]["retryDeferred"])
 
+    def test_large_artifact_retry_gets_one_dedicated_resource_slot_without_reducing_standard_capacity(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-drain-large-") as td:
+            root = Path(td)
+            requests = [artifact_item(i) for i in range(1, 65)]
+            large = artifact_item(900)
+            large["resourceClass"] = scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS
+            seed_path = root / "seed.json"
+            seed_path.write_text(json.dumps(seed(requests + [large])), encoding="utf-8")
+            result = drain_plan.build(seed_path, self.write_evidence(root), output=root / "plan.json", now=NOW)
+
+            self.assertEqual(65, result["assignmentCount"])
+            self.assertEqual(9, result["activeWorkerCount"])
+            standard = [row for row in result["matrix"]["include"] if row["resourceClass"] == "standard"]
+            large_slots = [row for row in result["matrix"]["include"] if row["resourceClass"] == "large-artifact"]
+            self.assertEqual([8] * 8, [row["assignmentCount"] for row in standard])
+            self.assertEqual(1, len(large_slots))
+            self.assertEqual(1, large_slots[0]["assignmentCount"])
+            self.assertEqual(1024 * 1024 * 1024, large_slots[0]["maxArtifactBytes"])
+            self.assertEqual(2 * 1024 * 1024 * 1024, large_slots[0]["maxArchiveUncompressedBytes"])
+            self.assertEqual(["artifact:900"], large_slots[0]["queueKeys"])
+            by_key = {item["queueKey"]: item for item in result["assignments"]}
+            self.assertEqual("large-artifact", by_key["artifact:900"]["resourceClass"])
+
     def test_coverage_first_keeps_source_followup_behind_uncovered_artifacts(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-coverage-") as td:
             root = Path(td)

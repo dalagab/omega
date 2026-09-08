@@ -25,6 +25,69 @@ class ScanQueueTests(unittest.TestCase):
         self.assertEqual("baseline", scan_queue.select_next(state, now=NOW, preferred_lane="updates")["queueKey"])
         self.assertEqual("update", scan_queue.select_next(state, now=NOW + dt.timedelta(hours=1), preferred_lane="updates")["queueKey"])
 
+    def test_artifact_size_failures_escalate_resource_class_and_survive_analysis_revision_change(self) -> None:
+        state = {"items": {
+            "artifact": {
+                "queueKey": "artifact", "workType": "artifact", "state": "pending",
+                "targetFingerprint": "old-fingerprint", "artifactUrl": "https://example.invalid/plugin.zip",
+                "artifactChannel": "stable", "assemblyVersion": "1.0.0.0",
+                "attemptCount": 0, "recentAttempts": [],
+            },
+        }}
+        selected = scan_queue.select_next(
+            state, now=NOW, resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS
+        )
+        scan_queue.finish_attempt(
+            state, selected, status="failed", error="Download exceeds 268435456 byte limit", now=NOW,
+        )
+        item = state["items"]["artifact"]
+        self.assertEqual(scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS, item["resourceClass"])
+        self.assertEqual("pending", item["state"])
+        self.assertEqual("", item["nextEligibleAtUtc"])
+        self.assertIsNone(scan_queue.select_next(
+            state, now=NOW + dt.timedelta(seconds=1),
+            resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+        ))
+        self.assertEqual("artifact", scan_queue.select_next(
+            state, now=NOW + dt.timedelta(seconds=1),
+            resource_class=scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS,
+        )["queueKey"])
+
+        seeded = {
+            "queueKey": "artifact", "workType": "artifact", "state": "pending",
+            "targetFingerprint": "new-analysis-revision", "artifactUrl": "https://example.invalid/plugin.zip",
+            "artifactChannel": "stable", "assemblyVersion": "1.0.0.0",
+        }
+        refreshed = scan_queue.sync_state(
+            {"items": [seeded], "queueSeedRevision": "next"}, state,
+            now=NOW + dt.timedelta(minutes=1),
+        )
+        self.assertEqual(
+            scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS,
+            refreshed["items"]["artifact"]["resourceClass"],
+        )
+
+        selected = scan_queue.select_next(
+            refreshed, now=NOW + dt.timedelta(minutes=1),
+            resource_class=scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS,
+        )
+        scan_queue.finish_attempt(
+            refreshed, selected, status="failed",
+            error="Archive exceeds 2147483648 byte uncompressed size limit",
+            now=NOW + dt.timedelta(minutes=1),
+        )
+        oversized = refreshed["items"]["artifact"]
+        self.assertEqual(scan_queue.OVERSIZED_ARTIFACT_RESOURCE_CLASS, oversized["resourceClass"])
+        self.assertEqual("retry", oversized["state"])
+        self.assertEqual("", oversized["nextEligibleAtUtc"])
+        self.assertIsNone(scan_queue.select_next(refreshed, now=NOW + dt.timedelta(days=2)))
+        self.assertEqual(
+            scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS,
+            scan_queue.resource_class_from_artifact_error(
+                "Archive exceeds 536870912 byte uncompressed size limit"
+            ),
+        )
+
     def test_pending_release_intent_survives_same_target_seed_refresh(self) -> None:
         item = {"queueKey": "variant-1", "targetFingerprint": "target-1", "workType": "artifact"}
         previous = {"items": {"variant-1": {**item, "releaseUpdate": True}}}

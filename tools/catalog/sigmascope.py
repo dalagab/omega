@@ -81,9 +81,11 @@ SOURCE_ANALYSIS_SCHEMA = "omega.sigmascope.source-analysis.v1"
 SIGMASCOPE_LEDGER_SCHEMA = "omega.security-scan-ledger.v1"
 SECURITY_LEDGER_SCHEMA = SIGMASCOPE_LEDGER_SCHEMA
 MAX_ARTIFACT_BYTES = 256 * 1024 * 1024
+MAX_LARGE_ARTIFACT_BYTES = 1024 * 1024 * 1024
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 16_384
 MAX_ARCHIVE_UNCOMPRESSED = 512 * 1024 * 1024
+MAX_LARGE_ARCHIVE_UNCOMPRESSED = 2 * 1024 * 1024 * 1024
 MAX_ENTRY_SCAN_BYTES = 16 * 1024 * 1024
 MAX_TEXT_SOURCE_BYTES = 1024 * 1024
 MAX_SOURCE_TEXT_TOTAL = 24 * 1024 * 1024
@@ -124,6 +126,34 @@ DEFAULT_MAX_BATCH_SECONDS = 4_200
 MAX_SCAN_REPORT_PLUGINS = 2_000
 USER_AGENT = f"Omega-Sigmascope/{SIGMASCOPE_VERSION}"
 SEVERITY_RANK = {"none": 0, "informational": 1, "caution": 2, "high": 3, "critical": 4}
+
+
+def _bounded_worker_limit(name: str, standard: int, maximum: int) -> int:
+    raw = str(os.environ.get(name) or "").strip()
+    if not raw:
+        return standard
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer byte count") from exc
+    if value < standard or value > maximum:
+        raise ValueError(f"{name} must be between {standard} and {maximum} bytes")
+    return value
+
+
+def artifact_download_limit() -> int:
+    return _bounded_worker_limit(
+        "OMEGA_SIGMASCOPE_MAX_ARTIFACT_BYTES", MAX_ARTIFACT_BYTES, MAX_LARGE_ARTIFACT_BYTES
+    )
+
+
+def archive_uncompressed_limit() -> int:
+    return _bounded_worker_limit(
+        "OMEGA_SIGMASCOPE_MAX_ARCHIVE_UNCOMPRESSED",
+        MAX_ARCHIVE_UNCOMPRESSED,
+        MAX_LARGE_ARCHIVE_UNCOMPRESSED,
+    )
+
 
 INTELLIGENCE_LIST_LIMITS = {
     "dependencies": MAX_DEPENDENCY_RECORDS_PER_SCAN,
@@ -1978,8 +2008,9 @@ def scan_archive(data: bytes, hits: dict[str, list[str]], intel: dict | None = N
             if info.flag_bits & 0x1:
                 raise ValueError(f"Encrypted archive entries are not scanned: {info.filename}")
         total = sum(max(0, info.file_size) for info in infos)
-        if total > MAX_ARCHIVE_UNCOMPRESSED:
-            raise ValueError("Archive exceeds uncompressed size limit")
+        archive_limit = archive_uncompressed_limit()
+        if total > archive_limit:
+            raise ValueError(f"Archive exceeds {archive_limit} byte uncompressed size limit")
         metadata["files"] = len(infos)
         metadata["uncompressedBytes"] = total
         for info in infos:
@@ -6120,7 +6151,7 @@ def scan_row(
         "error": "",
     }
     try:
-        artifact, final_url = request_artifact_bytes(row, channel, url, MAX_ARTIFACT_BYTES)
+        artifact, final_url = request_artifact_bytes(row, channel, url, artifact_download_limit())
         artifact_sha = sha256_bytes(artifact)
         base["resolvedArtifactUrl"] = final_url
         base["artifactBytes"] = len(artifact)
@@ -6909,7 +6940,9 @@ def hardening_self_test() -> None:
     # download and uncompressed-size guards remain finite while allowing production-sized
     # packages that exceed the former 64 MiB download ceiling.
     assert MAX_ARTIFACT_BYTES == 256 * 1024 * 1024
+    assert MAX_LARGE_ARTIFACT_BYTES == 1024 * 1024 * 1024
     assert MAX_ARCHIVE_UNCOMPRESSED == 512 * 1024 * 1024
+    assert MAX_LARGE_ARCHIVE_UNCOMPRESSED == 2 * 1024 * 1024 * 1024
 
     # Real plugin packages can legitimately contain thousands of small resources. Keep the
     # central-directory guard bounded, but prove that packages larger than the old 1,024-entry

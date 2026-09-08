@@ -29,6 +29,7 @@ SCHEMA = "omega.sigmascope-parallel-drain-plan.v1"
 MAX_WORKERS = 8
 MAX_ITEMS_PER_WORKER = 16
 MAX_ASSIGNMENTS = 64
+MAX_LARGE_ASSIGNMENTS = 1
 PARALLEL_WORK_TYPES = {"artifact", "source"}
 
 
@@ -89,7 +90,15 @@ def build(
     blocked_reason = ""
     serial_fallback_required = False
     slots: list[dict[str, Any]] = [
-        {"slot": slot, "lane": "mixed" if workers == 1 else ("updates" if slot % 2 == 0 else "baseline"), "queueKeys": [], "assignmentCount": 0}
+        {
+            "slot": slot,
+            "lane": "mixed" if workers == 1 else ("updates" if slot % 2 == 0 else "baseline"),
+            "resourceClass": scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+            "maxArtifactBytes": scan_queue.STANDARD_ARTIFACT_MAX_BYTES,
+            "maxArchiveUncompressedBytes": scan_queue.STANDARD_ARCHIVE_MAX_BYTES,
+            "queueKeys": [],
+            "assignmentCount": 0,
+        }
         for slot in range(workers)
     ]
 
@@ -99,7 +108,12 @@ def build(
         # A single runner alternates within the batch; one-item waves alternate
         # by wave number too, so neither lane can starve the other.
         preference = slot["lane"] if workers > 1 else ("updates" if (ordinal + max(1, wave) - 1) % 2 == 0 else "baseline")
-        item = scan_queue.select_next(state, now=now, preferred_lane=preference)
+        item = scan_queue.select_next(
+            state,
+            now=now,
+            preferred_lane=preference,
+            resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+        )
         if item is None:
             break
 
@@ -129,6 +143,7 @@ def build(
             "primaryReason": str(item.get("primaryReason") or ""),
             "selectionLane": int(scan_queue._selection_lane(item)),
             "workerLane": preference,
+            "resourceClass": scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
             "releaseUpdate": scan_queue.plugin_coverage.is_release_update(item),
         })
         slot["queueKeys"].append(queue_key)
@@ -136,6 +151,53 @@ def build(
 
         # This is a local planning copy only. Marking selected keys complete prevents
         # duplicate selection inside the wave without creating a persistent lease.
+        state_item = (state.get("items") or {}).get(queue_key)
+        if isinstance(state_item, dict):
+            state_item["state"] = "complete"
+
+    # Large artifacts are a bounded resource class, not a different Evidence authority.
+    # Preserve all standard update/baseline capacity and add at most one expanded worker.
+    for _ in range(MAX_LARGE_ASSIGNMENTS):
+        large_item = scan_queue.select_next(
+            state, now=now, resource_class=scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS
+        )
+        if large_item is None:
+            break
+        queue_key = str(large_item.get("queueKey") or "")
+        work_type = str(large_item.get("workType") or "")
+        variant_id = int(large_item.get("variantId") or 0)
+        if not queue_key or work_type != "artifact" or variant_id <= 0:
+            raise ValueError("large-artifact resource lane received non-artifact work")
+        release_update = scan_queue.plugin_coverage.is_release_update(large_item)
+        large_lane = "updates" if release_update else "baseline"
+        large_slot = {
+            "slot": workers + sum(
+                1 for existing in slots
+                if existing.get("resourceClass") == scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS
+            ),
+            "lane": large_lane,
+            "resourceClass": scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS,
+            "maxArtifactBytes": scan_queue.LARGE_ARTIFACT_MAX_BYTES,
+            "maxArchiveUncompressedBytes": scan_queue.LARGE_ARCHIVE_MAX_BYTES,
+            "queueKeys": [queue_key],
+            "assignmentCount": 1,
+        }
+        assignments.append({
+            "queueKey": queue_key,
+            "workType": work_type,
+            "variantId": variant_id,
+            "internalName": str(large_item.get("internalName") or ""),
+            "sourceName": str(large_item.get("sourceName") or ""),
+            "targetFingerprint": str(large_item.get("targetFingerprint") or ""),
+            "priority": int(large_item.get("priority") or 0),
+            "primaryReason": str(large_item.get("primaryReason") or ""),
+            "selectionLane": int(scan_queue._selection_lane(large_item)),
+            "workerLane": large_lane,
+            "resourceClass": scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS,
+            "releaseUpdate": release_update,
+        })
+        slots.append(large_slot)
+        capacity += 1
         state_item = (state.get("items") or {}).get(queue_key)
         if isinstance(state_item, dict):
             state_item["state"] = "complete"
@@ -167,7 +229,7 @@ def build(
         "evidenceCatalogIdentityEpoch": evidence_epoch,
         "baselineSecurityRebuild": bool(seed.get("baselineSecurityRebuild")),
         "selectionPolicy": str(seed.get("selectionPolicy") or ""),
-        "workerAllocationPolicy": "release-and-baseline-lanes-v1",
+        "workerAllocationPolicy": "release-baseline-and-large-artifact-resources-v2",
         "wave": max(1, wave),
         "workers": workers,
         "itemsPerWorker": items_per_worker,
