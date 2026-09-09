@@ -3,7 +3,7 @@
 
   document.title = 'Omega Marketplace — FFXIV plugins made simpler';
 
-  const styleId = 'omega-eli5-v4-style';
+  const styleId = 'omega-eli5-v5-style';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
@@ -11,16 +11,17 @@
       html { scroll-snap-type: none !important; }
       .story-panel { scroll-snap-align: none !important; scroll-snap-stop: normal !important; }
       #content { display: flex !important; flex-direction: column !important; }
-      .omega-eli5-v4-hidden { display: none !important; }
-      #overview { order: 0 !important; background: #05070d !important; }
+      .omega-eli5-v5-hidden { display: none !important; }
+      #overview { order: 0 !important; background: #05070d !important; padding: 0 !important; min-height: 100svh !important; }
       #overview::before, #overview::after { display: none !important; content: none !important; }
       .scene-omega { background: #05070d !important; background-image: none !important; }
+      #overview > .mx-auto { max-width: none !important; }
       #install-flow { order: 10 !important; }
       #why { order: 20 !important; }
       #install { order: 30 !important; }
       #team { order: 40 !important; display: block !important; }
       #sigmascope { order: 50 !important; display: block !important; }
-      #omega-eli5-v4-faq { order: 60 !important; }
+      #omega-eli5-v5-faq { order: 60 !important; }
     `;
     document.head.appendChild(style);
   }
@@ -37,42 +38,44 @@
     if (child.tagName !== 'SECTION') continue;
     const id = child.id || '';
     if (keepIds.has(id)) continue;
-    child.classList.add('omega-eli5-v4-hidden');
+    child.classList.add('omega-eli5-v5-hidden');
   }
 
   const overview = document.querySelector('#overview');
   if (overview) {
     overview.innerHTML = `
-      <div class="absolute inset-0 -z-10 bg-omega-950"></div>
-      <div class="mx-auto flex min-h-[100svh] max-w-7xl items-center px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-        <div class="relative w-full overflow-hidden rounded-[2.25rem] border border-white/10 bg-omega-950 app-shadow">
-          <img src="assets/brand/omega-marketplace-top-banner.png" alt="Omega Marketplace fantasy banner art" class="block w-full">
-          <div class="absolute inset-0 bg-gradient-to-r from-black/45 via-transparent to-black/45"></div>
-          <div class="absolute inset-0 hidden lg:block">
-            <article class="absolute left-8 top-1/2 max-w-md -translate-y-1/2 rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-6 shadow-2xl backdrop-blur-md xl:left-10 xl:max-w-lg xl:p-7">
+      <div class="relative min-h-[100svh] w-full overflow-hidden bg-omega-950">
+        <img src="assets/brand/omega-marketplace-top-banner.png" alt="Omega Marketplace fantasy banner art" class="absolute inset-0 h-full w-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-r from-black/55 via-black/18 to-black/55"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black/18 via-transparent to-black/30"></div>
+
+        <div class="relative hidden min-h-[100svh] w-full lg:block">
+          <article class="absolute left-10 top-1/2 max-w-md -translate-y-1/2 rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-7 shadow-2xl backdrop-blur-md xl:left-16 xl:max-w-lg">
+            <p class="text-xs font-black uppercase tracking-[.18em] text-omega-cyan">For Final Fantasy XIV players</p>
+            <h1 class="mt-4 text-4xl font-black tracking-tight text-white xl:text-6xl">Find FFXIV plugins in one place.</h1>
+            <p class="mt-4 text-base leading-7 text-slate-200 xl:text-lg xl:leading-8">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
+          </article>
+          <article class="absolute right-10 top-1/2 max-w-md -translate-y-1/2 rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-7 shadow-2xl backdrop-blur-md xl:right-16 xl:max-w-lg">
+            <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
+            <h2 class="mt-4 text-4xl font-black tracking-tight text-white xl:text-6xl">See what matters before you install.</h2>
+            <p class="mt-4 text-base leading-7 text-slate-200 xl:text-lg xl:leading-8">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
+          </article>
+        </div>
+
+        <div class="relative flex min-h-[100svh] items-end lg:hidden">
+          <div class="grid w-full gap-4 px-4 pb-8 sm:px-6">
+            <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
               <p class="text-xs font-black uppercase tracking-[.18em] text-omega-cyan">For Final Fantasy XIV players</p>
-              <h1 class="mt-4 text-3xl font-black tracking-tight text-white xl:text-5xl">Find FFXIV plugins in one place.</h1>
-              <p class="mt-4 text-base leading-7 text-slate-300 xl:text-lg xl:leading-8">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
+              <h1 class="mt-4 text-3xl font-black tracking-tight text-white">Find FFXIV plugins in one place.</h1>
+              <p class="mt-4 text-base leading-7 text-slate-200">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
             </article>
-            <article class="absolute right-8 top-1/2 max-w-md -translate-y-1/2 rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-6 shadow-2xl backdrop-blur-md xl:right-10 xl:max-w-lg xl:p-7">
+            <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
               <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
-              <h2 class="mt-4 text-3xl font-black tracking-tight text-white xl:text-5xl">See what matters before you install.</h2>
-              <p class="mt-4 text-base leading-7 text-slate-300 xl:text-lg xl:leading-8">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
+              <h2 class="mt-4 text-3xl font-black tracking-tight text-white">See what matters before you install.</h2>
+              <p class="mt-4 text-base leading-7 text-slate-200">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
             </article>
           </div>
         </div>
-      </div>
-      <div class="mx-auto -mt-10 grid max-w-7xl gap-4 px-4 pb-8 sm:px-6 lg:hidden lg:px-8">
-        <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
-          <p class="text-xs font-black uppercase tracking-[.18em] text-omega-cyan">For Final Fantasy XIV players</p>
-          <h1 class="mt-4 text-3xl font-black tracking-tight text-white">Find FFXIV plugins in one place.</h1>
-          <p class="mt-4 text-base leading-7 text-slate-300">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
-        </article>
-        <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
-          <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
-          <h2 class="mt-4 text-3xl font-black tracking-tight text-white">See what matters before you install.</h2>
-          <p class="mt-4 text-base leading-7 text-slate-300">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
-        </article>
       </div>
     `;
   }
@@ -259,10 +262,10 @@
     `;
   }
 
-  let faq = document.querySelector('#omega-eli5-v4-faq');
+  let faq = document.querySelector('#omega-eli5-v5-faq');
   if (!faq) {
     faq = document.createElement('section');
-    faq.id = 'omega-eli5-v4-faq';
+    faq.id = 'omega-eli5-v5-faq';
     faq.className = 'border-y border-white/10 bg-white/[.025]';
     main.appendChild(faq);
   }
