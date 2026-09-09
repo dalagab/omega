@@ -1183,6 +1183,8 @@ def select_next(
     now: dt.datetime | None = None,
     preferred_lane: str = "",
     resource_class: str = "",
+    required_work_type: str = "",
+    required_reason: str = "",
 ) -> dict[str, Any] | None:
     """Select one eligible item under the single Sigmascope workflow lock.
 
@@ -1207,6 +1209,13 @@ def select_next(
             continue
         if resource_class and item_resource_class != resource_class:
             continue
+        if required_work_type and str(item.get("workType") or "") != required_work_type:
+            continue
+        if required_reason:
+            reasons = {str(value) for value in item.get("reasons") or item.get("reasonCodes") or [] if str(value)}
+            reasons.add(str(item.get("primaryReason") or ""))
+            if required_reason not in reasons:
+                continue
         next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
         if next_at is not None and now_dt < next_at:
             item["state"] = "retry"
