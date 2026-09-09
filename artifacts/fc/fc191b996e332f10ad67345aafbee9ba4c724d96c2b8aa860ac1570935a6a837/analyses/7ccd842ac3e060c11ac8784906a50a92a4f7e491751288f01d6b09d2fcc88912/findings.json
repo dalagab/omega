@@ -1,0 +1,517 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "il:System.Reflection.MetadataLoadContext.dll:System.Reflection.TypeLoading.RoAssembly.GetRoModule+0x46: callvirt System.Reflection.TypeLoading.RoAssembly.LoadModule: Assembly.Load",
+      "metadata:Umbra.dll: AssemblyLoadContext",
+      "artifact:Umbra.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SkiaSharp.dll: s://go.microsoft.com/fwlink/?linkid=868515",
+      "artifact:SkiaSharp.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:SkiaSharp.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:SkiaSharp.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:SkiaSharp.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:SkiaSharp.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:SkiaSharp.dll: p://www.microsoft.com0",
+      "artifact:SkiaSharp.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Umbra.Common.dll: SigScanner",
+      "artifact:Umbra.Common.dll: SigScanner",
+      "metadata:Umbra.Game.dll: Dalamud.Hooking",
+      "metadata:Umbra.Game.dll: HookFromAddress",
+      "il:Umbra.Game.dll:Umbra.Game.GearsetRepository..ctor+0x37: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:Umbra.Game.dll: Dalamud.Hooking",
+      "artifact:Umbra.Game.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SkiaSharp.dll: DllImportAttribute",
+      "metadata:SkiaSharp.dll: LoadLibrary",
+      "metadata:SkiaSharp.dll: GetProcAddress",
+      "il:SkiaSharp.dll:AngleLoader.LoadLibrary+0x11: call AngleLoader.<LoadLibrary>g____PInvoke|2_0 -> Kernel32.dll!LoadLibraryW: LoadLibrary",
+      "il:SkiaSharp.dll:AngleLoader.GetProcAddress+0x46: call AngleLoader.<GetProcAddress>g____PInvoke|3_0 -> Kernel32.dll!GetProcAddress: GetProcAddress",
+      "il:SkiaSharp.dll:AngleLoader.eglGetProcAddress+0x3d: call AngleLoader.<eglGetProcAddress>g____PInvoke|4_0 -> libEGL.dll!eglGetProcAddress: GetProcAddress",
+      "il:SkiaSharp.dll:AngleLoader..cctor+0xd: call AngleLoader.LoadLibrary: LoadLibrary",
+      "il:SkiaSharp.dll:AngleLoader..cctor+0x1c: call AngleLoader.LoadLibrary: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://crl.apple.com/timestamp.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.172eac4f271a",
+    "severity": "caution",
+    "title": "Endpoint: crl.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.w3.org/XML/1998/namespace",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.w3.org/XML/1998/namespace",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.w3.org/XML/1998/namespace",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.w3.org/XML/1998/namespace"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2a69784840b2",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://ocsp.apple.com/ocsp03-devid080"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3325a2fcd92f",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.w3.org/1999/02/22-rdf-syntax-ns",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.w3.org/1999/02/22-rdf-syntax-ns",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.w3.org/1999/02/22-rdf-syntax-ns",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.w3.org/1999/02/22-rdf-syntax-ns"
+    ],
+    "rule_id": "network.endpoint.insecure-http.34bcbe325c18",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://purl.org/dc/elements/1.1/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://purl.org/dc/elements/1.1/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://purl.org/dc/elements/1.1/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://purl.org/dc/elements/1.1/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.481f09356511",
+    "severity": "caution",
+    "title": "Endpoint: purl.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.apple.com/DTDs/PropertyList-1.0.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.4b2ae39f091a",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://ns.adobe.com/xap/1.0/mm/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://ns.adobe.com/xap/1.0/mm/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://ns.adobe.com/xap/1.0/mm/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d1a28a44b4d",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://crl.apple.com/root.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.60ec8712250f",
+    "severity": "caution",
+    "title": "Endpoint: crl.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.iec.ch/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.iec.ch/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.iec.ch/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.iec.ch/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.69126546e9c9",
+    "severity": "caution",
+    "title": "Endpoint: www.iec.ch"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.aiim.org/pdfa/ns/id/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.aiim.org/pdfa/ns/id/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.aiim.org/pdfa/ns/id/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.aiim.org/pdfa/ns/id/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6b2c1f0af999",
+    "severity": "caution",
+    "title": "Endpoint: www.aiim.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.w3.org/2000/svg",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.w3.org/2000/svg",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.w3.org/2000/svg",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.w3.org/2000/svg"
+    ],
+    "rule_id": "network.endpoint.insecure-http.75aa47264e79",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SkiaSharp.dll: http://www.microsoft.com0/",
+      "artifact:System.Reflection.MetadataLoadContext.dll: http://www.microsoft.com0/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.microsoft.com0/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://scripts.sil.org/OFL"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9b1d00aaae2e",
+    "severity": "caution",
+    "title": "Endpoint: scripts.sil.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.w3.org/1999/xlink",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.w3.org/1999/xlink",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.w3.org/1999/xlink",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.w3.org/1999/xlink"
+    ],
+    "rule_id": "network.endpoint.insecure-http.adb18f0f3741",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.apple.com/appleca0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.af62509be132",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.apple.com/certificateauthority0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b79ec9e5c769",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://ns.adobe.com/pdf/1.3/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://ns.adobe.com/pdf/1.3/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://ns.adobe.com/pdf/1.3/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://ns.adobe.com/pdf/1.3/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.bd44c55690bc",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.w3.org/2000/xmlns/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.w3.org/2000/xmlns/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.w3.org/2000/xmlns/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: http://www.color.org/",
+      "artifact:runtimes\\win-arm64\\native\\libSkiaSharp.dll: http://www.color.org/",
+      "artifact:runtimes\\win-x64\\native\\libSkiaSharp.dll: http://www.color.org/",
+      "artifact:runtimes\\win-x86\\native\\libSkiaSharp.dll: http://www.color.org/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d0bb611b3695",
+    "severity": "caution",
+    "title": "Endpoint: www.color.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\osx\\native\\libSkiaSharp.dylib: https://www.apple.com/appleca/0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.004c6e4dff86",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Umbra.dll: https://ko-fi.com/una_xiv"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5b1d920b5261",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SkiaSharp.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Una.Drawing.dll: https://lds-img.finalfantasyxiv.com/pc/global/fonts/FFXIV_Lodestone_SSF.ttf"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cdc95a8c6445",
+    "severity": "caution",
+    "title": "Endpoint: lds-img.finalfantasyxiv.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Umbra.Common.dll: System.Diagnostics.Process",
+      "metadata:Umbra.Common.dll: ProcessStartInfo",
+      "metadata:Umbra.Common.dll: ShellExecute",
+      "metadata:Umbra.Common.dll: Process.Start",
+      "il:Umbra.Common.dll:Umbra.Common.Migration.MigrationManager.OnDraw+0x61: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Umbra.Common.dll:Umbra.Common.Migration.MigrationManager.OnDraw+0x61: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Umbra.Common.dll:Umbra.Common.Migration.MigrationManager.OnDraw+0x76: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:Umbra.Common.dll:Umbra.Common.Migration.MigrationManager.OnDraw+0x76: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:SkiaSharp.dll: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SKCodec.Create+0x1: call SkiaSharp.SKFileStream.OpenStream: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SKCodec.Create+0x19: callvirt SkiaSharp.SKFileStream.get_IsValid: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SkiaApi.sk_filestream_is_valid+0x1: call SkiaSharp.SkiaApi.<sk_filestream_is_valid>g____PInvoke|697_0 -> libSkiaSharp!sk_filestream_is_valid: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SKFileStream..ctor+0x2: call SkiaSharp.SKFileStream.CreateNew: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SKFileStream.CreateNew+0x22: call SkiaSharp.SkiaApi.sk_filestream_new -> libSkiaSharp!sk_filestream_new: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SKFileStream.DisposeNative+0x6: call SkiaSharp.SkiaApi.sk_filestream_destroy -> libSkiaSharp!sk_filestream_destroy: FileStream",
+      "il:SkiaSharp.dll:SkiaSharp.SKFileStream.get_IsValid+0x6: call SkiaSharp.SkiaApi.sk_filestream_is_valid: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Umbra.Common.dll: https://discord.gg/xaEnsuAhmm",
+      "artifact:Umbra.dll: https://discord.gg/xaEnsuAhmm"
+    ],
+    "rule_id": "network.endpoint.community-invite.b5b71c6a9930",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+    "evidence_json": [],
+    "rule_id": "network.endpoint.dynamic-or-undetermined",
+    "severity": "informational",
+    "title": "Network destination undetermined"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Una.Drawing.dll: https://github.com/una-xiv/drawing.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.14738e8ed398",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Umbra.dll: https://api.github.com/repos/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.227f351377c0",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:i18n\\zh.json: https://github.com/una-xiv/my-plugin，则所有者将是"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e9e36239b55",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Umbra.json: https://github.com/QiongHHHZZZ/umbra"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8174792e5477",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reflection.MetadataLoadContext.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:i18n\\de.json: https://github.com/una-xiv/my-plugin",
+      "artifact:i18n\\en.json: https://github.com/una-xiv/my-plugin",
+      "artifact:i18n\\fr.json: https://github.com/una-xiv/my-plugin",
+      "artifact:i18n\\ja.json: https://github.com/una-xiv/my-plugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cf420e1c7278",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Umbra.Common.dll: https://github.com/QiongHHHZZZ/umbra",
+      "artifact:Umbra.dll: https://github.com/QiongHHHZZZ/umbra",
+      "artifact:Umbra.Game.dll: https://github.com/QiongHHHZZZ/umbra"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d9a9f9a082ab",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Reflection.MetadataLoadContext.dll: https://github.com/dotnet/runtime/issues/56519"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.da080da65e07",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:System.Reflection.MetadataLoadContext.dll: WebRequest",
+      "artifact:System.Reflection.MetadataLoadContext.dll: HttpWebRequest",
+      "metadata:Umbra.dll: System.Net.Http.HttpClient",
+      "metadata:Una.Drawing.dll: System.Net.Http.HttpClient",
+      "il:Una.Drawing.dll:<DownloadGameGlyphs>d__3.MoveNext+0x31: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Una.Drawing.dll:<DownloadGameGlyphs>d__3.MoveNext+0x50: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\osx\\native\\libSkiaSharp.dylib",
+      "runtimes\\win-arm64\\native\\libSkiaSharp.dll",
+      "runtimes\\win-x64\\native\\libSkiaSharp.dll",
+      "runtimes\\win-x86\\native\\libSkiaSharp.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
