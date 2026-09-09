@@ -3,7 +3,7 @@
 
   document.title = 'Omega Marketplace — FFXIV plugins made simpler';
 
-  const styleId = 'omega-eli5-v7-style';
+  const styleId = 'omega-eli5-v8-style';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
@@ -20,7 +20,7 @@
         flex-direction: column !important;
         overflow: visible !important;
       }
-      .omega-eli5-v7-hidden { display: none !important; }
+      .omega-eli5-v8-hidden { display: none !important; }
       #overview { order: 0 !important; background: #05070d !important; padding: 0 !important; min-height: 100svh !important; }
       #overview::before, #overview::after { display: none !important; content: none !important; }
       .scene-omega { background: #05070d !important; background-image: none !important; }
@@ -47,7 +47,7 @@
         scroll-snap-align: start !important;
         scroll-snap-stop: always !important;
       }
-      #omega-eli5-v7-faq {
+      #omega-eli5-v8-faq {
         order: 60 !important;
         min-height: 100svh !important;
         scroll-snap-align: start !important;
@@ -65,7 +65,7 @@
     if (child.tagName !== 'SECTION') continue;
     const id = child.id || '';
     if (keepIds.has(id)) continue;
-    child.classList.add('omega-eli5-v7-hidden');
+    child.classList.add('omega-eli5-v8-hidden');
   }
 
   const overview = document.querySelector('#overview');
@@ -83,7 +83,7 @@
             <p class="mt-4 text-base leading-7 text-slate-200 xl:text-lg xl:leading-8">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
           </article>
           <article class="absolute right-10 top-1/2 max-w-md -translate-y-1/2 rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-7 shadow-2xl backdrop-blur-md xl:right-16 xl:max-w-lg">
-            <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
+            <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Before you install</p>
             <h2 class="mt-4 text-4xl font-black tracking-tight text-white xl:text-6xl">See what matters before you install.</h2>
             <p class="mt-4 text-base leading-7 text-slate-200 xl:text-lg xl:leading-8">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
           </article>
@@ -97,7 +97,7 @@
               <p class="mt-4 text-base leading-7 text-slate-200">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
             </article>
             <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
-              <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
+              <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Before you install</p>
               <h2 class="mt-4 text-3xl font-black tracking-tight text-white">See what matters before you install.</h2>
               <p class="mt-4 text-base leading-7 text-slate-200">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
             </article>
@@ -114,15 +114,15 @@
         <div class="max-w-4xl">
           <p class="eyebrow text-xs font-black uppercase text-omega-cyan">What can you do in Omega?</p>
           <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Discover more. Find anything. Keep your plugin setup under control.</h2>
-          <p class="mt-5 max-w-3xl text-lg leading-8 text-slate-200">Omega turns the wider FFXIV plugin ecosystem into something you can actually browse. Drop in to see what is new, search when you know what you want, or manage the plugins already in your game.</p>
+          <p class="mt-5 max-w-3xl text-lg leading-8 text-slate-200">Omega brings more of the FFXIV plugin world into one place. See what is new, search when you know what you want, or manage the plugins already in your game.</p>
         </div>
         <div class="mt-8 grid gap-5 lg:grid-cols-3">
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
             <img src="assets/screenshots/omega-main.png" alt="Omega Spotlight showing new and interesting plugins" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-cyan">Spotlight</p>
-              <h3 class="mt-2 text-xl font-black text-white">Start with what is worth a look.</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Fresh releases, interesting updates, popular picks and plugins worth checking out. Open Omega without a plan and Spotlight gives you somewhere fun to start.</p>
+              <h3 class="mt-2 text-xl font-black text-white">See what’s hot, new, and worth a look.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Fresh releases, interesting updates, popular picks and plugins worth checking out. Open Spotlight when you want to see what is happening in plugin land.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
@@ -130,15 +130,15 @@
             <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-gold">Discover</p>
               <h3 class="mt-2 text-xl font-black text-white">Find exactly what you are looking for.</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Search across the wider plugin ecosystem instead of hopping between repository lists. Narrow things down by what matters to you until the right plugin surfaces.</p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Search across more plugins without jumping between different lists. Use filters to narrow things down until you find the one you want.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
             <img src="assets/screenshots/omega-library.png" alt="Omega Library managing installed plugins" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-400">Library</p>
-              <h3 class="mt-2 text-xl font-black text-white">Your plugins, organised and manageable.</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-300">See and manage the plugins you already use, keep track of where they came from and what version you have, and keep your collection from turning into a mystery box.</p>
+              <h3 class="mt-2 text-xl font-black text-white">Keep your plugins under control.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">See the plugins you already use, where they came from, what version you have, and manage your collection from one place.</p>
             </figcaption>
           </figure>
         </div>
@@ -161,24 +161,24 @@
             <img src="assets/screenshots/omega-install-plugin.png" alt="A plugin page inside Omega" class="block w-full">
             <div class="p-6">
               <p class="text-xs font-black uppercase tracking-wider text-omega-cyan">What can it do?</p>
-              <h3 class="mt-2 text-xl font-black text-white">The techy bits, in normal words.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">Omega tries to turn the things it finds into simple information you can actually use before you install.</p>
+              <h3 class="mt-2 text-xl font-black text-white">The important bits, in normal words.</h3>
+              <p class="mt-3 text-sm leading-6 text-slate-300">Omega turns what it finds into simple information you can read before you install.</p>
             </div>
           </article>
           <article class="overflow-hidden rounded-[2rem] border border-omega-gold/25 bg-omega-950/85 shadow-2xl backdrop-blur-md">
             <img src="assets/screenshots/omega-install-warning.png" alt="Omega stopping an installation to explain a warning" class="block w-full">
             <div class="p-6">
-              <p class="text-xs font-black uppercase tracking-wider text-omega-gold">Something you said no to?</p>
-              <h3 class="mt-2 text-xl font-black text-white">Omega stops before the plugin is installed.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">If a plugin does something you have said you are not comfortable with, Omega pauses the installation and tells you why. Nothing goes ahead until you choose what to do next.</p>
+              <p class="text-xs font-black uppercase tracking-wider text-omega-gold">Not comfortable with it?</p>
+              <h3 class="mt-2 text-xl font-black text-white">Omega stops before install.</h3>
+              <p class="mt-3 text-sm leading-6 text-slate-300">If a plugin does something you have said you are not comfortable with, Omega stops the install and tells you why. You decide whether to continue.</p>
             </div>
           </article>
           <article class="overflow-hidden rounded-[2rem] border border-omega-400/25 bg-omega-950/85 shadow-2xl backdrop-blur-md">
             <img src="assets/screenshots/source-trust.png" alt="Omega showing where a plugin copy came from" class="block w-full">
             <div class="p-6">
               <p class="text-xs font-black uppercase tracking-wider text-omega-400">Where did it come from?</p>
-              <h3 class="mt-2 text-xl font-black text-white">A familiar name can still come from a different place.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">Omega keeps the source and version beside the plugin, so you can see which copy you are looking at instead of guessing.</p>
+              <h3 class="mt-2 text-xl font-black text-white">The same plugin can come from different places.</h3>
+              <p class="mt-3 text-sm leading-6 text-slate-300">Omega shows where the plugin came from and which version it is, so you do not have to guess.</p>
             </div>
           </article>
         </div>
@@ -203,12 +203,12 @@
               <p class="mt-2 font-bold text-white">Plugins are software running on your computer.</p>
             </div>
           </div>
-          <p class="mt-5 max-w-3xl leading-7 text-slate-200">Omega helps you understand what you are installing, but it cannot make that choice for you. Plugins can access game-related data and some can automate gameplay, which can put an account at risk.</p>
-          <p class="mt-4 max-w-3xl rounded-2xl border border-omega-gold/25 bg-omega-gold/[.06] p-4 leading-7 text-slate-100"><strong class="text-omega-gold">Omega is alpha software.</strong> It may still break, and some information may be missing or wrong.</p>
+          <p class="mt-5 max-w-3xl leading-7 text-slate-200">Omega helps you understand what you are installing, but the choice is still yours. Plugins can see game data, and some can play parts of the game for you. That can put your account at risk.</p>
+          <p class="mt-4 max-w-3xl rounded-2xl border border-omega-gold/25 bg-omega-gold/[.06] p-4 leading-7 text-slate-100"><strong class="text-omega-gold">Omega is still in alpha.</strong> Things may still break, and some information may be missing or wrong.</p>
         </div>
 
         <button type="button" data-omega-install-start aria-expanded="false" class="mt-7 inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-6 py-3 font-black text-omega-950 hover:bg-omega-cyan">Install Omega</button>
-        <p class="mt-3 text-sm leading-6 text-slate-400">This button does not install anything by itself. It shows the quick steps below.</p>
+        <p class="mt-3 text-sm leading-6 text-slate-400">This opens the install steps. Nothing is installed from this website.</p>
 
         <div data-omega-install-steps hidden class="mt-8 border-t border-white/10 pt-8">
           <div class="grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -251,25 +251,25 @@
     const cards = team.querySelectorAll('article');
     if (cards[0]) {
       const p = cards[0].querySelector('p:last-of-type');
-      if (p) p.textContent = 'Omega’s mascot and resident data gremlin. TONI likes spotting odd things in public plugin information.';
+      if (p) p.textContent = 'Omega’s mascot and resident data gremlin. TONI likes spotting odd things in plugin information.';
     }
     if (cards[1]) {
       const p = cards[1].querySelector('p:last-of-type');
-      if (p) p.textContent = 'The human behind the project. Wants players to have a clearer and easier way to understand what they are installing.';
+      if (p) p.textContent = 'The human behind the project. Wants players to have an easier way to find plugins and understand what they are installing.';
     }
     if (cards[2]) {
       const p = cards[2].querySelector('p:last-of-type');
-      if (p) p.textContent = 'The quiet security specialists. They help keep the safety side grounded in real defensive-security experience.';
+      if (p) p.textContent = 'The quiet security specialists. They help make sure Omega’s warnings are based on real security experience, not guesses.';
     }
   }
 
   const sigmascope = document.querySelector('#sigmascope');
   if (sigmascope) sigmascope.remove();
 
-  let faq = document.querySelector('#omega-eli5-v7-faq');
+  let faq = document.querySelector('#omega-eli5-v8-faq');
   if (!faq) {
     faq = document.createElement('section');
-    faq.id = 'omega-eli5-v7-faq';
+    faq.id = 'omega-eli5-v8-faq';
     faq.setAttribute('data-story-panel', '');
     faq.className = 'story-panel border-y border-white/10 bg-white/[.025]';
     main.appendChild(faq);
@@ -277,18 +277,18 @@
   faq.innerHTML = `
     <div class="mx-auto grid min-h-[100svh] max-w-4xl content-center px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
       <p class="eyebrow text-xs font-black uppercase text-omega-gold">FAQ</p>
-      <h2 class="mt-4 text-3xl font-black text-white sm:text-5xl">Quick answers in normal English.</h2>
+      <h2 class="mt-4 text-3xl font-black text-white sm:text-5xl">Still wondering about something?</h2>
       <div class="mt-8 space-y-3">
-        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Omega replace Dalamud?</summary><p class="mt-3 leading-7 text-slate-400">No. Dalamud still installs, updates, disables, and removes plugins. Omega helps you browse and understand them.</p></details>
-        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Omega know if a plugin is safe?</summary><p class="mt-3 leading-7 text-slate-400">No. Omega cannot promise that. It can only show warnings, clues, and extra information that may help you decide.</p></details>
-        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Omega install plugins by itself?</summary><p class="mt-3 leading-7 text-slate-400">No. You still install through Dalamud.</p></details>
-        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Sigmascope run plugins while checking them?</summary><p class="mt-3 leading-7 text-slate-400">No. It inspects them without executing them.</p></details>
+        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Omega replace Dalamud?</summary><p class="mt-3 leading-7 text-slate-400">No. Omega helps you find and understand plugins. Dalamud still installs, updates, disables, and removes them.</p></details>
+        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Omega know if a plugin is safe?</summary><p class="mt-3 leading-7 text-slate-400">No. Omega can show warnings and useful information, but it cannot promise that a plugin is safe.</p></details>
+        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Omega install plugins by itself?</summary><p class="mt-3 leading-7 text-slate-400">No. You choose the plugin, and Dalamud does the install.</p></details>
+        <details class="faq-item rounded-2xl border border-white/10 bg-omega-950/65 p-5"><summary class="font-black text-white">Does Sigmascope run plugins while checking them?</summary><p class="mt-3 leading-7 text-slate-400">No. It looks at the plugin files without running the plugin.</p></details>
       </div>
     </div>
   `;
   const testimonial = document.querySelector('#aetherfeed-note');
   if (testimonial) {
-    testimonial.classList.remove('omega-eli5-v7-hidden');
+    testimonial.classList.remove('omega-eli5-v8-hidden');
     testimonial.setAttribute('data-story-panel', '');
   }
 
