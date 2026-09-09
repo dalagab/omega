@@ -385,6 +385,48 @@ class ScanQueueTests(unittest.TestCase):
         self.assertEqual("source", selected["workType"])
         self.assertEqual("attempted", synced["items"]["source-variant-7"]["state"])
 
+    def test_source_semantic_reanalysis_precedes_ordinary_source_candidate_churn(self) -> None:
+        self.assertGreater(
+            scan_queue.REASON_PRIORITIES["source_analysis_changed"],
+            scan_queue.REASON_PRIORITIES["source_candidates_changed"],
+        )
+        self.assertGreater(
+            scan_queue.REASON_PRIORITIES["source_analysis_changed"],
+            scan_queue.REASON_PRIORITIES["source_candidate_observed"],
+        )
+        self.assertLess(
+            scan_queue.REASON_PRIORITIES["source_analysis_changed"],
+            scan_queue.REASON_PRIORITIES["advisory_changed"],
+        )
+
+        semantic = {
+            "queueKey": "source-semantic-refresh",
+            "workType": "source",
+            "pluginId": 10,
+            "variantId": 10,
+            "pluginHasCurrentScan": True,
+            "sourcePriorityClass": "official",
+            "priority": scan_queue.REASON_PRIORITIES["source_analysis_changed"],
+            "primaryReason": "source_analysis_changed",
+            "state": "pending",
+        }
+        candidate_churn = {
+            "queueKey": "source-candidate-churn",
+            "workType": "source",
+            "pluginId": 11,
+            "variantId": 11,
+            "pluginHasCurrentScan": True,
+            "sourcePriorityClass": "official",
+            "priority": scan_queue.REASON_PRIORITIES["source_candidates_changed"],
+            "primaryReason": "source_candidates_changed",
+            "state": "pending",
+        }
+        selected = min(
+            (semantic, candidate_churn),
+            key=lambda item: scan_queue._selection_sort_key(item, {10, 11}),
+        )
+        self.assertEqual("source-semantic-refresh", selected["queueKey"])
+
     def test_coverage_first_selection_prefers_never_scanned_before_source_followup_or_rescan(self) -> None:
         state = {
             "schema": scan_queue.STATE_SCHEMA, "selectionPolicy": scan_queue.SELECTION_POLICY,

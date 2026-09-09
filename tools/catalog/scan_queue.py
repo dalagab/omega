@@ -98,10 +98,13 @@ REASON_PRIORITIES = {
     "analysis_observation_requested": 845,
     "srl_observation_missing": 840,
     "advisory_changed": 800,
+    # A scanner-semantic change means retained source evidence is known stale. Refresh it before
+    # ordinary source-candidate churn so new dependency/security semantics become visible promptly,
+    # while coverage-first lanes and artifact/release work still retain their higher precedence.
+    "source_analysis_changed": 735,
     "source_candidates_changed": 725,
     "source_candidate_observed": 710,
     "source_observation_changed": 700,
-    "source_analysis_changed": 675,
     "source_unresolved": 650,
     "failed_retry": 600,
 }
