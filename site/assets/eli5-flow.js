@@ -8,20 +8,33 @@
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      html { scroll-snap-type: none !important; }
-      .story-panel { scroll-snap-align: none !important; scroll-snap-stop: normal !important; }
-      #content { display: flex !important; flex-direction: column !important; }
+      html, body {
+        scroll-snap-type: none !important;
+        scroll-behavior: auto !important;
+        overflow-y: auto !important;
+      }
+      body { overscroll-behavior-y: auto !important; }
+      .story-panel {
+        scroll-snap-align: none !important;
+        scroll-snap-stop: normal !important;
+      }
+      #content {
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: visible !important;
+      }
       .omega-eli5-v5-hidden { display: none !important; }
       #overview { order: 0 !important; background: #05070d !important; padding: 0 !important; min-height: 100svh !important; }
       #overview::before, #overview::after { display: none !important; content: none !important; }
       .scene-omega { background: #05070d !important; background-image: none !important; }
       #overview > .mx-auto { max-width: none !important; }
-      #install-flow { order: 10 !important; }
-      #why { order: 20 !important; }
-      #install { order: 30 !important; }
-      #team { order: 40 !important; display: block !important; }
-      #sigmascope { order: 50 !important; display: block !important; }
-      #omega-eli5-v5-faq { order: 60 !important; }
+      #install-flow { order: 10 !important; min-height: auto !important; }
+      #why { order: 20 !important; min-height: auto !important; }
+      #install { order: 30 !important; min-height: auto !important; }
+      #team { order: 40 !important; display: block !important; min-height: auto !important; }
+      #sigmascope { order: 50 !important; display: block !important; min-height: auto !important; }
+      #sigmascope > div { min-height: auto !important; }
+      #omega-eli5-v5-faq { order: 60 !important; min-height: auto !important; }
     `;
     document.head.appendChild(style);
   }
@@ -84,31 +97,34 @@
   if (installFlow) {
     installFlow.innerHTML = `
       <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div class="max-w-3xl">
-          <p class="eyebrow text-xs font-black uppercase text-omega-cyan">What you can do in Omega</p>
-          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Three parts most players will use.</h2>
-          <p class="mt-5 text-lg leading-8 text-slate-200">Browse the marketplace, narrow things down in Discovery, and keep track of what you already use in your Library.</p>
+        <div class="max-w-4xl">
+          <p class="eyebrow text-xs font-black uppercase text-omega-cyan">What can you do in Omega?</p>
+          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Find something new. Find exactly what you want. Keep your plugins under control.</h2>
+          <p class="mt-5 text-lg leading-8 text-slate-200">Omega gives you one place to see what is happening in plugin land, dig through what is available, and manage the plugins you already use.</p>
         </div>
         <div class="mt-10 grid gap-5 lg:grid-cols-3">
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
-            <img src="assets/screenshots/omega-main.png" alt="Omega main marketplace page" class="block w-full">
-            <figcaption class="border-t border-white/10 px-5 py-4">
-              <p class="text-xs font-black uppercase tracking-[.16em] text-omega-cyan">Main page</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Browse plugins from different sources in one marketplace view.</p>
+            <img src="assets/screenshots/omega-main.png" alt="Omega Spotlight showing what is new and interesting" class="block w-full">
+            <figcaption class="border-t border-white/10 px-5 py-5">
+              <p class="text-xs font-black uppercase tracking-[.16em] text-omega-cyan">Spotlight</p>
+              <h3 class="mt-2 text-xl font-black text-white">See what is happening in plugin land.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">New releases, popular picks, fresh updates, and things worth checking out. Open Omega and immediately see what is hot, hip, and new.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
-            <img src="assets/screenshots/omega-filters.png" alt="Omega discovery page with search and filters" class="block w-full">
-            <figcaption class="border-t border-white/10 px-5 py-4">
-              <p class="text-xs font-black uppercase tracking-[.16em] text-omega-gold">Discovery</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Search and filter until you find something that fits what you want.</p>
+            <img src="assets/screenshots/omega-filters.png" alt="Omega Discover with wide search and filtering" class="block w-full">
+            <figcaption class="border-t border-white/10 px-5 py-5">
+              <p class="text-xs font-black uppercase tracking-[.16em] text-omega-gold">Discover</p>
+              <h3 class="mt-2 text-xl font-black text-white">Search without limits.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Search and filter across the wider plugin ecosystem instead of bouncing between separate repository lists. If it is out there, Discover helps you find it.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
-            <img src="assets/screenshots/omega-library.png" alt="Omega library page" class="block w-full">
-            <figcaption class="border-t border-white/10 px-5 py-4">
+            <img src="assets/screenshots/omega-library.png" alt="Omega Library for managing installed plugins" class="block w-full">
+            <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-400">Library</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">See what you already have and come back to it later.</p>
+              <h3 class="mt-2 text-xl font-black text-white">Your plugins, in one place.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Manage the plugins you already use, see where they came from, keep an eye on versions, and keep your collection under control.</p>
             </figcaption>
           </figure>
         </div>
