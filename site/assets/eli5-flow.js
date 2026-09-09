@@ -3,45 +3,38 @@
 
   document.title = 'Omega Marketplace — FFXIV plugins made simpler';
 
-  const styleId = 'omega-eli5-v5-style';
+  const styleId = 'omega-eli5-v6-style';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      html, body {
-        scroll-snap-type: none !important;
-        scroll-behavior: auto !important;
-        overflow-y: auto !important;
-      }
-      body { overscroll-behavior-y: auto !important; }
+      html { scroll-behavior: smooth !important; }
+      body { overflow-y: auto !important; }
       .story-panel {
-        scroll-snap-align: none !important;
-        scroll-snap-stop: normal !important;
+        min-height: 100svh !important;
+        scroll-snap-align: start !important;
+        scroll-snap-stop: always !important;
       }
       #content {
         display: flex !important;
         flex-direction: column !important;
         overflow: visible !important;
       }
-      .omega-eli5-v5-hidden { display: none !important; }
+      .omega-eli5-v6-hidden { display: none !important; }
       #overview { order: 0 !important; background: #05070d !important; padding: 0 !important; min-height: 100svh !important; }
       #overview::before, #overview::after { display: none !important; content: none !important; }
       .scene-omega { background: #05070d !important; background-image: none !important; }
       #overview > .mx-auto { max-width: none !important; }
-      #install-flow { order: 10 !important; min-height: auto !important; }
-      #why { order: 20 !important; min-height: auto !important; }
-      #install { order: 30 !important; min-height: auto !important; }
-      #team { order: 40 !important; display: block !important; min-height: auto !important; }
-      #sigmascope { order: 50 !important; display: block !important; min-height: auto !important; }
-      #sigmascope > div { min-height: auto !important; }
-      #omega-eli5-v5-faq { order: 60 !important; min-height: auto !important; }
+      #install-flow { order: 10 !important; min-height: 100svh !important; }
+      #why { order: 20 !important; min-height: 100svh !important; }
+      #install { order: 30 !important; min-height: 100svh !important; }
+      #team { order: 40 !important; display: block !important; min-height: 100svh !important; }
+      #sigmascope { order: 50 !important; display: block !important; min-height: 100svh !important; }
+      #sigmascope > div { min-height: 100svh !important; }
+      #omega-eli5-v6-faq { order: 60 !important; }
     `;
     document.head.appendChild(style);
   }
-
-  window.addEventListener('wheel', (event) => {
-    event.stopImmediatePropagation();
-  }, { capture: true, passive: true });
 
   const main = document.querySelector('#content');
   if (!main) return;
@@ -51,7 +44,7 @@
     if (child.tagName !== 'SECTION') continue;
     const id = child.id || '';
     if (keepIds.has(id)) continue;
-    child.classList.add('omega-eli5-v5-hidden');
+    child.classList.add('omega-eli5-v6-hidden');
   }
 
   const overview = document.querySelector('#overview');
@@ -96,35 +89,35 @@
   const installFlow = document.querySelector('#install-flow');
   if (installFlow) {
     installFlow.innerHTML = `
-      <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+      <div class="mx-auto grid min-h-[100svh] max-w-7xl content-center px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div class="max-w-4xl">
           <p class="eyebrow text-xs font-black uppercase text-omega-cyan">What can you do in Omega?</p>
-          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Find something new. Find exactly what you want. Keep your plugins under control.</h2>
-          <p class="mt-5 text-lg leading-8 text-slate-200">Omega gives you one place to see what is happening in plugin land, dig through what is available, and manage the plugins you already use.</p>
+          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Discover more. Find anything. Keep your plugin setup under control.</h2>
+          <p class="mt-5 max-w-3xl text-lg leading-8 text-slate-200">Omega turns the wider FFXIV plugin ecosystem into something you can actually browse. Drop in to see what is new, search when you know what you want, or manage the plugins already in your game.</p>
         </div>
-        <div class="mt-10 grid gap-5 lg:grid-cols-3">
+        <div class="mt-8 grid gap-5 lg:grid-cols-3">
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
-            <img src="assets/screenshots/omega-main.png" alt="Omega Spotlight showing what is new and interesting" class="block w-full">
+            <img src="assets/screenshots/omega-main.png" alt="Omega Spotlight showing new and interesting plugins" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-cyan">Spotlight</p>
-              <h3 class="mt-2 text-xl font-black text-white">See what is happening in plugin land.</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-300">New releases, popular picks, fresh updates, and things worth checking out. Open Omega and immediately see what is hot, hip, and new.</p>
+              <h3 class="mt-2 text-xl font-black text-white">Start with what is worth a look.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Fresh releases, interesting updates, popular picks and plugins worth checking out. Open Omega without a plan and Spotlight gives you somewhere fun to start.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
-            <img src="assets/screenshots/omega-filters.png" alt="Omega Discover with wide search and filtering" class="block w-full">
+            <img src="assets/screenshots/omega-filters.png" alt="Omega Discover searching and filtering the plugin ecosystem" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-gold">Discover</p>
-              <h3 class="mt-2 text-xl font-black text-white">Search without limits.</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Search and filter across the wider plugin ecosystem instead of bouncing between separate repository lists. If it is out there, Discover helps you find it.</p>
+              <h3 class="mt-2 text-xl font-black text-white">Find exactly what you are looking for.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Search across the wider plugin ecosystem instead of hopping between repository lists. Narrow things down by what matters to you until the right plugin surfaces.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
-            <img src="assets/screenshots/omega-library.png" alt="Omega Library for managing installed plugins" class="block w-full">
+            <img src="assets/screenshots/omega-library.png" alt="Omega Library managing installed plugins" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-5">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-400">Library</p>
-              <h3 class="mt-2 text-xl font-black text-white">Your plugins, in one place.</h3>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Manage the plugins you already use, see where they came from, keep an eye on versions, and keep your collection under control.</p>
+              <h3 class="mt-2 text-xl font-black text-white">Your plugins, organised and manageable.</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">See and manage the plugins you already use, keep track of where they came from and what version you have, and keep your collection from turning into a mystery box.</p>
             </figcaption>
           </figure>
         </div>
@@ -135,36 +128,36 @@
   const why = document.querySelector('#why');
   if (why) {
     why.innerHTML = `
-      <div class="mx-auto max-w-7xl">
+      <div class="mx-auto grid min-h-[100svh] max-w-7xl content-center px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div class="max-w-4xl">
           <p class="eyebrow text-xs font-black uppercase text-omega-cyan">Why Omega shows warnings</p>
-          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Plugins are more than a description and an Install button.</h2>
-          <p class="mt-5 text-lg leading-8 text-slate-200">A plugin is still software running on your PC. Some plugins connect to the internet, change files, talk to other tools, or automate parts of the game.</p>
-          <p class="mt-5 leading-7 text-slate-300">That does not automatically make a plugin bad, but it is the kind of thing many players would want to know first. Omega cannot promise a plugin is safe. It tries to point out things worth noticing before you install, so you can make a more informed choice.</p>
+          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Know a little more before you click Install.</h2>
+          <p class="mt-5 text-lg leading-8 text-slate-200">Plugins are software running inside your game. They can connect to the internet, read or change files, automate parts of gameplay, depend on other tools, or come from more than one source.</p>
+          <p class="mt-4 leading-7 text-slate-300">None of that automatically makes a plugin bad. It is simply useful context to have before you install it. Omega does not hand out “safe” or “unsafe” stamps; it shows what it can observe, explains things worth noticing, and leaves the decision with you.</p>
         </div>
-        <div class="mt-10 grid gap-5 lg:grid-cols-3">
+        <div class="mt-8 grid gap-5 lg:grid-cols-3">
           <article class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950/85 shadow-2xl backdrop-blur-md">
-            <img src="assets/screenshots/omega-install-plugin.png" alt="A normal-looking plugin page inside Omega" class="block w-full">
+            <img src="assets/screenshots/omega-install-plugin.png" alt="A normal plugin page inside Omega" class="block w-full">
             <div class="p-6">
-              <p class="text-xs font-black uppercase tracking-wider text-omega-cyan">01 · It can look normal</p>
-              <h3 class="mt-2 text-xl font-black text-white">A nice description does not show everything.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">A plugin page can look fine while the software behind it still does a lot more.</p>
+              <p class="text-xs font-black uppercase tracking-wider text-omega-cyan">What does it actually do?</p>
+              <h3 class="mt-2 text-xl font-black text-white">See more than the description.</h3>
+              <p class="mt-3 text-sm leading-6 text-slate-300">A friendly plugin page cannot tell you everything. Omega can surface behaviour and capabilities that may matter to your choice.</p>
             </div>
           </article>
           <article class="overflow-hidden rounded-[2rem] border border-omega-gold/25 bg-omega-950/85 shadow-2xl backdrop-blur-md">
-            <img src="assets/screenshots/omega-install-warning.png" alt="Omega warning before installing a plugin" class="block w-full">
+            <img src="assets/screenshots/omega-install-warning.png" alt="Omega explaining a warning before installation" class="block w-full">
             <div class="p-6">
-              <p class="text-xs font-black uppercase tracking-wider text-omega-gold">02 · Omega can warn you</p>
-              <h3 class="mt-2 text-xl font-black text-white">Important stuff gets explained in plain English.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">If Omega spots something worth noticing, it can stop and explain it before you continue.</p>
+              <p class="text-xs font-black uppercase tracking-wider text-omega-gold">Anything worth noticing?</p>
+              <h3 class="mt-2 text-xl font-black text-white">Warnings explain. They do not accuse.</h3>
+              <p class="mt-3 text-sm leading-6 text-slate-300">A warning means “take a look,” not “this plugin is malicious.” Omega tells you what triggered it so you can decide whether it makes sense for that plugin.</p>
             </div>
           </article>
           <article class="overflow-hidden rounded-[2rem] border border-omega-400/25 bg-omega-950/85 shadow-2xl backdrop-blur-md">
-            <img src="assets/screenshots/source-trust.png" alt="Omega comparing plugin sources and warnings" class="block w-full">
+            <img src="assets/screenshots/source-trust.png" alt="Omega showing plugin source and package context" class="block w-full">
             <div class="p-6">
-              <p class="text-xs font-black uppercase tracking-wider text-omega-400">03 · Not every copy is the same</p>
-              <h3 class="mt-2 text-xl font-black text-white">The same plugin name can come from different places.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">Omega keeps source, version, and warning information together so those differences are easier to spot.</p>
+              <p class="text-xs font-black uppercase tracking-wider text-omega-400">Where did this copy come from?</p>
+              <h3 class="mt-2 text-xl font-black text-white">Keep the source beside the plugin.</h3>
+              <p class="mt-3 text-sm leading-6 text-slate-300">When the same plugin appears from different places, Omega keeps source, version and package context visible so the choice is not just a familiar name and an Install button.</p>
             </div>
           </article>
         </div>
@@ -278,10 +271,10 @@
     `;
   }
 
-  let faq = document.querySelector('#omega-eli5-v5-faq');
+  let faq = document.querySelector('#omega-eli5-v6-faq');
   if (!faq) {
     faq = document.createElement('section');
-    faq.id = 'omega-eli5-v5-faq';
+    faq.id = 'omega-eli5-v6-faq';
     faq.className = 'border-y border-white/10 bg-white/[.025]';
     main.appendChild(faq);
   }
