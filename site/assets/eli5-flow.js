@@ -3,7 +3,7 @@
 
   document.title = 'Omega Marketplace — FFXIV plugins made simpler';
 
-  const styleId = 'omega-eli5-v2-style';
+  const styleId = 'omega-eli5-v3-style';
   if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
     style.id = styleId;
@@ -11,14 +11,14 @@
       html { scroll-snap-type: none !important; }
       .story-panel { scroll-snap-align: none !important; scroll-snap-stop: normal !important; }
       #content { display: flex !important; flex-direction: column !important; }
-      .omega-eli5-v2-hidden { display: none !important; }
+      .omega-eli5-v3-hidden { display: none !important; }
       #overview { order: 0 !important; }
       #install-flow { order: 10 !important; }
       #why { order: 20 !important; }
       #install { order: 30 !important; }
       #team { order: 40 !important; display: block !important; }
       #sigmascope { order: 50 !important; display: block !important; }
-      #omega-eli5-v2-faq { order: 60 !important; }
+      #omega-eli5-v3-faq { order: 60 !important; }
     `;
     document.head.appendChild(style);
   }
@@ -35,33 +35,45 @@
     if (child.tagName !== 'SECTION') continue;
     const id = child.id || '';
     if (keepIds.has(id)) continue;
-    child.classList.add('omega-eli5-v2-hidden');
+    child.classList.add('omega-eli5-v3-hidden');
   }
 
   const overview = document.querySelector('#overview');
   if (overview) {
     overview.innerHTML = `
       <div class="absolute inset-0 -z-10">
-        <div class="absolute inset-0 bg-gradient-to-r from-omega-950 via-omega-950/75 to-omega-950/25"></div>
-        <div class="absolute inset-0 bg-gradient-to-t from-omega-950/90 via-transparent to-omega-950/35"></div>
-        <div class="command-grid absolute inset-0 opacity-40"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-omega-950/85 via-omega-950/55 to-omega-950/88"></div>
+        <div class="command-grid absolute inset-0 opacity-20"></div>
       </div>
-      <div class="mx-auto flex min-h-[100svh] max-w-7xl flex-col justify-center gap-8 px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-        <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
+      <div class="mx-auto flex min-h-[100svh] max-w-7xl items-center px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+        <div class="relative w-full overflow-hidden rounded-[2.25rem] border border-white/10 bg-omega-950 app-shadow">
           <img src="assets/brand/omega-marketplace-top-banner.png" alt="Omega Marketplace fantasy banner art" class="block w-full">
-        </figure>
-        <div class="grid gap-5 lg:grid-cols-2">
-          <article class="rounded-[2rem] border border-white/10 bg-omega-950/88 p-6 shadow-2xl backdrop-blur-md sm:p-8">
-            <p class="text-xs font-black uppercase tracking-[.18em] text-omega-cyan">For Final Fantasy XIV players</p>
-            <h1 class="mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Find FFXIV plugins without digging through random places.</h1>
-            <p class="mt-4 text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">Omega brings plugins from Dalamud and custom repositories into one place, so browsing feels easier and less messy.</p>
-          </article>
-          <article class="rounded-[2rem] border border-white/10 bg-omega-950/88 p-6 shadow-2xl backdrop-blur-md sm:p-8">
-            <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
-            <h2 class="mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">See what a plugin is, where it comes from, and anything worth noticing.</h2>
-            <p class="mt-4 text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">Omega helps you choose. Dalamud still handles installing, updating, disabling, and removing plugins.</p>
-          </article>
+          <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/15 to-black/60"></div>
+          <div class="absolute inset-0 hidden lg:grid lg:grid-cols-2 lg:items-end lg:px-8 lg:py-8 xl:items-center">
+            <article class="max-w-md rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-6 shadow-2xl backdrop-blur-md xl:p-7">
+              <p class="text-xs font-black uppercase tracking-[.18em] text-omega-cyan">For Final Fantasy XIV players</p>
+              <h1 class="mt-4 text-3xl font-black tracking-tight text-white xl:text-5xl">Find FFXIV plugins in one place.</h1>
+              <p class="mt-4 text-base leading-7 text-slate-300 xl:text-lg xl:leading-8">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
+            </article>
+            <article class="ml-auto max-w-md rounded-[1.8rem] border border-white/10 bg-omega-950/88 p-6 shadow-2xl backdrop-blur-md xl:p-7">
+              <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
+              <h2 class="mt-4 text-3xl font-black tracking-tight text-white xl:text-5xl">See what matters before you install.</h2>
+              <p class="mt-4 text-base leading-7 text-slate-300 xl:text-lg xl:leading-8">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
+            </article>
+          </div>
         </div>
+      </div>
+      <div class="mx-auto -mt-10 grid max-w-7xl gap-4 px-4 pb-8 sm:px-6 lg:hidden lg:px-8">
+        <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
+          <p class="text-xs font-black uppercase tracking-[.18em] text-omega-cyan">For Final Fantasy XIV players</p>
+          <h1 class="mt-4 text-3xl font-black tracking-tight text-white">Find FFXIV plugins in one place.</h1>
+          <p class="mt-4 text-base leading-7 text-slate-300">Omega brings plugins from Dalamud and custom repositories together, so browsing feels easier and less messy.</p>
+        </article>
+        <article class="rounded-[1.8rem] border border-white/10 bg-omega-950/92 p-6 shadow-2xl backdrop-blur-md">
+          <p class="text-xs font-black uppercase tracking-[.18em] text-omega-gold">Simple and to the point</p>
+          <h2 class="mt-4 text-3xl font-black tracking-tight text-white">See what matters before you install.</h2>
+          <p class="mt-4 text-base leading-7 text-slate-300">Check what a plugin does, where it comes from, and anything worth noticing. Omega helps you choose. Dalamud still installs it.</p>
+        </article>
       </div>
     `;
   }
@@ -71,30 +83,30 @@
     installFlow.innerHTML = `
       <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div class="max-w-3xl">
-          <p class="eyebrow text-xs font-black uppercase text-omega-cyan">A quick look at Omega</p>
-          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">A snappy look at the product.</h2>
-          <p class="mt-5 text-lg leading-8 text-slate-200">The first screen shows the marketplace itself. Then you can discover more, and keep your installs together in your library.</p>
+          <p class="eyebrow text-xs font-black uppercase text-omega-cyan">What you can do in Omega</p>
+          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Three parts most players will use.</h2>
+          <p class="mt-5 text-lg leading-8 text-slate-200">Browse the marketplace, narrow things down in Discovery, and keep track of what you already use in your Library.</p>
         </div>
         <div class="mt-10 grid gap-5 lg:grid-cols-3">
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
             <img src="assets/screenshots/omega-main.png" alt="Omega main marketplace page" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-4">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-cyan">Main page</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Browse plugins in one marketplace view.</p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Browse plugins from different sources in one marketplace view.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
             <img src="assets/screenshots/omega-filters.png" alt="Omega discovery page with search and filters" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-4">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-gold">Discovery</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Search and filter until you find something useful.</p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">Search and filter until you find something that fits what you want.</p>
             </figcaption>
           </figure>
           <figure class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950 app-shadow">
             <img src="assets/screenshots/omega-library.png" alt="Omega library page" class="block w-full">
             <figcaption class="border-t border-white/10 px-5 py-4">
               <p class="text-xs font-black uppercase tracking-[.16em] text-omega-400">Library</p>
-              <p class="mt-2 text-sm leading-6 text-slate-300">Keep track of what you already have.</p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">See what you already have and come back to it later.</p>
             </figcaption>
           </figure>
         </div>
@@ -107,10 +119,10 @@
     why.innerHTML = `
       <div class="mx-auto max-w-7xl">
         <div class="max-w-4xl">
-          <p class="eyebrow text-xs font-black uppercase text-omega-cyan">Why the security stuff matters</p>
-          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">A plugin can look harmless and still do a lot.</h2>
-          <p class="mt-5 text-lg leading-8 text-slate-200">Omega cannot know for sure if a plugin is safe. What it can do is point out things you may want to know before you install it.</p>
-          <p class="mt-5 leading-7 text-slate-300">That can include whether a plugin connects to the internet, changes files, automates parts of the game, relies on other tools, or comes from a different source than expected. If something looks unusual, Omega tells you. You still decide whether to install it.</p>
+          <p class="eyebrow text-xs font-black uppercase text-omega-cyan">Why Omega shows warnings</p>
+          <h2 class="hero-copy mt-4 text-3xl font-black tracking-tight text-white sm:text-5xl">Plugins are more than a description and an Install button.</h2>
+          <p class="mt-5 text-lg leading-8 text-slate-200">A plugin is still software running on your PC. Some plugins connect to the internet, change files, talk to other tools, or automate parts of the game.</p>
+          <p class="mt-5 leading-7 text-slate-300">That does not automatically make a plugin bad, but it is the kind of thing many players would want to know first. Omega cannot promise a plugin is safe. It tries to point out things worth noticing before you install, so you can make a more informed choice.</p>
         </div>
         <div class="mt-10 grid gap-5 lg:grid-cols-3">
           <article class="overflow-hidden rounded-[2rem] border border-white/10 bg-omega-950/85 shadow-2xl backdrop-blur-md">
@@ -118,7 +130,7 @@
             <div class="p-6">
               <p class="text-xs font-black uppercase tracking-wider text-omega-cyan">01 · It can look normal</p>
               <h3 class="mt-2 text-xl font-black text-white">A nice description does not show everything.</h3>
-              <p class="mt-3 text-sm leading-6 text-slate-300">A plugin page can look fine while the software behind it is still powerful.</p>
+              <p class="mt-3 text-sm leading-6 text-slate-300">A plugin page can look fine while the software behind it still does a lot more.</p>
             </div>
           </article>
           <article class="overflow-hidden rounded-[2rem] border border-omega-gold/25 bg-omega-950/85 shadow-2xl backdrop-blur-md">
@@ -248,10 +260,10 @@
     `;
   }
 
-  let faq = document.querySelector('#omega-eli5-v2-faq');
+  let faq = document.querySelector('#omega-eli5-v3-faq');
   if (!faq) {
     faq = document.createElement('section');
-    faq.id = 'omega-eli5-v2-faq';
+    faq.id = 'omega-eli5-v3-faq';
     faq.className = 'border-y border-white/10 bg-white/[.025]';
     main.appendChild(faq);
   }
