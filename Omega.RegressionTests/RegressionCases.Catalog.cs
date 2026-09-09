@@ -181,10 +181,13 @@ internal static partial class RegressionCases
 
         var ui = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Dependencies.cs"));
         Contains(ui, "catalog.GetDependenciesForVariant", "Requires UI uses normalized consumer-variant package authority");
-        Contains(ui, "catalog.GetDependentsForProvider", "Required by UI uses normalized reverse dependency authority");
-        Contains(ui, "IPC relationships are security/integration observations, not package-install dependencies.",
-            "IPC remains explicitly separate from package dependencies");
-        DoesNotContain(ui, "Required IPC provider. Install separately.", "IPC is no longer presented as package-install authority");
+        Contains(ui, "Required ({requiredCount})", "normal product details collapse required relationships into one table");
+        Contains(ui, "Works with ({worksWithCount})", "normal product details collapse optional and integration relationships into one table");
+        Contains(ui, "IsRequiredIpcRelationship", "runtime-required IPC evidence is separated from optional integrations for presentation");
+        Contains(ui, "configuration.ShowAdvancedSecurityInformation", "reverse dependency information is gated behind advanced security information");
+        Contains(ui, "Used by (advanced)", "advanced relationship view exposes reverse use as security context");
+        Contains(ui, "catalog.GetDependentsForProvider", "advanced Used by UI uses normalized reverse dependency authority");
+        DoesNotContain(ui, "Required IPC provider. Install separately.", "IPC is not silently promoted to package-install authority by the client");
 
         var install = File.ReadAllText(Path.Combine(Root, "Omega", "UI", "MarketplaceWindow.Install.cs"));
         DoesNotContain(install, "DrawRequiredProviderInstallWarning", "single-plugin install no longer blocks on inferred IPC providers");

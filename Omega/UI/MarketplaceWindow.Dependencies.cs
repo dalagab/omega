@@ -10,38 +10,67 @@ internal sealed partial class MarketplaceWindow
         MarketplacePlugin plugin,
         IReadOnlyDictionary<string, IExposedPlugin> installed)
     {
-        DrawProductSectionHeading("Dependencies");
+        DrawProductSectionHeading("Plugin relationships");
         ImGui.Indent(14f);
 
         var packageEdges = ReadNormalizedPackageDependencies(plugin);
-        var required = packageEdges
+        var requiredPackages = packageEdges
             .Where(x => x.Relationship == PluginDependencyRelationship.Required)
             .ToArray();
-        var recommended = packageEdges
-            .Where(x => x.Relationship == PluginDependencyRelationship.Recommended)
-            .ToArray();
-        var optional = packageEdges
-            .Where(x => x.Relationship == PluginDependencyRelationship.Optional)
-            .ToArray();
-        var observed = packageEdges
-            .Where(x => x.Relationship == PluginDependencyRelationship.Observed)
+        var worksWithPackages = packageEdges
+            .Where(x => x.Relationship != PluginDependencyRelationship.Required)
             .ToArray();
 
-        if (packageEdges.Count > 0)
+        var packageTargets = packageEdges
+            .Select(x => x.ProviderInternalName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var ipcIntegrations = plugin.SecurityDependencies
+            .Where(x => IsSecurityPluginRelationship(plugin, x) && IsIpcDependency(x))
+            .Where(x => string.IsNullOrWhiteSpace(x.TargetInternalName) || !packageTargets.Contains(x.TargetInternalName))
+            .ToArray();
+        var requiredIntegrations = ipcIntegrations
+            .Where(IsRequiredIpcRelationship)
+            .ToArray();
+        var worksWithIntegrations = ipcIntegrations
+            .Where(x => !IsRequiredIpcRelationship(x))
+            .ToArray();
+
+        var requiredCount = requiredPackages.Length + requiredIntegrations.Length;
+        var worksWithCount = worksWithPackages.Length + worksWithIntegrations.Length;
+
+        if (requiredCount > 0)
         {
-            DrawPackageDependencyGroup("Required plugins", required, installed);
-            DrawPackageDependencyGroup("Recommended plugins", recommended, installed);
-            DrawPackageDependencyGroup("Optional plugins", optional, installed);
-            DrawPackageDependencyGroup("Observed package relationships", observed, installed);
+            ImGui.Spacing();
+            if (ImGui.CollapsingHeader($"Required ({requiredCount})##plugin-relationships-required", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                ImGui.Indent(Ui(10f));
+                DrawPackageDependencyGroup("Package requirements", requiredPackages, installed);
+                DrawSecurityObservationGroup("Runtime requirements", requiredIntegrations, installed);
+                ImGui.Unindent(Ui(10f));
+            }
         }
-        else
+
+        if (worksWithCount > 0)
         {
+            ImGui.Spacing();
+            if (ImGui.CollapsingHeader($"Works with ({worksWithCount})##plugin-relationships-works-with", ImGuiTreeNodeFlags.DefaultOpen))
+            {
+                ImGui.Indent(Ui(10f));
+                DrawPackageDependencyGroup("Plugin relationships", worksWithPackages, installed);
+                DrawSecurityObservationGroup("IPC integrations", worksWithIntegrations, installed);
+                ImGui.Unindent(Ui(10f));
+            }
+        }
+
+        if (requiredCount == 0 && worksWithCount == 0)
             DrawPackageDependencyEmptyState(plugin);
-        }
 
-        DrawReverseDependencies(plugin);
-        DrawSecurityIntegrationDependencies(plugin, installed);
-        DrawSecurityPackageObservations(plugin, installed);
+        if (configuration.ShowAdvancedSecurityInformation)
+        {
+            DrawReverseDependencies(plugin);
+            DrawSecurityPackageObservations(plugin, installed);
+        }
 
         ImGui.Unindent(14f);
     }
@@ -230,43 +259,55 @@ internal sealed partial class MarketplaceWindow
         var dependents = plugin.CatalogPluginId > 0
             ? catalog.GetDependentsForProvider(plugin.CatalogPluginId)
             : catalog.GetDependentsForProvider(plugin.InternalName);
-        var requiredBy = dependents
-            .Where(x => x.Relationship == PluginDependencyRelationship.Required)
-            .GroupBy(x => x.ConsumerPluginId > 0 ? $"id:{x.ConsumerPluginId}" : $"name:{x.ConsumerInternalName}", StringComparer.OrdinalIgnoreCase)
-            .Select(x => x.First())
+        var usedBy = dependents
+            .GroupBy(
+                x => x.ConsumerPluginId > 0 ? $"id:{x.ConsumerPluginId}" : $"name:{x.ConsumerInternalName}",
+                StringComparer.OrdinalIgnoreCase)
+            .Select(x => x
+                .OrderBy(DependencyRelationshipSortRank)
+                .ThenBy(y => y.ConsumerVersion, StringComparer.OrdinalIgnoreCase)
+                .First())
             .OrderBy(x => x.ConsumerInternalName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         ImGui.Spacing();
-        ImGui.TextUnformatted("Dependency provider");
+        ImGui.TextUnformatted("Used by (advanced)");
         ImGui.SameLine(0f, Ui(10f));
         ImGui.TextDisabled(
             $"Required by {provider.RequiredByCount} · Recommended by {provider.RecommendedByCount} · Optional for {provider.OptionalByCount}");
 
-        if (requiredBy.Length == 0)
+        if (usedBy.Length == 0)
             return;
 
         ImGui.Spacing();
-        ImGui.TextUnformatted("Required by");
-        ImGui.Spacing();
         ImGui.PushStyleVar(ImGuiStyleVar.CellPadding, Ui(8f, 6f));
         if (ImGui.BeginTable(
-                $"package-required-by-{StableId(plugin.InternalName)}",
-                4,
+                $"package-used-by-{StableId(plugin.InternalName)}",
+                5,
                 ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.RowBg))
         {
-            ImGui.TableSetupColumn("Plugin", ImGuiTableColumnFlags.WidthStretch, 2.6f);
+            ImGui.TableSetupColumn("Plugin", ImGuiTableColumnFlags.WidthStretch, 2.5f);
+            ImGui.TableSetupColumn("Relationship", ImGuiTableColumnFlags.WidthStretch, 1.2f);
             ImGui.TableSetupColumn("Consumer version", ImGuiTableColumnFlags.WidthStretch, 1.2f);
-            ImGui.TableSetupColumn("Requirement", ImGuiTableColumnFlags.WidthStretch, 1.5f);
+            ImGui.TableSetupColumn("Requirement", ImGuiTableColumnFlags.WidthStretch, 1.4f);
             ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, Ui(70f));
 
-            foreach (var dependency in requiredBy)
+            foreach (var dependency in usedBy)
                 DrawReverseDependencyRow(dependency);
 
             ImGui.EndTable();
         }
         ImGui.PopStyleVar();
     }
+
+    private static int DependencyRelationshipSortRank(PluginDependencyEdge dependency)
+        => dependency.Relationship switch
+        {
+            PluginDependencyRelationship.Required => 0,
+            PluginDependencyRelationship.Recommended => 1,
+            PluginDependencyRelationship.Optional => 2,
+            _ => 3,
+        };
 
     private void DrawReverseDependencyRow(PluginDependencyEdge dependency)
     {
@@ -291,20 +332,23 @@ internal sealed partial class MarketplaceWindow
         }
 
         ImGui.TableSetColumnIndex(1);
-        ImGui.TextDisabled(string.IsNullOrWhiteSpace(dependency.ConsumerVersion) ? "—" : dependency.ConsumerVersion);
+        ImGui.TextDisabled(PackageRelationshipLabel(dependency.Relationship));
 
         ImGui.TableSetColumnIndex(2);
-        ImGui.TextWrapped(string.IsNullOrWhiteSpace(dependency.VersionConstraint)
-            ? "Required"
-            : dependency.VersionConstraint);
+        ImGui.TextDisabled(string.IsNullOrWhiteSpace(dependency.ConsumerVersion) ? "—" : dependency.ConsumerVersion);
 
         ImGui.TableSetColumnIndex(3);
+        ImGui.TextWrapped(string.IsNullOrWhiteSpace(dependency.VersionConstraint)
+            ? PackageRelationshipLabel(dependency.Relationship)
+            : dependency.VersionConstraint);
+
+        ImGui.TableSetColumnIndex(4);
         if (consumerVariants.Length == 0)
         {
             ImGui.TextDisabled("—");
             return;
         }
-        if (ImGui.SmallButton($"Open##required-by-{StableId(dependency.ConsumerInternalName)}-{dependency.ConsumerVariantId}"))
+        if (ImGui.SmallButton($"Open##used-by-{StableId(dependency.ConsumerInternalName)}-{dependency.ConsumerVariantId}"))
             OpenPluginDetails(consumerVariants[0]);
     }
 
@@ -480,6 +524,11 @@ internal sealed partial class MarketplaceWindow
     private static bool IsIpcDependency(MarketplaceDependency dependency)
         => dependency.Type.Equals("ipc", StringComparison.OrdinalIgnoreCase) ||
            dependency.Kind.Equals("ipc", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRequiredIpcRelationship(MarketplaceDependency dependency)
+        => IpcRelationship(dependency).Equals("required", StringComparison.OrdinalIgnoreCase) ||
+           dependency.Requirement.Equals("required", StringComparison.OrdinalIgnoreCase) ||
+           dependency.Type.Equals("hard", StringComparison.OrdinalIgnoreCase);
 
     private static string IpcRelationship(MarketplaceDependency dependency)
     {
