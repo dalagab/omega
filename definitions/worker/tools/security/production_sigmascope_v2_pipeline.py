@@ -67,6 +67,7 @@ from security_evidence_v2 import (  # noqa: E402
     atomic_write_bytes,
     canonical_json_bytes,
     compact_report_for_transport,
+    dataset_record_digest,
     file_entry,
     normalize_row,
     read_dataset_rows,
@@ -81,6 +82,7 @@ from security_evidence_v2 import (  # noqa: E402
     transport_security_row,
     variant_index_summary,
     validate_snapshot,
+    verify_file_entry,
 )
 import security_system_state  # noqa: E402
 
@@ -732,6 +734,58 @@ def _record_dataset_files_present(root: Path, descriptor: object) -> bool:
     return True
 
 
+def _reconcile_source_analysis_cache_descriptor(
+    candidate: Path,
+    variant_id: int,
+    descriptor: object,
+) -> tuple[dict[str, Any] | None, str]:
+    """Repair retained source-cache metadata from its actual bounded dataset bytes.
+
+    A source-analysis cache is derived transport state, not immutable scan authority.
+    If its file bytes are readable but the descriptor is stale, rewrite the dataset and
+    return a fresh descriptor. If the bytes are unreadable, quarantine only this cache
+    by replacing it with an empty dataset; the surrounding worker batch may continue and
+    the canonical queue can repopulate the source analysis later.
+    """
+    if not isinstance(descriptor, dict) or not descriptor.get("files"):
+        return None, "missing"
+
+    rows: list[dict[str, Any]]
+    descriptor_errors: list[str] = []
+    for entry in descriptor.get("files") or []:
+        if not isinstance(entry, dict):
+            descriptor_errors.append("malformed file entry")
+            continue
+        descriptor_errors.extend(
+            verify_file_entry(candidate, entry, max_bytes=MAX_PUBLISH_FILE_BYTES)
+        )
+
+    try:
+        rows = read_record_dataset(candidate, descriptor)
+        count, digest = dataset_record_digest(rows)
+        if int(descriptor.get("records") or 0) != count:
+            descriptor_errors.append(
+                f"record count mismatch declared={int(descriptor.get('records') or 0)}, read={count}"
+            )
+        if str(descriptor.get("recordDigest") or "") != digest:
+            descriptor_errors.append("semantic record digest mismatch")
+    except Exception:
+        rows = []
+        descriptor_errors.append("dataset decode failed")
+
+    if not descriptor_errors:
+        return descriptor, "healthy"
+
+    rebuilt = _write_variant_derived_datasets(
+        candidate,
+        variant_id,
+        {"sourceAnalysisCache": rows},
+    ).get("sourceAnalysisCache")
+    if not isinstance(rebuilt, dict):
+        raise RuntimeError(f"variant {variant_id} source-analysis cache repair did not produce a descriptor")
+    return rebuilt, "repaired" if rows else "quarantined"
+
+
 def synchronize_candidate(candidate: Path, database: Path, successful_variants: set[int]) -> dict[str, Any]:
     """Synchronize current identities while retaining terminal Security Evidence v2.
 
@@ -743,6 +797,8 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
     """
     retired_variants = 0
     updated_variants = 0
+    source_analysis_cache_descriptors_repaired = 0
+    source_analysis_caches_quarantined = 0
     referenced_analyses: set[str] = set()
     catalog_revision = ""
     with closing(sqlite3.connect(database)) as db:
@@ -852,12 +908,22 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 not graph_derived.get("sourceAnalysisCache")
                 and _record_dataset_files_present(candidate, existing_source_cache)
             ):
+                reconciled_source_cache, reconciliation = _reconcile_source_analysis_cache_descriptor(
+                    candidate, variant_id, existing_source_cache
+                )
+                if isinstance(reconciled_source_cache, dict):
+                    existing_evidence["sourceAnalysisCache"] = reconciled_source_cache
+                if reconciliation == "repaired":
+                    source_analysis_cache_descriptors_repaired += 1
+                elif reconciliation == "quarantined":
+                    source_analysis_caches_quarantined += 1
                 datasets_to_write.pop("sourceAnalysisCache", None)
             written = _write_variant_derived_datasets(candidate, variant_id, datasets_to_write)
             source_cache = written.pop("sourceAnalysisCache", None)
-            if isinstance(source_cache, dict) and int(source_cache.get("records") or 0) > 0:
-                existing_evidence["sourceAnalysisCache"] = source_cache
-            elif "sourceAnalysisCache" not in existing_evidence and isinstance(source_cache, dict):
+            if isinstance(source_cache, dict):
+                # The descriptor must always describe the bytes just written, including
+                # an intentional empty cache. Retaining an older descriptor here can
+                # otherwise leave stale size/hash/record metadata pointing at new bytes.
                 existing_evidence["sourceAnalysisCache"] = source_cache
             for name, descriptor in written.items():
                 existing_evidence[name] = descriptor
@@ -927,6 +993,8 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
         "analysesReferenced": len(referenced_analyses),
         "analysesGarbageCollected": removed_analyses,
         "derivedVariantDirectoriesGarbageCollected": removed_derived,
+        "sourceAnalysisCacheDescriptorsRepaired": source_analysis_cache_descriptors_repaired,
+        "sourceAnalysisCachesQuarantined": source_analysis_caches_quarantined,
     }
 
 
