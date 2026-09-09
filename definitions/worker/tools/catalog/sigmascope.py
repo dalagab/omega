@@ -1753,6 +1753,102 @@ def infer_ipc_consumer_relationship(text: str, start: int, end: int) -> dict:
     return {"relationship": "unknown", "confidence": "Low", "evidence": ["subscriber observed without enough control-flow evidence to classify necessity"]}
 
 
+_INSTALLED_PLUGIN_INTERNAL_NAME_RE = re.compile(
+    r'\bInternalName\s*,\s*["\'](?P<name>[^"\']{2,128})["\']',
+    re.IGNORECASE,
+)
+
+
+def infer_installed_plugin_relationship(text: str, start: int, end: int, name: str) -> dict | None:
+    """Classify explicit InstalledPlugins identity checks without guessing package names.
+
+    The exact InternalName literal is useful package identity evidence even when the plugin uses a
+    typed IPC SDK instead of a literal GetIpcSubscriber channel. A hard requirement is emitted only
+    when nearby source explicitly says the provider is required/mandatory or needed to continue
+    using the plugin. Otherwise the relationship stays optional/observed and cannot become automatic
+    package authority merely because InstalledPlugins was inspected.
+    """
+    local = text[max(0, start - 1200):min(len(text), end + 2600)]
+    lower = local.casefold()
+    provider = re.escape((name or "").strip().casefold())
+    if not provider or "installedplugins" not in lower:
+        return None
+
+    optional = bool(re.search(
+        rf"(?:{provider}.{{0,220}}\b(?:optional|soft dependency|best effort)\b|"
+        rf"\b(?:optional|soft dependency|best effort)\b.{{0,220}}{provider})",
+        lower,
+        re.DOTALL,
+    ))
+    required = bool(re.search(
+        rf"(?:{provider}.{{0,360}}(?:\brequired\b|\bmandatory\b|\bmust\b|continue\s+to\s+use|"
+        rf"cannot\s+(?:continue|use|run)|need(?:ed)?\s+to\s+(?:continue|use|run))|"
+        rf"(?:\brequired\b|\bmandatory\b|\bmust\b|continue\s+to\s+use|"
+        rf"cannot\s+(?:continue|use|run)|need(?:ed)?\s+to\s+(?:continue|use|run)).{{0,360}}{provider})",
+        lower,
+        re.DOTALL,
+    ))
+    api_gate = "apiavailable" in lower
+    error_gate = "notificationtype.error" in lower or bool(re.search(r"\bthrow\s+(?:new\b|;)", lower))
+
+    if required and not optional:
+        evidence = [
+            f"installed-plugin identity check: {name}",
+            "source explicitly gates continued plugin use on this provider",
+        ]
+        if api_gate:
+            evidence.append("provider availability controls APIAvailable")
+        if error_gate:
+            evidence.append("missing provider is surfaced as an error")
+        return {
+            "relationship": "required",
+            "confidence": "VeryHigh" if (api_gate or error_gate) else "High",
+            "requirement": "required",
+            "evidence": evidence[:6],
+        }
+
+    if optional:
+        return {
+            "relationship": "optional",
+            "confidence": "High",
+            "requirement": "soft",
+            "evidence": [f"installed-plugin identity check: {name}", "source marks this provider optional"],
+        }
+
+    return {
+        "relationship": "unknown",
+        "confidence": "Medium",
+        "requirement": "observed",
+        "evidence": [f"installed-plugin identity check: {name}"],
+    }
+
+
+def add_installed_plugin_relationships(path: str, text: str, intel: dict) -> None:
+    seen: set[str] = set()
+    for match in _INSTALLED_PLUGIN_INTERNAL_NAME_RE.finditer(text):
+        name = match.group("name").strip()
+        key = name.casefold()
+        if not name or key in seen:
+            continue
+        relationship = infer_installed_plugin_relationship(text, match.start(), match.end(), name)
+        if relationship is None:
+            continue
+        seen.add(key)
+        add_dependency(
+            intel,
+            "external-plugin",
+            name,
+            "",
+            path,
+            "external-plugin",
+            f"{path}: InstalledPlugins InternalName {name}",
+            relationship["requirement"],
+            relationship=relationship["relationship"],
+            relationship_confidence=relationship["confidence"],
+            relationship_evidence=relationship["evidence"],
+        )
+
+
 def scan_source_text(path: str, raw: bytes, text: str, intel: dict, hits: dict[str, list[str]]) -> None:
     evidence_label = f"source:{path}" if intel["origin"] == "source" else f"artifact:{path}"
     add_rule_hits(text, evidence_label, hits, intel)
@@ -1812,6 +1908,8 @@ def scan_source_text(path: str, raw: bytes, text: str, intel: dict, hits: dict[s
                 relationship=relationship["relationship"], relationship_confidence=relationship["confidence"],
                 relationship_evidence=relationship["evidence"],
             )
+
+    add_installed_plugin_relationships(path, text, intel)
 
     suffix = Path(path).suffix.lower()
     if suffix in PROJECT_XML_SUFFIXES:

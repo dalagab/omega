@@ -3,9 +3,10 @@
 
 SigmaScope owns observations; this module turns explicit plugin dependency observations
 and their current catalog resolution into deterministic package relationships. Unresolved
-or ambiguous required declarations remain blocking edges instead of disappearing. IPC,
+or ambiguous required declarations remain blocking edges instead of disappearing. Raw IPC,
 project references, NuGet, native, framework and bundled components never become package
-authority.
+authority. A required IPC observation may be promoted only after SigmaScope has strong
+runtime-requirement evidence and resolves one exact current provider plugin.
 """
 from __future__ import annotations
 
@@ -56,6 +57,48 @@ def _confidence_rank(value: str) -> int:
     return CONFIDENCE_RANK.get(value.replace("_", "").replace("-", "").casefold(), 0)
 
 
+def _read_string_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    try:
+        decoded = json.loads(str(value or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    if not isinstance(decoded, list):
+        return []
+    return [str(item) for item in decoded if str(item).strip()]
+
+
+def _verified_required_ipc(
+    source_kind: str,
+    relationship: str,
+    relationship_confidence: str,
+    relationship_evidence: Any,
+    resolution_status: str,
+    provider_plugin_id: int,
+    provider_internal_name: str,
+) -> bool:
+    if source_kind != "ipc" or relationship != "required":
+        return False
+    if provider_plugin_id <= 0 or not provider_internal_name:
+        return False
+    if resolution_status.strip().casefold() != "resolved-ipc-provider":
+        return False
+
+    confidence = _confidence_rank(relationship_confidence)
+    if confidence >= _confidence_rank("VeryHigh"):
+        return True
+    if confidence < _confidence_rank("High"):
+        return False
+
+    # High-confidence startup heuristics alone are not package authority. At High confidence we
+    # require an explicit source marker that the IPC provider is required/mandatory.
+    return any(
+        "explicit required/mandatory dependency marker" in item.casefold()
+        for item in _read_string_list(relationship_evidence)
+    )
+
+
 def _install_eligible(provider_plugin_id: int, relationship: str, resolution_status: str, version_status: str) -> bool:
     if provider_plugin_id <= 0 or relationship not in {"required", "recommended", "optional"}:
         return False
@@ -103,6 +146,7 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
     resolved_version_expr = _expr("r", rcols, "resolved_version")
     relationship_expr = _expr("r", rcols, "relationship")
     relationship_confidence_expr = _expr("r", rcols, "relationship_confidence")
+    relationship_evidence_expr = _expr("r", rcols, "relationship_evidence_json", "'[]'")
     confidence_expr = _expr("r", rcols, "confidence")
     version_status_expr = _expr("r", rcols, "version_status")
     target_version_expr = _expr("r", rcols, "target_version")
@@ -125,6 +169,7 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
                COALESCE(r.target_plugin_id,0) AS target_plugin_id,
                COALESCE(r.target_internal_name,'') AS target_internal_name,
                {target_version_expr} AS target_version,
+               {relationship_evidence_expr} AS relationship_evidence_json,
                {origin_expr} AS origin
           FROM plugin_security_dependency_resolutions r
           JOIN plugin_security_current c
@@ -141,9 +186,7 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
 
     merged: dict[tuple[Any, ...], dict[str, Any]] = {}
     for row in rows:
-        source_kind = str(row[4] or "").strip().casefold()
-        if source_kind not in PACKAGE_KINDS:
-            continue
+        observed_source_kind = str(row[4] or "").strip().casefold()
         consumer_internal = str(row[2] or "").strip()
         declared_internal = str(row[5] or "").strip()
         resolved_internal = str(row[15] or "").strip()
@@ -152,6 +195,20 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
             continue
 
         relationship = _relationship(str(row[8] or ""), str(row[9] or ""))
+        promoted_ipc = _verified_required_ipc(
+            observed_source_kind,
+            relationship,
+            str(row[10] or ""),
+            row[17],
+            str(row[12] or ""),
+            int(row[14] or 0),
+            provider_internal,
+        )
+        if observed_source_kind not in PACKAGE_KINDS and not promoted_ipc:
+            continue
+        # Keep the materialized client schema package-oriented. Proven IPC promotion is recorded
+        # in origins while sourceKind uses the existing plugin value understood by Omega clients.
+        source_kind = "plugin" if promoted_ipc else observed_source_kind
         key = (
             int(row[0] or 0),
             provider_internal.casefold(),
@@ -173,7 +230,10 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
             "versionStatus": str(row[13] or "").strip(),
             "confidence": confidence,
             "sourceKind": source_kind,
-            "origins": sorted({str(row[17] or "").strip()} - {""}),
+            "origins": sorted(
+                ({str(row[18] or "").strip()} - {""}) |
+                ({"verified-ipc-runtime-requirement"} if promoted_ipc else set())
+            ),
         }
         edge["installEligible"] = _install_eligible(
             edge["providerPluginId"],
@@ -228,6 +288,7 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
         "semantics": {
             "securityEvidenceIsObservationOnly": True,
             "ipcIsPackageDependency": False,
+            "verifiedRequiredIpcMayBecomePackageDependency": True,
             "projectReferencesArePackageDependencies": False,
             "unresolvedPluginRequirementsRetained": True,
             "providerIdentity": "stable-plugin-id",
@@ -241,6 +302,9 @@ def build_graph(db: sqlite3.Connection) -> dict[str, Any]:
             "requiredEdges": sum(1 for edge in edges if edge["relationship"] == "required"),
             "blockedRequiredEdges": sum(1 for edge in edges if edge["relationship"] == "required" and not edge["installEligible"]),
             "installEligibleEdges": sum(1 for edge in edges if edge["installEligible"]),
+            "promotedIpcEdges": sum(
+                1 for edge in edges if "verified-ipc-runtime-requirement" in (edge.get("origins") or [])
+            ),
         },
         "edges": edges,
         "providers": providers,
@@ -322,6 +386,7 @@ def _empty_graph() -> dict[str, Any]:
             "requiredEdges": 0,
             "blockedRequiredEdges": 0,
             "installEligibleEdges": 0,
+            "promotedIpcEdges": 0,
         },
         "edges": [],
         "providers": [],
