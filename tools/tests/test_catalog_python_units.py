@@ -794,6 +794,46 @@ class CatalogPythonUnitTests(unittest.TestCase):
         self.assertTrue(catalog_presentation.is_adult_content([], ["An 18+ only plugin."]))
         self.assertFalse(catalog_presentation.is_adult_content([], ["A general utility plugin."]))
 
+    def test_scanner_records_typed_runtime_plugin_requirement_from_installed_identity_gate(self) -> None:
+        hits = defaultdict(list)
+        intel = sigmascope.empty_dependency_intelligence("source")
+        source = """
+var version = (_pi.InstalledPlugins
+    .FirstOrDefault(p => string.Equals(p.InternalName, "Penumbra", StringComparison.OrdinalIgnoreCase))
+    ?.Version ?? new Version(0, 0, 0, 0));
+APIAvailable = version >= new Version(1, 2, 0, 22);
+_mareMediator.Publish(new NotificationMessage(
+    "Penumbra inactive",
+    "Update Penumbra and/or Enable Mods in Penumbra to continue to use HonseFarm.",
+    NotificationType.Error));
+"""
+        sigmascope.scan_source_text("IpcCallerPenumbra.cs", source.encode("utf-8"), source, intel, hits)
+        dependency = next(
+            item for item in intel["dependencies"]
+            if item["kind"] == "external-plugin" and item["name"] == "Penumbra"
+        )
+        self.assertEqual("required", dependency["requirement"])
+        self.assertEqual("required", dependency["relationship"])
+        self.assertEqual("VeryHigh", dependency["relationshipConfidence"])
+        self.assertIn("installed-plugin identity check: Penumbra", dependency["relationshipEvidence"])
+
+    def test_scanner_keeps_nonmandatory_installed_plugin_checks_nonrequired(self) -> None:
+        hits = defaultdict(list)
+        intel = sigmascope.empty_dependency_intelligence("source")
+        source = """
+var optional = _pi.InstalledPlugins
+    .FirstOrDefault(p => string.Equals(p.InternalName, "OptionalTool", StringComparison.OrdinalIgnoreCase));
+if (optional == null) return; // optional integration
+"""
+        sigmascope.scan_source_text("OptionalIntegration.cs", source.encode("utf-8"), source, intel, hits)
+        dependency = next(
+            item for item in intel["dependencies"]
+            if item["kind"] == "external-plugin" and item["name"] == "OptionalTool"
+        )
+        self.assertEqual("soft", dependency["requirement"])
+        self.assertEqual("optional", dependency["relationship"])
+        self.assertEqual("High", dependency["relationshipConfidence"])
+
     def test_scanner_reports_hard_coded_external_paths_only_with_filesystem_api_evidence(self) -> None:
         hits = defaultdict(list)
         intel = sigmascope.empty_dependency_intelligence("source")
