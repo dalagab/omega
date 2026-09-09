@@ -1,0 +1,306 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character movement control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:vnavmesh.dll:vnavmesh.UI.Debug.Mesh.DebugNavmeshManager.Draw+0x45e: callvirt vnavmesh.Movement.Requests.AsyncMoveRequest.MoveTo",
+      "il:vnavmesh.dll:vnavmesh.UI.Debug.Mesh.DebugNavmeshManager.Draw+0x49b: callvirt vnavmesh.Movement.Requests.AsyncMoveRequest.MoveTo",
+      "il:vnavmesh.dll:vnavmesh.UI.Debug.Mesh.DebugNavmeshManager.Draw+0x4ea: callvirt vnavmesh.Movement.Execution.MovementPlanExecutor.Stop"
+    ],
+    "rule_id": "automation.game.character.move",
+    "severity": "high",
+    "title": "Character movement control"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:vnavmesh.dll: D:\\navmesh.bmp",
+      "artifact:DotRecast.Core.dll: s://github.com/ikpil/DotRecast",
+      "artifact:DotRecast.Detour.Extras.dll: s://github.com/ikpil/DotRecast"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:vnavmesh.dll: Dalamud.Hooking",
+      "metadata:vnavmesh.dll: SigScanner",
+      "metadata:vnavmesh.dll: HookFromAddress",
+      "il:vnavmesh.dll:vnavmesh.UI.Debug.Collision.DebugGameCollision..ctor+0xbe: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:vnavmesh.dll:vnavmesh.Navigation.Scene.LayoutUtil..cctor+0x6: call vnavmesh.Bootstrap.Service.get_SigScanner: SigScanner",
+      "il:vnavmesh.dll:vnavmesh.Navigation.Scene.LayoutUtil..cctor+0x10: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "artifact:vnavmesh.dll: Dalamud.Hooking",
+      "artifact:vnavmesh.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SharpDX.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: GetProcAddress",
+      "il:SharpDX.dll:SharpDX.Utilities.GetProcAddress+0x2: call SharpDX.Utilities.GetProcAddress_ -> kernel32!GetProcAddress: GetProcAddress",
+      "artifact:SharpDX.dll: GetProcAddress",
+      "metadata:SharpDX.DXGI.dll: DllImportAttribute",
+      "metadata:SharpDX.DXGI.dll: LoadLibrary",
+      "metadata:SharpDX.DXGI.dll: GetProcAddress",
+      "artifact:SharpDX.DXGI.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "vnavmesh.Worker.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:SharpDX.dll: CreateProcess",
+      "metadata:vnavmesh.dll: System.Diagnostics.Process",
+      "metadata:vnavmesh.dll: ProcessStartInfo",
+      "metadata:vnavmesh.dll: ShellExecute",
+      "metadata:vnavmesh.dll: Process.Start",
+      "il:vnavmesh.dll:vnavmesh.UI.Editor.CustomizationEditorView.OpenExportedDirectory+0x63: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:vnavmesh.dll:vnavmesh.UI.Editor.CustomizationEditorView.OpenExportedDirectory+0x63: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:vnavmesh.dll:vnavmesh.UI.Editor.CustomizationEditorView.OpenExportedDirectory+0x6a: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "native-pe:vnavmesh.Worker.exe: import ADVAPI32.dll!RegOpenKeyExW: RegOpenKey",
+      "artifact:vnavmesh.Worker.exe: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllBytes+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllText+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream..ctor+0x34: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Flush+0x12: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Seek+0x16: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.SetLength+0x16: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.SetLength+0x33: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Read+0x2f: call SharpDX.IO.NativeFileStream.Read: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:vnavmesh.json: https://raw.githubusercontent.com/AtmoOmen/ffxiv_navmesh-cn/CN/Resources/icon2.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5196482c8462",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:vnavmesh.dll: https://raw.githubusercontent.com/awgil/ffxiv_navmesh/refs/heads/seeds/seeds.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6f40727e770b",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DotRecast.Core.dll: https://github.com/ikpil/DotRecast",
+      "artifact:DotRecast.Detour.Crowd.dll: https://github.com/ikpil/DotRecast",
+      "artifact:DotRecast.Detour.dll: https://github.com/ikpil/DotRecast",
+      "artifact:DotRecast.Detour.Extras.dll: https://github.com/ikpil/DotRecast"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ae5341094b6b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:vnavmesh.dll: https://github.com/Errerer/ffxiv_navmesh-cn.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fa28003eea30",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:vnavmesh.dll: System.Net.Http.HttpClient",
+      "il:vnavmesh.dll:vnavmesh.Navigation.Scene.FloodFill..cctor+0x2c: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
