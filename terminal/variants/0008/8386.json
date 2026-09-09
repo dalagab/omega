@@ -1,0 +1,5713 @@
+{
+  "analysis": {
+    "analysisId": "e26f0a7969bb58e0f6b4357bf96c082db7797b388d73990151528fee467458e1",
+    "artifactSha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+    "path": "artifacts/41/4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09/analyses/e26f0a7969bb58e0f6b4357bf96c082db7797b388d73990151528fee467458e1",
+    "recordCount": 1130
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+    "artifact_url": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+    "assembly_version": "4.2.1.1",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: discord.gg",
+      "Endpoint: docs.snowcloak-sync.com",
+      "Endpoint: github.com",
+      "Endpoint: go.microsoft.com",
+      "Endpoint: openid.net",
+      "Endpoint: patreon.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: schemas.microsoft.com",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Process memory access",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 16,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:SharpGen.Runtime.dll: OpenProcess",
+          "il:SharpGen.Runtime.dll:SharpGen.Runtime.PlatformDetection.GetCurrentProcessToken+0xb: call SharpGen.Runtime.PlatformDetection.OpenProcessToken -> advapi32.dll!OpenProcessToken: OpenProcess",
+          "artifact:SharpGen.Runtime.dll: OpenProcess"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+          "metadata:NAudio.Asio.dll: RegistryKey",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+          "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "artifact:MessagePack.dll: System.Diagnostics.Process",
+          "artifact:MessagePack.dll: ProcessStartInfo",
+          "artifact:SharpGen.Runtime.COM.dll: CreateProcess",
+          "metadata:Snowcloak.dll: System.Diagnostics.Process",
+          "metadata:Snowcloak.dll: ProcessStartInfo",
+          "metadata:Snowcloak.dll: ShellExecute",
+          "metadata:Snowcloak.dll: Process.Start",
+          "il:Snowcloak.dll:Snowcloak.UI.EventViewerUI.DrawInternal+0x208: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+          "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+          "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: Socket.Connect",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x562: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x5dd: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+          "metadata:Snowcloak.dll: System.Net.Sockets",
+          "artifact:Snowcloak.dll: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.dll: https://docs.snowcloak-sync.com/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.e69c5c7be2cb",
+        "severity": "caution",
+        "title": "Endpoint: docs.snowcloak-sync.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.dll: https://patreon.com/elznmods"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b784051fb9f6",
+        "severity": "caution",
+        "title": "Endpoint: patreon.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Data.Sqlite.dll: https://go.microsoft.com/fwlink/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b2a093ba178f",
+        "severity": "caution",
+        "title": "Endpoint: go.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/isregistereduser"
+        ],
+        "ruleId": "network.endpoint.insecure-http.fbe7622e2e5f",
+        "severity": "caution",
+        "title": "Endpoint: schemas.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/identifier"
+        ],
+        "ruleId": "network.endpoint.insecure-http.e13ea633b264",
+        "severity": "caution",
+        "title": "Endpoint: schemas.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://openid.net/specs/jwt/1.0",
+          "artifact:System.IdentityModel.Tokens.Jwt.dll: http://openid.net/specs/jwt/1.0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.df8a0791ba00",
+        "severity": "caution",
+        "title": "Endpoint: openid.net"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/ostype"
+        ],
+        "ruleId": "network.endpoint.insecure-http.a2f77c8f5f26",
+        "severity": "caution",
+        "title": "Endpoint: schemas.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/displayname"
+        ],
+        "ruleId": "network.endpoint.insecure-http.874cadae0651",
+        "severity": "caution",
+        "title": "Endpoint: schemas.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/osversion"
+        ],
+        "ruleId": "network.endpoint.insecure-http.58447317c4de",
+        "severity": "caution",
+        "title": "Endpoint: schemas.microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/ismanaged"
+        ],
+        "ruleId": "network.endpoint.insecure-http.332a1b9e70b7",
+        "severity": "caution",
+        "title": "Endpoint: schemas.microsoft.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Blake3.dll: DllImportAttribute",
+          "native-pe:blake3_dotnet.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+          "native-pe:blake3_dotnet.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+          "native-pe:blake3_dotnet.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+          "artifact:blake3_dotnet.dll: LoadLibrary",
+          "artifact:blake3_dotnet.dll: GetProcAddress",
+          "metadata:ElezenTools.dll: DllImportAttribute",
+          "native-pe:e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:K4os.Compression.LZ4.Streams.dll: s://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+          "artifact:K4os.Compression.LZ4.Streams.dll: D:\\Projects\\K4os.Compression.LZ4\\src\\K4os.Compression.LZ4.Streams\\obj\\Release\\net6.0\\K4os.Compression.LZ4.Streams.pdb",
+          "artifact:MessagePack.dll: g:/A",
+          "artifact:MessagePack.dll: \\\\c\\i\\",
+          "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+          "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb",
+          "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/runtime/issues/97057"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:MessagePack.dll: Reflection.Emit",
+          "metadata:MessagePack.dll: AssemblyLoadContext",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "blake3_dotnet.dll",
+          "e_sqlite3.dll"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x3a: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x4c: callvirt System.Net.Http.HttpClientHandler.set_CookieContainer: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xa6: callvirt System.Net.Http.HttpClientHandler.get_ClientCertificates: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xdd: callvirt System.Net.Http.HttpClientHandler.set_UseDefaultCredentials: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x113: callvirt System.Net.Http.HttpClientHandler.set_Credentials: System.Net.Http.HttpClient",
+          "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x169: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:K4os.Hash.xxHash.dll: https://github.com/MiloszKrajewski/K4os.Hash.xxHash"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f7addd8e764e",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Vortice.DirectX.dll: https://github.com/amerkoleci/Vortice.Windows",
+          "artifact:Vortice.DXGI.dll: https://github.com/amerkoleci/Vortice.Windows"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f3f194cb7761",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+          "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f2dfd1030921",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.dll: https://raw.githubusercontent.com/Eauldane/SnowcloakClient/refs/heads/main/Snowcloak/images/logo.png[/img"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.d6fdbfe34f86",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+          "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw",
+          "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.cfabce510df0",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.AspNetCore.Http.Connections.Client.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.AspNetCore.Http.Connections.Common.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.AspNetCore.SignalR.Client.Core.dll: https://github.com/dotnet/dotnet"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c2aa6da77912",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ElezenTools.Core.dll: https://github.com/Eauldane/ElezenTools",
+          "artifact:ElezenTools.dll: https://github.com/Eauldane/ElezenTools",
+          "artifact:Snowcloak.API.dll: https://github.com/Eauldane/ElezenTools"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.bc30f31506ea",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Blake3.dll: https://github.com/xoofx/Blake3.NET"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.af42454cb465",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+          "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+          "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+          "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.acd34a308b7d",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.json: https://github.com/Eauldane/SnowcloakClient"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a5a4b07a80fa",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9608d0f55262",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:K4os.Compression.LZ4.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+          "artifact:K4os.Compression.LZ4.Legacy.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+          "artifact:K4os.Compression.LZ4.Streams.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.8d6d7403ad8a",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.IdentityModel.Abstractions.dll: https://github.com/AzureAD/<redacted>",
+          "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: https://github.com/AzureAD/<redacted>",
+          "artifact:Microsoft.IdentityModel.Logging.dll: https://github.com/AzureAD/<redacted>",
+          "artifact:Microsoft.IdentityModel.Tokens.dll: https://github.com/AzureAD/<redacted>"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.7e3f986def99",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.CacheFile.dll: https://github.com/Eauldane/SnowcloakCacheFile"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.7b7b8fe30dd4",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:MemoryPack.Core.dll: https://github.com/Cysharp/MemoryPack"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.65221cd51a97",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Scrutor.dll: https://github.com/khellang/Scrutor"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.630c54ee95e4",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Data.Sqlite.dll: https://github.com/dotnet/runtime/issues/97057"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.52b4e7e02b68",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZstdSharp.dll: https://github.com/oleg-st/ZstdSharp.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4031a2c93a52",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3f89bd8dde4d",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3b676f6154bf",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SharpGen.Runtime.COM.dll: https://github.com/SharpGenTools/SharpGenTools",
+          "artifact:SharpGen.Runtime.dll: https://github.com/SharpGenTools/SharpGenTools"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.36ea9ab7e70a",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.json: https://raw.githubusercontent.com/Eauldane/SnowcloakClient/refs/heads/main/Snowcloak/images/logo.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.2cbc6c3d2fcd",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.dll: https://github.com/Eauldane/SnowcloakClient"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.123b56271b6c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Vortice.Mathematics.dll: https://github.com/amerkoleci/Vortice.Mathematics"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0eb79cf9a56e",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Brio.API.dll: https://github.com/Etheirys/Brio.API"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.05923b86861f",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.02c17b1985f5",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Snowcloak.dll: https://discord.gg/QhcKWGMhXd"
+        ],
+        "ruleId": "network.endpoint.community-invite.8fc1e86507d7",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+          "il:Microsoft.Extensions.Configuration.FileExtensions.dll:Microsoft.Extensions.Configuration.FileConfigurationProvider.<Load>g__OpenRead|6_0+0x17: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+          "metadata:Microsoft.Extensions.DependencyModel.dll: FileStream",
+          "il:Microsoft.Extensions.DependencyModel.dll:Microsoft.Extensions.DependencyModel.FileWrapper.OpenFile+0x9: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:Microsoft.Extensions.DependencyModel.dll: FileStream",
+          "metadata:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+          "il:Microsoft.Extensions.FileProviders.Physical.dll:Microsoft.Extensions.FileProviders.Physical.PhysicalFileInfo.CreateReadStream+0x11: newobj System.IO.FileStream..ctor: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 31,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
+      "artifactBytes": 10009133,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "4.2.1.1",
+        "artifactBytes": 10009133,
+        "artifactSha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+        "catalogAssemblyVersion": "4.2.1.1",
+        "manifestInternalName": "",
+        "manifestPath": "Snowcloak.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 10,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 10,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: discord.gg",
+        "Endpoint: docs.snowcloak-sync.com",
+        "Endpoint: github.com",
+        "Endpoint: go.microsoft.com",
+        "Endpoint: openid.net",
+        "Endpoint: patreon.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: schemas.microsoft.com",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Process memory access",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.socket",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 16,
+        "critical": 0,
+        "high": 2,
+        "informational": 31
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+        "internalName": "Snowcloak",
+        "manifestVersion": "4.2.1.1",
+        "observationId": 13750,
+        "observationKey": "manifest-ebd23a9992bd3e616106e921b5b9",
+        "repositoryUrl": "https://github.com/Eauldane/SnowcloakClient",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8386
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 82,
+        "bundledNativeLibraryCount": 2,
+        "fileCount": 1804,
+        "uncompressedBytes": 17345003
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
+        "attemptId": "attempt-v2-a514c3283030a7bb",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-16c04872e16fdf6c",
+        "definitionsRevision": "defs-v1-49263fc963d69579",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8386",
+        "queueSeedRevision": "queue-seed-v2-9154c7c886622ec1",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
+        "scannerBundleSha256": "211536f2be53765a7ea2d9d839e1b8e5e059c0f3d772dc83bc9ff83ab284858d",
+        "scannerRevision": "scanner-v1-6b6ba03b113d4d99",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+        "sourceObservationRevision": "source-observations-v1-723b9d4d997264e2",
+        "targetFingerprint": "source-target-v2-84fdab8c2b5e49147c59",
+        "variantId": 8386,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-08T20:23:59Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Eauldane/SnowcloakClient"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/Eauldane/SnowcloakClient: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Eauldane/SnowcloakClient",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-08T20:23:59Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Eauldane/SnowcloakClient",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8386
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+      "current_assembly_version": "4.2.1.1",
+      "current_scan_id": 12,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-08T20:23:59Z",
+      "previous_artifact_sha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+      "previous_assembly_version": "4.2.1.1",
+      "previous_scan_id": 6,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 8386
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 262,
+      "artifact_only_count": 262,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:blake3",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Blake3",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:brio.api",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Brio.API",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "14.0.0.0",
+            "15.0.0.2",
+            "15.0.1.1",
+            "15.0.3.0",
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:elezentools",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ElezenTools",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "15.56.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:elezentools.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ElezenTools.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "15.56.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.8928",
+            "7.55.1.8986"
+          ]
+        },
+        {
+          "componentKey": "assembly:glamourer.api",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Glamourer.Api",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.8.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:k4os.compression.lz4",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "K4os.Compression.LZ4",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.3.8.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:k4os.compression.lz4.legacy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "K4os.Compression.LZ4.Legacy",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.3.8.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:k4os.compression.lz4.streams",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "K4os.Compression.LZ4.Streams",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.3.8.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:k4os.hash.xxhash",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "K4os.Hash.xxHash",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.8.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:memorypack.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MemoryPack.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.21.4.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:messagepack",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MessagePack",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.0.0",
+            "3.1.8.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:messagepack.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MessagePack.Annotations",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.1.8.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.connections.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.Connections.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.http.connections.client",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.Http.Connections.Client",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.11.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.http.connections.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.Http.Connections.Common",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.signalr.client",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Client",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.11.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.signalr.client.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Client.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.11.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.signalr.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Common",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.signalr.protocols.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Protocols.Json",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.aspnetcore.signalr.protocols.messagepack",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Protocols.MessagePack",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.11.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.bcl.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Microsoft.Bcl.Cryptography",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "10.0.0.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.data.sqlite",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Data.Sqlite",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.11.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.binder",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Binder",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.commandline",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.CommandLine",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.environmentvariables",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.EnvironmentVariables",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.fileextensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.FileExtensions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Json",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.usersecrets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.UserSecrets",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencyinjection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencymodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyModel",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.diagnostics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Diagnostics",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.diagnostics.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Diagnostics.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.features",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Features",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.fileproviders.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.FileProviders.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.fileproviders.physical",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.FileProviders.Physical",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.filesystemglobbing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.FileSystemGlobbing",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.hosting",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Hosting",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.hosting.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Hosting.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.configuration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.Configuration",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.Console",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.debug",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.Debug",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.eventlog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.EventLog",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.eventsource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.EventSource",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.options",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Options",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.options.configurationextensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Options.ConfigurationExtensions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Primitives",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.identitymodel.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.IdentityModel.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "8.22.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.identitymodel.jsonwebtokens",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.IdentityModel.JsonWebTokens",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "8.22.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.identitymodel.logging",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.IdentityModel.Logging",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "8.22.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.identitymodel.tokens",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.IdentityModel.Tokens",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "8.22.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.net.stringtools",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.NET.StringTools",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.registry",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Registry",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NAudio",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.asio",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NAudio.Asio",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.midi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NAudio.Midi",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.wasapi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.Wasapi",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.winforms",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NAudio.WinForms",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:naudio.winmm",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NAudio.WinMM",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:penumbra.api",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Penumbra.Api",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "5.15.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:scrutor",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Scrutor",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpgen.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpGen.Runtime",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.4.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpgen.runtime.com",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpGen.Runtime.COM",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.4.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Snowcloak",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "4.2.1.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak.api",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Snowcloak.API",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.2.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak.cachefile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Snowcloak.CacheFile",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.1.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Snowcloak.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.1.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak.game",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Snowcloak.Game",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.1.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak.infrastructure",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Snowcloak.Infrastructure",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.1.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:snowcloak.ipc",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Snowcloak.Ipc",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.4.0.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:sqlitepclraw.batteries_v2",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "SQLitePCLRaw.batteries_v2",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "3.0.5.3129"
+          ]
+        },
+        {
+          "componentKey": "assembly:sqlitepclraw.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SQLitePCLRaw.core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.1.12.3116",
+            "3.0.5.3129"
+          ]
+        },
+        {
+          "componentKey": "assembly:sqlitepclraw.provider.e_sqlite3",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SQLitePCLRaw.provider.e_sqlite3",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.0.5.3129"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.1.2.0",
+            "6.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.nongeneric",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.NonGeneric",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Annotations",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.2.2.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.2.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.debug",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.1.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.diagnosticsource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.DiagnosticSource",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.eventlog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.EventLog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tools",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Tools",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.1.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.2.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.identitymodel.tokens.jwt",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.IdentityModel.Tokens.Jwt",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "8.22.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.brotli",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.Brotli",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.filesystem.driveinfo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.FileSystem.DriveInfo",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.filesystem.watcher",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.FileSystem.Watcher",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipelines",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipelines",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipes",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipes",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.nameresolution",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.NameResolution",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.requests",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Requests",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.security",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Security",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.serversentevents",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.ServerSentEvents",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.sockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets.client",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets.Client",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.lightweight",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.resources.resourcemanager",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.1.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.2.2.0",
+            "6.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.compilerservices.unsafe",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.2.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.2.2.0",
+            "6.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.claims",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Claims",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encodings.web",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encodings.Web",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.1.2.0",
+            "6.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.channels",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Channels",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.windows.forms",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Windows.Forms",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.readerwriter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:vortice.directx",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Vortice.DirectX",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.8.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:vortice.dxgi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Vortice.DXGI",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.8.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:vortice.mathematics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Vortice.Mathematics",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:zstdsharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ZstdSharp",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.8.8.0"
+          ]
+        },
+        {
+          "componentKey": "native:advapi32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "advapi32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-com-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-com-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-synch-l1-2-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-synch-l1-2-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:bcrypt",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "BCrypt.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:blake3_dotnet",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "blake3_dotnet.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:combase",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "combase",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dsound",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dsound.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dxcore",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "DxCore.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dxgi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dxgi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:e_sqlite3",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "e_sqlite3.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "KERNEL32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mf",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mf.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mfplat",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mfplat.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mfreadwrite",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mfreadwrite.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mmdevapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Mmdevapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:msacm32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "msacm32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:msdmo",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "msdmo.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ntdll",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ntdll.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.Dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:winmm",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "winmm.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:blake3",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Blake3",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:brio.api",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Brio.API",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:elezentools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ElezenTools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.56.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:elezentools.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ElezenTools.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.56.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:glamourer.api",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Glamourer.Api",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.8.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:k4os.compression.lz4",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "K4os.Compression.LZ4",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.3.8"
+          ]
+        },
+        {
+          "componentKey": "nuget:k4os.compression.lz4.legacy",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "K4os.Compression.LZ4.Legacy",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.3.8"
+          ]
+        },
+        {
+          "componentKey": "nuget:k4os.compression.lz4.streams",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "K4os.Compression.LZ4.Streams",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.3.8"
+          ]
+        },
+        {
+          "componentKey": "nuget:k4os.hash.xxhash",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "K4os.Hash.xxHash",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.8"
+          ]
+        },
+        {
+          "componentKey": "nuget:memorypack.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MemoryPack.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.21.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:messagepack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MessagePack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.8"
+          ]
+        },
+        {
+          "componentKey": "nuget:messagepack.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MessagePack.Annotations",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.8"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.connections.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.Connections.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.http.connections.client",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.Http.Connections.Client",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.http.connections.common",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.Http.Connections.Common",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.signalr.client",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Client",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.signalr.client.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Client.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.signalr.common",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Common",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.signalr.protocols.json",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Protocols.Json",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.aspnetcore.signalr.protocols.messagepack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.AspNetCore.SignalR.Protocols.MessagePack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.bcl.cryptography",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Bcl.Cryptography",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.data.sqlite",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Data.Sqlite",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.data.sqlite.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Data.Sqlite.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.binder",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Binder",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.commandline",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.CommandLine",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.environmentvariables",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.EnvironmentVariables",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.fileextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.FileExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.json",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Json",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.usersecrets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.UserSecrets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencymodel",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyModel",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.diagnostics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Diagnostics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.diagnostics.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Diagnostics.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.features",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Features",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.fileproviders.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.FileProviders.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.fileproviders.physical",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.FileProviders.Physical",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.filesystemglobbing",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.FileSystemGlobbing",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.hosting",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Hosting",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.hosting.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Hosting.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.configuration",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.Configuration",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.console",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.Console",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.debug",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.Debug",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.eventlog",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.EventLog",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.eventsource",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.EventSource",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.options",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Options",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.options.configurationextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Options.ConfigurationExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.11"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.identitymodel.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.IdentityModel.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.22.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.identitymodel.jsonwebtokens",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.IdentityModel.JsonWebTokens",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.22.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.identitymodel.logging",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.IdentityModel.Logging",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.22.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.identitymodel.tokens",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.IdentityModel.Tokens",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.22.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.net.stringtools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NET.StringTools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "17.11.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.asio",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Asio",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.midi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Midi",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.wasapi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.Wasapi",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.winforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.WinForms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:naudio.winmm",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NAudio.WinMM",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:penumbra.api",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Penumbra.Api",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.15.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:scrutor",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Scrutor",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpgen.runtime",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpGen.Runtime",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.4.2-beta"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpgen.runtime.com",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpGen.Runtime.COM",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.4.2-beta"
+          ]
+        },
+        {
+          "componentKey": "nuget:snowcloak.api",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Snowcloak.API",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:snowcloak.cachefile",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Snowcloak.CacheFile",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.1.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:snowcloak.ipc",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Snowcloak.Ipc",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.4.0.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:sqlite",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SQLite",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.53.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:sqlitepclraw.bundle_e_sqlite3",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SQLitePCLRaw.bundle_e_sqlite3",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.5"
+          ]
+        },
+        {
+          "componentKey": "nuget:sqlitepclraw.config.e_sqlite3",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SQLitePCLRaw.config.e_sqlite3",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.5"
+          ]
+        },
+        {
+          "componentKey": "nuget:sqlitepclraw.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SQLitePCLRaw.core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.5"
+          ]
+        },
+        {
+          "componentKey": "nuget:sqlitepclraw.provider.e_sqlite3",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SQLitePCLRaw.provider.e_sqlite3",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.5"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.identitymodel.tokens.jwt",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IdentityModel.Tokens.Jwt",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.22.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:vortice.directx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Vortice.DirectX",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.8.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:vortice.dxgi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Vortice.DXGI",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.8.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:vortice.mathematics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Vortice.Mathematics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:zstdsharp.port",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ZstdSharp.Port",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "0.8.8"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-08T20:23:59Z",
+      "comparison_id": 10,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 12,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 8386,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "3143e30038f64d472c226e623206a57b0afac47d3f522a6ab2f21eae42c9f446",
+    "observedAtUtc": "2026-09-09T09:28:17Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "10c47ec0174fbb45ece862939db70b1962be555a32986b0e3d0e9f16c7cf9c3c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "e4c32cf77ca343a5496dc24c0bb1427596630551f2d1467392e6ac2a5b859acc",
+        "records": 958,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "109a43c87577a6cfe7b54cb856e73be10122ebd3206c66325370cc29dac01fb0",
+        "records": 82,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "b9ffa98f583a1fb975088fd2253c1dad0b2ed11f7e7edb66146fdf893342735c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "3ed3d5f22d00de73029f3c9c85fc9bcdba6b0a460ce9310e4e49da12e164e0bd",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-b643eacb1c814eda2e81d02f40818d558c60bbf7af5f1fc4dcec831660989106",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Snowcloak Sync",
+    "first_seen_utc": "2026-08-20T00:07:32Z",
+    "internal_name": "Snowcloak",
+    "last_seen_utc": "2026-09-08T23:41:38Z",
+    "plugin_id": 709
+  },
+  "pluginId": 709,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "This plugin will synchronize your Penumbra mods and current Glamourer state with other paired clients automatically.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1115,
+      "summary": "Come in from the cold and show us your true self.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Eauldane/SnowcloakClient",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Eauldane/SnowcloakClient"
+        },
+        {
+          "kind": "discord",
+          "label": "Join Discord",
+          "url": "https://discord.gg/elznmods"
+        },
+        {
+          "kind": "docs",
+          "label": "Documentation",
+          "url": "https://docs.snowcloak-sync.com"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Snowcloak Sync\nThe snow may cloak the world in silence, but come in, warm up, and reveal your true colours.\n\nA Dalamud plugin.\n\n[![Discord](https://img.shields.io/discord/1408265972720078990?color=5865F2&label=discord&logo=discord&logoColor=white)](https://discord.gg/elznmods)\n\n## Usage and Installation\n\nFor details on how to use Snowcloak, including install instructions, give our [docs](https://docs.snowcloak-sync.com) a read!\n\n## License\n\nThis project is based on Mare Synchronos by DarkArchon. Original code is licensed under the MIT License; see the \nLICENSE_MIT file for details. Commits after 9e539810 are licenced under AGPL v3.\n\nThe Glamourer and Penumbra APIs remain MIT licensed, and are copyright Ottermandias.",
+      "title": "SnowcloakClient",
+      "url": "https://github.com/Eauldane/SnowcloakClient"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "795e28723944bbad65cbf3869aee805dc9b9b6036a7de20d4fd607ae074400be",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "c627c8d6fcf55d927379ffa47ca93aea58c47a47bfda7c127e8ad0881ee590b0",
+        "records": 10
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "6132c8d0b4aeaab77a6e1cef0e60500a256be3b24574d51bc5e44e1caf0af73c",
+        "records": 49
+      }
+    },
+    "projectionRevision": "projection-v1-05013341cd43895f",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+    "artifact_url": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+    "assembly_version": "4.2.1.1",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: discord.gg",
+      "Endpoint: docs.snowcloak-sync.com",
+      "Endpoint: github.com",
+      "Endpoint: go.microsoft.com",
+      "Endpoint: openid.net",
+      "Endpoint: patreon.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: schemas.microsoft.com",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Process memory access",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 16,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 31,
+    "plugin_id": 709,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
+      "artifactBytes": 10009133,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "4.2.1.1",
+        "artifactBytes": 10009133,
+        "artifactSha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+        "catalogAssemblyVersion": "4.2.1.1",
+        "manifestInternalName": "",
+        "manifestPath": "Snowcloak.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 10,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 10,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: discord.gg",
+        "Endpoint: docs.snowcloak-sync.com",
+        "Endpoint: github.com",
+        "Endpoint: go.microsoft.com",
+        "Endpoint: openid.net",
+        "Endpoint: patreon.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: schemas.microsoft.com",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Process memory access",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.socket",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 16,
+        "critical": 0,
+        "high": 2,
+        "informational": 31
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+        "internalName": "Snowcloak",
+        "manifestVersion": "4.2.1.1",
+        "observationId": 13750,
+        "observationKey": "manifest-ebd23a9992bd3e616106e921b5b9",
+        "repositoryUrl": "https://github.com/Eauldane/SnowcloakClient",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8386
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 82,
+        "bundledNativeLibraryCount": 2,
+        "fileCount": 1804,
+        "uncompressedBytes": 17345003
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
+        "attemptId": "attempt-v2-a514c3283030a7bb",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-16c04872e16fdf6c",
+        "definitionsRevision": "defs-v1-49263fc963d69579",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8386",
+        "queueSeedRevision": "queue-seed-v2-9154c7c886622ec1",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
+        "scannerBundleSha256": "211536f2be53765a7ea2d9d839e1b8e5e059c0f3d772dc83bc9ff83ab284858d",
+        "scannerRevision": "scanner-v1-6b6ba03b113d4d99",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+        "sourceObservationRevision": "source-observations-v1-723b9d4d997264e2",
+        "targetFingerprint": "source-target-v2-84fdab8c2b5e49147c59",
+        "variantId": 8386,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-08T20:23:59Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4131daed34755dd78eff3a2f87522d14141595cb6db748f8f19addf7e22dae09",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Eauldane/SnowcloakClient"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/Eauldane/SnowcloakClient: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Eauldane/SnowcloakClient",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-08T20:23:59Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 591,
+    "source_repository": "https://github.com/Eauldane/SnowcloakClient",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8386
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "2c47e7f54cfadacf7cef48f12a3fdff890de1e91ce7377bd99f7e5abf2a78dae",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"6dc0f5911c8c8971758af79ddac4703602071a654c6071369e060bedfdca96c9\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-08T23:41:38Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-08T23:41:38Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 3,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 591,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/git-snowcloak-sync-com-eauldane-snowcloakclient-.json"
+  },
+  "sourceId": 591,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "4.2.1.1",
+    "author": "Eauldane",
+    "authors_json": [
+      "Eauldane"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "This plugin will synchronize your Penumbra mods and current Glamourer state with other paired clients automatically.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+    "download_link_testing": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+    "download_link_update": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+    "first_seen_utc": "2026-09-08T18:09:31Z",
+    "icon_url": "https://raw.githubusercontent.com/Eauldane/SnowcloakClient/refs/heads/main/Snowcloak/images/logo.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-08T18:09:31Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Snowcloak Sync",
+    "plugin_id": 709,
+    "punchline": "Come in from the cold and show us your true self.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "4.2.1.1",
+      "Author": "Eauldane",
+      "CanUnloadAsync": true,
+      "DalamudApiLevel": 15,
+      "Description": "This plugin will synchronize your Penumbra mods and current Glamourer state with other paired clients automatically.",
+      "DownloadLinkInstall": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Eauldane/SnowcloakClient/releases/download/4.2.1.1/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/Eauldane/SnowcloakClient/refs/heads/main/Snowcloak/images/logo.png",
+      "InternalName": "Snowcloak",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LoadPriority": 0,
+      "Name": "Snowcloak Sync",
+      "Punchline": "Come in from the cold and show us your true self.",
+      "RepoUrl": "https://github.com/Eauldane/SnowcloakClient",
+      "Tags": [
+        "customisation",
+        "customization",
+        "sync",
+        "snowcloak"
+      ],
+      "TestingAssemblyVersion": "4.2.1.1",
+      "TestingDalamudApiLevel": 15,
+      "_SourceId": "git-snowcloak-sync-com-eauldane-snowcloakclient-",
+      "_SourceName": "Snowcloak",
+      "_SourceUrl": "https://git.snowcloak-sync.com/Eauldane/SnowcloakClient/raw/branch/main/repo.json"
+    },
+    "repo_url": "https://github.com/Eauldane/SnowcloakClient",
+    "source_entry_key": "snowcloak|4.2.1.1|15|15|0",
+    "source_id": 591,
+    "tags_json": [
+      "customisation",
+      "customization",
+      "sync",
+      "snowcloak"
+    ],
+    "testing_assembly_version": "4.2.1.1",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 8386
+  },
+  "variantId": 8386
+}
