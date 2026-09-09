@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "f53c1094b737852f05382bdefa304f643a832c961cd296152f901beb4943347e",
+    "analysisId": "f04965789cede9ccd5c1004e0ba622e3641b9c635e498c22f0000a109873095e",
     "artifactSha256": "31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b",
-    "path": "artifacts/31/31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b/analyses/f53c1094b737852f05382bdefa304f643a832c961cd296152f901beb4943347e",
-    "recordCount": 9113
+    "path": "artifacts/31/31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b/analyses/f04965789cede9ccd5c1004e0ba622e3641b9c635e498c22f0000a109873095e",
+    "recordCount": 547
   },
   "current": {
     "artifact_channel": "stable",
@@ -18,13 +18,14 @@
       "Endpoint: github.com",
       "Endpoint: ko-fi.com",
       "Endpoint: na.finalfantasyxiv.com",
+      "Endpoint: raw.githubusercontent.com",
       "Filesystem write",
       "Hard-coded external file access",
       "Native/PInvoke",
       "Network access",
       "Process execution"
     ],
-    "caution_count": 5,
+    "caution_count": 9,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -54,10 +55,32 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:footballer/Plugin.cs: System.Diagnostics.Process",
+          "source:footballer/Plugin.cs: Process.Start",
+          "source:footballer/Plugin.cs: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:footballer/PluginInfo.cs: https://ko-fi.com/mcvaxius"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.c56becac0f92",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:footballer.dll: https://na.finalfantasyxiv.com/"
         ],
@@ -67,15 +90,25 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:footballer.dll: https://ko-fi.com/mcvaxius"
         ],
         "ruleId": "network.endpoint.unrecognised-host.226f7ad8215b",
         "severity": "caution",
         "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:footballer/Services/LodestoneProfileService.cs: https://na.finalfantasyxiv.com/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.1b1f7926980d",
+        "severity": "caution",
+        "title": "Endpoint: na.finalfantasyxiv.com"
       },
       {
         "category": "native",
@@ -91,6 +124,18 @@
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:footballer/Services/LodestoneProfileService.cs: s://na.finalfantasyxiv.com",
+          "source:footballer/Services/LodestoneProfileService.cs: \\\\d+/)\\",
+          "source:footballer/Services/LodestoneProfileService.cs: s://img2\\\\.finalfantasyxiv\\\\.com/f/[^\\"
+        ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
         "title": "Hard-coded external file path"
@@ -114,9 +159,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:footballer.dll: https://github.com/McVaxius/footballer"
         ],
@@ -126,9 +169,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:footballer.json: https://github.com/McVaxius/footballer"
         ],
@@ -138,13 +179,35 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:footballer/footballer.json: https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.60047584405d",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:footballer.dll: https://discord.gg/VsXqydsvpu"
         ],
         "ruleId": "network.endpoint.community-invite.d81f3d73dea6",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:footballer/PluginInfo.cs: https://discord.gg/VsXqydsvpu"
+        ],
+        "ruleId": "network.endpoint.community-invite.43450d454f08",
         "severity": "informational",
         "title": "Community invite: Discord"
       },
@@ -164,14 +227,29 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:footballer/Services/CharacterInspectPreviewCaptureService.cs: WriteAllText",
+          "source:footballer/Services/CharacterInspectPreviewCaptureService.cs: File.Delete",
+          "source:footballer/Services/CharacterInspectPreviewCaptureService.cs: Directory.CreateDirectory",
+          "source:footballer/Services/LodestoneProfileService.cs: WriteAllBytes",
+          "source:footballer/Services/LodestoneProfileService.cs: File.Delete",
+          "source:footballer/Services/LodestoneProfileService.cs: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
     "high_count": 1,
     "highest_severity": "high",
-    "informational_count": 5,
+    "informational_count": 8,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "artifactBytes": 117476,
       "artifactIdentity": {
@@ -179,10 +257,10 @@
         "artifactBytes": 117476,
         "artifactSha256": "31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b",
         "catalogAssemblyVersion": "0.0.1.1",
-        "manifestInternalName": "footballer",
+        "manifestInternalName": "",
         "manifestPath": "footballer.json",
-        "manifestRepositoryUrl": "https://github.com/McVaxius/footballer",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1205600427/39ef66f8-9689-494d-a90f-bd6c04949e50?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-09T22%3A30%3A50Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-09T21%3A30%3A24Z&ske=2026-09-09T22%3A30%3A50Z&sks=b&skv=2018-11-09&sig=5VBw99HLJx%2BpVNMOGbQTEsHrK%2F4RuZ16BwBMxiHxRjs%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODk4OTgyMSwibmJmIjoxNzg4OTg5NTIxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.AWHbq5KQuhfsjmfBZTeaeazj_ySHxIw092Ng9OfuOWs&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -201,18 +279,6 @@
             "expected": null,
             "id": "behavior.download-execute",
             "label": "Download/execute potential",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -254,6 +320,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -261,6 +339,30 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -336,31 +438,40 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "na.finalfantasyxiv.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -369,31 +480,40 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "na.finalfantasyxiv.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -414,11 +534,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 11,
-          "observedConcreteDestinationCount": 3,
-          "observedDestinationWithoutProfileCount": 3,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 11,
+          "observedWithoutProfileCount": 13,
           "unexplainedDestinationCount": 0
         }
       },
@@ -428,6 +548,7 @@
         "Endpoint: github.com",
         "Endpoint: ko-fi.com",
         "Endpoint: na.finalfantasyxiv.com",
+        "Endpoint: raw.githubusercontent.com",
         "Filesystem write",
         "Hard-coded external file access",
         "Native/PInvoke",
@@ -436,11 +557,13 @@
       ],
       "capabilityIds": [
         "behavior.download-execute",
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.chat.read",
         "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
         "native.interop",
         "network.http",
         "network.outbound",
@@ -449,138 +572,93 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 5,
+        "caution": 9,
         "critical": 0,
         "high": 1,
-        "informational": 5
+        "informational": 8
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 20,
-          "exactVersionObservedCount": 19,
+          "dependencyCount": 3,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 19,
-            "native": 1
+            "native": 1,
+            "nuget": 2
           },
-          "fingerprint": "ba0b397e3b399e0ce2f38cfce5f96fe026640685935bfc407eb50b4381981c26",
+          "fingerprint": "15c7d4575546e2475da858071d7419ddb000315c36c39cde5466b2aebcb8b926",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
-            "platformLibrary": 5
+            "platformLibrary": 1
           },
           "nativeRelationships": [
             {
               "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
+              "consumerPath": "footballer/Services/CharacterInspectPreviewCaptureService.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
               "disposition": "platform-library",
-              "entryPoint": "ClientToScreen",
+              "entryPoint": "",
               "library": "user32.dll",
-              "managedName": "ClientToScreen",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "EnumWindows",
-              "library": "user32.dll",
-              "managedName": "EnumWindows",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "GetClientRect",
-              "library": "user32.dll",
-              "managedName": "GetClientRect",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "GetWindowThreadProcessId",
-              "library": "user32.dll",
-              "managedName": "GetWindowThreadProcessId",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "IsWindowVisible",
-              "library": "user32.dll",
-              "managedName": "IsWindowVisible",
+              "managedName": "",
               "targetPath": ""
             }
           ],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 1,
-            "observed": 19
+            "observed": 1,
+            "required": 2
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 20,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
-          "notAnalyzed": 0,
+          "known": 2,
+          "notAnalyzed": 1,
           "requirements": {
-            "bundled": 1,
-            "observed": 19,
+            "bundled": 0,
+            "observed": 1,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 20
+          "total": 3
         },
         "endpointSummary": {
           "concreteDestinationCount": 4,
           "destinationsUndetermined": false,
-          "hostCount": 4,
+          "hostCount": 5,
           "hosts": [
             {
               "classifications": [
                 "community-invite"
               ],
               "concreteCount": 0,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "discord.gg",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 2,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 2,
+              "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -588,11 +666,11 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -600,11 +678,23 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "na.finalfantasyxiv.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -620,52 +710,52 @@
           {
             "classification": "community-invite",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "discord.gg",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "community invite",
             "url": "https://discord.gg/VsXqydsvpu"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/McVaxius/footballer"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/McVaxius/footballer"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "ko-fi.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://ko-fi.com/mcvaxius"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "na.finalfantasyxiv.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://na.finalfantasyxiv.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
           }
         ]
       },
@@ -691,7 +781,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-fa6889fc3ee339d3",
+        "attemptId": "attempt-v2-cd9c2a47323eec11",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -700,11 +790,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-7036",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-7036",
         "queueSeedRevision": "queue-seed-v2-193b90e8624fc7ca7a8b",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "230e361ba4ae560c49a48f174f24801080d8b713e469ab471276c7a203b5ead6",
@@ -712,11 +802,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-4dad4804f5b73c0c",
-        "targetFingerprint": "artifact-target-v2-19232d859aad13cd8f81",
+        "targetFingerprint": "source-target-v2-d54043911bd8ff1da995",
         "variantId": 7036,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-09T21:32:01Z",
+      "scannedAtUtc": "2026-09-09T21:59:34Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -758,20 +848,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v0.0.1.1",
         "candidates": [
           "https://github.com/McVaxius/footballer"
         ],
-        "commit": "",
+        "commit": "b7dc97214530924a79f678e6688c68e1197e4796",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "8646fdb6781eace8a182d51264ed68dbe3a498814d4928a3f9bd2b4eca38ceec"
           }
         },
         "developerProfile": {
@@ -779,57 +875,498 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "0.0.1.1",
+          "manifestInternalName": "footballer",
+          "manifestPath": "footballer/footballer.json",
+          "manifestRepoUrl": "https://github.com/McVaxius/footballer",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.1.1",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "v0.0.1.1",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/McVaxius/footballer",
-        "treeSha256": ""
+        "treeSha256": "396bb6cf9d8331bf5c97178cd6fd8d31909f9d3d"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 6,
-    "scanned_at_utc": "2026-09-09T21:32:01Z",
+    "scan_id": 13,
+    "scanned_at_utc": "2026-09-09T21:59:34Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "b7dc97214530924a79f678e6688c68e1197e4796",
     "source_repository": "https://github.com/McVaxius/footballer",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 7036
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "native:user32",
+        "current_json": {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "normalizedName": "user32",
+          "origin": "source",
+          "paths": [
+            "footballer/Services/CharacterInspectPreviewCaptureService.cs"
+          ],
+          "requirements": [
+            "observed"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "not-analyzed"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "native-import",
+        "dependency_name": "user32.dll",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 16,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "footballer/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 17,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "caution",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "footballer/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 18,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "caution",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 19,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 20,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 21,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 22,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "caution",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service IObjectTable is referenced.",
+            "Dalamud service IPartyList is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 23,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 24,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "A DllImport native library is declared.",
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 25,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "caution",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 26,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 27,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "caution",
+        "variant_id": 7036
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 13,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-09T21:59:40Z",
+        "drift_id": 28,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 6,
+        "severity": "informational",
+        "variant_id": 7036
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b",
       "current_assembly_version": "0.0.1.1",
-      "current_scan_id": 6,
+      "current_scan_id": 13,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-09T21:32:02Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "b7dc97214530924a79f678e6688c68e1197e4796",
+      "detected_at_utc": "2026-09-09T21:59:40Z",
+      "previous_artifact_sha256": "31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b",
+      "previous_assembly_version": "0.0.1.1",
+      "previous_scan_id": 6,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 7036
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 20,
-      "artifact_only_count": 20,
+      "artifact_only_count": 19,
       "artifact_only_json": [
         {
           "componentKey": "assembly:dalamud",
@@ -1096,33 +1633,50 @@
           "versions": [
             "10.0.0.0"
           ]
-        },
-        {
-          "componentKey": "native:user32",
-          "componentKind": "native",
-          "kinds": [
-            "native-import"
-          ],
-          "name": "user32.dll",
-          "requirements": [
-            "observed"
-          ],
-          "versions": []
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-09T21:32:02Z",
-      "comparison_id": 6,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-09T21:59:40Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 1,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 6,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 13,
+      "source_available": 1,
+      "source_dependency_count": 3,
+      "source_only_count": 2,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        }
+      ],
+      "source_project_sha256": "bb83db558f6a1e109b8c7e8b659fcdada96481a6eb3c56c7c920de2df46a370f",
       "variant_id": 7036,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -1160,36 +1714,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 19141,
+          "bytes": 21930,
           "encoding": "json",
           "path": "derived/variants/0007/7036/dependency-resolutions.json",
-          "recordDigest": "d421084304fb6a81df8f8b6a030cf5ba42db702d89d68d7d87fc2891090ba457",
-          "records": 20,
-          "sha256": "225e9a940a812c5fb2be42217d3e04d62b33d804e77dd55a073815ea655a5607"
+          "recordDigest": "ad6cde33324ff7d2343b94f0c59fe8cc018da71f8ad4d1d2563e1abd49a51eff",
+          "records": 23,
+          "sha256": "43535c0600a8469d523f5bba0ddbd5223d9fbc209da40c2bb1137e3c318e1157"
         }
       ],
-      "recordDigest": "d421084304fb6a81df8f8b6a030cf5ba42db702d89d68d7d87fc2891090ba457",
-      "records": 20
+      "recordDigest": "ad6cde33324ff7d2343b94f0c59fe8cc018da71f8ad4d1d2563e1abd49a51eff",
+      "records": 23
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 268489,
           "encoding": "json",
           "path": "derived/variants/0007/7036/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "576df912b5037d18358c5161ba4cb541751b206d07d9ea15e3c3c3304c7f6a50",
+          "records": 1,
+          "sha256": "9a9f8a3adc32318494022ee11c2a0acdd6ef8ea201581b29c079ce9218a40d7d"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "576df912b5037d18358c5161ba4cb541751b206d07d9ea15e3c3c3304c7f6a50",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "56b8867fd8d2ad7986244bd284620bbfc99eba0ba5b49c8bd2a7947b602ef4e1",
+    "identityFingerprint": "ddb1e32a855061b92c72bc0818763203422d2556e4d7989cddb25ede96b52424",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1199,37 +1753,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "525a1629b3c4787a4fe4ddd783bb30bce8e5acf8b5f17e1498a6886cc8e4d55b",
+        "recordDigest": "2aec2a83acdd4ad85a6a64bb1e5c91ec9f078a8d2f7dc2b13f5db926490fe95f",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "f3019634afd2cb116cad7ad4c616767d187344a57c650bbdd2d495fb5a8054e7",
-        "records": 1,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "511991fa11396bbb0944174f0966ee23407b1b52aeaea8dde184d3e4eb3870eb",
-        "records": 20,
+        "recordDigest": "278aa94397d581c2eb11b6aea50ff164c8be36f4e9ac41404f6a8ae9f135b45d",
+        "records": 23,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1259,8 +1803,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "87ba504258b95e4b0066c6a72a35a1cb35aff412937cdf9495310652a81624c4",
-        "records": 6644,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1269,8 +1813,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "419c0aa5592f0c11c9ab9455bb92dbd5d12f3fa0853b7a8b18a66df138b3fc66",
-        "records": 1561,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1279,8 +1823,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "dd9d18822a267119a6c611435f2e394d5283943d838e62448bd9f45696a3196d",
-        "records": 791,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1299,8 +1843,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "59484e8b385ff629f1ab58ac79a51e74ec57d3135c3662b76943b5f740fd11db",
+        "records": 94,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1309,8 +1853,8 @@
         "backingDataset": "nativeImports",
         "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
         "completeness": "retained",
-        "recordDigest": "22e3d9f343b244ea4e4515189a243a388e1c70c17cdc404f6f31b2b4e40e3c6e",
-        "records": 5,
+        "recordDigest": "5d5f327f1e1d344e9a0a58380102bfffff51d5aaf142b705c5d7140693a6080f",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1319,7 +1863,7 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "12ea402688865fe44b803a86bf81a50483ab3c7f7fdca34f58f3be155f0d1096",
+        "recordDigest": "386a33e319d12fd8d97e58a96f997dd97516e5d5354b8d62909b3703cf35a86f",
         "records": 5,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
@@ -1339,28 +1883,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "e85a65dee78c217e61106c665e1d038f8016435516756ededa582be2271cefb4",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "6a8d2d1bf26ba1f3f6157d32a69b3dcc39b5c863aea02b3b93ac36d8cd535e78",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "fa15916e1a355ea7870482a32446950debf7809d33f9b38ae72daf8c235f76b2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "aea344ebd95f0466aa6b47d0a5b5856c5d4384cc48d34aabbedf78497e6cea8d",
+        "records": 304,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "1fd070ab66b3b591a04f086299636739d4098d4f242b9339b03e5161a2600fea",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "3f5e280d215868e571df2dbf5019963e0136d1bf2f12da4e76eb57d576b99abe",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "b7724121328dba650baaaf033f4b21193214e0ee691a6e0b7aecf219eddea964",
-        "records": 2,
+        "recordDigest": "3b9a11af7ecf2e73641efff9f41b5e5c26e4e086cd1f898e8ec5539c431aa37c",
+        "records": 27,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "f7f9994ee5ba165764a56976d0357a1e532ee832fabd7a158f9b15554e5d1d94",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "037fcd32ecccae7701ce3fdb88ad039eebb08742739193c5cd4d74c2c0e20a65",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "4fdb9a8c0f3cb15251773ac56ccb8a399ce4123c44f4a3bdb28d94c7ee09f28f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "5bada242765e45c2f016d84a88825f0a16b75c172c0366d5cbbf8c6519c2298c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "42be913b0b6c43b8df532d00eda28a7e58c8cd51fb2bf3e0f5ffd394177a534a",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "a051d9efe87ea556eb5cb6adaf3c3c837554bf77953691dd7bede296333cdfe2",
-        "records": 42,
+        "recordDigest": "72ae8adaf99e497404c0cf2846427d5b574023c085457d9b5834826afdffb224",
+        "records": 9,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1369,20 +2033,9 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications"
     ],
-    "observationDigest": "obs-07334df0f8bd0fca72531c597543233521d83b8b2c4abc8698c11f369bf31f37",
+    "observationDigest": "obs-350fd81f68addf8b7a66e49294da892a9c6a79e844428ae048642481095fe6a9",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -1443,17 +2096,17 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "731c8de9f4f8143d516f32191485b6cbf646dff0c7671982660268832ec46a2a",
+        "recordDigest": "8e6b4f295c9b4fc90931d8f6aaf444740407501d4d3b86dc419d2de7f8d0cb6d",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "55e32e2575a224cb485c4031ff6487c2378bca8407efbc01799c1facf624f316",
-        "records": 11
+        "recordDigest": "27d1190847b1aa196d7adbd432c412c1b02a1044e38b9b93307661effaaf53b4",
+        "records": 13
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "2164ebec73c90f1efa455b8ee61247a09736c0d8d0733449bc3e3798ddda727f",
-        "records": 11
+        "recordDigest": "d1b27d601a9f888907e569b7aaeef8bbc8f829933d72dfbf125f096a9fa0b728",
+        "records": 18
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -1477,22 +2130,23 @@
       "Endpoint: github.com",
       "Endpoint: ko-fi.com",
       "Endpoint: na.finalfantasyxiv.com",
+      "Endpoint: raw.githubusercontent.com",
       "Filesystem write",
       "Hard-coded external file access",
       "Native/PInvoke",
       "Network access",
       "Process execution"
     ],
-    "caution_count": 5,
+    "caution_count": 9,
     "critical_count": 0,
     "error": "",
     "high_count": 1,
     "highest_severity": "high",
-    "informational_count": 5,
+    "informational_count": 8,
     "plugin_id": 784,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "artifactBytes": 117476,
       "artifactIdentity": {
@@ -1500,10 +2154,10 @@
         "artifactBytes": 117476,
         "artifactSha256": "31fb4647b5204ca050fd1c114825999590723bf254c0ed33a0333071e009600b",
         "catalogAssemblyVersion": "0.0.1.1",
-        "manifestInternalName": "footballer",
+        "manifestInternalName": "",
         "manifestPath": "footballer.json",
-        "manifestRepositoryUrl": "https://github.com/McVaxius/footballer",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1205600427/39ef66f8-9689-494d-a90f-bd6c04949e50?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-09T22%3A30%3A50Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-09T21%3A30%3A24Z&ske=2026-09-09T22%3A30%3A50Z&sks=b&skv=2018-11-09&sig=5VBw99HLJx%2BpVNMOGbQTEsHrK%2F4RuZ16BwBMxiHxRjs%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODk4OTgyMSwibmJmIjoxNzg4OTg5NTIxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.AWHbq5KQuhfsjmfBZTeaeazj_ySHxIw092Ng9OfuOWs&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -1522,18 +2176,6 @@
             "expected": null,
             "id": "behavior.download-execute",
             "label": "Download/execute potential",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1575,6 +2217,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -1582,6 +2236,30 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1657,31 +2335,40 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "na.finalfantasyxiv.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1690,31 +2377,40 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "na.finalfantasyxiv.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1735,11 +2431,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 11,
-          "observedConcreteDestinationCount": 3,
-          "observedDestinationWithoutProfileCount": 3,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 11,
+          "observedWithoutProfileCount": 13,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1749,6 +2445,7 @@
         "Endpoint: github.com",
         "Endpoint: ko-fi.com",
         "Endpoint: na.finalfantasyxiv.com",
+        "Endpoint: raw.githubusercontent.com",
         "Filesystem write",
         "Hard-coded external file access",
         "Native/PInvoke",
@@ -1757,11 +2454,13 @@
       ],
       "capabilityIds": [
         "behavior.download-execute",
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.chat.read",
         "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
         "native.interop",
         "network.http",
         "network.outbound",
@@ -1770,138 +2469,93 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 5,
+        "caution": 9,
         "critical": 0,
         "high": 1,
-        "informational": 5
+        "informational": 8
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 20,
-          "exactVersionObservedCount": 19,
+          "dependencyCount": 3,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 19,
-            "native": 1
+            "native": 1,
+            "nuget": 2
           },
-          "fingerprint": "ba0b397e3b399e0ce2f38cfce5f96fe026640685935bfc407eb50b4381981c26",
+          "fingerprint": "15c7d4575546e2475da858071d7419ddb000315c36c39cde5466b2aebcb8b926",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
-            "platformLibrary": 5
+            "platformLibrary": 1
           },
           "nativeRelationships": [
             {
               "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
+              "consumerPath": "footballer/Services/CharacterInspectPreviewCaptureService.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
               "disposition": "platform-library",
-              "entryPoint": "ClientToScreen",
+              "entryPoint": "",
               "library": "user32.dll",
-              "managedName": "ClientToScreen",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "EnumWindows",
-              "library": "user32.dll",
-              "managedName": "EnumWindows",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "GetClientRect",
-              "library": "user32.dll",
-              "managedName": "GetClientRect",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "GetWindowThreadProcessId",
-              "library": "user32.dll",
-              "managedName": "GetWindowThreadProcessId",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "footballer.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "platform-library",
-              "entryPoint": "IsWindowVisible",
-              "library": "user32.dll",
-              "managedName": "IsWindowVisible",
+              "managedName": "",
               "targetPath": ""
             }
           ],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 1,
-            "observed": 19
+            "observed": 1,
+            "required": 2
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 20,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
-          "notAnalyzed": 0,
+          "known": 2,
+          "notAnalyzed": 1,
           "requirements": {
-            "bundled": 1,
-            "observed": 19,
+            "bundled": 0,
+            "observed": 1,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 20
+          "total": 3
         },
         "endpointSummary": {
           "concreteDestinationCount": 4,
           "destinationsUndetermined": false,
-          "hostCount": 4,
+          "hostCount": 5,
           "hosts": [
             {
               "classifications": [
                 "community-invite"
               ],
               "concreteCount": 0,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "discord.gg",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 2,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 2,
+              "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -1909,11 +2563,11 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "ko-fi.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1921,11 +2575,23 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "na.finalfantasyxiv.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
               ]
             }
           ],
@@ -1941,52 +2607,52 @@
           {
             "classification": "community-invite",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "discord.gg",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "community invite",
             "url": "https://discord.gg/VsXqydsvpu"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/McVaxius/footballer"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/McVaxius/footballer"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "ko-fi.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://ko-fi.com/mcvaxius"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "na.finalfantasyxiv.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://na.finalfantasyxiv.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
           }
         ]
       },
@@ -2012,7 +2678,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-fa6889fc3ee339d3",
+        "attemptId": "attempt-v2-cd9c2a47323eec11",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -2021,11 +2687,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-7036",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-7036",
         "queueSeedRevision": "queue-seed-v2-193b90e8624fc7ca7a8b",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "230e361ba4ae560c49a48f174f24801080d8b713e469ab471276c7a203b5ead6",
@@ -2033,11 +2699,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-4dad4804f5b73c0c",
-        "targetFingerprint": "artifact-target-v2-19232d859aad13cd8f81",
+        "targetFingerprint": "source-target-v2-d54043911bd8ff1da995",
         "variantId": 7036,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-09T21:32:01Z",
+      "scannedAtUtc": "2026-09-09T21:59:34Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2079,20 +2745,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v0.0.1.1",
         "candidates": [
           "https://github.com/McVaxius/footballer"
         ],
-        "commit": "",
+        "commit": "b7dc97214530924a79f678e6688c68e1197e4796",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "8646fdb6781eace8a182d51264ed68dbe3a498814d4928a3f9bd2b4eca38ceec"
           }
         },
         "developerProfile": {
@@ -2100,28 +2772,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "0.0.1.1",
+          "manifestInternalName": "footballer",
+          "manifestPath": "footballer/footballer.json",
+          "manifestRepoUrl": "https://github.com/McVaxius/footballer",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.1.1",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "v0.0.1.1",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/McVaxius/footballer",
-        "treeSha256": ""
+        "treeSha256": "396bb6cf9d8331bf5c97178cd6fd8d31909f9d3d"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 6,
-    "scanned_at_utc": "2026-09-09T21:32:01Z",
+    "scan_id": 13,
+    "scanned_at_utc": "2026-09-09T21:59:34Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "b7dc97214530924a79f678e6688c68e1197e4796",
     "source_id": 1003,
     "source_repository": "https://github.com/McVaxius/footballer",
     "source_to_binary_verified": 0,
