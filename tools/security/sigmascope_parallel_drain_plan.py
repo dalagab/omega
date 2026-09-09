@@ -31,6 +31,8 @@ MAX_ITEMS_PER_WORKER = 16
 MAX_ASSIGNMENTS = 64
 MAX_LARGE_ASSIGNMENTS = 1
 PARALLEL_WORK_TYPES = {"artifact", "source"}
+SOURCE_SEMANTIC_LANE = "source-semantic"
+SOURCE_SEMANTIC_REASON = "source_analysis_changed"
 
 
 def _canonical(value: Any) -> bytes:
@@ -102,18 +104,58 @@ def build(
         for slot in range(workers)
     ]
 
+    # Reserve one standard slot for stale source semantics when at least two workers exist.
+    # The donor alternates between baseline and update lanes by wave, so neither normal lane
+    # permanently loses capacity. If the semantic backlog empties, the slot lends the rest
+    # of its batch back to its original lane.
+    source_semantic_probe = copy.deepcopy(state)
+    source_semantic_candidate = scan_queue.select_next(
+        source_semantic_probe,
+        now=now,
+        resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+        required_work_type="source",
+        required_reason=SOURCE_SEMANTIC_REASON,
+    )
+    source_semantic_slot: int | None = None
+    source_semantic_fallback_lane = ""
+    if workers > 1 and source_semantic_candidate is not None:
+        source_semantic_slot = workers - 1 if max(1, wave) % 2 == 1 else workers - 2
+        source_semantic_fallback_lane = str(slots[source_semantic_slot]["lane"])
+        slots[source_semantic_slot]["lane"] = SOURCE_SEMANTIC_LANE
+        slots[source_semantic_slot]["fallbackLane"] = source_semantic_fallback_lane
+
     while len(assignments) < capacity:
         ordinal = len(assignments)
         slot = slots[ordinal % workers]
         # A single runner alternates within the batch; one-item waves alternate
         # by wave number too, so neither lane can starve the other.
-        preference = slot["lane"] if workers > 1 else ("updates" if (ordinal + max(1, wave) - 1) % 2 == 0 else "baseline")
-        item = scan_queue.select_next(
-            state,
-            now=now,
-            preferred_lane=preference,
-            resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
-        )
+        slot_lane = str(slot["lane"])
+        preference = slot_lane if workers > 1 else ("updates" if (ordinal + max(1, wave) - 1) % 2 == 0 else "baseline")
+        if slot_lane == SOURCE_SEMANTIC_LANE:
+            item = scan_queue.select_next(
+                state,
+                now=now,
+                resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+                required_work_type="source",
+                required_reason=SOURCE_SEMANTIC_REASON,
+            )
+            if item is None:
+                preference = str(slot.get("fallbackLane") or "baseline")
+                item = scan_queue.select_next(
+                    state,
+                    now=now,
+                    preferred_lane=preference,
+                    resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+                )
+            else:
+                preference = SOURCE_SEMANTIC_LANE
+        else:
+            item = scan_queue.select_next(
+                state,
+                now=now,
+                preferred_lane=preference,
+                resource_class=scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
+            )
         if item is None:
             break
 
@@ -141,8 +183,10 @@ def build(
             "targetFingerprint": str(item.get("targetFingerprint") or ""),
             "priority": int(item.get("priority") or 0),
             "primaryReason": str(item.get("primaryReason") or ""),
+            "reasonCodes": [str(value) for value in item.get("reasons") or item.get("reasonCodes") or [] if str(value)],
             "selectionLane": int(scan_queue._selection_lane(item)),
             "workerLane": preference,
+            "workerSlotLane": slot_lane,
             "resourceClass": scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
             "releaseUpdate": scan_queue.plugin_coverage.is_release_update(item),
         })
@@ -229,7 +273,7 @@ def build(
         "evidenceCatalogIdentityEpoch": evidence_epoch,
         "baselineSecurityRebuild": bool(seed.get("baselineSecurityRebuild")),
         "selectionPolicy": str(seed.get("selectionPolicy") or ""),
-        "workerAllocationPolicy": "release-baseline-and-large-artifact-resources-v2",
+        "workerAllocationPolicy": "release-baseline-source-semantic-and-large-artifact-resources-v3",
         "wave": max(1, wave),
         "workers": workers,
         "itemsPerWorker": items_per_worker,
@@ -238,6 +282,19 @@ def build(
         "matrix": {"include": active_slots},
         "assignmentCount": len(assignments),
         "activeWorkerCount": len(active_slots),
+        "sourceSemanticReservation": {
+            "enabled": source_semantic_slot is not None,
+            "reason": SOURCE_SEMANTIC_REASON,
+            "slot": source_semantic_slot,
+            "fallbackLane": source_semantic_fallback_lane,
+            "pendingBefore": int((summary_before.get("pendingByReason") or {}).get(SOURCE_SEMANTIC_REASON, 0)),
+            "reservedCapacity": items_per_worker if source_semantic_slot is not None else 0,
+            "assigned": sum(1 for item in assignments if item.get("workerLane") == SOURCE_SEMANTIC_LANE),
+            "totalReasonAssignments": sum(
+                1 for item in assignments
+                if SOURCE_SEMANTIC_REASON in set(item.get("reasonCodes") or []) or item.get("primaryReason") == SOURCE_SEMANTIC_REASON
+            ),
+        },
         "moreParallelEligible": more_parallel_eligible,
         "serialFallbackRequired": serial_fallback_required,
         "blockedReason": blocked_reason,

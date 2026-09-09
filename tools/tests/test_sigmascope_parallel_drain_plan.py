@@ -29,6 +29,22 @@ def artifact_item(index: int) -> dict:
     }
 
 
+def source_item(index: int, *, reason: str = "source_analysis_changed") -> dict:
+    item = artifact_item(index)
+    item.update({
+        "queueKey": f"source:{index}",
+        "workType": "source",
+        "pluginHasCurrentScan": True,
+        "priority": scan_queue.REASON_PRIORITIES[reason],
+        "primaryReason": reason,
+        "reasonCodes": [reason],
+        "reasons": [reason],
+        "currentScanId": index,
+        "currentScannedAtUtc": "2026-08-28T15:00:00Z",
+    })
+    return item
+
+
 def seed(items: list[dict], *, baseline: bool = True) -> dict:
     return {
         "schema": scan_queue.SEED_SCHEMA, "queueSeedRevision": "seed-fixture",
@@ -104,6 +120,64 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
                                       output=root / "plan.json", now=NOW)
             self.assertEqual(5, result["assignmentCount"])
             self.assertTrue(all(item["workType"] == "artifact" for item in result["assignments"]))
+
+    def test_source_semantic_backfill_gets_one_reserved_standard_worker(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-drain-source-semantic-") as td:
+            root = Path(td)
+            requests = [artifact_item(i) for i in range(1, 101)]
+            requests += [source_item(1000 + i) for i in range(20)]
+            seed_path = root / "seed.json"
+            seed_path.write_text(json.dumps(seed(requests, baseline=False)), encoding="utf-8")
+            result = drain_plan.build(seed_path, self.write_evidence(root),
+                                      workers=8, items_per_worker=8, wave=1,
+                                      output=root / "plan.json", now=NOW)
+
+            self.assertEqual(64, result["assignmentCount"])
+            reservation = result["sourceSemanticReservation"]
+            self.assertTrue(reservation["enabled"])
+            self.assertEqual(7, reservation["slot"])
+            self.assertEqual("baseline", reservation["fallbackLane"])
+            self.assertEqual(8, reservation["reservedCapacity"])
+            self.assertEqual(8, reservation["assigned"])
+            self.assertGreaterEqual(reservation["totalReasonAssignments"], 8)
+            reserved = next(slot for slot in result["matrix"]["include"] if slot["slot"] == 7)
+            self.assertEqual("source-semantic", reserved["lane"])
+            by_key = {item["queueKey"]: item for item in result["assignments"]}
+            self.assertTrue(all(by_key[key]["workType"] == "source" for key in reserved["queueKeys"]))
+
+    def test_source_semantic_slot_lends_unused_capacity_back_to_normal_lane(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-drain-source-semantic-lend-") as td:
+            root = Path(td)
+            requests = [artifact_item(i) for i in range(1, 101)]
+            requests += [source_item(1000), source_item(1001)]
+            seed_path = root / "seed.json"
+            seed_path.write_text(json.dumps(seed(requests, baseline=False)), encoding="utf-8")
+            result = drain_plan.build(seed_path, self.write_evidence(root),
+                                      workers=8, items_per_worker=8, wave=1,
+                                      output=root / "plan.json", now=NOW)
+
+            self.assertEqual(64, result["assignmentCount"])
+            reservation = result["sourceSemanticReservation"]
+            self.assertEqual(2, reservation["assigned"])
+            reserved = next(slot for slot in result["matrix"]["include"] if slot["slot"] == 7)
+            by_key = {item["queueKey"]: item for item in result["assignments"]}
+            self.assertEqual(8, reserved["assignmentCount"])
+            self.assertEqual(2, sum(1 for key in reserved["queueKeys"] if by_key[key]["workType"] == "source"))
+            self.assertEqual(6, sum(1 for key in reserved["queueKeys"] if by_key[key]["workType"] == "artifact"))
+
+    def test_source_semantic_reservation_alternates_donor_lane_by_wave(self) -> None:
+        for wave, expected_slot, expected_fallback in ((1, 7, "baseline"), (2, 6, "updates")):
+            with self.subTest(wave=wave), tempfile.TemporaryDirectory(prefix="omega-drain-source-fair-") as td:
+                root = Path(td)
+                requests = [artifact_item(i) for i in range(1, 101)] + [source_item(1000 + i) for i in range(20)]
+                seed_path = root / "seed.json"
+                seed_path.write_text(json.dumps(seed(requests, baseline=False)), encoding="utf-8")
+                result = drain_plan.build(seed_path, self.write_evidence(root),
+                                          workers=8, items_per_worker=8, wave=wave,
+                                          output=root / "plan.json", now=NOW)
+                reservation = result["sourceSemanticReservation"]
+                self.assertEqual(expected_slot, reservation["slot"])
+                self.assertEqual(expected_fallback, reservation["fallbackLane"])
 
     def test_global_advisory_yields_to_serial_worker(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-advisory-") as td:
