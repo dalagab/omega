@@ -1,17 +1,57 @@
 {
   "analysis": {
-    "analysisId": "298b2e3d40f675fb30383765076177ec52150ef1684b115ad328810b0e2776f8",
+    "analysisId": "bb1d77802e8731588dc44540ad0e95284f259a6c526b307892fd8ccc997cdc42",
     "artifactSha256": "3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c",
-    "path": "artifacts/39/3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c/analyses/298b2e3d40f675fb30383765076177ec52150ef1684b115ad328810b0e2776f8",
-    "recordCount": 3906
+    "path": "artifacts/39/3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c/analyses/bb1d77802e8731588dc44540ad0e95284f259a6c526b307892fd8ccc997cdc42",
+    "recordCount": 604
   },
   "current": {
     "artifact_channel": "stable",
     "artifact_sha256": "3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c",
     "artifact_url": "https://github.com/dexcss/HousingLottoTracker/releases/latest/download/HousingLottoTracker.zip",
     "assembly_version": "1.0.3.4",
-    "automation_capabilities_json": [],
-    "automation_level": "observational",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "automation.via_ipc",
+        "confidence": "medium",
+        "evidence": [
+          "IPC channel: AutoRetainer.GetRegisteredCIDs",
+          "IPC channel: Lifestream.ExecuteCommand",
+          "IPC channel: Lifestream.IsBusy"
+        ],
+        "indirect": true,
+        "label": "Indirect automation via IPC",
+        "reachable": false,
+        "reason": "Uses an IPC integration associated with automation functionality supplied by another plugin."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.teleport",
+        "confidence": "medium",
+        "evidence": [
+          "IPC channel: Lifestream.ExecuteCommand",
+          "IPC channel: Lifestream.IsBusy"
+        ],
+        "indirect": true,
+        "label": "Teleport/travel control via IPC",
+        "reachable": false,
+        "reason": "References an IPC channel associated with an external automation provider; this is indirect capability evidence."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.retainer_control",
+        "confidence": "medium",
+        "evidence": [
+          "IPC channel: AutoRetainer.GetRegisteredCIDs"
+        ],
+        "indirect": true,
+        "label": "Retainer automation via IPC",
+        "reachable": false,
+        "reason": "References an IPC channel associated with an external automation provider; this is indirect capability evidence."
+      }
+    ],
+    "automation_level": "character-automation",
     "capabilities_json": [
       "Endpoint: github.com",
       "Endpoint: paissadb.zhu.codes",
@@ -19,21 +59,34 @@
       "Filesystem write",
       "Game memory/hooks",
       "Hard-coded external file access",
-      "Network access"
+      "Indirect automation via IPC",
+      "Network access",
+      "Retainer automation via IPC",
+      "Teleport/travel control via IPC"
     ],
-    "caution_count": 3,
+    "caution_count": 8,
     "critical_count": 0,
     "error": "",
     "findings_json": [
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:HousingLottoTracker.dll: https://paissadb.zhu.codes/"
         ],
         "ruleId": "network.endpoint.unrecognised-host.b213eb3c03a5",
+        "severity": "caution",
+        "title": "Endpoint: paissadb.zhu.codes"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:HousingLottoTracker/Game/PaissaClient.cs: https://paissadb.zhu.codes/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b14c3d0d6334",
         "severity": "caution",
         "title": "Endpoint: paissadb.zhu.codes"
       },
@@ -52,6 +105,18 @@
         "title": "Game memory/signature hooking"
       },
       {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:HousingLottoTracker/Game/PlacardSaleHook.cs: Dalamud.Hooking",
+          "source:HousingLottoTracker/Game/PlacardSaleHook.cs: Hook<",
+          "source:HousingLottoTracker/Game/PlacardSaleHook.cs: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [
@@ -61,6 +126,39 @@
         "ruleId": "filesystem.external-path",
         "severity": "caution",
         "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for retainer automation via ipc. This does not prove that the behavior executes during normal use. This capability is provided indirectly through IPC.",
+        "evidence": [
+          "IPC channel: AutoRetainer.GetRegisteredCIDs"
+        ],
+        "ruleId": "automation.game.ui.retainer_control",
+        "severity": "caution",
+        "title": "Retainer automation via IPC"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for teleport/travel control via ipc. This does not prove that the behavior executes during normal use. This capability is provided indirectly through IPC.",
+        "evidence": [
+          "IPC channel: Lifestream.ExecuteCommand",
+          "IPC channel: Lifestream.IsBusy"
+        ],
+        "ruleId": "automation.game.character.teleport",
+        "severity": "caution",
+        "title": "Teleport/travel control via IPC"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for indirect automation via ipc. This does not prove that the behavior executes during normal use. This capability is provided indirectly through IPC.",
+        "evidence": [
+          "IPC channel: AutoRetainer.GetRegisteredCIDs",
+          "IPC channel: Lifestream.ExecuteCommand",
+          "IPC channel: Lifestream.IsBusy"
+        ],
+        "ruleId": "automation.automation.via_ipc",
+        "severity": "caution",
+        "title": "Indirect automation via IPC"
       },
       {
         "category": "network",
@@ -78,9 +176,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:HousingLottoTracker.dll: https://github.com/dexcss/HousingLottoTracker"
         ],
@@ -90,9 +186,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:HousingLottoTracker.json: https://raw.githubusercontent.com/dexcss/HousingLottoTracker/main/images/icon.png"
         ],
@@ -102,15 +196,25 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:HousingLottoTracker.json: https://github.com/dexcss/HousingLottoTracker"
         ],
         "ruleId": "network.endpoint.recognised-platform.243475660e4c",
         "severity": "informational",
         "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:HousingLottoTracker/HousingLottoTracker.json: https://raw.githubusercontent.com/dexcss/HousingLottoTracker/main/images/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.1e3d2e98d541",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
       },
       {
         "category": "filesystem",
@@ -128,14 +232,26 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:HousingLottoTracker/Data/SharedStore.cs: FileStream",
+          "source:HousingLottoTracker/Data/SharedStore.cs: FileMode.Create",
+          "source:HousingLottoTracker/Data/SharedStore.cs: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 5,
+    "informational_count": 7,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "artifactBytes": 49035,
       "artifactIdentity": {
@@ -143,28 +259,53 @@
         "artifactBytes": 49035,
         "artifactSha256": "3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c",
         "catalogAssemblyVersion": "1.0.3.4",
-        "manifestInternalName": "HousingLottoTracker",
+        "manifestInternalName": "",
         "manifestPath": "HousingLottoTracker.json",
-        "manifestRepositoryUrl": "https://github.com/dexcss/HousingLottoTracker",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1276332690/cefaf81c-69a8-4384-94ee-06c53a557064?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-09T10%3A56%3A47Z&rscd=attachment%3B+filename%3DHousingLottoTracker.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-09T09%3A56%3A02Z&ske=2026-09-09T10%3A56%3A47Z&sks=b&skv=2018-11-09&sig=6ZhNGxauVoxmYAjoxX5WmbeEsgJr%2FQ18Ikq%2F7q6faQ8%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODk0OTE4OSwibmJmIjoxNzg4OTQ4ODg5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.3TovPSYCDW05VB-MUHjVSVMmLCoP3t483DSlJXu8SbU&response-content-disposition=attachment%3B%20filename%3DHousingLottoTracker.zip&response-content-type=application%2Foctet-stream",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [],
-        "level": "observational"
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "automation.via_ipc",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Indirect automation via IPC",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Teleport/travel control via IPC",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.retainer_control",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Retainer automation via IPC",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
       },
       "behaviorConsistency": {
         "capabilities": [
           {
-            "category": "dynamic-code",
+            "category": "automation",
             "declared": false,
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
+            "id": "automation.via_ipc",
+            "label": "Indirect automation via IPC",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -206,6 +347,30 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -213,6 +378,42 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.retainer_control",
+            "label": "Retainer automation",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -252,31 +453,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "paissadb.zhu.codes",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -285,31 +485,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "paissadb.zhu.codes",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -330,11 +529,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 7,
+          "observedCapabilityCount": 12,
           "observedConcreteDestinationCount": 3,
           "observedDestinationWithoutProfileCount": 3,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 7,
+          "observedWithoutProfileCount": 12,
           "unexplainedDestinationCount": 0
         }
       },
@@ -345,68 +544,103 @@
         "Filesystem write",
         "Game memory/hooks",
         "Hard-coded external file access",
-        "Network access"
+        "Indirect automation via IPC",
+        "Network access",
+        "Retainer automation via IPC",
+        "Teleport/travel control via IPC"
       ],
       "capabilityIds": [
-        "dynamic.code",
+        "automation.via_ipc",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.character.teleport",
+        "game.chat.read",
         "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
+        "game.ui.retainer_control",
         "network.http",
         "network.outbound"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 8,
         "critical": 0,
         "high": 0,
-        "informational": 5
+        "informational": 7
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 16,
-          "exactVersionObservedCount": 16,
+          "dependencyCount": 3,
+          "exactVersionObservedCount": 0,
           "families": {
-            "managed-assembly": 16
+            "ipc": 3
           },
-          "fingerprint": "342c50fd4922ce5a2f7b533e9c7f61ef7c20885b179d9529fa4bbc5b182f3256",
+          "fingerprint": "1b062209e782c8e6d6162871c87ab5e33fd0c5e22bc3934d700582d1a4bcacd4",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
           "nativeRelationships": [],
-          "pluginRelationships": [],
+          "pluginRelationships": [
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "AutoRetainer.GetRegisteredCIDs",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Lifestream.ExecuteCommand",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Lifestream.IsBusy",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            }
+          ],
           "requirements": {
-            "bundled": 1,
-            "observed": 15
+            "soft": 3
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 16,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
+          "externalPlugin": 3,
           "known": 0,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 1,
-            "observed": 15,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
             "required": 0,
-            "soft": 0,
+            "soft": 3,
             "unknown": 0
           },
-          "total": 16
+          "total": 3
         },
         "endpointSummary": {
-          "concreteDestinationCount": 4,
+          "concreteDestinationCount": 3,
           "destinationsUndetermined": false,
           "hostCount": 3,
           "hosts": [
@@ -414,13 +648,12 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 2,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 2,
+              "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -428,11 +661,11 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "paissadb.zhu.codes",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -440,15 +673,15 @@
                 "recognised-platform"
               ],
               "concreteCount": 1,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 3,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -460,40 +693,30 @@
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/dexcss/HousingLottoTracker"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/dexcss/HousingLottoTracker"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "paissadb.zhu.codes",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://paissadb.zhu.codes/"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://raw.githubusercontent.com/dexcss/HousingLottoTracker/main/images/icon.png"
           }
@@ -521,7 +744,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-457d40a1d03ce2cf",
+        "attemptId": "attempt-v2-93d0484ec165acb1",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -530,11 +753,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-8744",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8744",
         "queueSeedRevision": "queue-seed-v2-f03b343d35ba109b",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "6372d898682bf25e90f75f3c77cdb516788f54cbc2bfdae71c64a6ae7ff0aaf0",
@@ -542,11 +765,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-3b30fdd24ba2e05f",
-        "targetFingerprint": "artifact-target-v2-e950798dc0096662a18b",
+        "targetFingerprint": "source-target-v2-078819f2af0cf3c155c9",
         "variantId": 8744,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-09T10:14:48Z",
+      "scannedAtUtc": "2026-09-09T11:02:51Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -588,20 +811,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v1.0.3.4",
         "candidates": [
           "https://github.com/dexcss/HousingLottoTracker"
         ],
-        "commit": "",
+        "commit": "1555947722233033d95b68f7131b69ed216a9caa",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "a36e47b67f7d40b80b9ed16fdbc267e5bfd7a538dee16c890e43181f217c9d20"
           }
         },
         "developerProfile": {
@@ -609,52 +838,398 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "1.0.3.4",
+          "manifestInternalName": "HousingLottoTracker",
+          "manifestPath": "HousingLottoTracker/HousingLottoTracker.json",
+          "manifestRepoUrl": "https://github.com/dexcss/HousingLottoTracker",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.3.4",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "v1.0.3.4",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/dexcss/HousingLottoTracker",
-        "treeSha256": ""
+        "treeSha256": "62c750007416fdc5720787d693267170c04183e3"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-09T10:14:48Z",
+    "scan_id": 14,
+    "scanned_at_utc": "2026-09-09T11:02:51Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "1555947722233033d95b68f7131b69ed216a9caa",
     "source_repository": "https://github.com/dexcss/HousingLottoTracker",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 8744
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:autoretainer.getregisteredcids",
+        "current_json": {
+          "componentKey": "ipc:autoretainer.getregisteredcids",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "AutoRetainer.GetRegisteredCIDs",
+          "normalizedName": "autoretainer.getregisteredcids",
+          "origin": "source",
+          "paths": [
+            "HousingLottoTracker/Game/PluginIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "ipc",
+        "dependency_name": "AutoRetainer.GetRegisteredCIDs",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:lifestream.executecommand",
+        "current_json": {
+          "componentKey": "ipc:lifestream.executecommand",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Lifestream.ExecuteCommand",
+          "normalizedName": "lifestream.executecommand",
+          "origin": "source",
+          "paths": [
+            "HousingLottoTracker/Game/PluginIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "ipc",
+        "dependency_name": "Lifestream.ExecuteCommand",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:lifestream.isbusy",
+        "current_json": {
+          "componentKey": "ipc:lifestream.isbusy",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Lifestream.IsBusy",
+          "normalizedName": "lifestream.isbusy",
+          "origin": "source",
+          "paths": [
+            "HousingLottoTracker/Game/PluginIpc.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "ipc",
+        "dependency_name": "Lifestream.IsBusy",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 14,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 15,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 16,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 17,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud hooking APIs are imported.",
+            "Dalamud service IGameInteropProvider is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 18,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 19,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud addon APIs are imported.",
+            "Dalamud service IAddonLifecycle is referenced.",
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 20,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 14,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-09T11:02:55Z",
+        "drift_id": 21,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 8744
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c",
       "current_assembly_version": "1.0.3.4",
-      "current_scan_id": 8,
+      "current_scan_id": 14,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-09T10:14:49Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "1555947722233033d95b68f7131b69ed216a9caa",
+      "detected_at_utc": "2026-09-09T11:02:55Z",
+      "previous_artifact_sha256": "3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c",
+      "previous_assembly_version": "1.0.3.4",
+      "previous_scan_id": 9,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 8744
     },
     "sourceArtifactComparison": {
@@ -887,18 +1462,55 @@
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-09T10:14:49Z",
+      "compared_at_utc": "2026-09-09T11:02:55Z",
       "comparison_id": 7,
-      "comparison_status": "source-unavailable",
+      "comparison_status": "compared-not-verified",
       "matched_component_count": 0,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 8,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 14,
+      "source_available": 1,
+      "source_dependency_count": 3,
+      "source_only_count": 3,
+      "source_only_json": [
+        {
+          "componentKey": "ipc:autoretainer.getregisteredcids",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "AutoRetainer.GetRegisteredCIDs",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:lifestream.executecommand",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Lifestream.ExecuteCommand",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "ipc:lifestream.isbusy",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Lifestream.IsBusy",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        }
+      ],
+      "source_project_sha256": "4584edd8f2efcb302de9ad06e8edcb86e34bfa1b973864821ea29a77b35f3c3f",
       "variant_id": 8744,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -936,36 +1548,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 15209,
+          "bytes": 18385,
           "encoding": "json",
           "path": "derived/variants/0008/8744/dependency-resolutions.json",
-          "recordDigest": "57866239a6fcfbeca8756589f52e1b5acdb0467536d76cab1e6b3175eb1e21f1",
-          "records": 16,
-          "sha256": "62ea8a908de2268a9a24b4b558a032d7d1619651636b876b5c47575158943dda"
+          "recordDigest": "949e2f66f122e12fa95f04dc3cefe2b1b735ec5ef79a1225f3b9ee1f9e220525",
+          "records": 19,
+          "sha256": "e3438e45ea226a876bdb7363113058d418717e28c0cf2e258e1991b7766db6ed"
         }
       ],
-      "recordDigest": "57866239a6fcfbeca8756589f52e1b5acdb0467536d76cab1e6b3175eb1e21f1",
-      "records": 16
+      "recordDigest": "949e2f66f122e12fa95f04dc3cefe2b1b735ec5ef79a1225f3b9ee1f9e220525",
+      "records": 19
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 311217,
           "encoding": "json",
           "path": "derived/variants/0008/8744/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "a63502b6d8f2b928aaffa92727f3118a8b921530722e8ad1d2aa0de6a611ae95",
+          "records": 1,
+          "sha256": "c103454799c3c6cdd9bffcfda493d79d331f09b6ab95ef1f05d4afaf12130f96"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "a63502b6d8f2b928aaffa92727f3118a8b921530722e8ad1d2aa0de6a611ae95",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "6d4b4c3039c1e2be2ea3480fcedfe196003620157a7955051ad6cfb050d9327d",
+    "identityFingerprint": "7a653d9d67eebc7ad509c64937ca3685a71fc8656562e7619202fa7fa4261190",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -975,37 +1587,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "b2c4be90d24e644e5c4e056fb21146085fa969602288362d9b406c421c137d62",
+        "recordDigest": "29671d23c70fc5a79477d844c5cb82470508e261979e3d3f2c474c8487ad77c1",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "9aa05cdb758c06203bdf4941a82218f99e1f065a83922543a8a73bb0b19d3acf",
-        "records": 1,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "393ce804a484006e2e03c98226f70c87fb9487ffe24d3191bbba64a8b2531705",
-        "records": 16,
+        "recordDigest": "8b904bfdd0fc128ec01b78c568dfaf9d931dc8d0bd6889254198999668a0efb1",
+        "records": 19,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1015,8 +1617,8 @@
         "backingDataset": "ipc",
         "collectionSchema": "omega.sigmascope.observation.ipc.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "59e3b180f1b938e01caa512afb779b5724c4c9ac956e7c115178c05e5f4b0351",
+        "records": 3,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1035,8 +1637,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "432c45a03d5c1fafecfee7974717e5692b8b57dac2be395a1caeea63dcf9e9b4",
-        "records": 2771,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1045,8 +1647,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "1f5a0e13e932f5a1f8ebb2a8815f08625d21cc7998090dc90ed78c2c71979bbf",
-        "records": 457,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1055,8 +1657,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "1d557f305917a9e1a21b1e43d81b401753abd5888ff4921d2da139afa1592ed4",
-        "records": 608,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1075,8 +1677,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "367eee2a5ee64af8695f035b36444dd8e76473a00a4b8465fc8c4522d98de93d",
+        "records": 88,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1085,8 +1687,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "b3ab69f973e7d1df8fe71cf22d13c6e818c9e544d5b1a5d16b334af03aaf2626",
-        "records": 4,
+        "recordDigest": "968d3cbd90c6134c81331c27fcfd012bed2f334a2fc31583819cdb8d1ff120f0",
+        "records": 3,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1105,28 +1707,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "e85a65dee78c217e61106c665e1d038f8016435516756ededa582be2271cefb4",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "f18c81bb2b9beb78b45d22e9467fc34a9468ccf1e701fd5d567ff49b2fe291e2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "1fb4664df19ad37fc9af69b9df0a3a08a5ebdd112a33038f6903f036a2aa742f",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "9a6123ab8cacc3159f68bcd26706620ce795850f37694358645a48c6435ab36c",
+        "records": 402,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "d12bdab45e503d208d91cd7ab1d2a7ade3c48adb78558744a22bf9a069189167",
-        "records": 2,
+        "recordDigest": "9f561ff41fb199c7a1c37c87ab4fc313a5cad7c22558c5da77fc296802531e9d",
+        "records": 19,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "0deb6f49b8667c8b7378120da658d54bc2f3f4c8ec3605ecd0bcdf7df8264310",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "1170b1db22790f540b4164fbcb371e06dd4fccd86d856ef14324c76e60ba0140",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "f38d36a96d47d68f9231eef116a673c83846687f4f7a32bfc9f53753acdcb27e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "701d5f4e1a250b7d83172c9d15555214d9189e2561a1ebc42fcde33ebdd49cd8",
+        "records": 6,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "80f482461ac9089470f73e58ac587b27ac42d29f70386dc583b4c13694a0e8aa",
-        "records": 20,
+        "recordDigest": "f4d265e821e08185f1d9f831a2c7b3621475d044c04f6e6f8a1a31beb54e5ff9",
+        "records": 6,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1135,21 +1857,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "nativeImports",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-888d84754435e7b894fb2e0ca5e6975e3f2119341d8f220ecec90db9be58aced",
+    "observationDigest": "obs-85c14f7c81513c4522de5b68e2116313631a44cd8f161ae7dd9650fcf916d32e",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -1195,21 +1906,21 @@
     "contractRevision": "projection-contract-v1-f507480528a1e6af",
     "outputs": {
       "automation": {
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0
+        "recordDigest": "f4247afb45dadd45f64a89f162abdf55c4ec5690b8838b98f58602e50cb794aa",
+        "records": 3
       },
       "behaviorConsistency": {
-        "recordDigest": "890bb8a797b02ab9f151887135d5598b0d2283c82261d8214b02f458129c90a3",
+        "recordDigest": "8bf3b9fdd26b28cc30285b2f23fff70690f203d248694e001da27308836f8377",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "8a433b6dfeefbc3f885f6258e2249d7230afdc6b064780ba1370f0d7873089a9",
-        "records": 7
+        "recordDigest": "90c7137bd05f73640ba04a20753ea1e3226f1161a14898a238b01d804100158b",
+        "records": 12
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "4cb88e0ad3b7e671f2c91d18de76aa8e78ea89edbd8532622cd9c8d8996ed8d2",
-        "records": 8
+        "recordDigest": "1b180071cc15ea44fac22e5096d2f1e7c6a218abe95797eae7f42fed6ef1332e",
+        "records": 15
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -1234,18 +1945,21 @@
       "Filesystem write",
       "Game memory/hooks",
       "Hard-coded external file access",
-      "Network access"
+      "Indirect automation via IPC",
+      "Network access",
+      "Retainer automation via IPC",
+      "Teleport/travel control via IPC"
     ],
-    "caution_count": 3,
+    "caution_count": 8,
     "critical_count": 0,
     "error": "",
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 5,
+    "informational_count": 7,
     "plugin_id": 1375,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "artifactBytes": 49035,
       "artifactIdentity": {
@@ -1253,28 +1967,53 @@
         "artifactBytes": 49035,
         "artifactSha256": "3964f57d2e319bcaf0ff99de9bc7c410ebeff60ac0486673079883887b98536c",
         "catalogAssemblyVersion": "1.0.3.4",
-        "manifestInternalName": "HousingLottoTracker",
+        "manifestInternalName": "",
         "manifestPath": "HousingLottoTracker.json",
-        "manifestRepositoryUrl": "https://github.com/dexcss/HousingLottoTracker",
-        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1276332690/cefaf81c-69a8-4384-94ee-06c53a557064?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-09T10%3A56%3A47Z&rscd=attachment%3B+filename%3DHousingLottoTracker.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-09T09%3A56%3A02Z&ske=2026-09-09T10%3A56%3A47Z&sks=b&skv=2018-11-09&sig=6ZhNGxauVoxmYAjoxX5WmbeEsgJr%2FQ18Ikq%2F7q6faQ8%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4ODk0OTE4OSwibmJmIjoxNzg4OTQ4ODg5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.3TovPSYCDW05VB-MUHjVSVMmLCoP3t483DSlJXu8SbU&response-content-disposition=attachment%3B%20filename%3DHousingLottoTracker.zip&response-content-type=application%2Foctet-stream",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [],
-        "level": "observational"
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "automation.via_ipc",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Indirect automation via IPC",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Teleport/travel control via IPC",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.retainer_control",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Retainer automation via IPC",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
       },
       "behaviorConsistency": {
         "capabilities": [
           {
-            "category": "dynamic-code",
+            "category": "automation",
             "declared": false,
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
+            "id": "automation.via_ipc",
+            "label": "Indirect automation via IPC",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1316,6 +2055,30 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -1323,6 +2086,42 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.retainer_control",
+            "label": "Retainer automation",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1362,31 +2161,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "paissadb.zhu.codes",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -1395,31 +2193,30 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "paissadb.zhu.codes",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -1440,11 +2237,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 7,
+          "observedCapabilityCount": 12,
           "observedConcreteDestinationCount": 3,
           "observedDestinationWithoutProfileCount": 3,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 7,
+          "observedWithoutProfileCount": 12,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1455,68 +2252,103 @@
         "Filesystem write",
         "Game memory/hooks",
         "Hard-coded external file access",
-        "Network access"
+        "Indirect automation via IPC",
+        "Network access",
+        "Retainer automation via IPC",
+        "Teleport/travel control via IPC"
       ],
       "capabilityIds": [
-        "dynamic.code",
+        "automation.via_ipc",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.character.teleport",
+        "game.chat.read",
         "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
+        "game.ui.retainer_control",
         "network.http",
         "network.outbound"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 8,
         "critical": 0,
         "high": 0,
-        "informational": 5
+        "informational": 7
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 16,
-          "exactVersionObservedCount": 16,
+          "dependencyCount": 3,
+          "exactVersionObservedCount": 0,
           "families": {
-            "managed-assembly": 16
+            "ipc": 3
           },
-          "fingerprint": "342c50fd4922ce5a2f7b533e9c7f61ef7c20885b179d9529fa4bbc5b182f3256",
+          "fingerprint": "1b062209e782c8e6d6162871c87ab5e33fd0c5e22bc3934d700582d1a4bcacd4",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
           "nativeRelationships": [],
-          "pluginRelationships": [],
+          "pluginRelationships": [
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "AutoRetainer.GetRegisteredCIDs",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Lifestream.ExecuteCommand",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            },
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Lifestream.IsBusy",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            }
+          ],
           "requirements": {
-            "bundled": 1,
-            "observed": 15
+            "soft": 3
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 16,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
+          "externalPlugin": 3,
           "known": 0,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 1,
-            "observed": 15,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
             "required": 0,
-            "soft": 0,
+            "soft": 3,
             "unknown": 0
           },
-          "total": 16
+          "total": 3
         },
         "endpointSummary": {
-          "concreteDestinationCount": 4,
+          "concreteDestinationCount": 3,
           "destinationsUndetermined": false,
           "hostCount": 3,
           "hosts": [
@@ -1524,13 +2356,12 @@
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 2,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 2,
+              "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -1538,11 +2369,11 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "paissadb.zhu.codes",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1550,15 +2381,15 @@
                 "recognised-platform"
               ],
               "concreteCount": 1,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "raw.githubusercontent.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 3,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1570,40 +2401,30 @@
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/dexcss/HousingLottoTracker"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://github.com/dexcss/HousingLottoTracker"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "paissadb.zhu.codes",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://paissadb.zhu.codes/"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
             "url": "https://raw.githubusercontent.com/dexcss/HousingLottoTracker/main/images/icon.png"
           }
@@ -1631,7 +2452,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-457d40a1d03ce2cf",
+        "attemptId": "attempt-v2-93d0484ec165acb1",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -1640,11 +2461,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-8744",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8744",
         "queueSeedRevision": "queue-seed-v2-f03b343d35ba109b",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "6372d898682bf25e90f75f3c77cdb516788f54cbc2bfdae71c64a6ae7ff0aaf0",
@@ -1652,11 +2473,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-3b30fdd24ba2e05f",
-        "targetFingerprint": "artifact-target-v2-e950798dc0096662a18b",
+        "targetFingerprint": "source-target-v2-078819f2af0cf3c155c9",
         "variantId": 8744,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-09T10:14:48Z",
+      "scannedAtUtc": "2026-09-09T11:02:51Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1698,20 +2519,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v1.0.3.4",
         "candidates": [
           "https://github.com/dexcss/HousingLottoTracker"
         ],
-        "commit": "",
+        "commit": "1555947722233033d95b68f7131b69ed216a9caa",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "a36e47b67f7d40b80b9ed16fdbc267e5bfd7a538dee16c890e43181f217c9d20"
           }
         },
         "developerProfile": {
@@ -1719,28 +2546,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "1.0.3.4",
+          "manifestInternalName": "HousingLottoTracker",
+          "manifestPath": "HousingLottoTracker/HousingLottoTracker.json",
+          "manifestRepoUrl": "https://github.com/dexcss/HousingLottoTracker",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.3.4",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "v1.0.3.4",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/dexcss/HousingLottoTracker",
-        "treeSha256": ""
+        "treeSha256": "62c750007416fdc5720787d693267170c04183e3"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-09T10:14:48Z",
+    "scan_id": 14,
+    "scanned_at_utc": "2026-09-09T11:02:51Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "1555947722233033d95b68f7131b69ed216a9caa",
     "source_id": 1105,
     "source_repository": "https://github.com/dexcss/HousingLottoTracker",
     "source_to_binary_verified": 0,
