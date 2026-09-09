@@ -47,7 +47,7 @@ from production_sigmascope_v2_pipeline import (
     rebuild_candidate_indexes,
     materialize_srl_reprojection_sidecar,
 )
-from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, write_record_dataset
+from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, verify_file_entry, write_record_dataset
 
 
 class ProductionSecurityV2PipelineTests(unittest.TestCase):
@@ -262,6 +262,86 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual(descriptor, after_descriptor)
             self.assertEqual(before, cache_path.read_bytes())
 
+
+    def test_synchronize_repairs_stale_source_analysis_cache_descriptor(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-source-cache-repair-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+
+            variant_file = next((candidate / "variants").rglob(f"{variant_id}.json"))
+            payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            source_payload = {
+                "schema": sigmascope.SOURCE_ANALYSIS_SCHEMA,
+                "analysisComplete": True,
+                "sourceRevisionKey": "fixture-source-revision",
+                "sourceRootPath": "src/Plugin",
+            }
+            cache_record = {
+                "schema": "omega.security-evidence.source-analysis-cache.v1",
+                "sourceRevisionKey": source_payload["sourceRevisionKey"],
+                "sourceRootPath": source_payload["sourceRootPath"],
+                "scannerVersion": sigmascope.SCANNER_VERSION,
+                "sourceAnalysisRevision": "source-analysis-v1-fixture",
+                "analysisPayloadSha256": sha256_bytes(canonical_json_bytes(source_payload)),
+                "analysisPayload": source_payload,
+            }
+            directory = candidate / "derived" / "variants" / f"{variant_id // 1000:04d}" / str(variant_id)
+            descriptor = write_record_dataset(candidate, directory, "source-analysis-cache", [cache_record])
+            cache_path = candidate / descriptor["files"][0]["path"]
+
+            stale = json.loads(json.dumps(descriptor))
+            stale["records"] = 0
+            stale["recordDigest"] = "0" * 64
+            stale["files"][0]["bytes"] = 3
+            stale["files"][0]["sha256"] = "1" * 64
+            stale["files"][0]["records"] = 0
+            stale["files"][0]["recordDigest"] = "0" * 64
+            payload.setdefault("derivedEvidence", {})["sourceAnalysisCache"] = stale
+            variant_file.write_text(json.dumps(payload), encoding="utf-8")
+
+            report = synchronize_candidate(candidate, database, set())
+
+            repaired_payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            repaired = repaired_payload["derivedEvidence"]["sourceAnalysisCache"]
+            self.assertEqual(1, report["sourceAnalysisCacheDescriptorsRepaired"])
+            self.assertEqual(0, report["sourceAnalysisCachesQuarantined"])
+            self.assertEqual([], verify_file_entry(candidate, repaired["files"][0]))
+            self.assertEqual(1, repaired["records"])
+            self.assertEqual([cache_record], read_record_dataset(candidate, repaired))
+            self.assertTrue(cache_path.is_file())
+
+    def test_synchronize_quarantines_unreadable_retained_source_cache_without_aborting_variant(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-source-cache-quarantine-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+
+            variant_file = next((candidate / "variants").rglob(f"{variant_id}.json"))
+            payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            directory = candidate / "derived" / "variants" / f"{variant_id // 1000:04d}" / str(variant_id)
+            descriptor = write_record_dataset(
+                candidate,
+                directory,
+                "source-analysis-cache",
+                [{"schema": "omega.security-evidence.source-analysis-cache.v1", "analysisPayload": {}}],
+            )
+            cache_path = candidate / descriptor["files"][0]["path"]
+            cache_path.write_text("{ definitely-not-json", encoding="utf-8")
+            payload.setdefault("derivedEvidence", {})["sourceAnalysisCache"] = descriptor
+            variant_file.write_text(json.dumps(payload), encoding="utf-8")
+
+            report = synchronize_candidate(candidate, database, set())
+
+            repaired_payload = json.loads(variant_file.read_text(encoding="utf-8"))
+            quarantined = repaired_payload["derivedEvidence"]["sourceAnalysisCache"]
+            self.assertEqual(0, report["sourceAnalysisCacheDescriptorsRepaired"])
+            self.assertEqual(1, report["sourceAnalysisCachesQuarantined"])
+            self.assertEqual(0, quarantined["records"])
+            self.assertEqual([], read_record_dataset(candidate, quarantined))
+            self.assertEqual([], verify_file_entry(candidate, quarantined["files"][0]))
 
     def make_catalog_with_security(self, root: Path) -> tuple[Path, int, int]:
         curated, raw, enriched, websites = test_sqlite_catalog.fixture_documents(root)
