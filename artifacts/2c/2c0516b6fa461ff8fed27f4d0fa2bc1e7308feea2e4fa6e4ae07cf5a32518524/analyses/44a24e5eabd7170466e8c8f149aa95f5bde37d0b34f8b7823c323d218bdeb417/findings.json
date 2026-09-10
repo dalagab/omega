@@ -1,0 +1,149 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for keyboard input injection. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:STPDebug.dll:STPDebug.Utility.SendInput.KeyDown+0x74: call STPDebug.Utility.SendInput.NativeSendInput -> user32.dll!SendInput",
+      "il:STPDebug.dll:STPDebug.Utility.SendInput.KeyUp+0x8b: call STPDebug.Utility.SendInput.NativeSendInput -> user32.dll!SendInput"
+    ],
+    "rule_id": "automation.input.keyboard.inject",
+    "severity": "high",
+    "title": "Keyboard input injection"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for mouse input injection. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:STPDebug.dll:STPDebug.Utility.SendInput.KeyDown+0x74: call STPDebug.Utility.SendInput.NativeSendInput -> user32.dll!SendInput",
+      "il:STPDebug.dll:STPDebug.Utility.SendInput.KeyUp+0x8b: call STPDebug.Utility.SendInput.NativeSendInput -> user32.dll!SendInput"
+    ],
+    "rule_id": "automation.input.mouse.inject",
+    "severity": "high",
+    "title": "Mouse input injection"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:STPDebug.dll:STPDebug.Utility.Common.GenerateCallback+0x14: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:STPDebug.dll:STPDebug.Utility.UiHelper.Close+0x13: callvirt AtkUnitBaseClose.Invoke",
+      "il:STPDebug.dll:STPDebug.Debugging.AddonDebug.CallbackDetour+0x112: callvirt FireCallbackDelegate.Invoke",
+      "il:STPDebug.dll:STPDebug.Debugging.AddonDebug.CallbackDetour+0x12e: callvirt FireCallbackDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:STPDebug.dll: SigScanner",
+      "metadata:STPDebug.dll: Dalamud.Hooking",
+      "metadata:STPDebug.dll: HookFromAddress",
+      "il:STPDebug.dll:STPDebug.STPDebug.Initialize+0x0: call STPDebug.Service.get_SigScanner: SigScanner",
+      "il:STPDebug.dll:STPDebug.Utility.Common.Setup+0x0: call STPDebug.Service.get_SigScanner: SigScanner",
+      "il:STPDebug.dll:STPDebug.Utility.Common.Setup+0xb: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:STPDebug.dll:STPDebug.Utility.Common.Hook+0x0: call STPDebug.Service.get_SigScanner: SigScanner",
+      "il:STPDebug.dll:STPDebug.Utility.Common.Hook+0x6: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:STPDebug.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:STPDebug.dll: System.Net.Sockets",
+      "artifact:STPDebug.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:STPDebug.dll: System.Diagnostics.Process",
+      "metadata:STPDebug.dll: ProcessStartInfo",
+      "metadata:STPDebug.dll: ShellExecute",
+      "metadata:STPDebug.dll: Process.Start",
+      "il:STPDebug.dll:STPDebug.Utility.Common.OpenBrowser+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:STPDebug.dll:STPDebug.Utility.Common.OpenBrowser+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:STPDebug.dll:STPDebug.Utility.Common.OpenBrowser+0x7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:STPDebug.dll:STPDebug.Utility.Common.OpenBrowser+0x7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:STPDebug.json: https://raw.githubusercontent.com/Dalamud-DailyRoutines/SimpleTweaksPlugin.Debug/main/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.29cc2a710f0b",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:STPDebug.dll: https://github.com/Dalamud-DailyRoutines/SimpleTweaksPlugin.Debug.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eb09303a052e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:STPDebug.json: https://github.com/Dalamud-DailyRoutines/SimpleTweaksPlugin.Debug"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ed4bfd93851c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:STPDebug.dll: System.Net.Http.HttpClient",
+      "il:STPDebug.dll:STPDebug.Utility.Common.get_HttpClient+0x44: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
