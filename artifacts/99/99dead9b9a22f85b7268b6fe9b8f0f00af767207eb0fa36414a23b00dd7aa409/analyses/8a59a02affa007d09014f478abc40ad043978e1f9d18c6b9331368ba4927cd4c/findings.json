@@ -1,0 +1,488 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:ECommons.dll: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "artifact:ECommons.dll: VirtualProtectEx"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:runtimes/win-x86/native/lua54.dll: cmd.exe",
+      "artifact:runtimes/win-x64/native/lua54.dll: cmd.exe",
+      "artifact:runtimes/win-arm/native/lua54.dll: cmd.exe",
+      "artifact:runtimes/win-arm64/native/lua54.dll: cmd.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Hosting.dll: Assembly.Load",
+      "il:Microsoft.Extensions.Hosting.dll:Microsoft.Extensions.Hosting.HostingHostBuilderExtensions.ApplyDefaultAppConfiguration+0xc1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:NLua.dll: Reflection.Emit",
+      "metadata:NLua.dll: Assembly.Load",
+      "il:NLua.dll:NLua.CodeGeneration..ctor+0x72: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration..ctor+0x88: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x4f: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x84: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:SomethingNeedDoing.dll: Dalamud.Hooking",
+      "artifact:SomethingNeedDoing.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner",
+      "metadata:ECommons.dll: HookFromAddress",
+      "il:ECommons.dll:ECommons.ECommonsMain.Init+0x169: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.ECommonsMain.Init+0x174: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Logging.EventLog.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Console.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Console.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.Configuration.Json.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.EventSource.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Hosting.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Logging.EventLog.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Logging.Console.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.json: https://puni.sh/api/plugins/icon/25"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.031d1a0824cb",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/android-arm64/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-arm/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-x64/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-x86/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0575a452af0c",
+    "severity": "caution",
+    "title": "Endpoint: android.googlesource.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://love.puni.sh/ment.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.132188e04987",
+    "severity": "caution",
+    "title": "Endpoint: love.puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3641efc8bfda",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://puni.sh/api/repository/vera"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.372a911b0f78",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8785017a999f",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9d3ce8792d14",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://puni.sh/api/repository/veyn"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9e08800326ee",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://puni.sh/api/repository/herc"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a21fc6010c49",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ac38247bd18a",
+    "severity": "caution",
+    "title": "Endpoint: subscribe.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://puni.sh/api/repository/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b355874e46b9",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b5dad10c192a",
+    "severity": "caution",
+    "title": "Endpoint: donate.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://puni.sh/api/repository/croizat"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c16aaa3df9a9",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc91d234fb3b",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://ko-fi.com/croizat"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ef8d7caf3ae0",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://puni.sh/api/repository/kawaii"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f49aa73de9a5",
+    "severity": "caution",
+    "title": "Endpoint: puni.sh"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:SomethingNeedDoing.dll: System.Diagnostics.Process",
+      "metadata:SomethingNeedDoing.dll: ProcessStartInfo",
+      "metadata:SomethingNeedDoing.dll: ShellExecute",
+      "metadata:SomethingNeedDoing.dll: Process.Start",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Utils.WindowFlash.get_Default+0x2f: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Utils.WindowFlash.get_Default+0x34: callvirt System.Diagnostics.Process.get_MainWindowHandle: System.Diagnostics.Process",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Gui.MainWindow.<.ctor>b__6_1+0x11: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Gui.MainWindow.<.ctor>b__6_1+0x11: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "il:Microsoft.Extensions.FileProviders.Physical.dll:Microsoft.Extensions.FileProviders.Physical.PhysicalFileInfo.CreateReadStream+0x11: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "il:Microsoft.Extensions.Configuration.FileExtensions.dll:Microsoft.Extensions.Configuration.FileConfigurationProvider.<Load>g__OpenRead|6_0+0x17: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "metadata:SomethingNeedDoing.dll: Directory.Delete",
+      "metadata:SomethingNeedDoing.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+    "evidence_json": [],
+    "rule_id": "network.endpoint.dynamic-or-undetermined",
+    "severity": "informational",
+    "title": "Network destination undetermined"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://api.github.com/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.01bf739ef02f",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.json: https://github.com/Jaksuhn/SomethingNeedDoing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.142be6b87960",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://api.github.com/repos/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.227f351377c0",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudCodeEditor.dll: https://github.com/Jaksuhn/SomethingNeedDoing",
+      "artifact:SomethingNeedDoing.dll: https://github.com/Jaksuhn/SomethingNeedDoing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.430736509bc2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://github.com/owner/repo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.517c500c9981",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://raw.githubusercontent.com/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7a170d2dccfc",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: https://github.com/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.82c00ba1f20e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Logging.EventLog.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Logging.Console.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: WebRequest",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: HttpWebRequest",
+      "metadata:SomethingNeedDoing.dll: System.Net.Http.HttpClient",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Managers.GitMacroManager..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Managers.GitMacroManager..ctor+0x7: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Core.HttpDependency..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Core.HttpDependency..ctor+0x7: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Core.Github.GitService..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-arm64/native/liblua54.so",
+      "runtimes/win-x86/native/lua54.dll",
+      "runtimes/android-arm64/native/liblua54.so",
+      "runtimes/osx/native/liblua54.dylib",
+      "runtimes/android-arm/native/liblua54.so",
+      "runtimes/android-x64/native/liblua54.so",
+      "runtimes/linux-x64/native/liblua54.so",
+      "runtimes/android-x86/native/liblua54.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
