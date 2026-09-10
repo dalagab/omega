@@ -1,0 +1,793 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.Updaters.AutoAttackUpdater.Update+0x41: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:ECommons.dll: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "artifact:ECommons.dll: VirtualProtectEx"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.Updaters.MajorUpdater.RSRMiscAndTargetFreelyUpdate+0xee: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.UI.NextActionWindow.DrawTeachingModeTargetHint+0x130: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:ECommons.dll: AssemblyLoadContext",
+      "metadata:ECommons.dll: Assembly.Load",
+      "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "artifact:ECommons.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:ECommons.dll: s://github.com/NightmareXIV/ECommons",
+      "artifact:ECommons.dll: s://www.patreon.com/NightmareXIV",
+      "artifact:ECommons.dll: s://subscribe.nightmarexiv.org",
+      "artifact:ECommons.dll: s://donate.nightmarexiv.org",
+      "artifact:ECommons.dll: s://crypto.nightmarexiv.org/",
+      "artifact:ECommons.dll: s://discord.nightmarexiv.org",
+      "artifact:ECommons.dll: s://explore.nightmarexiv.org",
+      "artifact:RotationSolver.Basic.dll: s://github.com/jkleinne/ascended-rotationsolverreborn/tree/main/RotationSolver.Basic"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ascended-rotationsolverreborn.dll: Dalamud.Hooking",
+      "metadata:ascended-rotationsolverreborn.dll: HookFromAddress",
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.Updaters.ActionQueueManager.InitializeActionHooks+0x2d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.Updaters.AutoAttackUpdater.Enable+0x2d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:ascended-rotationsolverreborn.dll: Dalamud.Hooking",
+      "artifact:ascended-rotationsolverreborn.dll: HookFromAddress",
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ECommons.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/paladin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.02f2d1659082",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/blackmage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0ec29264ea26",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://love.puni.sh/ment.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.132188e04987",
+    "severity": "caution",
+    "title": "Endpoint: love.puni.sh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/samurai"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.34aa4a5b038d",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/monk"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.389ba0a2a02d",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/redmage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.392facaa57d1",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/darkknight"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3d2c8a84949d",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/beastmaster"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.47fccf5c8127",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/dragoon"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4ef0148b0e51",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/reaper"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.50d351c4b912",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/gunbreaker"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5e86f5fb9cae",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/bard"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5ee331cb9c5f",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/beastmaster"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.63d91eae0396",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/bluemage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.693c0f47f443",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/sage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6b75a2e05296",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/machinist"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7060b142a1b1",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/monk"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.72a2e39531a9",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/pictomancer"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7397c3de6f9e",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/darkknight"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7543befe5aec",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/bard"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7ff6f6f1af4e",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/redmage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.84be61046cb4",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8785017a999f",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/scholar"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8e8ff676842e",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/ninja"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9499974f1e20",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://github-readme-stats.vercel.app/api/pin/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.95f31d94f616",
+    "severity": "caution",
+    "title": "Endpoint: github-readme-stats.vercel.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://garlandtools.org/db/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.968a60582b2f",
+    "severity": "caution",
+    "title": "Endpoint: garlandtools.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9d3ce8792d14",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/reaper"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a1ba1c7769b4",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/machinist"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a8db692a24fc",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b5dad10c192a",
+    "severity": "caution",
+    "title": "Endpoint: donate.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/ninja"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b62aeeff9310",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/gunbreaker"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b66e74f473ab",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/pictomancer"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bc22e7647a25",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/dancer"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bc6c6ccf17ca",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/astrologian"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c04fe5467907",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/blackmage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c330bfed3201",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/astrologian"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cb5aa1cde3a5",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://ko-fi.com/ltscombatreborn"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cb605339c534",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc91d234fb3b",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/sage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cca21de5499e",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/dancer"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d66b9524e5a8",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/bluemage"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e47efd3b77e8",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.SourceGenerators.dll: https://na.finalfantasyxiv.com/jobguide/samurai"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e6285c69b912",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://garlandtools.org/db/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e655ae25522d",
+    "severity": "caution",
+    "title": "Endpoint: garlandtools.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/paladin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e9df81e90e22",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/scholar"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f49fb57f1978",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.xml: https://na.finalfantasyxiv.com/jobguide/dragoon"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fd804568d9b8",
+    "severity": "caution",
+    "title": "Endpoint: na.finalfantasyxiv.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ascended-rotationsolverreborn.dll: System.Diagnostics.Process",
+      "metadata:ascended-rotationsolverreborn.dll: Process.Start",
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.UI.RotationConfigWindow.DrawDebug+0x76: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+      "il:ascended-rotationsolverreborn.dll:RotationSolver.UI.RotationConfigWindow.DrawDebug+0x76: call System.Diagnostics.Process.Start: Process.Start",
+      "artifact:ascended-rotationsolverreborn.dll: System.Diagnostics.Process",
+      "metadata:ECommons.dll: System.Diagnostics.Process",
+      "metadata:ECommons.dll: ProcessStartInfo",
+      "metadata:ECommons.dll: ShellExecute"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:ascended-rotationsolverreborn.dll: Directory.CreateDirectory",
+      "metadata:ascended-rotationsolverreborn.dll: WriteAllText",
+      "artifact:ascended-rotationsolverreborn.dll: WriteAllText",
+      "metadata:ECommons.dll: FileStream",
+      "metadata:ECommons.dll: WriteAllText",
+      "metadata:ECommons.dll: File.Move",
+      "metadata:ECommons.dll: WriteAllBytes",
+      "metadata:ECommons.dll: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://discord.gg/r9V4RHYt6v"
+    ],
+    "rule_id": "network.endpoint.community-invite.38b7c6eafd73",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.json: https://github.com/jkleinne/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.06125ac22284",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/RoseOfficial/Olympus"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3a5d10018a6f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/cairthenn/Redirect"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b17105416f0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/FFXIV-CombatReborn/BossmodReborn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.434a19c0e707",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/Taurenkey/ReActionEX"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6273c8c845d9",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://github.com/PunishXIV/WrathCombo/commits/main/res/ipc_status.txt"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.75fe65256413",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/Nik-Potokar/XIVSlothCombo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.882ee2779662",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://discordapp.com/api/guilds/1064448004498653245/embed.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b7fb2bab7c9f",
+    "severity": "informational",
+    "title": "Endpoint: discordapp.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/daemitus/XIVComboPlugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d3847244ab2e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://github.com/jkleinne/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.da6de8ea79e6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/PunishXIV/WrathCombo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eb45b4e9dd64",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ascended-rotationsolverreborn.dll: https://github.com/FFXIV-CombatReborn/RotationSolverReborn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f3d00437576c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/attickdoor/XivComboPlugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f555b9f0a10e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RotationSolver.Basic.dll: https://github.com/UnknownX7/ReAction"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f845fa9f4c7f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Networking.HttpClientProxyHelper.ApplyProxySettings+0x69: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x15: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
