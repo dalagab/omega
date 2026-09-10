@@ -1,0 +1,2227 @@
+{
+  "analysis": {
+    "analysisId": "17c71226757afe4a6319dda934f5b29bf9ee33ca7c04da9f9831d2958df8236f",
+    "artifactSha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+    "path": "artifacts/4c/4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf/analyses/17c71226757afe4a6319dda934f5b29bf9ee33ca7c04da9f9831d2958df8236f",
+    "recordCount": 172
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+    "artifact_url": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+    "assembly_version": "0.0.25.0",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Credential/protected-data access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: fullparty.gg",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: www.microsoft.com0",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "privacy",
+        "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+        "evidence": [
+          "metadata:FullParty.dll: ProtectedData.Unprotect",
+          "il:FullParty.dll:FullParty.Auth.AuthService.TryUnprotectRefreshToken+0x8: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+          "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+          "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.TryProtectOrUnprotect+0x95: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+          "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x29: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+          "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+        ],
+        "ruleId": "credential.api",
+        "severity": "high",
+        "title": "Credential or protected-data access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+        "evidence": [],
+        "ruleId": "compound.credential-network",
+        "severity": "high",
+        "title": "Credential APIs plus network access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:FullParty.dll: System.Diagnostics.Process",
+          "metadata:FullParty.dll: ProcessStartInfo",
+          "metadata:FullParty.dll: ShellExecute",
+          "metadata:FullParty.dll: Process.Start",
+          "il:FullParty.dll:FullParty.Auth.AuthService.OpenApprovalPage+0x1c: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:FullParty.dll:FullParty.Auth.AuthService.OpenApprovalPage+0x1c: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:FullParty.dll:FullParty.Auth.AuthService.OpenApprovalPage+0x23: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:FullParty.dll:FullParty.Auth.AuthService.OpenApprovalPage+0x23: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:FullParty.dll: Socket.Connect",
+          "il:FullParty.dll:<RunAsync>d__101.MoveNext+0x14c: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FullParty.dll: https://fullparty.gg/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f84e36fb4183",
+        "severity": "caution",
+        "title": "Endpoint: fullparty.gg"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+          "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/",
+          "artifact:Microsoft.Extensions.Logging.Abstractions.dll: http://www.microsoft.com0/",
+          "artifact:Microsoft.Extensions.Logging.dll: http://www.microsoft.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.7b602439ebe0",
+        "severity": "caution",
+        "title": "Endpoint: www.microsoft.com0"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:ElezenTools.dll: DllImportAttribute",
+          "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Logging.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:System.Security.Cryptography.ProtectedData.dll: System.Runtime.InteropServices.DllImport"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:FullParty.dll: System.Net.Http.HttpClient",
+          "il:FullParty.dll:FullParty.Windows.MainWindow..cctor+0xd: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:FullParty.dll:FullParty.Services.RemoteImageCache..cctor+0xd: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:FullParty.dll:FullParty.Auth.AuthService..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:FullParty.dll:<DownloadAvatarAsync>d__56.MoveNext+0x26: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:FullParty.dll:<PostFormAsync>d__74`1.MoveNext+0x51: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+          "il:FullParty.dll:<PostTokenAsync>d__75.MoveNext+0x50: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FullParty.json: https://raw.githubusercontent.com/gerulla/fullparty-plugin/master/Data/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.ddf0d8bf3523",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FullParty.dll: https://github.com/gerulla/fullparty-plugin"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.d458d3063a37",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/dotnet",
+          "artifact:Microsoft.Extensions.Logging.dll: https://github.com/dotnet/dotnet"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c2aa6da77912",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ElezenTools.dll: https://github.com/Eauldane/ElezenTools"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.bc30f31506ea",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.02c17b1985f5",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:FullParty.dll: Directory.CreateDirectory",
+          "metadata:FullParty.dll: WriteAllBytes",
+          "il:FullParty.dll:<DownloadAvatarAsync>d__56.MoveNext+0x185: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:FullParty.dll:<DownloadAvatarAsync>d__56.MoveNext+0x236: call System.IO.File.WriteAllBytesAsync: WriteAllBytes",
+          "il:FullParty.dll:<DownloadImageAsync>d__11.MoveNext+0x213: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:FullParty.dll:<DownloadImageAsync>d__11.MoveNext+0x2a6: call System.IO.File.WriteAllBytesAsync: WriteAllBytes",
+          "artifact:FullParty.dll: WriteAllBytes"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 8,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+      "artifactBytes": 779859,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.25.0",
+        "artifactBytes": 779859,
+        "artifactSha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+        "catalogAssemblyVersion": "0.0.25.0",
+        "manifestInternalName": "",
+        "manifestPath": "FullParty.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.credentials",
+            "label": "Credential or protected-data access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Credential/protected-data access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: fullparty.gg",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: www.microsoft.com0",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "native.interop",
+        "network.http",
+        "network.socket",
+        "privacy.credentials",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 3,
+        "informational": 8
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+        "internalName": "FullParty",
+        "manifestVersion": "0.0.25.0",
+        "observationId": 4174,
+        "observationKey": "manifest-a844e3b602cfa5737895753dc19e",
+        "repositoryUrl": "https://github.com/gerulla/fullparty-plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 2603
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 9,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 30,
+        "uncompressedBytes": 1462200
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+        "attemptId": "attempt-v2-c7f13d678ec29162",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-83c2a7d06f288086",
+        "definitionsRevision": "defs-v1-bd39a35f9d247d4e",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-2603",
+        "queueSeedRevision": "queue-seed-v2-d917e5bcb646432ea6ed",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+        "scannerBundleSha256": "888156b7764e1db7aa8eef82c0f79d2276d9d4281bb10f45fb6716f179857bed",
+        "scannerRevision": "scanner-v1-b7892db814c2ec40",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+        "sourceObservationRevision": "source-observations-v1-9995179eff482d4d",
+        "targetFingerprint": "source-target-v2-94b3f8c5f26343a553f2",
+        "variantId": 2603,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-08T02:04:13Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/gerulla/fullparty-plugin"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/gerulla/fullparty-plugin: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/gerulla/fullparty-plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 19,
+    "scanned_at_utc": "2026-09-08T02:04:13Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/gerulla/fullparty-plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 2603
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+      "current_assembly_version": "0.0.25.0",
+      "current_scan_id": 19,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-08T02:04:13Z",
+      "previous_artifact_sha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+      "previous_assembly_version": "0.0.25.0",
+      "previous_scan_id": 6,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 2603
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 54,
+      "artifact_only_count": 54,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.2.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:elezentools",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ElezenTools",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "15.5.6.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.51.0.8455"
+          ]
+        },
+        {
+          "componentKey": "assembly:fullparty",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "FullParty",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.0.25.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencyinjection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.options",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Options",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Primitives",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Annotations",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.diagnosticsource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.DiagnosticSource",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets.client",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets.Client",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.lightweight",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography.protecteddata",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography.ProtectedData",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:crypt32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "crypt32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:elezentools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ElezenTools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.5.6"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.9"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.9"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.9"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.9"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.options",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Options",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.9"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.9"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.protecteddata",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.ProtectedData",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "10.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-08T02:04:13Z",
+      "comparison_id": 16,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 19,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 2603,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "identityFingerprint": "9736a08975683f4f175c6ac7d73f96217fd27fb3d82c7d3d35329bd4847ca37b",
+    "observedAtUtc": "2026-09-10T22:54:13Z",
+    "reason": "current_analysis_replaced",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "superseded",
+    "supersededBy": {
+      "artifactSha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+      "identityFingerprint": "f9f7fdb81eb0c3a9d4ea0ec4ce346cf084d58a67084ebc5a34688caf9aded993",
+      "scanId": 28
+    },
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "e31320b841a459622b33e689620b04ebbdf0a6ab4d40450efc4ad2108d1da8f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "1becaff480bff735f48abf54f157ae4fafd5f234f9f8bde79f49976e9bb68fbd",
+        "records": 121,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "d5f21ddeb450a5eb46dc542e974e781c8b0cbcc9cb6d9e6761d594053d185b00",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "828175cf722e911e8e700d756dfaf0a8da4a21962f1926e5116fa3caaabf2e21",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "58ddc53adf08b00f0f0505a66b738d689c35135fd73ef06092efcbba13238699",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-67936478bba3338fabe43b88ffbfd79593e6c4cd9ec9e601b12265a127589f82",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "FullParty",
+    "first_seen_utc": "2026-08-22T09:49:09Z",
+    "internal_name": "FullParty",
+    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "plugin_id": 1128
+  },
+  "pluginId": 1128,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Dalamud Plugin Companion for FullParty.gg",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1073,
+      "summary": "Dalamud Plugin Companion for FullParty.gg",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/gerulla/fullparty-plugin",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Dalamud Plugin Companion for FullParty.gg",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/gerulla/fullparty-plugin"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# FullParty\n\n**Dalamud Plugin Companion for FullParty.gg**\n\nFullParty brings your FullParty.gg raid planning directly into Final Fantasy XIV. Link your FullParty account, browse your moderator groups, open upcoming runs, inspect rosters, and review applications without tabbing back to the website.\n\n---\n\n## Installation\n\nAdd this custom plugin repository in Dalamud:\n\n```text\nhttps://raw.githubusercontent.com/gerulla/fullparty-plugin/master/repo.json\n```\n\nThen open `/xlplugins`, search for `FullParty`, install it, and open the main window with:\n\n```text\n/fullparty\n```\n\nFullParty requires a FullParty.gg account. The plugin will ask you to approve access through the website using the OAuth device login flow.\n\n---\n\n## Features\n\nFullParty is focused on helping group moderators manage scheduled content from inside the game.\n\n### Current Features\n\n* Link your FullParty.gg account from inside the plugin.\n* View your FullParty user and primary character.\n* View characters associated with your account.\n* Browse groups where you have moderator access or higher.\n* View upcoming runs for your selected group.\n* Automatically surface moderator runs starting within 60 minutes.\n* Automatically open an upcoming run window when entering Occult Crescent.\n* View run rosters split by party, with bench separated below the main roster.\n* See character, class, and phantom job icons in roster slots.\n* Open assigned users' applications directly from roster slots.\n* Review application details, preferred jobs, phantom jobs, raid positions, progress, and user history.\n* Connect to a run's live room and see connected characters.\n\n### Moderator Tools\n\nThe run window includes early controls for:\n\n* Ready Check Alliance\n* Run Check-In\n* Live Room connection\n\nLive command execution is still being built out. The current live room support focuses on presence and connected character visibility.\n\n---\n\n## Commands\n\n```text\n/fullparty\n```\n\nOpens the main FullParty window.\n\n```text\n/fullparty debug\n```\n\nOpens the debug/settings window with environment and auth state details.\n\n---\n\n## Perfect For\n\n* FullParty.gg group moderators.\n* Forked Tower and Occult Crescent organizers.\n* Raid leads who want roster and application context in-game.\n* Groups that coordinate scheduled runs through FullParty.gg.\n\n---\n\n## Custom Repository\n\nThis plugin is distributed through a GitHub-backed Dalamud custom repository. The repository manifest is:\n\n```text\nhttps://raw.githubusercontent.com/gerulla/fullparty-plugin/master/repo.json\n```\n\nRelease zips are attached to GitHub releases and referenced by `repo.json`.\n\n---\n\n## Development\n\n### Prerequisites\n\n* XIVLauncher, FINAL FANTASY XIV, and Dalamud are installed.\n* The game has been launched with Dalamud at least once.\n* A compatible .NET SDK is installed.\n* NuGet can resolve `Dalamud.NET.Sdk`.\n\n### Local Environment\n\nCreate a local `.env` file in the repository root:\n\n```text\nFULLPARTY_BASE_URL=https://fullparty.gg\nFULLPARTY_CLIENT_ID=the-generated-oauth-client-uuid\nDEBUG=True\n```\n\nFor local website development, use:\n\n```text\nFULLPARTY_BASE_URL=http://fullparty.test\n```\n\n### Building\n\nBuild the plugin from the repository root:\n\n```powershell\ndotnet build FullParty.sln -c Debug\n```\n\nThe debug plugin DLL is written to:\n\n```text\nFullParty/bin/x64/Debug/FullParty.dll\n```\n\n### Loading As A Dev Plugin\n\n1. Launch the game through XIVLauncher.\n2. Open Dalamud settings with `/xlsettings`.\n3. Go to `Experimental`.\n4. Add the full path to `FullParty.dll` under Dev Plugin Locations.\n5. Open the plugin installer with `/xlplugins`.\n6. Go to `Dev Tools` > `Installed Dev Plugins`.\n7. Enable `FullParty`.\n\n---\n\n## Publishing\n\nReleases are automated through GitHub Actions.\n\nBefore publishing, configure these GitHub repository variables:\n\n* `FULLPARTY_CLIENT_ID` - required production OAuth device client ID. This can also be a repository secret.\n* `FULLPARTY_BASE_URL` - optional, defaults to `https://fullparty.gg`.\n* `FULLPARTY_DEBUG` - optional, defaults to `False`.\n\nTo publish a release from GitHub:\n\n1. Go to `Actions`.\n2. Select `Create Release Tag`.\n3. Click `Run workflow`.\n4. Pick `patch`, `minor`, or `major`.\n\nThe tag workflow creates the next three-part SemVer tag, such as `v0.0.2`. That tag automatically starts `Release FullParty`, which builds the plugin, uploads `FullParty.zip` to the GitHub release, and updates `repo.json` on the default branch.\n\nTo publish manually instead, push a SemVer tag:\n\n```powershell\ngit tag v0.0.1\ngit push origin master\ngit push origin v0.0.1\n```\n\n---\n\n## References\n\n* [FullParty.gg](https://fullparty.gg)\n* [Dalamud Developer Docs](https://dalamud.dev)\n* [Dalamud Plugin Submission Docs](https://dalamud.dev/plugin-publishing/submission)",
+      "title": "fullparty-plugin",
+      "url": "https://github.com/gerulla/fullparty-plugin"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "7fc7511e89fb8bcd2cd0daf4531558636ddd9ab63b4178723fd6c4ba8e427861",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "a8a65213cd3b1fbbbf30032b215c985d8f52bbc57c2dba099aab0c3c0441af9b",
+        "records": 9
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "ec27ef0367b081a7adf374a6e4c5decc43d20d10fd2b01919451be2c4ddbca14",
+        "records": 18
+      }
+    },
+    "projectionRevision": "projection-v1-2a4f9896d30f2a3c",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+    "artifact_url": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+    "assembly_version": "0.0.25.0",
+    "capabilities_json": [
+      "Credential/protected-data access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: fullparty.gg",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: www.microsoft.com0",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 8,
+    "plugin_id": 1128,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+      "artifactBytes": 779859,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.25.0",
+        "artifactBytes": 779859,
+        "artifactSha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+        "catalogAssemblyVersion": "0.0.25.0",
+        "manifestInternalName": "",
+        "manifestPath": "FullParty.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.credentials",
+            "label": "Credential or protected-data access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Credential/protected-data access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: fullparty.gg",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: www.microsoft.com0",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "native.interop",
+        "network.http",
+        "network.socket",
+        "privacy.credentials",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 3,
+        "informational": 8
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+        "internalName": "FullParty",
+        "manifestVersion": "0.0.25.0",
+        "observationId": 4174,
+        "observationKey": "manifest-a844e3b602cfa5737895753dc19e",
+        "repositoryUrl": "https://github.com/gerulla/fullparty-plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 2603
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 9,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 30,
+        "uncompressedBytes": 1462200
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+        "attemptId": "attempt-v2-c7f13d678ec29162",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-83c2a7d06f288086",
+        "definitionsRevision": "defs-v1-bd39a35f9d247d4e",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-2603",
+        "queueSeedRevision": "queue-seed-v2-d917e5bcb646432ea6ed",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+        "scannerBundleSha256": "888156b7764e1db7aa8eef82c0f79d2276d9d4281bb10f45fb6716f179857bed",
+        "scannerRevision": "scanner-v1-b7892db814c2ec40",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+        "sourceObservationRevision": "source-observations-v1-9995179eff482d4d",
+        "targetFingerprint": "source-target-v2-94b3f8c5f26343a553f2",
+        "variantId": 2603,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-08T02:04:13Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4cc3dac204e40365124f18fc0bf6dfd737c11cdeb6e4000de1b7fcfa775929bf",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/gerulla/fullparty-plugin"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/gerulla/fullparty-plugin: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/gerulla/fullparty-plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 19,
+    "scanned_at_utc": "2026-09-08T02:04:13Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 595,
+    "source_repository": "https://github.com/gerulla/fullparty-plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 2603
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "eea3afbf7d3a3b3bbdc8df09a11206fd91137f54db882b054c4593457526be48",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"b8e7cccfd404fa3c31367faf165260a48f090096f251ce4c4b9ce563aa98b6f7\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-10T19:32:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-10T19:32:18Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 145,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 595,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/repos/qol.json"
+  },
+  "sourceId": 595,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.0.25.0",
+    "author": "gerulla",
+    "authors_json": [
+      "gerulla"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Dalamud Plugin Companion for FullParty.gg",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+    "first_seen_utc": "2026-08-22T09:49:09Z",
+    "icon_url": "https://raw.githubusercontent.com/gerulla/fullparty-plugin/master/Data/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-10T16:17:54Z",
+    "last_update": 1783552846,
+    "minimum_dalamud_version": null,
+    "name": "FullParty",
+    "plugin_id": 1128,
+    "punchline": "Dalamud Plugin Companion for FullParty.gg",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.0.25.0",
+      "Author": "gerulla",
+      "DalamudApiLevel": 15,
+      "Description": "Dalamud Plugin Companion for FullParty.gg",
+      "DownloadLinkInstall": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+      "DownloadLinkUpdate": "https://github.com/gerulla/fullparty-plugin/releases/download/v0.0.25/FullParty.zip",
+      "IconUrl": "https://raw.githubusercontent.com/gerulla/fullparty-plugin/master/Data/icon.png",
+      "InternalName": "FullParty",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": "1783552846",
+      "Name": "FullParty",
+      "Punchline": "Dalamud Plugin Companion for FullParty.gg",
+      "RepoUrl": "https://github.com/gerulla/fullparty-plugin",
+      "Tags": [
+        "party",
+        "utility"
+      ],
+      "TestingAssemblyVersion": null,
+      "_Category": "qol",
+      "_SourceId": "gerulla-plogons",
+      "_SourceName": "gerulla / plogons",
+      "_SourceUrl": "https://raw.githubusercontent.com/gerulla/plogons/master/repo.json"
+    },
+    "repo_url": "https://github.com/gerulla/fullparty-plugin",
+    "source_entry_key": "fullparty|0.0.25.0|15|0|44",
+    "source_id": 595,
+    "tags_json": [
+      "party",
+      "utility"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 2603
+  },
+  "variantId": 2603
+}
