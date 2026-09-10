@@ -1,0 +1,165 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:orchestrionaria.dll: s://github.com/AemiliusXIV/OrchestrionPlugin",
+      "artifact:orchestrionaria.dll: s://docs.google.com/spreadsheets/d/1s-xJjxqp6pwS7oewNy1aOQnr3gaJbewvIBbyYchZ6No/gviz/tq?tqx=out:csv&sheet={0}",
+      "artifact:NAudio.dll: s://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio\\obj\\Release\\net6.0-windows\\NAudio.pdb",
+      "artifact:NAudio.Core.dll: s://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio.Core\\obj\\Release\\netstandard2.0\\NAudio.Core.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:orchestrionaria.dll: SigScanner",
+      "metadata:orchestrionaria.dll: Dalamud.Hooking",
+      "metadata:orchestrionaria.dll: HookFromAddress",
+      "il:orchestrionaria.dll:Orchestrion.OrchestrionPlugin..ctor+0x211: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:orchestrionaria.dll:Orchestrion.BGMSystem.BGMAddressResolver.Init+0x0: call Orchestrion.DalamudApi.get_SigScanner: SigScanner",
+      "il:orchestrionaria.dll:Orchestrion.BGMSystem.BGMAddressResolver.Init+0xb: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:orchestrionaria.dll:Orchestrion.BGMSystem.BGMAddressResolver.Init+0x15: call Orchestrion.DalamudApi.get_SigScanner: SigScanner",
+      "il:orchestrionaria.dll:Orchestrion.BGMSystem.BGMAddressResolver.Init+0x1f: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:orchestrionaria.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: LoadLibrary",
+      "metadata:NAudio.Core.dll: GetProcAddress",
+      "artifact:NAudio.Core.dll: LoadLibrary",
+      "artifact:NAudio.Core.dll: GetProcAddress",
+      "metadata:NAudio.WinMM.dll: LoadLibrary",
+      "metadata:NAudio.WinMM.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:orchestrionaria.dll: https://docs.google.com/spreadsheets/d/<redacted>/gviz/tq"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b1db178e0a9b",
+    "severity": "caution",
+    "title": "Endpoint: docs.google.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:orchestrionaria.dll: System.Diagnostics.Process",
+      "metadata:orchestrionaria.dll: ProcessStartInfo",
+      "metadata:orchestrionaria.dll: ShellExecute",
+      "metadata:orchestrionaria.dll: Process.Start",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.SettingsWindow.Draw+0x1375: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.SettingsWindow.Draw+0x1375: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.SettingsWindow.Draw+0x137d: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.SettingsWindow.Draw+0x137d: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: RegistryKey",
+      "metadata:NAudio.WinMM.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.WinMM.dll: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:orchestrionaria.dll: Directory.CreateDirectory",
+      "metadata:orchestrionaria.dll: File.Delete",
+      "metadata:orchestrionaria.dll: WriteAllText",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.SettingsWindow.Draw+0x136f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.MainWindow.MainWindow.TryAddLocalSong+0xed: call System.IO.File.Delete: File.Delete",
+      "il:orchestrionaria.dll:Orchestrion.UI.Windows.MainWindow.MainWindow.BulkAddFiles+0x56: call System.IO.File.Delete: File.Delete",
+      "il:orchestrionaria.dll:Orchestrion.Persistence.Configuration.CopyToStorage+0x5: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:orchestrionaria.dll:Orchestrion.Persistence.Configuration.MigrateLocalSongsToStorage+0x53: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:orchestrionaria.json: https://github.com/AemiliusXIV/OrchestrionPlugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2c1d8cab0b83",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.WinMM.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Wasapi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:orchestrionaria.dll: https://github.com/AemiliusXIV/OrchestrionPlugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c78b0736c23c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:orchestrionaria.dll: System.Net.Http.HttpClient",
+      "il:orchestrionaria.dll:Orchestrion.Persistence.SongList..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:orchestrionaria.dll:Orchestrion.Persistence.SongList.GetRemoteSheet+0x11: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
