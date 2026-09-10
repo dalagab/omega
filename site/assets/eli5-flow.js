@@ -53,6 +53,68 @@
         scroll-snap-align: start !important;
         scroll-snap-stop: always !important;
       }
+      body.omega-screenshot-open { overflow: hidden !important; }
+      .omega-review-screenshot {
+        cursor: zoom-in !important;
+        transition: filter 160ms ease !important;
+      }
+      .omega-review-screenshot:hover,
+      .omega-review-screenshot:focus-visible {
+        filter: brightness(1.08) !important;
+        outline: 2px solid rgba(103, 232, 249, .8) !important;
+        outline-offset: -2px !important;
+      }
+      .omega-screenshot-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: grid;
+        place-items: center;
+        padding: 1.25rem;
+        background: rgba(2, 6, 15, .94);
+        backdrop-filter: blur(12px);
+      }
+      .omega-screenshot-lightbox[hidden] { display: none !important; }
+      .omega-screenshot-lightbox__figure {
+        display: grid;
+        max-height: calc(100svh - 2.5rem);
+        max-width: min(96vw, 1600px);
+        gap: .75rem;
+        margin: 0;
+      }
+      .omega-screenshot-lightbox__image {
+        display: block;
+        max-height: calc(100svh - 6.5rem);
+        max-width: 96vw;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 1rem;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, .65);
+      }
+      .omega-screenshot-lightbox__caption {
+        max-width: 96vw;
+        text-align: center;
+        color: rgb(203 213 225);
+        font-size: .875rem;
+        line-height: 1.5rem;
+      }
+      .omega-screenshot-lightbox__close {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1;
+        display: grid;
+        width: 3rem;
+        height: 3rem;
+        place-items: center;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: .9rem;
+        background: rgba(5, 7, 13, .9);
+        color: white;
+        font-size: 1.7rem;
+        cursor: pointer;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -314,5 +376,95 @@
   if (install && team) install.insertAdjacentElement('afterend', team);
   if (team && testimonial) team.insertAdjacentElement('afterend', testimonial);
   if (testimonial && faq) testimonial.insertAdjacentElement('afterend', faq);
+
+  const isReviewScreenshot = (img) => {
+    if (!(img instanceof HTMLImageElement)) return false;
+    const src = img.getAttribute('src') || '';
+    return src.startsWith('assets/screenshots/') || src.includes('/assets/screenshots/');
+  };
+
+  const prepareReviewScreenshot = (img) => {
+    if (!isReviewScreenshot(img) || img.dataset.omegaReviewScreenshot === 'true') return;
+    img.dataset.omegaReviewScreenshot = 'true';
+    img.classList.add('omega-review-screenshot');
+    img.tabIndex = 0;
+    img.setAttribute('role', 'button');
+    img.setAttribute('aria-label', `${img.alt || 'Screenshot'} — open full size`);
+    img.setAttribute('title', 'Click to open full size');
+  };
+
+  for (const img of main.querySelectorAll('img')) prepareReviewScreenshot(img);
+
+  const screenshotObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (!(node instanceof Element)) continue;
+        if (node instanceof HTMLImageElement) prepareReviewScreenshot(node);
+        for (const img of node.querySelectorAll?.('img') || []) prepareReviewScreenshot(img);
+      }
+    }
+  });
+  screenshotObserver.observe(main, { childList: true, subtree: true });
+
+  const lightbox = document.createElement('div');
+  lightbox.className = 'omega-screenshot-lightbox';
+  lightbox.hidden = true;
+  lightbox.setAttribute('role', 'dialog');
+  lightbox.setAttribute('aria-modal', 'true');
+  lightbox.setAttribute('aria-label', 'Screenshot preview');
+  lightbox.innerHTML = `
+    <button type="button" class="omega-screenshot-lightbox__close" aria-label="Close screenshot">×</button>
+    <figure class="omega-screenshot-lightbox__figure">
+      <img class="omega-screenshot-lightbox__image" alt="">
+      <figcaption class="omega-screenshot-lightbox__caption"></figcaption>
+    </figure>
+  `;
+  document.body.appendChild(lightbox);
+
+  const lightboxImage = lightbox.querySelector('.omega-screenshot-lightbox__image');
+  const lightboxCaption = lightbox.querySelector('.omega-screenshot-lightbox__caption');
+  const lightboxClose = lightbox.querySelector('.omega-screenshot-lightbox__close');
+  let screenshotReturnFocus = null;
+
+  const closeScreenshot = () => {
+    if (lightbox.hidden) return;
+    lightbox.hidden = true;
+    document.body.classList.remove('omega-screenshot-open');
+    lightboxImage.removeAttribute('src');
+    screenshotReturnFocus?.focus();
+    screenshotReturnFocus = null;
+  };
+
+  const openScreenshot = (img) => {
+    if (!isReviewScreenshot(img)) return;
+    screenshotReturnFocus = img;
+    lightboxImage.src = img.currentSrc || img.src;
+    lightboxImage.alt = img.alt || 'Omega screenshot';
+    lightboxCaption.textContent = img.alt || '';
+    lightbox.hidden = false;
+    document.body.classList.add('omega-screenshot-open');
+    lightboxClose.focus();
+  };
+
+  main.addEventListener('click', (event) => {
+    const img = event.target.closest?.('img');
+    if (isReviewScreenshot(img)) openScreenshot(img);
+  });
+
+  main.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const img = event.target.closest?.('img');
+    if (!isReviewScreenshot(img)) return;
+    event.preventDefault();
+    openScreenshot(img);
+  });
+
+  lightboxClose.addEventListener('click', closeScreenshot);
+  lightbox.addEventListener('click', (event) => {
+    if (event.target === lightbox) closeScreenshot();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !lightbox.hidden) closeScreenshot();
+  });
 
 })();
