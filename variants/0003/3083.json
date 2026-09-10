@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "c4d92c371baf1d4509185d19f2533f9dacba7a945b9903362b7593ac58767b74",
+    "analysisId": "21980a9dee105624b31cc7035bc0cd4ccb89d06b6baaa20a0c664128f619fc61",
     "artifactSha256": "5abd1bde60dc3764d813d5d75229529e883dd3e9152a5346c7e6ba868a7aabba",
-    "path": "artifacts/5a/5abd1bde60dc3764d813d5d75229529e883dd3e9152a5346c7e6ba868a7aabba/analyses/c4d92c371baf1d4509185d19f2533f9dacba7a945b9903362b7593ac58767b74",
-    "recordCount": 23
+    "path": "artifacts/5a/5abd1bde60dc3764d813d5d75229529e883dd3e9152a5346c7e6ba868a7aabba/analyses/21980a9dee105624b31cc7035bc0cd4ccb89d06b6baaa20a0c664128f619fc61",
+    "recordCount": 317
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,12 +11,13 @@
     "artifact_url": "https://kamori.goats.dev/Plugin/Download/AcrylicXIV?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
     "assembly_version": "0.1.0.0",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
+      "Dynamic code loading",
       "Game memory/hooks",
       "Hard-coded external file access"
     ],
-    "caution_count": 2,
+    "caution_count": 4,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -38,19 +39,41 @@
         "title": "Game memory/signature hooking"
       },
       {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:Graphics/RenderHooks.cs: Dalamud.Hooking",
+          "source:Graphics/RenderHooks.cs: Hook<",
+          "source:Graphics/RenderHooks.cs: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
         "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "source:Localization/Loc.cs: AssemblyLoadContext"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
       }
     ],
     "high_count": 0,
     "highest_severity": "caution",
     "informational_count": 0,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 7,
+      "artifactAnalysisRepresentativeScanId": 11,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
       "artifactBytes": 53493,
@@ -69,10 +92,22 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
           {
             "category": "filesystem",
             "declared": false,
@@ -81,6 +116,18 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -96,6 +143,54 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -103,8 +198,30 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -122,25 +239,32 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 2,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 1,
+          "observedDestinationWithoutProfileCount": 1,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 2,
+          "observedWithoutProfileCount": 8,
           "unexplainedDestinationCount": 0
         }
       },
       "capabilities": [
+        "Dynamic code loading",
         "Game memory/hooks",
         "Hard-coded external file access"
       ],
       "capabilityIds": [
+        "dynamic.code",
         "filesystem.external-path",
-        "game.memory.read"
+        "game.chat.read",
+        "game.memory.read",
+        "game.ui.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 2,
+        "caution": 4,
         "critical": 0,
         "high": 0,
         "informational": 0
@@ -150,10 +274,13 @@
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 3,
+          "exactVersionObservedCount": 2,
+          "families": {
+            "managed-assembly": 1,
+            "nuget": 2
+          },
+          "fingerprint": "9ea856c71e9bdec8e91a99c3d2cac57d39c0dc7957dcb1c518e90a9d2bdcd157",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -161,33 +288,48 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 3
+          },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 1
         },
         "coverage": {
           "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 3,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 3,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 3
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
+          "concreteDestinationCount": 1,
           "destinationsUndetermined": false,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "hostCount": 1,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 1,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -195,7 +337,18 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/MapleRecall/AcrylicXIV"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -218,35 +371,36 @@
         "uncompressedBytes": 131807
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
-        "attemptId": "attempt-v2-0d5b67abc2b3f6c1",
+        "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+        "attemptId": "attempt-v2-ff3aa611f41bd463",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-96649136f0daf6a4",
-        "definitionsRevision": "defs-v1-bc6535bba0a6b38f",
+        "catalogRevision": "cat-json-v1-a099f8bfb95c1a86",
+        "definitionsRevision": "defs-v1-af43156a09585269",
         "observedSourceCommit": "62d38ff8df810d52b8ee441c376a149172914238",
         "observedSourceRef": "refs/heads/master",
         "observedSourceRepository": "https://github.com/MapleRecall/AcrylicXIV",
-        "primaryReason": "source_candidates_changed",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-3083",
-        "queueSeedRevision": "queue-seed-v2-267a3356d34f4cbc8407",
+        "queueSeedRevision": "queue-seed-v2-e0533445afde61122b08",
         "reasons": [
+          "source_analysis_changed",
           "source_candidates_changed",
           "source_candidate_observed",
           "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
-        "scannerBundleSha256": "a2d13b63e48b8ff935797312644e07ec0985eabf57a61fca19459b2592734bf3",
-        "scannerRevision": "scanner-v1-127a76918960fbd8",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "671488cb8b385e9efc9561add560e8da75a336758b7a43bee3d181bfd956589f",
+        "scannerRevision": "scanner-v1-57c360c9d006aa4e",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-6a08b0dd91e518cf",
-        "targetFingerprint": "source-target-v2-f8d74d37565917b99f04",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-0ce64114dba9bc48",
+        "targetFingerprint": "source-target-v2-40766903581a54d66837",
         "variantId": 3083,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-07T13:45:08Z",
+      "scannedAtUtc": "2026-09-10T05:39:47Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -288,21 +442,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/MapleRecall/AcrylicXIV",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "62d38ff8df810d52b8ee441c376a149172914238",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "358f4d1c43a59edde7de267572a4e90770310445df060e434f0d69223888fd97"
           }
         },
         "developerProfile": {
@@ -310,61 +469,380 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/MapleRecall/AcrylicXIV: HTTP Error 403: rate limit exceeded; https://github.com/goatcorp/DalamudPlugins: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.1.0.0",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
-        "repository": "https://github.com/goatcorp/DalamudPlugins",
-        "treeSha256": ""
+        "repository": "https://github.com/MapleRecall/AcrylicXIV",
+        "treeSha256": "3f9cd45b98c4ae6d67ab6919481a91d5963da878"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 11,
-    "scanned_at_utc": "2026-09-07T13:45:08Z",
+    "scan_id": 18,
+    "scanned_at_utc": "2026-09-10T05:39:47Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
-    "source_repository": "https://github.com/goatcorp/DalamudPlugins",
+    "source_available": 1,
+    "source_commit": "62d38ff8df810d52b8ee441c376a149172914238",
+    "source_repository": "https://github.com/MapleRecall/AcrylicXIV",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 3083
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:terrafx.interop.windows",
+        "current_json": {
+          "componentKey": "assembly:terrafx.interop.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "TerraFX.Interop.Windows",
+          "normalizedName": "terrafx.interop.windows",
+          "origin": "source",
+          "paths": [
+            "AcrylicXIV.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "TerraFX.Interop.Windows",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud hooking APIs are imported.",
+            "Dalamud service IGameInteropProvider is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 3083
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 18,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-10T05:39:49Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 3083
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "revalidation",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "5abd1bde60dc3764d813d5d75229529e883dd3e9152a5346c7e6ba868a7aabba",
       "current_assembly_version": "0.1.0.0",
-      "current_scan_id": 11,
+      "current_scan_id": 18,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-07T13:45:09Z",
+      "current_source_commit": "62d38ff8df810d52b8ee441c376a149172914238",
+      "detected_at_utc": "2026-09-10T05:39:49Z",
       "previous_artifact_sha256": "5abd1bde60dc3764d813d5d75229529e883dd3e9152a5346c7e6ba868a7aabba",
       "previous_assembly_version": "0.1.0.0",
-      "previous_scan_id": 7,
+      "previous_scan_id": 11,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 3083
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 11,
-      "artifact_only_count": 11,
+      "artifact_only_count": 10,
       "artifact_only_json": [
         {
           "componentKey": "assembly:acrylicxiv",
@@ -505,35 +983,50 @@
           "versions": [
             "10.0.0.0"
           ]
-        },
-        {
-          "componentKey": "assembly:terrafx.interop.windows",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "TerraFX.Interop.Windows",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "10.0.26100.5"
-          ]
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-07T13:45:09Z",
-      "comparison_id": 10,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-10T05:39:49Z",
+      "comparison_id": 9,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 1,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 11,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 18,
+      "source_available": 1,
+      "source_dependency_count": 3,
+      "source_only_count": 2,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        }
+      ],
+      "source_project_sha256": "e64cb12456ff5bf6f03151dfb67e7c1f85031f2dcceb8912484fcd80f0bde09c",
       "variant_id": 3083,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -571,36 +1064,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 10418,
+          "bytes": 13208,
           "encoding": "json",
           "path": "derived/variants/0003/3083/dependency-resolutions.json",
-          "recordDigest": "5129f1dcb7e1839818c1be2ddaf105a45089ab937416ef6d9b9f24b211a6bc72",
-          "records": 11,
-          "sha256": "eac65fc29774e14e00f55e08f7f1eda41d5d7f23c3f0c266e0b24cfa1b30b68d"
+          "recordDigest": "07b8089439ce8df9c353d41ff2b0afc0c60b81ebfd28789af19ef6defbb16024",
+          "records": 14,
+          "sha256": "0ceb8b5a796026d78b6248a2ae8a70b7e5ac33dc1811986b3b8daa6276bd28b6"
         }
       ],
-      "recordDigest": "5129f1dcb7e1839818c1be2ddaf105a45089ab937416ef6d9b9f24b211a6bc72",
-      "records": 11
+      "recordDigest": "07b8089439ce8df9c353d41ff2b0afc0c60b81ebfd28789af19ef6defbb16024",
+      "records": 14
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 155185,
           "encoding": "json",
           "path": "derived/variants/0003/3083/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "4e118522a9761afef16ae493667b96e66f8e8103bb1bbba8761e049f13a142ab",
+          "records": 1,
+          "sha256": "e6902120351f74cfc645651dbd5fadb7d4ec166c5b9bc8ff294f14fc41994a7d"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "4e118522a9761afef16ae493667b96e66f8e8103bb1bbba8761e049f13a142ab",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "a5d3dacd0f4ff89633b978383c9a68ca758ffee84d90147c3c1f7541c168bce8",
+    "identityFingerprint": "de91d262b0ead0feff5bcc48c5341b51f2d45793b8192ee479d04b50f60daf3b",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -620,17 +1113,17 @@
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "8342c42567ec12ad6d33129aa724ea8dff182be3962812e5cc12f797c752b9da",
-        "records": 11,
+        "recordDigest": "e8a49ea4e7584266f9277e183df4a58bd69222c8ba46db7c6ee53d079fe1a291",
+        "records": 14,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -700,8 +1193,18 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "74c37c32fdcb524d32d6e409cffc2d8cb89c9c341855a64c137a140ea2672470",
+        "records": 53,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "883b59f33bc9998b31c689a5b9797ce82571738327bc95d0e7cee20a85e6b9a0",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -720,28 +1223,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "f995118b069200509cfdb14791180bd8633c76d2e730210bbf14ad60613cc01e",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "b8a380c7680d58003b2b64adf57e0694f1c889b270fd894151104609fd89b880",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "9185e6a6d21222bebfc8781bfb6ffb12b861c8a899abd2d5c941b86e96b4ca86",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "71837781423710b12d6cd175e518292630dd9451388a8f8864ab2611656e4e2c",
+        "records": 180,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "6df563954500966aec805d0d1a848ac46c11946de82acce4922e83aab44d1cc8",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "aa085e99ce557cff39a8188b4ea3bfd9c7b3c6864e36ed33776a038154dcf57e",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "sourceProvenance": {
         "backingDataset": "sourceProvenance",
         "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
         "completeness": "retained",
-        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "recordDigest": "ae5c4c613bb1228a7cbd094ab3a0a168e7cdd973d1a1df2b39c2ad2a2bde01b8",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "596155ab911bf513019c5beab9040e34d51e95f3249ce54279fb40803a621def",
+        "records": 25,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "48e9bd02330cb330ded57676a066a162964e58f2ee37fdf3ef87de8cdb08a54d",
+        "records": 4,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -751,25 +1374,12 @@
     "legacyCompatibility": false,
     "missingCollections": [
       "binaryClassifications",
-      "nativeImports",
-      "networkEndpoints",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFiles",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "nativeImports"
     ],
-    "observationDigest": "obs-3d24a581080c83b22317edb5c4c096b4788103e9735da01b1a59f4041cd0618a",
+    "observationDigest": "obs-cb52ec7baaab0ca82252344974208d0647b415f84c2846737ec5bf6d861d79c4",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
     },
     "schema": "omega.sigmascope.observation-contract.v1"
   },
@@ -830,27 +1440,27 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "59b8e787df13fda442a1fc83f50c410f420fe7c63c064a47742a51e773290d91",
+        "recordDigest": "2d98744ff4aa31c0fc58f8a15d9e7cf61259b93b97108aedd1a190d248268da8",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "be2ae20d6ec52572b638f55efc2dacee91894aee0881242d5c900ccd8e91e10e",
-        "records": 2
+        "recordDigest": "c2f6318092f7511609cecdd2a02f31bd46a56718f3d540d6a3a6e50e58523020",
+        "records": 8
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "83c0651fbfa0e8df7b8ba67b6d46ce1ee3a431fabe27c11df112d50cc7092dfb",
-        "records": 2
+        "recordDigest": "54e70933622392a8c42fa3cf429c2e759c39d6343a8704152f22e98a9613b6c7",
+        "records": 4
       }
     },
-    "projectionRevision": "projection-v1-2a4f9896d30f2a3c",
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
     "recursiveInputsForbidden": [
       "findings",
       "permissionCandidates",
       "automationCapabilities",
       "behaviorConsistency"
     ],
-    "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
     "schema": "omega.sigmascope.projection-contract.v1"
   },
   "scan": {
@@ -859,10 +1469,11 @@
     "artifact_url": "https://kamori.goats.dev/Plugin/Download/AcrylicXIV?isUpdate=False&isTesting=False&branch=api9&isDip17=True",
     "assembly_version": "0.1.0.0",
     "capabilities_json": [
+      "Dynamic code loading",
       "Game memory/hooks",
       "Hard-coded external file access"
     ],
-    "caution_count": 2,
+    "caution_count": 4,
     "critical_count": 0,
     "error": "",
     "high_count": 0,
@@ -870,7 +1481,7 @@
     "informational_count": 0,
     "plugin_id": 404,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 7,
+      "artifactAnalysisRepresentativeScanId": 11,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
       "artifactBytes": 53493,
@@ -889,10 +1500,22 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
           {
             "category": "filesystem",
             "declared": false,
@@ -901,6 +1524,18 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -916,6 +1551,54 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -923,8 +1606,30 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -942,25 +1647,32 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 2,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 1,
+          "observedDestinationWithoutProfileCount": 1,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 2,
+          "observedWithoutProfileCount": 8,
           "unexplainedDestinationCount": 0
         }
       },
       "capabilities": [
+        "Dynamic code loading",
         "Game memory/hooks",
         "Hard-coded external file access"
       ],
       "capabilityIds": [
+        "dynamic.code",
         "filesystem.external-path",
-        "game.memory.read"
+        "game.chat.read",
+        "game.memory.read",
+        "game.ui.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 2,
+        "caution": 4,
         "critical": 0,
         "high": 0,
         "informational": 0
@@ -970,10 +1682,13 @@
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 3,
+          "exactVersionObservedCount": 2,
+          "families": {
+            "managed-assembly": 1,
+            "nuget": 2
+          },
+          "fingerprint": "9ea856c71e9bdec8e91a99c3d2cac57d39c0dc7957dcb1c518e90a9d2bdcd157",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -981,33 +1696,48 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 3
+          },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 1
         },
         "coverage": {
           "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 3,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 3,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 3
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
+          "concreteDestinationCount": 1,
           "destinationsUndetermined": false,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "hostCount": 1,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 1,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1015,7 +1745,18 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/MapleRecall/AcrylicXIV"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -1038,35 +1779,36 @@
         "uncompressedBytes": 131807
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
-        "attemptId": "attempt-v2-0d5b67abc2b3f6c1",
+        "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+        "attemptId": "attempt-v2-ff3aa611f41bd463",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-96649136f0daf6a4",
-        "definitionsRevision": "defs-v1-bc6535bba0a6b38f",
+        "catalogRevision": "cat-json-v1-a099f8bfb95c1a86",
+        "definitionsRevision": "defs-v1-af43156a09585269",
         "observedSourceCommit": "62d38ff8df810d52b8ee441c376a149172914238",
         "observedSourceRef": "refs/heads/master",
         "observedSourceRepository": "https://github.com/MapleRecall/AcrylicXIV",
-        "primaryReason": "source_candidates_changed",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-3083",
-        "queueSeedRevision": "queue-seed-v2-267a3356d34f4cbc8407",
+        "queueSeedRevision": "queue-seed-v2-e0533445afde61122b08",
         "reasons": [
+          "source_analysis_changed",
           "source_candidates_changed",
           "source_candidate_observed",
           "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
-        "scannerBundleSha256": "a2d13b63e48b8ff935797312644e07ec0985eabf57a61fca19459b2592734bf3",
-        "scannerRevision": "scanner-v1-127a76918960fbd8",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "671488cb8b385e9efc9561add560e8da75a336758b7a43bee3d181bfd956589f",
+        "scannerRevision": "scanner-v1-57c360c9d006aa4e",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-6a08b0dd91e518cf",
-        "targetFingerprint": "source-target-v2-f8d74d37565917b99f04",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-0ce64114dba9bc48",
+        "targetFingerprint": "source-target-v2-40766903581a54d66837",
         "variantId": 3083,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-07T13:45:08Z",
+      "scannedAtUtc": "2026-09-10T05:39:47Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1108,21 +1850,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/MapleRecall/AcrylicXIV",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "62d38ff8df810d52b8ee441c376a149172914238",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "358f4d1c43a59edde7de267572a4e90770310445df060e434f0d69223888fd97"
           }
         },
         "developerProfile": {
@@ -1130,34 +1877,49 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/MapleRecall/AcrylicXIV: HTTP Error 403: rate limit exceeded; https://github.com/goatcorp/DalamudPlugins: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.1.0.0",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
-        "repository": "https://github.com/goatcorp/DalamudPlugins",
-        "treeSha256": ""
+        "repository": "https://github.com/MapleRecall/AcrylicXIV",
+        "treeSha256": "3f9cd45b98c4ae6d67ab6919481a91d5963da878"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 11,
-    "scanned_at_utc": "2026-09-07T13:45:08Z",
+    "scan_id": 18,
+    "scanned_at_utc": "2026-09-10T05:39:47Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "62d38ff8df810d52b8ee441c376a149172914238",
     "source_id": 1,
-    "source_repository": "https://github.com/goatcorp/DalamudPlugins",
+    "source_repository": "https://github.com/MapleRecall/AcrylicXIV",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 3083
