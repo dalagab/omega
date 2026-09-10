@@ -14,17 +14,18 @@ SECURITY = ROOT / "tools" / "security"
 if str(SECURITY) not in sys.path:
     sys.path.insert(0, str(SECURITY))
 
-from migrate_security_evidence_v2 import _resolve_source_database, migrate
+from migrate_security_evidence_v2 import _export_identity_index, _resolve_source_database, migrate
 from publish_security_evidence_v2 import preflight, validate_audit_report, validate_snapshot_report
 from security_evidence_download import DownloadedEvidence, parse_sidecar, safe_extract_sqlite
 from security_evidence_v2 import (
-    MAX_PUBLISH_FILE_BYTES, compact_report_for_transport, read_record_dataset, sha256_file, validate_snapshot,
+    IDENTITY_INDEX_LEGACY_SCHEMA, IDENTITY_INDEX_SCHEMA, IDENTITY_INDEX_STORAGE,
+    MAX_PUBLISH_FILE_BYTES, compact_report_for_transport, file_entry, read_record_dataset, sha256_file, validate_snapshot,
     variant_index_summary, write_record_dataset,
 )
 from validate_security_evidence_v2 import infer_database_from_migration_state, validate
 import definition_packs
 from production_sigmascope_v2_pipeline import materialize_definition_provenance_index
-from evidence_contract_reader import read_workbench_relationship_index
+from evidence_contract_reader import read_identity_index, read_workbench_relationship_index
 
 
 class SecurityEvidenceV2Tests(unittest.TestCase):
@@ -107,11 +108,93 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             self.assertEqual(64, len(first_index["variantSha256"]))
             self.assertEqual("FixturePlugin", first_index["summary"]["canonical_name"])
             self.assertEqual("high", first_index["summary"]["highest_severity"])
+            identity_manifest = json.loads(
+                (output / "indexes" / "identities.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(IDENTITY_INDEX_SCHEMA, identity_manifest["schema"])
+            self.assertEqual(IDENTITY_INDEX_STORAGE, identity_manifest["storage"])
+            self.assertNotIn("plugin_variants", {
+                key for key, value in identity_manifest.items() if isinstance(value, list)
+            })
+            identities = read_identity_index(output)
+            self.assertEqual(1, len(identities["plugins"]))
+            self.assertEqual(2, len(identities["plugin_variants"]))
+            self.assertEqual(2, len(identities["sources"]))
+            for descriptor in identity_manifest["datasets"].values():
+                for shard in descriptor["files"]:
+                    self.assertEqual("jsonl+gzip", shard["encoding"])
+                    self.assertLessEqual(int(shard["bytes"]), MAX_PUBLISH_FILE_BYTES)
             report = validate(database, output)
             self.assertTrue(report["ok"], report)
             publication = preflight(output)
             self.assertGreater(publication["files"], 0)
             self.assertEqual(publication["evidenceRevision"], "ev-test")
+
+    def test_identity_reader_accepts_legacy_inline_v2(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-legacy-identities-") as td:
+            root = Path(td)
+            path = root / "indexes" / "identities.json"
+            path.parent.mkdir(parents=True)
+            payload = {
+                "schema": IDENTITY_INDEX_LEGACY_SCHEMA,
+                "plugins": [{"plugin_id": 1, "internal_name": "Legacy"}],
+                "plugin_variants": [{"variant_id": 2, "plugin_id": 1}],
+                "sources": [{"source_id": 3, "name": "Legacy source"}],
+            }
+            path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            root_index = {"indexes": {"identities": file_entry(root, path, encoding="json")}}
+            (root / "index.json").write_text(
+                json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+            )
+            self.assertEqual(payload, read_identity_index(root))
+
+    def test_identity_shards_are_intrinsically_validated(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-identity-shard-validation-") as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            output = root / "v2"
+            migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+            manifest = json.loads((output / "indexes" / "identities.json").read_text(encoding="utf-8"))
+            shard = manifest["datasets"]["plugin_variants"]["files"][0]
+            shard_path = output / shard["path"]
+            shard_path.write_bytes(shard_path.read_bytes() + b"corruption")
+
+            report = validate_snapshot(output)
+
+            self.assertFalse(report["ok"])
+            self.assertTrue(
+                any(
+                    "identities/plugin_variants" in error
+                    and ("size mismatch" in error or "sha256 mismatch" in error)
+                    for error in report["errors"]
+                ),
+                report,
+            )
+
+    def test_identity_export_never_inlines_catalog_tables(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-identity-shards-") as td:
+            root = Path(td)
+            output = root / "evidence"
+            (output / "indexes").mkdir(parents=True)
+            database = root / "identities.sqlite"
+            with closing(sqlite3.connect(database)) as db:
+                db.row_factory = sqlite3.Row
+                db.executescript("""
+                    CREATE TABLE plugins(plugin_id INTEGER PRIMARY KEY,internal_name TEXT,name TEXT);
+                    CREATE TABLE plugin_variants(variant_id INTEGER PRIMARY KEY,plugin_id INTEGER,source_id INTEGER);
+                    CREATE TABLE sources(source_id INTEGER PRIMARY KEY,name TEXT,url TEXT);
+                    INSERT INTO plugins VALUES(1,'One','Plugin One');
+                    INSERT INTO plugin_variants VALUES(10,1,20);
+                    INSERT INTO sources VALUES(20,'Source','https://example.invalid');
+                """)
+                entry = _export_identity_index(db, output, chunk_bytes=1024 * 1024)
+            manifest = json.loads((output / "indexes" / "identities.json").read_text(encoding="utf-8"))
+            self.assertEqual(IDENTITY_INDEX_SCHEMA, manifest["schema"])
+            self.assertEqual(IDENTITY_INDEX_STORAGE, manifest["storage"])
+            self.assertEqual(3, entry["records"])
+            self.assertEqual({"plugins": 1, "plugin_variants": 1, "sources": 1}, manifest["counts"])
+            self.assertTrue(all(manifest["datasets"][name]["files"] for name in manifest["datasets"]))
+            self.assertLess((output / "indexes" / "identities.json").stat().st_size, 64 * 1024)
 
     def test_publisher_refuses_sparse_worker_projection(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-sparse-publish-") as td:

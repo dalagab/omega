@@ -25,6 +25,7 @@ for import_root in (SCRIPT_DIR, CATALOG_DIR):
         sys.path.insert(0, str(import_root))
 
 import plugin_dependency_graph  # noqa: E402
+from evidence_contract_reader import read_identity_index  # noqa: E402
 from security_evidence_v2 import (  # noqa: E402
     CORE_DATASETS,
     FORMAT_VERSION,
@@ -131,7 +132,7 @@ def _expected_global_table(db: sqlite3.Connection, table: str) -> list[dict[str,
 
 
 def _expected_identity(db: sqlite3.Connection) -> dict[str, Any]:
-    payload: dict[str, Any] = {"schema": "omega.security-evidence.identities.v2"}
+    payload: dict[str, Any] = {}
     for table in ("plugins", "plugin_variants", "sources"):
         payload[table] = _expected_global_table(db, table)
     return payload
@@ -293,9 +294,13 @@ def validate(database: Path, evidence: Path, *, quick: bool = False) -> dict[str
                 if str(actual.get("recordDigest") or "") != digest:
                     errors.append(f"variant {variant_id} dataset {dataset}: semantic record digest differs")
 
-        identities_entry = (index.get("indexes") or {}).get("identities") or {}
-        identities = _load_json(evidence / safe_relpath(str(identities_entry.get("path") or "")))
-        _compare_exact("identity index", _expected_identity(db), identities, errors)
+        try:
+            identities = read_identity_index(evidence)
+            expected_identity = _expected_identity(db)
+            for table in ("plugins", "plugin_variants", "sources"):
+                _compare_exact(f"identity index {table}", expected_identity[table], identities.get(table) or [], errors)
+        except Exception as exc:
+            errors.append(f"identity index unreadable: {type(exc).__name__}: {exc}")
 
         nuget_entry = (index.get("indexes") or {}).get("nuget") or {}
         nuget = _load_json(evidence / safe_relpath(str(nuget_entry.get("path") or "")))
