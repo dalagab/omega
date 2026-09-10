@@ -1,63 +1,17 @@
 {
   "analysis": {
-    "analysisId": "5c5350de619558d586c452b222f9a5c31a4e7287d243655041c975023a22c66c",
+    "analysisId": "19b3fec4807d94af3d852ce5fc5e30cea8feadf1295869e69963f89cc9337ad9",
     "artifactSha256": "41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b",
-    "path": "artifacts/41/41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b/analyses/5c5350de619558d586c452b222f9a5c31a4e7287d243655041c975023a22c66c",
-    "recordCount": 27975
+    "path": "artifacts/41/41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b/analyses/19b3fec4807d94af3d852ce5fc5e30cea8feadf1295869e69963f89cc9337ad9",
+    "recordCount": 1247
   },
   "current": {
     "artifact_channel": "stable",
     "artifact_sha256": "41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b",
     "artifact_url": "https://puni.sh/api/plugins/download/150/PartyFinderEx/versions/0.0.0.11/install/latest.zip",
     "assembly_version": "0.0.0.11",
-    "automation_capabilities_json": [
-      {
-        "automationLevel": "character-automation",
-        "capabilityId": "game.character.interact",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:<>c__DisplayClass1_0.<InteractWithObject>b__0+0x52: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
-        ],
-        "indirect": false,
-        "label": "World/NPC interaction control",
-        "reachable": false,
-        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
-      },
-      {
-        "automationLevel": "character-automation",
-        "capabilityId": "game.character.target",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
-          "il:ECommons.dll:<>c__DisplayClass0_0.<ApproachObjectViaAutomove>b__0+0xb5: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
-          "il:ECommons.dll:<>c__DisplayClass1_0.<InteractWithObject>b__0+0x72: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
-        ],
-        "indirect": false,
-        "label": "Character target control",
-        "reachable": false,
-        "reason": "References a target-setting API rather than only reading the current target."
-      },
-      {
-        "automationLevel": "ui-automation",
-        "capabilityId": "game.ui.callback",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxCreateDetour+0x4d: callvirt StaticVfxCreateCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxRunDetour+0x21: callvirt StaticVfxRunCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxDtorDetour+0x1f: callvirt StaticVfxDtorCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt FireCallback.Invoke"
-        ],
-        "indirect": false,
-        "label": "Game UI callback/control",
-        "reachable": false,
-        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
-      }
-    ],
-    "automation_level": "character-automation",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
     "capabilities_json": [
       "Character target control",
       "Clipboard access",
@@ -97,7 +51,7 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 35,
+    "caution_count": 43,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -141,10 +95,44 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:PartyFinderEx/Windows/MainWindow.cs: Process.Start",
+          "source:PartyFinderEx/Windows/MainWindow.cs: ProcessStartInfo",
+          "source:PartyFinderEx/Windows/MainWindow.cs: ShellExecute"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/PartyFinderEx.json: https://xivpf.com/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.e51042c13faa",
+        "severity": "caution",
+        "title": "Endpoint: xivpf.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/Services/FFLogsService.cs: https://www.fflogs.com/character/{0}/{1}/{2"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.e3e1ce5659b3",
+        "severity": "caution",
+        "title": "Endpoint: www.fflogs.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://www.fflogs.com/character/{0}/{1}/{2"
         ],
@@ -154,9 +142,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
         ],
@@ -166,9 +152,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
         ],
@@ -178,9 +162,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:PartyFinderEx.json: https://xivpf.com/"
         ],
@@ -190,9 +172,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:NetStone.dll: https://eu.finalfantasyxiv.com/",
           "artifact:PartyFinderEx.dll: https://eu.finalfantasyxiv.com/"
@@ -203,9 +183,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
         ],
@@ -215,9 +193,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
         ],
@@ -227,9 +203,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
         ],
@@ -239,9 +213,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
         ],
@@ -251,9 +223,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/Configuration.cs: https://xivpf.com/contribute/multiple"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9c7a45373943",
+        "severity": "caution",
+        "title": "Endpoint: xivpf.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://xivpf.com/contribute/multiple"
         ],
@@ -263,9 +245,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
         ],
@@ -275,9 +255,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:PartyFinderEx.json: https://puni.sh/api/plugins/icon/150"
         ],
@@ -287,9 +265,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://xivpf.com/api/listings"
         ],
@@ -299,9 +275,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:PartyFinderEx.json: https://projects.gamba.pro/Asuna/partyfinderex"
         ],
@@ -311,9 +285,20 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/Services/AlertService.cs: https://api.pushover.net/1/messages.json",
+          "source:PartyFinderEx/Windows/ConfigWindow.cs: https://api.pushover.net/1/messages.json"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.5c71ba26b4fa",
+        "severity": "caution",
+        "title": "Endpoint: api.pushover.net"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://projects.gamba.pro/Asuna/partyfinderex"
         ],
@@ -323,9 +308,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/Services/Network/PartyFinderApiClient.cs: https://xivpf.com/api"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.5322ee7ca469",
+        "severity": "caution",
+        "title": "Endpoint: xivpf.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
         ],
@@ -335,9 +330,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
         ],
@@ -347,9 +340,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://xivpf.com/api"
         ],
@@ -359,9 +350,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://findingway.io/receiver"
         ],
@@ -371,9 +360,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/Services/Network/PartyFinderApiClient.cs: https://xivpf.com/api/listings"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.13fe9c984251",
+        "severity": "caution",
+        "title": "Endpoint: xivpf.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PartyFinderEx.dll: https://api.pushover.net/1/messages.json"
         ],
@@ -383,9 +382,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/Configuration.cs: https://findingway.io/receiver"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.09121b7ec798",
+        "severity": "caution",
+        "title": "Endpoint: findingway.io"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
         ],
@@ -395,9 +404,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
         ],
@@ -407,9 +414,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
         ],
@@ -419,9 +424,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
         ],
@@ -431,9 +434,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
         ],
@@ -443,9 +444,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
         ],
@@ -455,9 +454,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
         ],
@@ -580,9 +577,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:NotificationMasterAPI.dll: https://github.com/NightmareXIV/NotificationMasterAPI"
         ],
@@ -592,9 +587,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
         ],
@@ -604,9 +597,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
         ],
@@ -616,9 +607,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:PartyFinderEx/PartyFinderEx.csproj: https://github.com/goatcorp/PartyFinderEx"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.6953fcb5aa21",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:NetStone.dll: https://github.com/xivapi/NetStone"
         ],
@@ -628,9 +629,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:NetStone.dll: https://raw.githubusercontent.com/xivapi/lodestone-css-selectors/main/"
         ],
@@ -640,9 +639,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork.dll: https://github.com/karashiiro/HtmlAgilityPack.CssSelectors.NetCore"
         ],
@@ -680,10 +677,10 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 9,
+    "informational_count": 10,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "artifactBytes": 842018,
       "artifactIdentity": {
@@ -691,42 +688,17 @@
         "artifactBytes": 842018,
         "artifactSha256": "41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b",
         "catalogAssemblyVersion": "0.0.0.11",
-        "manifestInternalName": "PartyFinderEx",
+        "manifestInternalName": "",
         "manifestPath": "PartyFinderEx.json",
-        "manifestRepositoryUrl": "https://projects.gamba.pro/Asuna/partyfinderex",
-        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/150/versions/0.0.0.11.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20260910%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260910T032105Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=a573acdf7cac29e808672555e207f2b61c0da7066b81df279d1e4c66058026cc",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.interact",
-            "confidence": "high",
-            "indirect": false,
-            "label": "World/NPC interaction control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.target",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Character target control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "ui-automation",
-            "capabilityId": "game.ui.callback",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Game UI callback/control",
-            "reachable": false
-          }
-        ],
-        "level": "character-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -762,18 +734,6 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "filesystem",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "filesystem.read",
-            "label": "Filesystem read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -933,242 +893,60 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "api.pushover.net",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "eu.finalfantasyxiv.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "findingway.io",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "james.newtonking.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0a",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0c",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0o",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0x",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "projects.gamba.pro",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
-              "host": "puni.sh",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "raw.githubusercontent.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.digicert.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "www.fflogs.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "www.newtonsoft.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.nuget.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "xivpf.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -1177,242 +955,60 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "api.pushover.net",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "eu.finalfantasyxiv.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "findingway.io",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "james.newtonking.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0a",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0c",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0o",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0x",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "projects.gamba.pro",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
-              "host": "puni.sh",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "raw.githubusercontent.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.digicert.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "www.fflogs.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "www.newtonsoft.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.nuget.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "xivpf.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -1433,11 +1029,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 16,
-          "observedConcreteDestinationCount": 24,
-          "observedDestinationWithoutProfileCount": 24,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 6,
+          "observedDestinationWithoutProfileCount": 6,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 16,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1484,7 +1080,6 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
-        "filesystem.read",
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
@@ -1500,185 +1095,67 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 35,
+        "caution": 43,
         "critical": 0,
         "high": 2,
-        "informational": 9
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 106,
-          "exactVersionObservedCount": 104,
+          "dependencyCount": 12,
+          "exactVersionObservedCount": 12,
           "families": {
-            "managed-assembly": 98,
-            "native": 2,
-            "nuget": 6
+            "nuget": 12
           },
-          "fingerprint": "a3b6d6bed1145277bacf5cb60d966732375787a66088fdb5147ed6ccd21baeea",
+          "fingerprint": "14591c205796f1554bb24c81cf80160e3638b9eb174ca79f7e7654afae4bfb1a",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 7,
+            "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
-          "nativeRelationships": [
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayBack",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayBack",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayFront",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayFront",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igClosePopupToLevel",
-              "library": "cimgui",
-              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igFindWindowDisplayIndex",
-              "library": "cimgui",
-              "managedName": "igFindWindowDisplayIndex",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igGetCurrentWindow",
-              "library": "cimgui",
-              "managedName": "igGetCurrentWindow",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetOpenFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetOpenFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetSaveFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetSaveFileName",
-              "targetPath": ""
-            }
-          ],
+          "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 7,
-            "observed": 93,
-            "required": 6
+            "required": 12
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 100,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 6,
+          "known": 12,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 7,
-            "observed": 93,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 6,
+            "required": 12,
             "soft": 0,
             "unknown": 0
           },
-          "total": 106
+          "total": 12
         },
         "endpointSummary": {
-          "concreteDestinationCount": 33,
+          "concreteDestinationCount": 9,
           "destinationsUndetermined": false,
-          "hostCount": 27,
+          "hostCount": 6,
           "hosts": [
             {
               "classifications": [
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "api.pushover.net",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "cacerts.digicert.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl3.digicert.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl4.digicert.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1686,156 +1163,36 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "eu.finalfantasyxiv.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "findingway.io",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 5,
-              "confidence": "Low",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "james.newtonking.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0a",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0c",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0o",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0x",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
+                "source-reference",
                 "unrecognised-host"
               ],
-              "concreteCount": 2,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "projects.gamba.pro",
               "literalCount": 2,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -1843,534 +1200,132 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "puni.sh",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "raw.githubusercontent.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.digicert.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "www.fflogs.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "www.newtonsoft.com",
-              "literalCount": 2,
+              "concreteCount": 4,
+              "confidence": "High",
+              "host": "xivpf.com",
+              "literalCount": 4,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.nuget.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 44,
+          "literalCount": 10,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 31380
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "api.pushover.net",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://api.pushover.net/1/messages.json"
           },
           {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt0E"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertCSRSA4096RootG5.crt0E"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertTrustedG4RSA4096SHA256TimeStampingCA.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertTrustedRootG4.crt0C"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/NETFoundationProjectsCodeSigningCA2.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertAssuredIDRootCA.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertCSRSA4096RootG5.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertTrustedG4RSA4096SHA256TimeStampingCA.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertTrustedRootG4.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0F"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl4.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl4.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0="
-          },
-          {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "crypto.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://crypto.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "discord.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://discord.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "donate.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://donate.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "eu.finalfantasyxiv.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://eu.finalfantasyxiv.com/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "explore.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://explore.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "findingway.io",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://findingway.io/receiver"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/JamesNK/Newtonsoft.Json"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/ECommons"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/NotificationMasterAPI"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/karashiiro/HtmlAgilityPack.CssSelectors.NetCore"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/xivapi/NetStone"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "james.newtonking.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://james.newtonking.com/projects/json"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0a",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0a/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0c",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0c/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0o",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0o/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0x",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0x/"
+            "url": "https://github.com/goatcorp/PartyFinderEx"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "projects.gamba.pro",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://projects.gamba.pro/Asuna/partyfinderex"
           },
           {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "projects.gamba.pro",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://projects.gamba.pro/Asuna/partyfinderex"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://projects.gamba.pro/Asuna/releases/-/raw/main/PartyFinderEx/pfex.png"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "puni.sh",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://puni.sh/api/plugins/icon/150"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://raw.githubusercontent.com/xivapi/lodestone-css-selectors/main/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "subscribe.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://subscribe.nightmarexiv.org/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.digicert.com/CPS0"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "www.fflogs.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://www.fflogs.com/character/{0}/{1}/{2"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.newtonsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.newtonsoft.com/json"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.newtonsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.newtonsoft.com/jsonschema"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.nuget.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.nuget.org/packages/Newtonsoft.Json.Bson"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/NightmareXIV"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.w3.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.w3.org/2000/xmlns/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/api"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/api/listings"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/contribute/multiple"
           }
@@ -2398,7 +1353,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-237063d4fbb0050a",
+        "attemptId": "attempt-v2-e3a93f6424a850d1",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -2407,11 +1362,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-3351",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-3351",
         "queueSeedRevision": "queue-seed-v2-e0533445afde61122b08",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "671488cb8b385e9efc9561add560e8da75a336758b7a43bee3d181bfd956589f",
@@ -2419,11 +1374,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-0ce64114dba9bc48",
-        "targetFingerprint": "artifact-target-v2-894443366e5a242766ac",
+        "targetFingerprint": "source-target-v2-0739dabb2053f55498c6",
         "variantId": 3351,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-10T03:21:05Z",
+      "scannedAtUtc": "2026-09-10T03:48:04Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2465,20 +1420,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "refs/heads/master",
         "candidates": [
           "https://projects.gamba.pro/Asuna/partyfinderex"
         ],
-        "commit": "",
+        "commit": "6572c4c23af97837a271f7bcb63c647df5e4561e",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "3604b63076ef64cc798919c88685d94a9306db02f4befc7feba51780f4ffb750"
           }
         },
         "developerProfile": {
@@ -2486,57 +1446,551 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.0.11",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "refs/heads/master",
+          "selectedRefKind": "git-head",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://projects.gamba.pro/Asuna/partyfinderex",
-        "treeSha256": ""
+        "treeSha256": "960affb473d94ec2af6a174c8abf607f1e3b6a86"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-10T03:21:05Z",
+    "scan_id": 11,
+    "scanned_at_utc": "2026-09-10T03:48:04Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "6572c4c23af97837a271f7bcb63c647df5e4561e",
     "source_repository": "https://projects.gamba.pro/Asuna/partyfinderex",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 3351
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json",
+            "PartyFinderEx/PartyFinderEx.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "2.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "2.0.2",
+            "[2.0.2, )"
+          ],
+          "versions": [
+            "2.0.2"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ecommons",
+        "current_json": {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "ECommons",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json",
+            "PartyFinderEx/PartyFinderEx.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "3.2.1.14"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "3.2.1.14",
+            "[3.2.1.14, )"
+          ],
+          "versions": [
+            "3.2.1.14"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget",
+        "dependency_name": "ECommons",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:htmlagilitypack",
+        "current_json": {
+          "componentKey": "nuget:htmlagilitypack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "HtmlAgilityPack",
+          "normalizedName": "htmlagilitypack",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.11.46"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "1.11.46"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "HtmlAgilityPack",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:karashiiro.htmlagilitypack.cssselectors.netcorefork",
+        "current_json": {
+          "componentKey": "nuget:karashiiro.htmlagilitypack.cssselectors.netcorefork",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork",
+          "normalizedName": "karashiiro.htmlagilitypack.cssselectors.netcorefork",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "0.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "0.0.2"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:netstone",
+        "current_json": {
+          "componentKey": "nuget:netstone",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "NetStone",
+          "normalizedName": "netstone",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json",
+            "PartyFinderEx/PartyFinderEx.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.4.1"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "1.4.1",
+            "[1.4.1, )"
+          ],
+          "versions": [
+            "1.4.1"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget",
+        "dependency_name": "NetStone",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:newtonsoft.json",
+        "current_json": {
+          "componentKey": "nuget:newtonsoft.json",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Newtonsoft.Json",
+          "normalizedName": "newtonsoft.json",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "13.0.3"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "13.0.3"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Newtonsoft.Json",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:notificationmasterapi",
+        "current_json": {
+          "componentKey": "nuget:notificationmasterapi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "NotificationMasterAPI",
+          "normalizedName": "notificationmasterapi",
+          "origin": "source",
+          "paths": [
+            "PartyFinderEx/packages.lock.json",
+            "PartyFinderEx/PartyFinderEx.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.0.0.4"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "1.0.0.4",
+            "[1.0.0.4, )"
+          ],
+          "versions": [
+            "1.0.0.4"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget",
+        "dependency_name": "NotificationMasterAPI",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 3351
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-10T03:48:49Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 3351
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b",
       "current_assembly_version": "0.0.0.11",
-      "current_scan_id": 8,
+      "current_scan_id": 11,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-10T03:21:11Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "6572c4c23af97837a271f7bcb63c647df5e4561e",
+      "detected_at_utc": "2026-09-10T03:48:49Z",
+      "previous_artifact_sha256": "41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b",
+      "previous_assembly_version": "0.0.0.11",
+      "previous_scan_id": 9,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 3351
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 67,
-      "artifact_only_count": 67,
+      "artifact_only_count": 61,
       "artifact_only_json": [
         {
           "componentKey": "assembly:dalamud",
@@ -3410,105 +2864,51 @@
             "observed"
           ],
           "versions": []
-        },
-        {
-          "componentKey": "nuget:ecommons",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "ECommons",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "3.2.1.14"
-          ]
-        },
-        {
-          "componentKey": "nuget:htmlagilitypack",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "HtmlAgilityPack",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "1.11.46"
-          ]
-        },
-        {
-          "componentKey": "nuget:karashiiro.htmlagilitypack.cssselectors.netcorefork",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "0.0.2"
-          ]
-        },
-        {
-          "componentKey": "nuget:netstone",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "NetStone",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "1.4.1"
-          ]
-        },
-        {
-          "componentKey": "nuget:newtonsoft.json",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Newtonsoft.Json",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "13.0.3"
-          ]
-        },
-        {
-          "componentKey": "nuget:notificationmasterapi",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "NotificationMasterAPI",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "1.0.0.4"
-          ]
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-10T03:21:11Z",
-      "comparison_id": 6,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-10T03:48:49Z",
+      "comparison_id": 8,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 6,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 8,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 11,
+      "source_available": 1,
+      "source_dependency_count": 8,
+      "source_only_count": 2,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.2"
+          ]
+        }
+      ],
+      "source_project_sha256": "e4426d8a4dc2029d49fe8afcf6f8196cbf2c301f5d690dfdf11b68627f06d704",
       "variant_id": 3351,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -3521,12 +2921,12 @@
           "bytes": 538,
           "encoding": "json",
           "path": "derived/variants/0003/3351/advisory-matches.json",
-          "recordDigest": "a784259b209f0dc891abcfa298c6bfbb9d9e4a35184233bfd5106460def8015f",
+          "recordDigest": "bce26629f766b474bdb632bd20176f5940d1e6da64b9537c9908644add7e5419",
           "records": 1,
-          "sha256": "bda8c00e5967991a61426fa549844e7904bf46a49b80b7105edeff64ca5cdce0"
+          "sha256": "aa8cf2ccbeba73e353baa8f0f9c4ab4ca76e45eb65e61aab79cd2513643e198c"
         }
       ],
-      "recordDigest": "a784259b209f0dc891abcfa298c6bfbb9d9e4a35184233bfd5106460def8015f",
+      "recordDigest": "bce26629f766b474bdb632bd20176f5940d1e6da64b9537c9908644add7e5419",
       "records": 1
     },
     "dependencyIssues": {
@@ -3546,36 +2946,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 101496,
+          "bytes": 112692,
           "encoding": "json",
           "path": "derived/variants/0003/3351/dependency-resolutions.json",
-          "recordDigest": "daeaa4a2208a55da655d22fee428e48f3c75fd94633fc628fef7185149e1923f",
-          "records": 106,
-          "sha256": "ad8bf98529fe100df16ee13bd2374dbf41f82d259586fa1b3e7dccf5276d8d43"
+          "recordDigest": "cad85926ffb992dec6a8673b0a897c67d59d1a3e7705ed6c5bd2862599e22e5e",
+          "records": 118,
+          "sha256": "1df2a7b2ec0fe4e19e8432c7ec230883489c4f573f70e011b927756e237e3f54"
         }
       ],
-      "recordDigest": "daeaa4a2208a55da655d22fee428e48f3c75fd94633fc628fef7185149e1923f",
-      "records": 106
+      "recordDigest": "cad85926ffb992dec6a8673b0a897c67d59d1a3e7705ed6c5bd2862599e22e5e",
+      "records": 118
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 579223,
           "encoding": "json",
           "path": "derived/variants/0003/3351/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "8f25ba611fb3fc4d214a52843e4fad86a500b66dc9e0e28399f1312a6badb255",
+          "records": 1,
+          "sha256": "a41322e2bbadda56336aa417063dc7ab7be281733dc0ec08e231882fce39ff46"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "8f25ba611fb3fc4d214a52843e4fad86a500b66dc9e0e28399f1312a6badb255",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "2fa6aaf37426f0f59244be79439153a926c2d49c8dbc61fee8eb2b0384c98272",
+    "identityFingerprint": "054aca0e8a0e79be00387b39553e2db9375d25afab6d7f6af4dbbaa4d2ed4826",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -3585,37 +2985,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "533f6e44d25514507e7cc02cd837daf2f913dde402a43a294993c4f002581d21",
+        "recordDigest": "e604d376f0135432b364e71744b4046c6d5a01fd3212c8d5f7c951533eaa84aa",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "2fcbc9f34a2f1620c5e8787aaa12d014aca6973c489540cc47edc89dbc44f0fe",
-        "records": 7,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "fe6cc8e8398eb2e5731577c5104efb898781391039efa17079d159ab0946ebb1",
-        "records": 106,
+        "recordDigest": "b85343a4b92fa054ec64bdf53b892ac086d49b2b86f9ef79f6955cb54988e11a",
+        "records": 118,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -3645,8 +3035,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "6aa956af614b1d75ef7bfb3ab720232d6854d0da6394486ee638764a5ec47273",
-        "records": 20000,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3655,8 +3045,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "42fb7209a25be3a3f486f4b2a2e8951c957cce44692cac252aac0f559ef76ef1",
-        "records": 1642,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3665,8 +3055,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "4797c833a46bf64109ef708d598d83c9424dca1be8614e02a1a26b85aebcecd9",
-        "records": 5750,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3685,18 +3075,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
-        "srlEligible": true
-      },
-      "nativeImports": {
-        "backingDataset": "nativeImports",
-        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
-        "completeness": "retained",
-        "recordDigest": "8bd4ad8b99d5bbbdac12055dbb2437f96b60c712a59f4635d128b63e49262096",
-        "records": 7,
+        "recordDigest": "cd345471278f62ee291de801b00858b400c552aeedf179129b9421991e9499ec",
+        "records": 187,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3705,8 +3085,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "da9b3f3119bfd6a005b35a9d133055e1c6491b57dd91cf74b820a8582fd6ef6c",
-        "records": 44,
+        "recordDigest": "a13da3f7f13056d03cd4bd1dce65f8e15ed184049cce4260fd1bbe5c683450e4",
+        "records": 10,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3725,28 +3105,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "f995118b069200509cfdb14791180bd8633c76d2e730210bbf14ad60613cc01e",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "a32860621a6c6cb74cc9112650d028743d81552a22558291e4db047499a175f7",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "d43a9c2ab8fd87bd45304c8d7b68654b692e755e64046289e0d3763453afcc3b",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "b06e1fd62d9d6ace3a1d19276ab88c7522bd164a70c1b3aa1369e1d39c13f596",
+        "records": 646,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "d83e5210b5460172f4d545ea0bf0ca73b4ea9e61dbf6108b62af97af52e378e5",
+        "records": 22,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "0216fa2b1e139bb5e74750e6642aca017023f164c23fd432a3871d43dae55f46",
+        "records": 12,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "63d99e5ba9cc35d05daf8b473afc7733051ba6da2f9c893f2677d1ac924b82b1",
-        "records": 2,
+        "recordDigest": "09fa306806563344f965d83ba70f2837224fbb3be43b65a39392e2c2a47eeef9",
+        "records": 51,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "ee5d5669bdeafeae9efdcd1b2aa2bf63c22f056aa1d76b7e30d3b8afc71f6048",
+        "records": 24,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "18824c3298558da49ecc816439b1cd13a387c7d3de9e88c8d7d129dc41228409",
+        "records": 36,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "d43417a9501c626af2a51bf67c7b846a5511978b60987acca4fbb2dc02951cbe",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "249b94e41f093d7818ccfad2ef71fb1bdd8f622d73798dfc955d89808f2a1294",
+        "records": 14,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "a5bd0f507565778833d0ff907b7c5cb99effade72fb041a9b1b07d706e668480",
-        "records": 311,
+        "recordDigest": "39274d14cb6ea9d84f65976c3fd76c5b804869f4dc84a84295a0b71ac99ab490",
+        "records": 3,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3755,20 +3255,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-57abadff7114d2bfcdf6712de25fa694d67349c51ab43098ccd8627727a36fc0",
+    "observationDigest": "obs-cf132967b623b8798001e6c44435beb123ffc8b798e1962c2645c21bdc814a72",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -3824,21 +3314,21 @@
     "contractRevision": "projection-contract-v1-f507480528a1e6af",
     "outputs": {
       "automation": {
-        "recordDigest": "d56d01d1574df18ba080500dadbce318c9cae3ae13c4e0485dea8006cc2b6deb",
-        "records": 3
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "1ed37e25bf68bb22658634e71a2b7de0149dae310d7b8f56d33460166f6ae812",
+        "recordDigest": "1427aeb35478b25c98553dcfc34b79f8d16f3cefcf1112b48b524b106ab76f00",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "1a3f3a39cf954e35c209baa368b107125745b82a6c162a6f84b1a18b777bb975",
-        "records": 16
+        "recordDigest": "6429d68743202e425f184ef089673a53ef0a8ebaa3f1fc1098d25fcd5546704a",
+        "records": 15
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "56f0b63f16181f5623e7bceef30bab7622d3424ebe8b51c4aab06d9dea0535f8",
-        "records": 46
+        "recordDigest": "5062d285826f5104f93a183845495cf9c2ae23a3a71f29db427e24ee9257daed",
+        "records": 55
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -3895,16 +3385,16 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 35,
+    "caution_count": 43,
     "critical_count": 0,
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 9,
+    "informational_count": 10,
     "plugin_id": 682,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
       "artifactBytes": 842018,
       "artifactIdentity": {
@@ -3912,42 +3402,17 @@
         "artifactBytes": 842018,
         "artifactSha256": "41397ebccea11d8b1479ce28f38e5c77ef8511e453ed4b9b3016dc4b3ac84e5b",
         "catalogAssemblyVersion": "0.0.0.11",
-        "manifestInternalName": "PartyFinderEx",
+        "manifestInternalName": "",
         "manifestPath": "PartyFinderEx.json",
-        "manifestRepositoryUrl": "https://projects.gamba.pro/Asuna/partyfinderex",
-        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/150/versions/0.0.0.11.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20260910%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260910T032105Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=a573acdf7cac29e808672555e207f2b61c0da7066b81df279d1e4c66058026cc",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
       "artifactIdentityContractVersion": 1,
       "automation": {
-        "capabilities": [
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.interact",
-            "confidence": "high",
-            "indirect": false,
-            "label": "World/NPC interaction control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "character-automation",
-            "capabilityId": "game.character.target",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Character target control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "ui-automation",
-            "capabilityId": "game.ui.callback",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Game UI callback/control",
-            "reachable": false
-          }
-        ],
-        "level": "character-automation"
+        "capabilities": [],
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -3983,18 +3448,6 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "filesystem",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "filesystem.read",
-            "label": "Filesystem read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -4154,242 +3607,60 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "api.pushover.net",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "eu.finalfantasyxiv.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "findingway.io",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "james.newtonking.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0a",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0c",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0o",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0x",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "projects.gamba.pro",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
-              "host": "puni.sh",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "raw.githubusercontent.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.digicert.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "www.fflogs.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "www.newtonsoft.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.nuget.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "xivpf.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -4398,242 +3669,60 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "api.pushover.net",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "eu.finalfantasyxiv.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "findingway.io",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "james.newtonking.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0a",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0c",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0o",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0x",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "projects.gamba.pro",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "VeryHigh",
-              "host": "puni.sh",
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "raw.githubusercontent.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.digicert.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "www.fflogs.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "www.newtonsoft.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.nuget.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "xivpf.com",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -4654,11 +3743,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 16,
-          "observedConcreteDestinationCount": 24,
-          "observedDestinationWithoutProfileCount": 24,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 6,
+          "observedDestinationWithoutProfileCount": 6,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 16,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -4705,7 +3794,6 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
-        "filesystem.read",
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
@@ -4721,185 +3809,67 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 35,
+        "caution": 43,
         "critical": 0,
         "high": 2,
-        "informational": 9
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 106,
-          "exactVersionObservedCount": 104,
+          "dependencyCount": 12,
+          "exactVersionObservedCount": 12,
           "families": {
-            "managed-assembly": 98,
-            "native": 2,
-            "nuget": 6
+            "nuget": 12
           },
-          "fingerprint": "a3b6d6bed1145277bacf5cb60d966732375787a66088fdb5147ed6ccd21baeea",
+          "fingerprint": "14591c205796f1554bb24c81cf80160e3638b9eb174ca79f7e7654afae4bfb1a",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 7,
+            "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
-          "nativeRelationships": [
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayBack",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayBack",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayFront",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayFront",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igClosePopupToLevel",
-              "library": "cimgui",
-              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igFindWindowDisplayIndex",
-              "library": "cimgui",
-              "managedName": "igFindWindowDisplayIndex",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igGetCurrentWindow",
-              "library": "cimgui",
-              "managedName": "igGetCurrentWindow",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetOpenFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetOpenFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetSaveFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetSaveFileName",
-              "targetPath": ""
-            }
-          ],
+          "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 7,
-            "observed": 93,
-            "required": 6
+            "required": 12
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 100,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 6,
+          "known": 12,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 7,
-            "observed": 93,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 6,
+            "required": 12,
             "soft": 0,
             "unknown": 0
           },
-          "total": 106
+          "total": 12
         },
         "endpointSummary": {
-          "concreteDestinationCount": 33,
+          "concreteDestinationCount": 9,
           "destinationsUndetermined": false,
-          "hostCount": 27,
+          "hostCount": 6,
           "hosts": [
             {
               "classifications": [
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "api.pushover.net",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "cacerts.digicert.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl3.digicert.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl4.digicert.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -4907,156 +3877,36 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "eu.finalfantasyxiv.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "findingway.io",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "recognised-platform"
               ],
-              "concreteCount": 5,
-              "confidence": "Low",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "james.newtonking.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0a",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0c",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0o",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "ocsp.digicert.com0x",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
+                "source-reference",
                 "unrecognised-host"
               ],
-              "concreteCount": 2,
-              "confidence": "VeryHigh",
+              "concreteCount": 1,
+              "confidence": "High",
               "host": "projects.gamba.pro",
               "literalCount": 2,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
@@ -5064,534 +3914,132 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "VeryHigh",
-              "host": "puni.sh",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "raw.githubusercontent.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.digicert.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "www.fflogs.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "www.newtonsoft.com",
-              "literalCount": 2,
+              "concreteCount": 4,
+              "confidence": "High",
+              "host": "xivpf.com",
+              "literalCount": 4,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.nuget.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 44,
+          "literalCount": 10,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 31380
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "api.pushover.net",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://api.pushover.net/1/messages.json"
           },
           {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt0E"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertCSRSA4096RootG5.crt0E"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertTrustedG4RSA4096SHA256TimeStampingCA.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/DigiCertTrustedRootG4.crt0C"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "cacerts.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://cacerts.digicert.com/NETFoundationProjectsCodeSigningCA2.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertAssuredIDRootCA.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertCSRSA4096RootG5.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertTrustedG4RSA4096SHA256TimeStampingCA.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/DigiCertTrustedRootG4.crl0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl3.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl3.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0F"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl4.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl4.digicert.com/NETFoundationProjectsCodeSigningCA2.crl0="
-          },
-          {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "crypto.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://crypto.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "discord.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://discord.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "donate.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://donate.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "eu.finalfantasyxiv.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://eu.finalfantasyxiv.com/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "explore.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://explore.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "findingway.io",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://findingway.io/receiver"
           },
           {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/JamesNK/Newtonsoft.Json"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/ECommons"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/NotificationMasterAPI"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/karashiiro/HtmlAgilityPack.CssSelectors.NetCore"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/xivapi/NetStone"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "james.newtonking.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://james.newtonking.com/projects/json"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0a",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0a/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0c",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0c/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0o",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0o/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "ocsp.digicert.com0x",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://ocsp.digicert.com0x/"
+            "url": "https://github.com/goatcorp/PartyFinderEx"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "projects.gamba.pro",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://projects.gamba.pro/Asuna/partyfinderex"
           },
           {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "projects.gamba.pro",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://projects.gamba.pro/Asuna/partyfinderex"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://projects.gamba.pro/Asuna/releases/-/raw/main/PartyFinderEx/pfex.png"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "puni.sh",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "unrecognised public host",
-            "url": "https://puni.sh/api/plugins/icon/150"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "raw.githubusercontent.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://raw.githubusercontent.com/xivapi/lodestone-css-selectors/main/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "subscribe.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://subscribe.nightmarexiv.org/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.digicert.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.digicert.com/CPS0"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "www.fflogs.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://www.fflogs.com/character/{0}/{1}/{2"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.newtonsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.newtonsoft.com/json"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.newtonsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.newtonsoft.com/jsonschema"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.nuget.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.nuget.org/packages/Newtonsoft.Json.Bson"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/NightmareXIV"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.w3.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.w3.org/2000/xmlns/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/api"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/api/listings"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "xivpf.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://xivpf.com/contribute/multiple"
           }
@@ -5619,7 +4067,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-237063d4fbb0050a",
+        "attemptId": "attempt-v2-e3a93f6424a850d1",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -5628,11 +4076,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-3351",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-3351",
         "queueSeedRevision": "queue-seed-v2-e0533445afde61122b08",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "671488cb8b385e9efc9561add560e8da75a336758b7a43bee3d181bfd956589f",
@@ -5640,11 +4088,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-0ce64114dba9bc48",
-        "targetFingerprint": "artifact-target-v2-894443366e5a242766ac",
+        "targetFingerprint": "source-target-v2-0739dabb2053f55498c6",
         "variantId": 3351,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-10T03:21:05Z",
+      "scannedAtUtc": "2026-09-10T03:48:04Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -5686,20 +4134,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "refs/heads/master",
         "candidates": [
           "https://projects.gamba.pro/Asuna/partyfinderex"
         ],
-        "commit": "",
+        "commit": "6572c4c23af97837a271f7bcb63c647df5e4561e",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "3604b63076ef64cc798919c88685d94a9306db02f4befc7feba51780f4ffb750"
           }
         },
         "developerProfile": {
@@ -5707,28 +4160,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.0.11",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "refs/heads/master",
+          "selectedRefKind": "git-head",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://projects.gamba.pro/Asuna/partyfinderex",
-        "treeSha256": ""
+        "treeSha256": "960affb473d94ec2af6a174c8abf607f1e3b6a86"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-10T03:21:05Z",
+    "scan_id": 11,
+    "scanned_at_utc": "2026-09-10T03:48:04Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "6572c4c23af97837a271f7bcb63c647df5e4561e",
     "source_id": 595,
     "source_repository": "https://projects.gamba.pro/Asuna/partyfinderex",
     "source_to_binary_verified": 0,
