@@ -1,0 +1,3406 @@
+{
+  "analysis": {
+    "analysisId": "c4b35d5619ed02688c2c298d5d29d1d3d5eb5558633d743ea28d02a3a91c8248",
+    "artifactSha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+    "path": "artifacts/9c/9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31/analyses/c4b35d5619ed02688c2c298d5d29d1d3d5eb5558633d743ea28d02a3a91c8248",
+    "recordCount": 26498
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+    "artifact_url": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+    "assembly_version": "0.9.318.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "input.keyboard.inject",
+        "confidence": "very-high",
+        "evidence": [
+          "il:ReshadeController.dll:ReshadeController.Plugin.TickDlssF6Mirror+0x17: call ReshadeController.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:ReshadeController.dll:ReshadeController.Plugin.SetDlssNeuralLive+0x7a: call ReshadeController.Plugin.keybd_event -> user32.dll!keybd_event"
+        ],
+        "indirect": false,
+        "label": "Keyboard input injection",
+        "reachable": true,
+        "reason": "Calls a native keyboard/input injection API."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.gg",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: subscribe.nightmarexiv.org",
+      "Endpoint: www.patreon.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Keyboard input injection",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access"
+    ],
+    "caution_count": 12,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:ECommons.dll: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "artifact:ECommons.dll: VirtualProtectEx"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for keyboard input injection. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:ReshadeController.dll:ReshadeController.Plugin.TickDlssF6Mirror+0x17: call ReshadeController.Plugin.keybd_event -> user32.dll!keybd_event",
+          "il:ReshadeController.dll:ReshadeController.Plugin.SetDlssNeuralLive+0x7a: call ReshadeController.Plugin.keybd_event -> user32.dll!keybd_event"
+        ],
+        "ruleId": "automation.input.keyboard.inject",
+        "severity": "high",
+        "title": "Keyboard input injection"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Diagnostics.Process",
+          "metadata:ECommons.dll: ProcessStartInfo",
+          "metadata:ECommons.dll: ShellExecute",
+          "metadata:ECommons.dll: Process.Start",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x2: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cc91d234fb3b",
+        "severity": "caution",
+        "title": "Endpoint: discord.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b5dad10c192a",
+        "severity": "caution",
+        "title": "Endpoint: donate.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.ac38247bd18a",
+        "severity": "caution",
+        "title": "Endpoint: subscribe.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ReshadeController.dll: https://ko-fi.com/candyappleffxiv"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9fdea3f13fa4",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9d3ce8792d14",
+        "severity": "caution",
+        "title": "Endpoint: explore.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.8785017a999f",
+        "severity": "caution",
+        "title": "Endpoint: crypto.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.3641efc8bfda",
+        "severity": "caution",
+        "title": "Endpoint: www.patreon.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:ReshadeController.dll: DllImportAttribute",
+          "metadata:ECommons.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:ReshadeController.dll: Dalamud.Hooking",
+          "metadata:ReshadeController.dll: SigScanner",
+          "metadata:ReshadeController.dll: HookFromAddress",
+          "il:ReshadeController.dll:ReshadeController.Plugin.InitEmoteHook+0x19: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:ReshadeController.dll:ReshadeController.WeatherOverride.BytesAreOriginal+0xc: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "artifact:ReshadeController.dll: Dalamud.Hooking",
+          "artifact:ReshadeController.dll: SigScanner",
+          "artifact:ReshadeController.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:ReshadeController.dll: C:\\Users\\FSOS\\Documents\\Projects\\ReshadeController\\Plugin\\obj\\Release\\ReshadeController.pdb",
+          "artifact:ReshadeController.dll: s://discord.gg/bKswgraKvh",
+          "artifact:ReshadeController.dll: \\\\]|\\\\.)*",
+          "artifact:ECommons.dll: s://github.com/NightmareXIV/ECommons",
+          "artifact:ECommons.dll: /home/runner/work/ECommons/ECommons/repo/ECommons/obj/x64/Release/ECommons.pdb",
+          "artifact:ECommons.dll: s://www.patreon.com/NightmareXIV",
+          "artifact:ECommons.dll: s://subscribe.nightmarexiv.org",
+          "artifact:ECommons.dll: s://donate.nightmarexiv.org"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:ECommons.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: Assembly.Load",
+          "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+          "artifact:ECommons.dll: AssemblyLoadContext"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Networking.HttpClientProxyHelper.ApplyProxySettings+0x69: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x15: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ReshadeController.dll: https://discord.gg/bKswgraKvh"
+        ],
+        "ruleId": "network.endpoint.community-invite.bf8ef9bd491f",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:ReshadeController.dll: FileStream",
+          "metadata:ReshadeController.dll: Directory.CreateDirectory",
+          "metadata:ReshadeController.dll: WriteAllText",
+          "metadata:ReshadeController.dll: File.Move",
+          "metadata:ReshadeController.dll: File.Delete",
+          "il:ReshadeController.dll:ReshadeController.ConfigWindow.ConfirmPresetNameModal+0x80: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:ReshadeController.dll:ReshadeController.ConfigWindow.ConfirmPresetNameModal+0x11d: call System.IO.File.WriteAllText: WriteAllText",
+          "il:ReshadeController.dll:ReshadeController.ConfigWindow.SetDlssNeural+0xd1: call System.IO.File.WriteAllText: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "privacy",
+        "description": "References APIs that can read or modify clipboard contents.",
+        "evidence": [
+          "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+        ],
+        "ruleId": "clipboard",
+        "severity": "informational",
+        "title": "Clipboard access"
+      }
+    ],
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+      "artifactBytes": 507403,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.9.318.0",
+        "artifactBytes": 507403,
+        "artifactSha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+        "catalogAssemblyVersion": "0.9.318.0",
+        "manifestInternalName": "ReshadeController",
+        "manifestPath": "ReshadeController.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1360583758/f01fb584-b91d-4752-a8e4-847b61fc4e0e?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-10T15%3A17%3A19Z&rscd=attachment%3B+filename%3DReshadeController.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-10T14%3A16%3A48Z&ske=2026-09-10T15%3A17%3A19Z&sks=b&skv=2018-11-09&sig=UxisxI1%2BUPhQPBbrSsOAf80ijxYLCL3DoG0HpT2GDe4%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4OTA1MTA2MSwibmJmIjoxNzg5MDUwNzYxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.WtVkz07Sz5780jOi_8Lc6XNr7eCJ7rA9NCwQOPcX5LM&response-content-disposition=attachment%3B%20filename%3DReshadeController.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "input.keyboard.inject",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Keyboard input injection",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "input",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "input.keyboard.inject",
+            "label": "Keyboard input injection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 14,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 14,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.gg",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: subscribe.nightmarexiv.org",
+        "Endpoint: www.patreon.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Keyboard input injection",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "input.keyboard.inject",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 12,
+        "critical": 0,
+        "high": 3,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 59,
+          "exactVersionObservedCount": 56,
+          "families": {
+            "managed-assembly": 55,
+            "native": 3,
+            "nuget": 1
+          },
+          "fingerprint": "5832847a0abc93ef5bb8d449659a23dedf102fb4ba33fe0d98df85352ef0bf39",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 7,
+            "platformLibrary": 7
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igClosePopupToLevel",
+              "library": "cimgui",
+              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetSaveFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetSaveFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ClientToScreen",
+              "library": "user32.dll",
+              "managedName": "ClientToScreen",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindow",
+              "library": "user32.dll",
+              "managedName": "FindWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 19,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetAsyncKeyState",
+              "library": "user32.dll",
+              "managedName": "GetAsyncKeyState",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetClientRect",
+              "library": "user32.dll",
+              "managedName": "GetClientRect",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "keybd_event",
+              "library": "user32.dll",
+              "managedName": "keybd_event",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "LoadCursor",
+              "library": "user32.dll",
+              "managedName": "LoadCursor",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SetCursor",
+              "library": "user32.dll",
+              "managedName": "SetCursor",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 56,
+            "required": 1
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 58,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 1,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 56,
+            "optional": 0,
+            "required": 1,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 59
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 8,
+          "destinationsUndetermined": false,
+          "hostCount": 9,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 9,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 12308
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crypto.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crypto.nightmarexiv.org/"
+          },
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/bKswgraKvh"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "discord.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://discord.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "donate.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://donate.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "explore.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://explore.nightmarexiv.org/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NightmareXIV/ECommons"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ko-fi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/candyappleffxiv"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "subscribe.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://subscribe.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.patreon.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.patreon.com/NightmareXIV"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+        "internalName": "ReshadeController",
+        "manifestVersion": "0.9.318.0",
+        "observationId": 14719,
+        "observationKey": "manifest-02e5ee2a60dc4dbfb0770d857790",
+        "repositoryUrl": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8988
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 1247513
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-a4eec4d76c1ca99a",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-63f34437f8800ea2",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-8988",
+        "queueSeedRevision": "queue-seed-v2-dfd9f267176ecee0",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
+        "targetFingerprint": "artifact-target-v2-cb1c19e0fc8f204781b0",
+        "variantId": 8988,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-10T14:32:41Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 13,
+    "scanned_at_utc": "2026-09-10T14:32:41Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8988
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+      "current_assembly_version": "0.9.318.0",
+      "current_scan_id": 13,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-10T14:32:44Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 8988
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 43,
+      "artifact_only_count": 43,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0",
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ecommons",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.2.0.6"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.7966",
+            "7.55.1.8875"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.visualbasic.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.VisualBasic.Core",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:reshadecontroller",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "ReshadeController",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.9.318.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipes",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipes",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.mail",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Mail",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.webproxy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebProxy",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices.javascript",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices.JavaScript",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:terrafx.interop.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "TerraFX.Interop.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.26100.5"
+          ]
+        },
+        {
+          "componentKey": "native:cimgui",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cimgui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:comdlg32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Comdlg32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.2.0.6"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-10T14:32:44Z",
+      "comparison_id": 4,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 13,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 8988,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0008/8988/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0008/8988/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 56620,
+          "encoding": "json",
+          "path": "derived/variants/0008/8988/dependency-resolutions.json",
+          "recordDigest": "080a078a9d33e853e5979228f05e2291bf6174f5fd0ae0c4f65672d8163e3779",
+          "records": 59,
+          "sha256": "224d58e2b834c8833f3d5475730b21fbc173cb7ae9dd15d433916ba383e32ccc"
+        }
+      ],
+      "recordDigest": "080a078a9d33e853e5979228f05e2291bf6174f5fd0ae0c4f65672d8163e3779",
+      "records": 59
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0008/8988/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "9ea9f89ade7406e66a2c7921227527398239d95fe0d85644d3ee4ccb98fc65ad",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "b5f61dfebd1570017f88ce32f0c8bbf6a755ce6bf9d710b654e1e4c6e983702e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "640dd4a4c16f2b4a3958f562b06ebdea925a60560a8c6ec26e5086fc574870ad",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "f0119746f7f757d6e23ac32a7168c6a257c6cf270d80e31ecd03b415fa282616",
+        "records": 59,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "8d774fcc10bb62bfd53df074dccf4d55f06c0871947e917b280e7fb40e8bed45",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "5c883a39664647146bc20c92a287f148e8e6a840ecccfc024a66a85135020838",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "ace3d50db9d9abf26803586d46d6b4e427fa9cf38aa0dba9e2aee2eb07e97868",
+        "records": 2842,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "5e8d65657937f818256653113fb662a036a919e35fc3d49c4137e5c607395db4",
+        "records": 3292,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "c6839e3efa394cd9de4d956701d589ee4f28e74f35a15493276e2a32af348589",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "8c390c4b18b3bd90bbb8f9c8a3c1be7176aeb5f089f55b77615d8a369f6a7761",
+        "records": 14,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "e3d19986c085317b9537482ade9b0d157a84a748ee7ba8513a83ec2438176aa9",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "f885247c78222940f3a50735af02b2b35cbd95e54b4329e29022d5b415b1bbc4",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "03b9aaa920112c040081aa1274738925c23f25fbeeb9b492ad1fe3a779fc0501",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "be765641bac3677ca019c7920b8da428a6bc71b209b760bf531abf597e2cf926",
+        "records": 208,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-4d2799985cdcf84bb6fa9e85aa86126536d5f0f6dc12b3c199322aaa763a4025",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "ReshadeController",
+    "first_seen_utc": "2026-09-10T06:44:38Z",
+    "internal_name": "ReshadeController",
+    "last_seen_utc": "2026-09-10T08:40:33Z",
+    "plugin_id": 1387
+  },
+  "pluginId": 1387,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Dynamic ReShade presets that react to what's happening in game — time of day, weather, location and more — through a visual node Animator, plus per-zone, cutscene and duty presets. Requires ReShade with the reshade_controller addon in the game folder.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 358,
+      "summary": "Controls ReShade shaders based on what's going on in game",
+      "webEnriched": false
+    },
+    "projectRepository": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "d9b2dc16f73120762c6fd4ebe13cdad7c7808cac1f970fbe1749b9aca7b6ee86",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "2e00c63a4db1f4ff905d74366d3844124fb78704a2aa429fda9915af3367c82c",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "4dc7cd1c0f98be06ecfc0ee7a6ce6cd5f6b2919fc9583a23636bc3aaa3145377",
+        "records": 14
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "f691b06ce27117697e2fbe71bcad9d27d10539e6a54ade625f21cde30cfb1b00",
+        "records": 20
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+    "artifact_url": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+    "assembly_version": "0.9.318.0",
+    "capabilities_json": [
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.gg",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: subscribe.nightmarexiv.org",
+      "Endpoint: www.patreon.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Keyboard input injection",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access"
+    ],
+    "caution_count": 12,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "plugin_id": 1387,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+      "artifactBytes": 507403,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.9.318.0",
+        "artifactBytes": 507403,
+        "artifactSha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+        "catalogAssemblyVersion": "0.9.318.0",
+        "manifestInternalName": "ReshadeController",
+        "manifestPath": "ReshadeController.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1360583758/f01fb584-b91d-4752-a8e4-847b61fc4e0e?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-10T15%3A17%3A19Z&rscd=attachment%3B+filename%3DReshadeController.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-10T14%3A16%3A48Z&ske=2026-09-10T15%3A17%3A19Z&sks=b&skv=2018-11-09&sig=UxisxI1%2BUPhQPBbrSsOAf80ijxYLCL3DoG0HpT2GDe4%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4OTA1MTA2MSwibmJmIjoxNzg5MDUwNzYxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.WtVkz07Sz5780jOi_8Lc6XNr7eCJ7rA9NCwQOPcX5LM&response-content-disposition=attachment%3B%20filename%3DReshadeController.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "input.keyboard.inject",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Keyboard input injection",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "input",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "input.keyboard.inject",
+            "label": "Keyboard input injection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 14,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 14,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.gg",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: subscribe.nightmarexiv.org",
+        "Endpoint: www.patreon.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Keyboard input injection",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "input.keyboard.inject",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 12,
+        "critical": 0,
+        "high": 3,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 59,
+          "exactVersionObservedCount": 56,
+          "families": {
+            "managed-assembly": 55,
+            "native": 3,
+            "nuget": 1
+          },
+          "fingerprint": "5832847a0abc93ef5bb8d449659a23dedf102fb4ba33fe0d98df85352ef0bf39",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 7,
+            "platformLibrary": 7
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igClosePopupToLevel",
+              "library": "cimgui",
+              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetSaveFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetSaveFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ClientToScreen",
+              "library": "user32.dll",
+              "managedName": "ClientToScreen",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindow",
+              "library": "user32.dll",
+              "managedName": "FindWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 19,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetAsyncKeyState",
+              "library": "user32.dll",
+              "managedName": "GetAsyncKeyState",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetClientRect",
+              "library": "user32.dll",
+              "managedName": "GetClientRect",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "keybd_event",
+              "library": "user32.dll",
+              "managedName": "keybd_event",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "LoadCursor",
+              "library": "user32.dll",
+              "managedName": "LoadCursor",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ReshadeController.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SetCursor",
+              "library": "user32.dll",
+              "managedName": "SetCursor",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 56,
+            "required": 1
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 58,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 1,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 56,
+            "optional": 0,
+            "required": 1,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 59
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 8,
+          "destinationsUndetermined": false,
+          "hostCount": 9,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 9,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 12308
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crypto.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crypto.nightmarexiv.org/"
+          },
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/bKswgraKvh"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "discord.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://discord.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "donate.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://donate.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "explore.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://explore.nightmarexiv.org/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NightmareXIV/ECommons"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ko-fi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/candyappleffxiv"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "subscribe.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://subscribe.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.patreon.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.patreon.com/NightmareXIV"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+        "internalName": "ReshadeController",
+        "manifestVersion": "0.9.318.0",
+        "observationId": 14719,
+        "observationKey": "manifest-02e5ee2a60dc4dbfb0770d857790",
+        "repositoryUrl": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8988
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 1247513
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-a4eec4d76c1ca99a",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-63f34437f8800ea2",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-8988",
+        "queueSeedRevision": "queue-seed-v2-dfd9f267176ecee0",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
+        "targetFingerprint": "artifact-target-v2-cb1c19e0fc8f204781b0",
+        "variantId": 8988,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-10T14:32:41Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "9cf87550ceaf9f389e9c24b84a2c2214311bc6611dc6362bef81771310485e31",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 13,
+    "scanned_at_utc": "2026-09-10T14:32:41Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1122,
+    "source_repository": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8988
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "e6c5cee558fa1dbc70211d5d600398dc7ecbec8c2b093e04a7f9e16ee4bc9f84",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "github-code-search",
+    "enabled_by_default": 1,
+    "etag": "\"67323e83fbd53a31a61d86d5b482e3ed620c04cce56edf85fcb7316036457ab7\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "scanned",
+    "last_checked_utc": "2026-09-10T06:44:38Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-10T06:44:38Z",
+    "name": "CandyAppleUwU/ReshadeController-FFXIV-",
+    "plugin_count": 1,
+    "provider": "CandyAppleUwU/ReshadeController-FFXIV-",
+    "source_id": 1122,
+    "source_repo_url": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+    "url": "https://raw.githubusercontent.com/CandyAppleUwU/ReshadeController-FFXIV-/main/repo.json"
+  },
+  "sourceId": 1122,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.9.318.0",
+    "author": "CandyApple",
+    "authors_json": [
+      "CandyApple"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Dynamic ReShade presets that react to what's happening in game — time of day, weather, location and more — through a visual node Animator, plus per-zone, cutscene and duty presets. Requires ReShade with the reshade_controller addon in the game folder.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+    "download_link_testing": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+    "download_link_update": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+    "first_seen_utc": "2026-09-10T06:44:38Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-10T06:44:38Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "ReshadeController",
+    "plugin_id": 1387,
+    "punchline": "Controls ReShade shaders based on what's going on in game",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.9.318.0",
+      "Author": "CandyApple",
+      "DalamudApiLevel": 15,
+      "Description": "Dynamic ReShade presets that react to what's happening in game — time of day, weather, location and more — through a visual node Animator, plus per-zone, cutscene and duty presets. Requires ReShade with the reshade_controller addon in the game folder.",
+      "DownloadLinkInstall": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+      "DownloadLinkTesting": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+      "DownloadLinkUpdate": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-/releases/download/v0.9.318/ReshadeController.zip",
+      "InternalName": "ReshadeController",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "LastUpdated": 1788908570,
+      "Name": "ReshadeController",
+      "Punchline": "Controls ReShade shaders based on what's going on in game",
+      "RepoUrl": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+      "Tags": [
+        "reshade",
+        "shaders",
+        "animation",
+        "dynamic",
+        "weather"
+      ]
+    },
+    "repo_url": "https://github.com/CandyAppleUwU/ReshadeController-FFXIV-",
+    "source_entry_key": "reshadecontroller|0.9.318.0|15|0|0",
+    "source_id": 1122,
+    "tags_json": [
+      "reshade",
+      "shaders",
+      "animation",
+      "dynamic",
+      "weather"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 8988
+  },
+  "variantId": 8988
+}
