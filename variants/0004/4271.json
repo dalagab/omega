@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "9a8209cceeaf2d6bf08f4a1ea455c1f1448dc4a5d67e7bba112db3fdbd3f498d",
+    "analysisId": "b47b3fe795fa45e32a92a9cfe8dca08b16a4eff65483516fc03a5aa6865d9eb6",
     "artifactSha256": "290dad924ad46f9b239a761bef8235349d80bf44302e7b2659f6077a5f2e3261",
-    "path": "artifacts/29/290dad924ad46f9b239a761bef8235349d80bf44302e7b2659f6077a5f2e3261/analyses/9a8209cceeaf2d6bf08f4a1ea455c1f1448dc4a5d67e7bba112db3fdbd3f498d",
-    "recordCount": 137
+    "path": "artifacts/29/290dad924ad46f9b239a761bef8235349d80bf44302e7b2659f6077a5f2e3261/analyses/b47b3fe795fa45e32a92a9cfe8dca08b16a4eff65483516fc03a5aa6865d9eb6",
+    "recordCount": 311
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,7 +11,7 @@
     "artifact_url": "https://github.com/KangasZ/DalamudPluginRepository/raw/main/plugins/BattleLog/latest.zip",
     "assembly_version": "0.0.0.7",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
       "Character target control",
       "Clipboard access",
@@ -36,7 +36,7 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 14,
+    "caution_count": 15,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -167,6 +167,18 @@
         "title": "Game memory/signature hooking"
       },
       {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:BattleLog/Game/GameNetwork.cs: Dalamud.Hooking",
+          "source:BattleLog/Game/GameNetwork.cs: Hook<",
+          "source:BattleLog/Game/GameNetwork.cs: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [
@@ -250,6 +262,18 @@
       },
       {
         "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:BattleLog/Configuration.cs: https://raw.githubusercontent.com/paissaheavyindustries/Resources/refs/heads/main/Blueprint/blueprint.xml"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f34c75dfd190",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
         "evidence": [
           "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
@@ -290,9 +314,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "High",
         "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
-        "endpointOrigin": "derived-capability-gap",
         "evidence": [],
         "ruleId": "network.endpoint.dynamic-or-undetermined",
         "severity": "informational",
@@ -316,6 +338,16 @@
         "title": "Filesystem write access"
       },
       {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:BattleLog/Game/NetworkDecoder.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
         "category": "privacy",
         "description": "References APIs that can read or modify clipboard contents.",
         "evidence": [
@@ -328,9 +360,9 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 8,
+    "informational_count": 10,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisRepresentativeScanId": 17,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
       "artifactBytes": 342480,
@@ -349,7 +381,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -385,6 +417,18 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -438,6 +482,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-automation",
             "declared": false,
             "declaredDestinations": [],
@@ -486,6 +542,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "privacy",
             "declared": false,
             "declaredDestinations": [],
@@ -515,8 +583,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -528,17 +638,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 13,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 16,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 13,
+          "observedWithoutProfileCount": 16,
           "unexplainedDestinationCount": 0
         }
       },
@@ -570,33 +680,38 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
+        "filesystem.read",
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
         "game.memory.read",
+        "game.state.read",
         "game.ui.callback",
         "memory.process",
         "native.interop",
         "network.http",
+        "network.outbound",
         "privacy.clipboard",
         "process.execute"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 14,
+        "caution": 15,
         "critical": 0,
         "high": 2,
-        "informational": 8
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 4,
+          "exactVersionObservedCount": 4,
+          "families": {
+            "nuget": 4
+          },
+          "fingerprint": "b55ed89516cf56fbc728c9740aac4d88166cafdd58deb86e2bbb1e3e2f4c5a0c",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -604,7 +719,9 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 4
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -613,24 +730,49 @@
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 4,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 4,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 4
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 2,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -638,7 +780,28 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/KangasZ/BattleLog"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/paissaheavyindustries/Resources/refs/heads/main/Blueprint/blueprint.xml"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -661,33 +824,35 @@
         "uncompressedBytes": 844337
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
-        "attemptId": "attempt-v2-e49e69ffde66b6b8",
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-62e8fb189472f780",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-96649136f0daf6a4",
-        "definitionsRevision": "defs-v1-bc6535bba0a6b38f",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-63f34437f8800ea2",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
+        "observedSourceCommit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/KangasZ/BattleLog",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-4271",
-        "queueSeedRevision": "queue-seed-v2-267a3356d34f4cbc8407",
+        "queueSeedRevision": "queue-seed-v2-dfd9f267176ecee0",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
-        "scannerBundleSha256": "a2d13b63e48b8ff935797312644e07ec0985eabf57a61fca19459b2592734bf3",
-        "scannerRevision": "scanner-v1-127a76918960fbd8",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-6a08b0dd91e518cf",
-        "targetFingerprint": "source-target-v2-6a03649312669437069b",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
+        "targetFingerprint": "source-target-v2-2b45e8ab4a0450a68371",
         "variantId": 4271,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-07T14:02:05Z",
+      "scannedAtUtc": "2026-09-10T15:03:08Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -729,21 +894,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v0.0.0.7",
         "candidates": [
           "https://github.com/KangasZ/BattleLog",
           "https://github.com/KangasZ/DalamudPluginRepository"
         ],
-        "commit": "",
+        "commit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "2931672fb56349054bf596fa4ed5cd4cf64f2ef8d38e33a66b84a7fe42a29753"
           }
         },
         "developerProfile": {
@@ -751,61 +921,391 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/KangasZ/BattleLog: HTTP Error 403: rate limit exceeded; https://github.com/KangasZ/DalamudPluginRepository: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.0.7",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "v0.0.0.7",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
-        "repository": "https://github.com/KangasZ/DalamudPluginRepository",
-        "treeSha256": ""
+        "repository": "https://github.com/KangasZ/BattleLog",
+        "treeSha256": "67780baab990a9665b02dc6c514ca26ea1a74c0b"
       },
-      "sourceAnalysisRepresentativeScanId": 0,
-      "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRepresentativeScanId": 20,
+      "sourceAnalysisReused": true,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 17,
-    "scanned_at_utc": "2026-09-07T14:02:05Z",
+    "scan_id": 22,
+    "scanned_at_utc": "2026-09-10T15:03:08Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
-    "source_repository": "https://github.com/KangasZ/DalamudPluginRepository",
+    "source_available": 1,
+    "source_commit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
+    "source_repository": "https://github.com/KangasZ/BattleLog",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 4271
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "BattleLog/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 19,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "caution",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "BattleLog/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 20,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "caution",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ecommons",
+        "current_json": {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "ECommons",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "BattleLog/BattleLog.csproj",
+            "BattleLog/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "3.2.1.17"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "3.2.1.17",
+            "[3.2.1.17, )"
+          ],
+          "versions": [
+            "3.2.1.17"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "nuget",
+        "dependency_name": "ECommons",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 21,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "caution",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 22,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "informational",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 23,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "informational",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud hooking APIs are imported.",
+            "Dalamud service IGameInteropProvider is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 24,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "caution",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 25,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "informational",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 26,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "caution",
+        "variant_id": 4271
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 22,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-10T15:03:10Z",
+        "drift_id": 27,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 18,
+        "severity": "informational",
+        "variant_id": 4271
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "revalidation",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "290dad924ad46f9b239a761bef8235349d80bf44302e7b2659f6077a5f2e3261",
       "current_assembly_version": "0.0.0.7",
-      "current_scan_id": 17,
+      "current_scan_id": 22,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-07T14:02:06Z",
+      "current_source_commit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
+      "detected_at_utc": "2026-09-10T15:03:10Z",
       "previous_artifact_sha256": "290dad924ad46f9b239a761bef8235349d80bf44302e7b2659f6077a5f2e3261",
       "previous_assembly_version": "0.0.0.7",
-      "previous_scan_id": 8,
+      "previous_scan_id": 18,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 4271
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 44,
-      "artifact_only_count": 44,
+      "artifact_only_count": 43,
       "artifact_only_json": [
         {
           "componentKey": "assembly:battlelog",
@@ -1408,35 +1908,50 @@
             "observed"
           ],
           "versions": []
-        },
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-10T15:03:10Z",
+      "comparison_id": 11,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 1,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 22,
+      "source_available": 1,
+      "source_dependency_count": 3,
+      "source_only_count": 2,
+      "source_only_json": [
         {
-          "componentKey": "nuget:ecommons",
+          "componentKey": "nuget:dalamudpackager",
           "componentKind": "nuget",
           "kinds": [
-            "nuget-resolved"
+            "nuget-lock"
           ],
-          "name": "ECommons",
+          "name": "DalamudPackager",
           "requirements": [
             "required"
           ],
           "versions": [
-            "3.2.1.17"
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
           ]
         }
       ],
-      "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-07T14:02:06Z",
-      "comparison_id": 16,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
-      "requirement_mismatch_count": 0,
-      "requirement_mismatches_json": [],
-      "scan_id": 17,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "source_project_sha256": "f5f0c8add5b6c972de0ec5fa563c034f9fcf4b60e0f315d477400e12db0f6fc5",
       "variant_id": 4271,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -1474,36 +1989,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 57046,
+          "bytes": 60709,
           "encoding": "json",
           "path": "derived/variants/0004/4271/dependency-resolutions.json",
-          "recordDigest": "d5b1274ef16e45f87a00d5a38cbc0667e913e04e43d22d1789a929975ff9353a",
-          "records": 60,
-          "sha256": "9cf66b56939c36bad5a5c4459fe5e910dd0d59f551148566e19ac3e58210e65f"
+          "recordDigest": "da1c2dec53b5e8bf665f3bd02a8089a0e26abe83a17747fef779f303cd78a075",
+          "records": 64,
+          "sha256": "a5402a3372ec0d3c1d5658162a45a426349de73525580d4aa970bb0daa56df72"
         }
       ],
-      "recordDigest": "d5b1274ef16e45f87a00d5a38cbc0667e913e04e43d22d1789a929975ff9353a",
-      "records": 60
+      "recordDigest": "da1c2dec53b5e8bf665f3bd02a8089a0e26abe83a17747fef779f303cd78a075",
+      "records": 64
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 88593,
           "encoding": "json",
           "path": "derived/variants/0004/4271/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "4c82467885fe97d8d35ab51c1c1c1581fdf0c318fe5ea656ee33dc26fd1001c6",
+          "records": 1,
+          "sha256": "aa2de45048675ee2ec7001c5297a423254b59c0a15bd2041e8516b2a2569e9a9"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "4c82467885fe97d8d35ab51c1c1c1581fdf0c318fe5ea656ee33dc26fd1001c6",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "fe8362bfc5b1aa924bec2333b5ce870caf73425bf7569a7e18e06c8324a83c5a",
+    "identityFingerprint": "4d8f66708737d3a51983d01a6e700ec761f88c7deee605da262abbef8af157d2",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1523,17 +2038,17 @@
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "2f421b6c2713d4120ea201c4e175400bc51edcb7fa88589b35c7b5f0195b6714",
-        "records": 60,
+        "recordDigest": "c620f9fb691bb05334bdaa61e56dfc52f17b88f4055dbd9fd9f819fa3c854431",
+        "records": 64,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1603,8 +2118,18 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "071692e35ffd877a7e691fccf50f45111a6a7205d12bf067e53e38e7bb6c3ecf",
+        "records": 53,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "8fb2dfea1103d2ba1ea8f1c853054ae0fa14e576b6d2ed23ac9fb47e431be622",
+        "records": 2,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1623,28 +2148,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "1ed254e1ff3a52798f9f3b628cc77dcab24ecbab8dff5c346c1bb654437171bb",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "15a25a54e4a7d7a2f1bf0bd42ca4f88121b7dcfeea5ee2dad5511f9d75ebfc50",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "21d8bfbb841071565e00559de76432e39eb4d5a6cd6041f6a32aeb764588cd2d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "09f50d2017e4ec3b1403396070e064b3aba62e2251e8c222f141a48f2c379599",
+        "records": 66,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "f7cb588698b25d56abfecd47aedfbea6b65b1bd23f0c602f29ea21a05e7d2f26",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "683a727cb5a0b968678d22dd1ab580c35883f406b844888b3a1cbab0646f0a38",
+        "records": 18,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "2ef98fe902d4991a27f4b8389256c65d2bed850cca6367c2af80ece6ec35690a",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "sourceProvenance": {
         "backingDataset": "sourceProvenance",
         "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
         "completeness": "retained",
-        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "recordDigest": "f0ec8a40d4dc32ac2c5643746d3f0ef47c4b424ee5ac061085da3d2a79b4d1ed",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "a02712251ef0965dcb8f6c070da84a8cc039f4f0972b77476e441996c6e5f702",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "9b3f037fc324ce1ef00d025b73e1757076de43eacba478b8e68eb5deaa907108",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "13901f085b6164b7f41fbe66a0d84504aa14bd3306cadeeda2bb2750d912aa49",
+        "records": 4,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1654,25 +2299,12 @@
     "legacyCompatibility": false,
     "missingCollections": [
       "binaryClassifications",
-      "nativeImports",
-      "networkEndpoints",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFiles",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "nativeImports"
     ],
-    "observationDigest": "obs-38b0fe19bbc153cc8c96a1ecd6ca2e72ab4464ff86da2af78fe4951188d24b60",
+    "observationDigest": "obs-7289b1e97697f1f2215bf38f9ea921bf7d29c714946cf4c51a35232bca6c2d42",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
     },
     "schema": "omega.sigmascope.observation-contract.v1"
   },
@@ -1725,27 +2357,27 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "e1ab697b7b003921e787f901b98abc192b96e1256a99f20010e5181694243df5",
+        "recordDigest": "cf48b7c8b6109e5f84ed705ee9b4d16b5447e938ce7db280d4c6b1ae709a7666",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "4ec29eca549c9b204de4feac87cba18145825fec685119a905c4c98cb89e7432",
-        "records": 13
+        "recordDigest": "dcc750f58a4154c420b5a88315b2eb5b436c60dfe4af1494336831f32f4fbe12",
+        "records": 16
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "3ec3ca336e2a97b9461f7c7eec01883a8f8550bd7dd033353302838756b5b0d5",
-        "records": 24
+        "recordDigest": "98f8f32c0c81a8bb140dca1f6242594e0e53c121ffc86242beb33d56e10a012b",
+        "records": 27
       }
     },
-    "projectionRevision": "projection-v1-2a4f9896d30f2a3c",
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
     "recursiveInputsForbidden": [
       "findings",
       "permissionCandidates",
       "automationCapabilities",
       "behaviorConsistency"
     ],
-    "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
     "schema": "omega.sigmascope.projection-contract.v1"
   },
   "scan": {
@@ -1777,15 +2409,15 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 14,
+    "caution_count": 15,
     "critical_count": 0,
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 8,
+    "informational_count": 10,
     "plugin_id": 546,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisRepresentativeScanId": 17,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
       "artifactBytes": 342480,
@@ -1804,7 +2436,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -1840,6 +2472,18 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1893,6 +2537,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-automation",
             "declared": false,
             "declaredDestinations": [],
@@ -1941,6 +2597,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "privacy",
             "declared": false,
             "declaredDestinations": [],
@@ -1970,8 +2638,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -1983,17 +2693,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 13,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 16,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 13,
+          "observedWithoutProfileCount": 16,
           "unexplainedDestinationCount": 0
         }
       },
@@ -2025,33 +2735,38 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
+        "filesystem.read",
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
         "game.memory.read",
+        "game.state.read",
         "game.ui.callback",
         "memory.process",
         "native.interop",
         "network.http",
+        "network.outbound",
         "privacy.clipboard",
         "process.execute"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 14,
+        "caution": 15,
         "critical": 0,
         "high": 2,
-        "informational": 8
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 4,
+          "exactVersionObservedCount": 4,
+          "families": {
+            "nuget": 4
+          },
+          "fingerprint": "b55ed89516cf56fbc728c9740aac4d88166cafdd58deb86e2bbb1e3e2f4c5a0c",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -2059,7 +2774,9 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 4
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -2068,24 +2785,49 @@
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 4,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 4,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 4
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 2,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -2093,7 +2835,28 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/KangasZ/BattleLog"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/paissaheavyindustries/Resources/refs/heads/main/Blueprint/blueprint.xml"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -2116,33 +2879,35 @@
         "uncompressedBytes": 844337
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
-        "attemptId": "attempt-v2-e49e69ffde66b6b8",
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-62e8fb189472f780",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-96649136f0daf6a4",
-        "definitionsRevision": "defs-v1-bc6535bba0a6b38f",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-63f34437f8800ea2",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
+        "observedSourceCommit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/KangasZ/BattleLog",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-4271",
-        "queueSeedRevision": "queue-seed-v2-267a3356d34f4cbc8407",
+        "queueSeedRevision": "queue-seed-v2-dfd9f267176ecee0",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
-        "scannerBundleSha256": "a2d13b63e48b8ff935797312644e07ec0985eabf57a61fca19459b2592734bf3",
-        "scannerRevision": "scanner-v1-127a76918960fbd8",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-6a08b0dd91e518cf",
-        "targetFingerprint": "source-target-v2-6a03649312669437069b",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
+        "targetFingerprint": "source-target-v2-2b45e8ab4a0450a68371",
         "variantId": 4271,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-07T14:02:06Z",
+      "scannedAtUtc": "2026-09-10T15:03:09Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2184,21 +2949,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v0.0.0.7",
         "candidates": [
           "https://github.com/KangasZ/BattleLog",
           "https://github.com/KangasZ/DalamudPluginRepository"
         ],
-        "commit": "",
+        "commit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "2931672fb56349054bf596fa4ed5cd4cf64f2ef8d38e33a66b84a7fe42a29753"
           }
         },
         "developerProfile": {
@@ -2206,34 +2976,49 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/KangasZ/BattleLog: HTTP Error 403: rate limit exceeded; https://github.com/KangasZ/DalamudPluginRepository: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.0.7",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "v0.0.0.7",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
-        "repository": "https://github.com/KangasZ/DalamudPluginRepository",
-        "treeSha256": ""
+        "repository": "https://github.com/KangasZ/BattleLog",
+        "treeSha256": "67780baab990a9665b02dc6c514ca26ea1a74c0b"
       },
-      "sourceAnalysisRepresentativeScanId": 0,
-      "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRepresentativeScanId": 20,
+      "sourceAnalysisReused": true,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 17,
-    "scanned_at_utc": "2026-09-07T14:02:06Z",
+    "scan_id": 22,
+    "scanned_at_utc": "2026-09-10T15:03:09Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "7c582c4030c5ff80e8861c4a1210018d2c8270a2",
     "source_id": 734,
-    "source_repository": "https://github.com/KangasZ/DalamudPluginRepository",
+    "source_repository": "https://github.com/KangasZ/BattleLog",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 4271
