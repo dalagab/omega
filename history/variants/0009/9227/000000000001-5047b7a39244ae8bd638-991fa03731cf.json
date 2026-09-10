@@ -1,0 +1,2033 @@
+{
+  "analysis": {
+    "analysisId": "2d0b3cb442009c12fee637d8fe606ad5b93f8d58095cf90ddee921abd492e7a9",
+    "artifactSha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+    "path": "artifacts/50/5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d/analyses/2d0b3cb442009c12fee637d8fe606ad5b93f8d58095cf90ddee921abd492e7a9",
+    "recordCount": 9000
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+    "artifact_url": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+    "assembly_version": "0.0.0.2",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AutoTriadC.dll:AutoTriadC.Core.AutoNpc.AutoNpcBattleService.TryAutoSelectNearestNpc+0x11b: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true,
+        "reason": "References a target-setting API rather than only reading the current target."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:AutoTriadC.dll: System.Diagnostics.Process",
+          "metadata:AutoTriadC.dll: ProcessStartInfo",
+          "metadata:AutoTriadC.dll: ShellExecute",
+          "metadata:AutoTriadC.dll: Process.Start",
+          "il:AutoTriadC.dll:AutoTriadC.UI.CardCollectionWindow.OpenWebPage+0x2: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:AutoTriadC.dll:AutoTriadC.UI.CardCollectionWindow.OpenWebPage+0x2: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:AutoTriadC.dll:AutoTriadC.UI.CardCollectionWindow.OpenWebPage+0x9: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:AutoTriadC.dll:AutoTriadC.UI.CardCollectionWindow.OpenWebPage+0x9: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:AutoTriadC.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:AutoTriadC.dll: SigScanner",
+          "metadata:AutoTriadC.dll: Dalamud.Hooking",
+          "metadata:AutoTriadC.dll: HookFromAddress",
+          "il:AutoTriadC.dll:AutoTriadC.Core.CardMemoryReader..ctor+0x9: call AutoTriadC.Service.get_SigScanner: SigScanner",
+          "il:AutoTriadC.dll:AutoTriadC.Core.CardMemoryReader..ctor+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:AutoTriadC.dll:AutoTriadC.Core.CardMemoryReader..ctor+0x19: call AutoTriadC.Service.get_SigScanner: SigScanner",
+          "il:AutoTriadC.dll:AutoTriadC.Core.CardMemoryReader..ctor+0x23: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:AutoTriadC.dll:AutoTriadC.Core.CardMemoryReader..ctor+0x2a: call AutoTriadC.Service.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:AutoTriadC.dll: s://discord.gg/g8QKPAnCBa",
+          "artifact:AutoTriadC.dll: s://github.com/extrant",
+          "artifact:AutoTriadC.dll: s://afdian.com/a/Sincraft0515",
+          "artifact:AutoTriadC.dll: s://ff14.huijiwiki.com/wiki/"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AutoTriadC.dll:AutoTriadC.Core.AutoNpc.AutoNpcBattleService.TryAutoSelectNearestNpc+0x11b: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:AutoTriadC.dll: Directory.CreateDirectory",
+          "metadata:AutoTriadC.dll: WriteAllText",
+          "il:AutoTriadC.dll:AutoTriadC.Core.Triad.TriadPacketAnalyzer.ExportAllToFile+0x1c: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:AutoTriadC.dll:AutoTriadC.Core.Triad.TriadPacketAnalyzer.ExportAllToFile+0x72: call System.IO.File.WriteAllText: WriteAllText",
+          "artifact:AutoTriadC.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+      "artifactBytes": 168874,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.2",
+        "artifactBytes": 168874,
+        "artifactSha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+        "catalogAssemblyVersion": "0.0.0.2",
+        "manifestInternalName": "AutoTriadC",
+        "manifestPath": "AutoTriadC.json",
+        "manifestRepositoryUrl": "https://github.com/extrant/I-Ching",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "afdian.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ff14.huijiwiki.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "afdian.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ff14.huijiwiki.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 19,
+          "exactVersionObservedCount": 18,
+          "families": {
+            "managed-assembly": 18,
+            "native": 1
+          },
+          "fingerprint": "551bebdf26d396bddba5b1c71a45deef4be7a5ba4be3014b9e619ebc22c6f9e2",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 1,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "AutoTriadC.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompile",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 18
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 19,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 18,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 19
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 6,
+          "destinationsUndetermined": false,
+          "hostCount": 5,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "afdian.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ff14.huijiwiki.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 7,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "afdian.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://afdian.com/a/Sincraft0515"
+          },
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/g8QKPAnCBa"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ff14.huijiwiki.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ff14.huijiwiki.com/wiki/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/extrant"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/extrant/I-Ching"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/extrant/I-Ching/refs/heads/main/%E5%8F%91%E5%8C%85%E5%B9%BB%E5%8D%A1.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+        "internalName": "AutoTriadC",
+        "manifestVersion": "0.0.0.2",
+        "observationId": 15134,
+        "observationKey": "manifest-fc590dd41d4e3ab01d2503774d55",
+        "repositoryUrl": "https://github.com/extrant/I-Ching",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 9227
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 305966
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-0d55066e443c52c9",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-637aac6c0483b9ca",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-9227",
+        "queueSeedRevision": "queue-seed-v2-49807259eeca1db5d4df",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
+        "targetFingerprint": "artifact-target-v2-d84a0a1f5015688df886",
+        "variantId": 9227,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-10T19:47:06Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/extrant/I-Ching"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/extrant/I-Ching",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 1,
+    "scanned_at_utc": "2026-09-10T19:47:06Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/extrant/I-Ching",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 9227
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+      "current_assembly_version": "0.0.0.2",
+      "current_scan_id": 1,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-10T19:47:07Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 9227
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 19,
+      "artifact_only_count": 19,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:autotriadc",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "AutoTriadC",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.0.0.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.3"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.9200"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:terrafx.interop.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "TerraFX.Interop.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.26100.5"
+          ]
+        },
+        {
+          "componentKey": "native:d3dcompiler_47",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3dcompiler_47.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-10T19:47:07Z",
+      "comparison_id": 1,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 1,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 9227,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "identityFingerprint": "991fa03731cf18d69cde0603c8f2c3fb8754a2f7e23f7b53e698dcd927c65707",
+    "observedAtUtc": "2026-09-10T20:40:15Z",
+    "reason": "current_analysis_replaced",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "superseded",
+    "supersededBy": {
+      "artifactSha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+      "identityFingerprint": "31c1dab66483e11c7776a2358c584f4f32c8c6ffbfe3b4662ae554ef34a141ab",
+      "scanId": 10
+    },
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "c878c0a17aa9513a6389340c38390cb1af5cc72f8350d24db024a040a0e8675d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "821783a77dad5f4046a8a8a4d8908b305cdf5d21109a0cbfe1b104e4b435156c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "330e29171b1e7090cd1bd3ad7ab3356c35755e3c6c26c72109f400747b2fcd7f",
+        "records": 19,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "b405a0b295e09762e4305ed5dd4f0ad6159a096c5bcd8b9a885ca32aa6a857dd",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "24411719d75076211397440cc1b194994113c8c5b6ecc4a5b764e96c9ddc596c",
+        "records": 6405,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "0bcd5b9c8038562a8f88a53367aeef1479eb2a415c256c8f3eaa5eaa38f48539",
+        "records": 1538,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "53ef8e80712e1157188c2853e13890b7010cc8eee7bf9e8c67b316b51f7d9683",
+        "records": 953,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "27c83ee26e45457a016a8e61b46829ed30eae504ad42cf65c714edbbc9f3848a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "d2585a3f4a936cdb26f31531efcef73b9aa49692a226dfb1b2632dcc631289db",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "afda1c2285915c7be8597097f10253840441f63585a32c82bfe53fba07ca9ebb",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "5f2aa6e3649024cd308c89c8cc32f0a9c29f65b3c39d2520862189476aeaf0cf",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "4d35dd7df027e82dd486f9842a473a54ea6224fb5464321b44f655941059c63c",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "c17dac4332a53e55574b5e8b48b2f0265f06110412c942075642d18c09bb946d",
+        "records": 48,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-79dfe54533590a9c672901e7a2e52276b7f63d063194382ea208142d0b81413a",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "AutoTriadC",
+    "first_seen_utc": "2026-09-10T19:32:18Z",
+    "internal_name": "AutoTriadC",
+    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "plugin_id": 1391
+  },
+  "pluginId": 1391,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "提供幻卡图鉴快速检索，提供检索未获取幻卡的获取信息。以及提供自动幻卡对局方案，和推荐卡组注入功能。",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1024,
+      "summary": "一个幻卡成就助手",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/extrant/I-Ching",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "My Dalamud Plugin",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "I-Ching",
+      "url": "https://github.com/extrant/I-Ching"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "3a74d00a565e9f2513df88e4435b95a923e505dd58909f9949c6dab37749cedb",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "5a25e6e6002c3d087f04db7bf585004e34418e09a194787b4e938e09c9afec7b",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "05cb8327cb232fff81a3c7b74647f8a12e4bf91afea69aaf264c5b7f84a66dc9",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "e3f89316d179d749c142f81f255755f8e4c816191b5cecf7c7cdf45569be9644",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+    "artifact_url": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+    "assembly_version": "0.0.0.2",
+    "capabilities_json": [
+      "Character target control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 1391,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+      "artifactBytes": 168874,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.2",
+        "artifactBytes": 168874,
+        "artifactSha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+        "catalogAssemblyVersion": "0.0.0.2",
+        "manifestInternalName": "AutoTriadC",
+        "manifestPath": "AutoTriadC.json",
+        "manifestRepositoryUrl": "https://github.com/extrant/I-Ching",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "afdian.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ff14.huijiwiki.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "afdian.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ff14.huijiwiki.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.target",
+        "game.memory.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 19,
+          "exactVersionObservedCount": 18,
+          "families": {
+            "managed-assembly": 18,
+            "native": 1
+          },
+          "fingerprint": "551bebdf26d396bddba5b1c71a45deef4be7a5ba4be3014b9e619ebc22c6f9e2",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 1,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "AutoTriadC.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D3DCompile",
+              "library": "d3dcompiler_47.dll",
+              "managedName": "D3DCompile",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 18
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 19,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 18,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 19
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 6,
+          "destinationsUndetermined": false,
+          "hostCount": 5,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "afdian.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ff14.huijiwiki.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 7,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "afdian.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://afdian.com/a/Sincraft0515"
+          },
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/g8QKPAnCBa"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ff14.huijiwiki.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ff14.huijiwiki.com/wiki/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/extrant"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/extrant/I-Ching"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/extrant/I-Ching/refs/heads/main/%E5%8F%91%E5%8C%85%E5%B9%BB%E5%8D%A1.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+        "internalName": "AutoTriadC",
+        "manifestVersion": "0.0.0.2",
+        "observationId": 15134,
+        "observationKey": "manifest-fc590dd41d4e3ab01d2503774d55",
+        "repositoryUrl": "https://github.com/extrant/I-Ching",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 9227
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 305966
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-0d55066e443c52c9",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-637aac6c0483b9ca",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-9227",
+        "queueSeedRevision": "queue-seed-v2-49807259eeca1db5d4df",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
+        "targetFingerprint": "artifact-target-v2-d84a0a1f5015688df886",
+        "variantId": 9227,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-10T19:47:06Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5047b7a39244ae8bd6387ee3731af568d636ebaecbbb52b854f1954a70206e2d",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/extrant/I-Ching"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/extrant/I-Ching",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 1,
+    "scanned_at_utc": "2026-09-10T19:47:06Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 608,
+    "source_repository": "https://github.com/extrant/I-Ching",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 9227
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "b4690d06d426c783b9c0df5e35066ca79980a00889fc84d7c5dac533d18fa410",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"77165ce45753803749a3d7636e7de11e6d879412eae41adc2fc0e84f0809b1c5\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-10T19:32:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-10T19:32:18Z",
+    "name": "extrant/DalamudPlugins",
+    "plugin_count": 7,
+    "provider": "extrant/DalamudPlugins",
+    "source_id": 608,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/extrant/DalamudPlugins/main/pluginmaster.json"
+  },
+  "sourceId": 608,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.0.0.2",
+    "author": "Siren",
+    "authors_json": [
+      "Siren"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "提供幻卡图鉴快速检索，提供检索未获取幻卡的获取信息。以及提供自动幻卡对局方案，和推荐卡组注入功能。",
+    "dip17_channel": "",
+    "download_count": 114514,
+    "download_link_install": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+    "first_seen_utc": "2026-09-10T19:32:18Z",
+    "icon_url": "https://raw.githubusercontent.com/extrant/I-Ching/refs/heads/main/%E5%8F%91%E5%8C%85%E5%B9%BB%E5%8D%A1.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "AutoTriadC",
+    "plugin_id": 1391,
+    "punchline": "一个幻卡成就助手",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.0.0.2",
+      "Author": "Siren",
+      "DalamudApiLevel": 15,
+      "Description": "提供幻卡图鉴快速检索，提供检索未获取幻卡的获取信息。以及提供自动幻卡对局方案，和推荐卡组注入功能。",
+      "DownloadCount": 114514,
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/extrant/I-Ching/main/AutoTriadC.zip",
+      "IconUrl": "https://raw.githubusercontent.com/extrant/I-Ching/refs/heads/main/%E5%8F%91%E5%8C%85%E5%B9%BB%E5%8D%A1.png",
+      "InternalName": "AutoTriadC",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "LastUpdate": 0,
+      "Name": "AutoTriadC",
+      "Punchline": "一个幻卡成就助手",
+      "RepoUrl": "https://github.com/extrant/I-Ching",
+      "TestingDalamudApiLevel": 15
+    },
+    "repo_url": "https://github.com/extrant/I-Ching",
+    "source_entry_key": "autotriadc|0.0.0.2|15|15|6",
+    "source_id": 608,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": 15,
+    "variant_id": 9227
+  },
+  "variantId": 9227
+}
