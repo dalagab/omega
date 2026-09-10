@@ -256,20 +256,20 @@
       intro.className = 'mt-5 max-w-3xl text-lg leading-8 text-slate-300';
       heading.insertAdjacentElement('afterend', intro);
     }
-    if (intro) intro.textContent = 'Omega is a small project built by people who care about different parts of it: the player experience, the code and automation behind it, and security. Everyone brings something different; the goal is the same: make the FFXIV plugin world easier to explore and easier to understand.';
+    if (intro) intro.textContent = 'Omega is a small project. Some of us work on the plugin and website, some keep the behind-the-scenes stuff running, and some focus on security. We all want the same thing: make FFXIV plugins easier to find and easier to understand.';
 
     const cards = team.querySelectorAll('article');
     if (cards[0]) {
       const title = cards[0].querySelector('h3');
       const p = cards[0].querySelector('p:last-of-type');
       if (title) title.textContent = 'The data gremlin.';
-      if (p) p.textContent = 'Omega’s mascot and resident data gremlin. TONI is the face of the part that digs through plugin info, spots odd details, and turns piles of data into something useful.';
+      if (p) p.textContent = 'Omega’s mascot and resident data gremlin. TONI represents the part of Omega that digs through plugin info, spots odd details, and turns piles of data into something useful.';
     }
     if (cards[1]) {
       const title = cards[1].querySelector('h3');
       const p = cards[1].querySelector('p:last-of-type');
       if (title) title.textContent = 'Project lead.';
-      if (p) p.textContent = 'Started Omega and keeps the project moving. Works across the plugin, website, automation, and player experience alongside the other people contributing.';
+      if (p) p.textContent = 'Started Omega and helps keep the project moving. Works across the plugin, website, automation, and player experience alongside the rest of the team.';
     }
     if (cards[2]) {
       const label = cards[2].querySelector('p:first-of-type');
