@@ -1,0 +1,263 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TTSL/Configuration.cs: http://127.0.0.1:6942/",
+      "source:TTSL/Plugin.cs: http://127.0.0.1:6942/",
+      "source:TTSL/Windows/ConfigWindow.cs: http://127.0.0.1:6942/",
+      "source:TTSL/Windows/SetupWizardWindow.cs: http://127.0.0.1:6942/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.5a8ef15895aa",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.dll: http://127.0.0.1:6942/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.822979c73fe5",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "source:TTSL/Plugin.cs: p://127.0.0.1:6942",
+      "source:TTSL/Plugin.cs: p://127.0.0.1:69420",
+      "source:TTSL/Plugin.cs: p://localhost:69420",
+      "source:TTSL/Plugin.cs: p://",
+      "source:TTSL/Plugin.cs: s://",
+      "source:TTSL/Plugin.cs: p://{trimmed}"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:TTSL.dll: DllImportAttribute",
+      "metadata:WinRT.Runtime.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:WinRT.Runtime.dll: DllImportAttribute",
+      "metadata:WinRT.Runtime.dll: GetProcAddress",
+      "metadata:WinRT.Runtime.dll: LoadLibrary",
+      "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x17: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary",
+      "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x66: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+      "il:WinRT.Runtime.dll:WinRT.DllModule..ctor+0x33: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WinRT.Runtime.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.dll: https://ko-fi.com/mcvaxius"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.226f7ad8215b",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TTSL/PluginInfo.cs: https://ko-fi.com/mcvaxius"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c56becac0f92",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:TTSL.dll: Socket.Connect",
+      "il:TTSL.dll:<RunCctvWebSocketAsync>d__71.MoveNext+0xbd: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "source:TTSL/Services/RemoteHudPublisherService.cs: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:TTSL.dll: System.Diagnostics.Process",
+      "metadata:TTSL.dll: ProcessStartInfo",
+      "metadata:TTSL.dll: ShellExecute",
+      "metadata:TTSL.dll: Process.Start",
+      "il:TTSL.dll:TTSL.Plugin.OpenRemoteViewer+0x24: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:TTSL.dll:TTSL.Plugin.OpenRemoteViewer+0x24: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:TTSL.dll:TTSL.Plugin.OpenRemoteViewer+0x2b: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:TTSL.dll:TTSL.Plugin.OpenRemoteViewer+0x2b: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "source:TTSL/Plugin.cs: Process.Start",
+      "source:TTSL/Plugin.cs: ProcessStartInfo",
+      "source:TTSL/Plugin.cs: ShellExecute",
+      "source:TTSL/Windows/ConfigWindow.cs: Process.Start",
+      "source:TTSL/Windows/ConfigWindow.cs: ProcessStartInfo",
+      "source:TTSL/Windows/ConfigWindow.cs: ShellExecute",
+      "source:TTSL/Windows/MainWindow.cs: Process.Start",
+      "source:TTSL/Windows/MainWindow.cs: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TTSL/PluginInfo.cs: https://discord.gg/VsXqydsvpu"
+    ],
+    "rule_id": "network.endpoint.community-invite.43450d454f08",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.dll: https://discord.gg/VsXqydsvpu"
+    ],
+    "rule_id": "network.endpoint.community-invite.d81f3d73dea6",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TTSL/Services/RemoteHudPublisherService.cs: https://na.finalfantasyxiv.com/lodestone/character/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.1cf4472e77a9",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.dll: https://na.finalfantasyxiv.com/lodestone/character/22423564/blog/4393835"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.375e0a062bde",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TTSL/Windows/ConfigWindow.cs: https://na.finalfantasyxiv.com/lodestone/character/22423564/blog/4393835"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.ea079e93b318",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.dll: https://github.com/McVaxius/TTSL/releases/latest"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.31f43e12fc86",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:TTSL/TTSL.json: https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.60047584405d",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.json: https://github.com/McVaxius/TTSL"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6bc49b8f4f70",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TTSL.dll: https://github.com/McVaxius/TTSL"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e657192a230f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:TTSL.dll: System.Net.Http.HttpClient",
+      "il:TTSL.dll:TTSL.Services.RemoteHudPublisherService..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:TTSL.dll:TTSL.Services.RemoteHudPublisherService..ctor+0xc: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:TTSL.dll:<CaptureAndUploadScreenshotAsync>d__127.MoveNext+0x364: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+      "il:TTSL.dll:<SendAsync>d__107`1.MoveNext+0xdf: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+      "il:TTSL.dll:<UploadCharacterVisualAsync>d__122.MoveNext+0x11f: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
