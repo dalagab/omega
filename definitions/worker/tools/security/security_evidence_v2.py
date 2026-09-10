@@ -36,6 +36,10 @@ FORMAT_VERSION = 2
 DEFAULT_CHUNK_BYTES = 16 * 1024 * 1024
 MAX_PUBLISH_FILE_BYTES = 32 * 1024 * 1024
 DEFAULT_INLINE_DATASET_BYTES = 4 * 1024 * 1024
+IDENTITY_INDEX_LEGACY_SCHEMA = "omega.security-evidence.identities.v2"
+IDENTITY_INDEX_SCHEMA = "omega.security-evidence.identities.v3"
+IDENTITY_INDEX_STORAGE = "sharded-jsonl-gzip"
+IDENTITY_DATASETS = ("plugins", "plugin_variants", "sources")
 JSON_COLUMNS_SUFFIX = "_json"
 NUGET_KINDS = ("nuget", "nuget-lock", "nuget-resolved")
 
@@ -1683,6 +1687,45 @@ def validate_snapshot(
             errors.append(f"{label}: record count mismatch declared={declared_records}, read={count}")
         if str(dataset.get("recordDigest") or "") != digest:
             errors.append(f"{label}: semantic record digest mismatch")
+
+    identities_entry = indexes.get("identities") if isinstance(indexes.get("identities"), dict) else {}
+    if identities_entry:
+        try:
+            identities = read_json_file(root, str(identities_entry.get("path") or ""))
+            identity_schema = str(identities.get("schema") or "")
+            if identity_schema not in {IDENTITY_INDEX_LEGACY_SCHEMA, IDENTITY_INDEX_SCHEMA}:
+                errors.append(f"identities index has an unsupported schema: {identity_schema!r}")
+            elif identity_schema == IDENTITY_INDEX_LEGACY_SCHEMA:
+                for name in IDENTITY_DATASETS:
+                    if not isinstance(identities.get(name), list):
+                        errors.append(f"identities legacy dataset {name} is not an array")
+            else:
+                if str(identities.get("storage") or "") != IDENTITY_INDEX_STORAGE:
+                    errors.append("identities v3 has an unsupported storage mode")
+                if identities_entry.get("identitySchema") and str(identities_entry.get("identitySchema")) != identity_schema:
+                    errors.append("identities root schema descriptor mismatch")
+                if identities_entry.get("storage") and str(identities_entry.get("storage")) != IDENTITY_INDEX_STORAGE:
+                    errors.append("identities root storage descriptor mismatch")
+                datasets = identities.get("datasets") if isinstance(identities.get("datasets"), dict) else {}
+                counts = identities.get("counts") if isinstance(identities.get("counts"), dict) else {}
+                root_counts = identities_entry.get("counts") if isinstance(identities_entry.get("counts"), dict) else {}
+                if root_counts and root_counts != counts:
+                    errors.append("identities root counts descriptor mismatch")
+                total_records = 0
+                for name in IDENTITY_DATASETS:
+                    descriptor = datasets.get(name) if isinstance(datasets.get(name), dict) else {}
+                    if not descriptor:
+                        errors.append(f"identities v3 dataset {name} is missing")
+                        continue
+                    validate_record_descriptor(f"identities/{name}", descriptor)
+                    declared = int(descriptor.get("records") or 0)
+                    total_records += declared
+                    if int(counts.get(name) or 0) != declared:
+                        errors.append(f"identities {name} count mismatch")
+                if "records" in identities_entry and int(identities_entry.get("records") or 0) != total_records:
+                    errors.append("identities root record count mismatch")
+        except Exception as exc:
+            errors.append(f"identities index unreadable: {type(exc).__name__}: {exc}")
 
     for entry in plugin_entries:
         try:

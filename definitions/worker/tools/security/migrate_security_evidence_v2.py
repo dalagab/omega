@@ -44,6 +44,9 @@ import plugin_dependency_graph  # noqa: E402
 from security_evidence_v2 import (  # noqa: E402
     CORE_DATASETS,
     DEFAULT_CHUNK_BYTES,
+    IDENTITY_DATASETS,
+    IDENTITY_INDEX_SCHEMA,
+    IDENTITY_INDEX_STORAGE,
     FORMAT_VERSION,
     LARGE_DATASETS,
     NUGET_KINDS,
@@ -411,18 +414,77 @@ def _derived_for_variant(db: sqlite3.Connection, scan_id: int, variant_id: int) 
     return result
 
 
-def _export_identity_index(db: sqlite3.Connection, output: Path) -> dict[str, Any]:
-    payload: dict[str, Any] = {"schema": "omega.security-evidence.identities.v2"}
-    for table in ("plugins", "plugin_variants", "sources"):
-        if table_exists(db, table):
-            pk = primary_key_column(db, table)
-            order = f' ORDER BY "{pk}"' if pk else ""
-            payload[table] = [normalize_row(row) for row in db.execute(f'SELECT * FROM "{table}"{order}')]
-        else:
-            payload[table] = []
+def _export_identity_dataset(
+    db: sqlite3.Connection,
+    output: Path,
+    directory: Path,
+    table: str,
+    *,
+    chunk_bytes: int,
+) -> dict[str, Any]:
+    row_hashes: list[str] = []
+    writer = JsonlGzipChunkWriter(
+        directory,
+        table.replace("_", "-"),
+        target_bytes=chunk_bytes,
+    )
+    if table_exists(db, table):
+        pk = primary_key_column(db, table)
+        order = f' ORDER BY "{pk}"' if pk else ""
+        for row in db.execute(f'SELECT * FROM "{table}"{order}'):
+            normalized = normalize_row(row)
+            row_hashes.append(sha256_bytes(canonical_json_bytes(normalized)))
+            writer.write(normalized)
+    chunks = writer.close()
+    count, record_digest = dataset_record_digest_from_hashes(row_hashes)
+    return {
+        "records": count,
+        "recordDigest": record_digest,
+        "files": [
+            file_entry(
+                output,
+                directory / chunk.path,
+                records=chunk.records,
+                record_digest=chunk.record_digest,
+                encoding=chunk.encoding,
+            )
+            for chunk in chunks
+        ],
+    }
+
+
+def _export_identity_index(
+    db: sqlite3.Connection,
+    output: Path,
+    *,
+    chunk_bytes: int = DEFAULT_CHUNK_BYTES,
+) -> dict[str, Any]:
+    identity_dir = output / "indexes" / "identities"
+    if identity_dir.exists():
+        shutil.rmtree(identity_dir)
+    identity_dir.mkdir(parents=True, exist_ok=True)
+    datasets = {
+        table: _export_identity_dataset(
+            db, output, identity_dir, table, chunk_bytes=chunk_bytes
+        )
+        for table in IDENTITY_DATASETS
+    }
+    counts = {table: int(datasets[table].get("records") or 0) for table in IDENTITY_DATASETS}
+    payload: dict[str, Any] = {
+        "schema": IDENTITY_INDEX_SCHEMA,
+        "storage": IDENTITY_INDEX_STORAGE,
+        "counts": counts,
+        "datasets": datasets,
+    }
     path = output / "indexes" / "identities.json"
     _write_json(path, payload)
-    return file_entry(output, path, encoding="json")
+    entry = file_entry(output, path, records=sum(counts.values()), encoding="json")
+    entry.update({
+        "identitySchema": IDENTITY_INDEX_SCHEMA,
+        "storage": IDENTITY_INDEX_STORAGE,
+        "counts": counts,
+    })
+    return entry
 
 
 def _export_nuget_index(db: sqlite3.Connection, output: Path) -> tuple[dict[str, Any], int]:
@@ -926,7 +988,7 @@ def migrate(
             _save_state(output, state)
             print(f"[{position}/{len(current_rows)}] variant {variant_id}: scan {scan_id} -> {analysis_id[:12] or 'no-analysis'}", flush=True)
 
-        identity_entry = _export_identity_index(db, output)
+        identity_entry = _export_identity_index(db, output, chunk_bytes=chunk_bytes)
         nuget_entry, nuget_count = _export_nuget_index(db, output)
         plugin_dependency_entry, plugin_dependency_edge_count, plugin_dependency_provider_count, plugin_dependency_unresolved_count, plugin_dependency_blocked_required_count, dependency_graph_revision = (
             _export_plugin_dependency_graph(db, output)
