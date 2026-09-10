@@ -1,0 +1,470 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Foretell.dll:BossMod.ActionManagerEx.ExecuteAction+0x6a: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseActionLocation",
+      "il:Foretell.dll:BossMod.ActionManagerEx.ExecuteAction+0x87: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseActionLocation",
+      "il:Foretell.dll:BossMod.ActionManagerEx.ExecuteAction+0x15c: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseActionLocation",
+      "il:Foretell.dll:BossMod.ActionManagerEx.UpdateDetour+0x4d6: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Foretell.dll:BossMod.DebugObjects.ObjectContextMenu+0x3d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Foretell.dll:BossMod.DebugObjects.ObjectContextMenu+0x19: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:Foretell.dll:BossMod.MainDebugWindow.DrawTargets+0x211: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Foretell.dll:Clipper2Lib.ClipperOffset.OffsetPoint+0xa4: callvirt DeltaCallback64.Invoke",
+      "il:Foretell.dll:Clipper2Lib.ClipperOffset.OffsetOpenPath+0x2c: callvirt DeltaCallback64.Invoke",
+      "il:Foretell.dll:Clipper2Lib.ClipperOffset.OffsetOpenPath+0x12e: callvirt DeltaCallback64.Invoke",
+      "il:Foretell.dll:Clipper2Lib.ClipperOffset.DoGroupOffset+0x18b: callvirt DeltaCallback64.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Foretell.dll: \\\\q\\\\",
+      "artifact:Foretell.dll: \\\\0\\\\P\\\\pp\\",
+      "artifact:Foretell.dll: \\\\Q\\\\1\\\\",
+      "artifact:Foretell.dll: \\\\q\\QQ\\11\\",
+      "artifact:Foretell.dll: \\\\`\\\\",
+      "artifact:Foretell.dll: \\\\bB\\BDD",
+      "artifact:Foretell.dll: C:\\:%t%",
+      "artifact:Foretell.dll: s://discord.gg/p54TZMPnC9"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Foretell.dll: SigScanner",
+      "metadata:Foretell.dll: Dalamud.Hooking",
+      "metadata:Foretell.dll: HookFromAddress",
+      "il:Foretell.dll:BossMod.DebugMapEffect..ctor+0x1: call BossMod.Service.get_SigScanner: SigScanner",
+      "il:Foretell.dll:BossMod.DebugMapEffect..ctor+0xb: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:Foretell.dll:BossMod.ActionManagerEx..ctor+0x1c6: call BossMod.Service.get_SigScanner: SigScanner",
+      "il:Foretell.dll:BossMod.ActionManagerEx..ctor+0x1d0: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:Foretell.dll:BossMod.ActionManagerEx..ctor+0x211: call BossMod.Service.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Foretell.dll: TcpListener",
+      "artifact:Foretell.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Foretell.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Foretell.dll: DllImportAttribute",
+      "metadata:PInvoke.User32.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:PInvoke.User32.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: http://ocsp.digicert.com0k/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.40e6221be78d",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0k"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    ],
+    "rule_id": "network.endpoint.insecure-http.4138c24d8c38",
+    "severity": "caution",
+    "title": "Endpoint: schemas.openxmlformats.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: http://purl.oclc.org/ooxml/spreadsheetml/main"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5273ae749cc5",
+    "severity": "caution",
+    "title": "Endpoint: purl.oclc.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    ],
+    "rule_id": "network.endpoint.insecure-http.cfccc69e2a16",
+    "severity": "caution",
+    "title": "Endpoint: schemas.openxmlformats.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: http://purl.oclc.org/ooxml/officeDocument/relationships"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d80dffa8548c",
+    "severity": "caution",
+    "title": "Endpoint: purl.oclc.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://huggingface.co/ibm-granite/granite-4.1-3b-GGUF/resolve/<redacted>/granite-4.1-3b-Q4_K_M.gguf"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.138b4c1cf4f7",
+    "severity": "caution",
+    "title": "Endpoint: huggingface.co"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/<redacted>/gemma-4-E2B-it-Q4_K_M.gguf"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1f3fc9160b1c",
+    "severity": "caution",
+    "title": "Endpoint: huggingface.co"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://ffxiv.gamerescape.com/w/index.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4bf8736efe58",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.gamerescape.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: https://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5a592d877451",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://ffxiv.gamerescape.com/w/api.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.71269f4739b9",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.gamerescape.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://docs.google.com/spreadsheets/d/<redacted>/export"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7b71c590a8ed",
+    "severity": "caution",
+    "title": "Endpoint: docs.google.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://forms.gle/z6czgekaEnFBtgbB6"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9350d6571ffe",
+    "severity": "caution",
+    "title": "Endpoint: forms.gle"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://ffxiv.consolegameswiki.com/mediawiki/index.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.964ab77789a5",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.consolegameswiki.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://docs.google.com/spreadsheets/d/<redacted>/edit"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cd52502ec2f1",
+    "severity": "caution",
+    "title": "Endpoint: docs.google.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/<redacted>/Qwen3.5-4B-Q4_K_M.gguf"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d56f3790a6f4",
+    "severity": "caution",
+    "title": "Endpoint: huggingface.co"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://ravensreminders.com/tldr-guides/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f94884f8ea55",
+    "severity": "caution",
+    "title": "Endpoint: ravensreminders.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://ffxiv.consolegameswiki.com/mediawiki/api.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fdd8416ba714",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.consolegameswiki.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Foretell.dll: System.Net.Sockets",
+      "artifact:Foretell.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Foretell.dll: System.Diagnostics.Process",
+      "metadata:Foretell.dll: ProcessStartInfo",
+      "metadata:Foretell.dll: ShellExecute",
+      "metadata:Foretell.dll: Process.Start",
+      "il:Foretell.dll:BossMod.AboutTab.OpenLink+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Foretell.dll:BossMod.AboutTab.OpenLink+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Foretell.dll:BossMod.AboutTab.OpenLink+0x8: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:Foretell.dll:BossMod.AboutTab.OpenLink+0x8: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Foretell.dll: FileStream",
+      "metadata:Foretell.dll: File.Move",
+      "metadata:Foretell.dll: File.Delete",
+      "metadata:Foretell.dll: Directory.CreateDirectory",
+      "metadata:Foretell.dll: WriteAllText",
+      "metadata:Foretell.dll: WriteAllBytes",
+      "il:Foretell.dll:BossMod.ConfigConverter.ConvertV9Plans+0x3e: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Foretell.dll:BossMod.ConfigConverter.ConvertV9Plans+0x1ee: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://discord.gg/p54TZMPnC9"
+    ],
+    "rule_id": "network.endpoint.community-invite.8b38a8095be9",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://github.com/ggml-org/llama.cpp/releases/download/b10809/llama-b10809-bin-win-cpu-x64.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.18eccb581c79",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://github.com/awgil/ffxiv_bossmod/wiki"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1e2d7aefeb70",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://github.com/FFXIV-CombatReborn/BossmodReborn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.434a19c0e707",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://github.com/ggml-org/llama.cpp/releases/download/b10809/llama-b10809-bin-win-vulkan-x64.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.470b82c99f3b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.dll: https://github.com/Arceuid731/Foretell"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4c8be4099869",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Foretell.json: https://github.com/Arceuid731/Foretell"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a0563ecc103f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PInvoke.User32.dll: https://github.com/dotnet/pinvoke"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d438351c5d4a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Foretell.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
