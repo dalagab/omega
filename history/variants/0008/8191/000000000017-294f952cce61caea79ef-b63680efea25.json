@@ -1,0 +1,1788 @@
+{
+  "analysis": {
+    "analysisId": "950671de984bfcae728ea13954ae2434ae7b5c7c5928ab95732f75630c257421",
+    "artifactSha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+    "path": "artifacts/29/294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1/analyses/950671de984bfcae728ea13954ae2434ae7b5c7c5928ab95732f75630c257421",
+    "recordCount": 100
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+    "artifact_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+    "assembly_version": "3.2.3.1",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:WinRT.Runtime.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:WinRT.Runtime.dll: DllImportAttribute",
+          "metadata:WinRT.Runtime.dll: GetProcAddress",
+          "metadata:WinRT.Runtime.dll: LoadLibrary",
+          "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x17: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary",
+          "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x66: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+          "il:WinRT.Runtime.dll:WinRT.DllModule..ctor+0x33: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+          "il:WinRT.Runtime.dll:WinRT.ExceptionHelpers.Initialize+0xf: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:KamiToolKit.dll: Dalamud.Hooking",
+          "metadata:KamiToolKit.dll: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.InitializeCloseCallback+0x37: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.Classes.Controllers.NativeListController.LoadPopulators+0x3a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.Classes.Controllers.NativeListController.LoadPopulators+0x7d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:KamiToolKit.dll: Dalamud.Hooking",
+          "artifact:KamiToolKit.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:KamiToolKit.dll: s://github.com/dajoey/lalalazy.git",
+          "artifact:KamiToolKit.dll: C:\\temp\\lwt-3231-wt\\src\\LazyWTMath\\KamiToolKit\\KamiToolKitLibrary.cs",
+          "artifact:KamiToolKit.dll: C:\\temp\\lwt-3231-wt\\src\\LazyWTMath\\KamiToolKit\\NodeBase\\NodeBase.cs",
+          "artifact:KamiToolKit.dll: C:\\temp\\lwt-3231-wt\\src\\LazyWTMath\\KamiToolKit\\NodeBase\\NodeBase.Linking.cs",
+          "artifact:LazyWTMath.dll: s://github.com/dajoey/lalalazy.git",
+          "artifact:LazyWTMath.dll: s://github.com/dajoey/lalalazy/blob/main/",
+          "artifact:SixLabors.ImageSharp.dll: s://github.com/SixLabors/ImageSharp",
+          "artifact:SixLabors.ImageSharp.dll: p://ns.adobe.com/xap/1.0/"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x80: callvirt FireCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:KamiToolKit.dll: FileStream",
+          "metadata:KamiToolKit.dll: WriteAllText",
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.SaveAddonConfig+0x41: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+          "artifact:KamiToolKit.dll: WriteAllText",
+          "artifact:KamiToolKit.dll: FileStream",
+          "metadata:LazyWTMath.dll: Directory.CreateDirectory",
+          "metadata:LazyWTMath.dll: WriteAllText",
+          "il:LazyWTMath.dll:Lalalazy.Changelog.SidecarSeenStore.Set+0xb: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+      "artifactBytes": 7642918,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.2.3.1",
+        "artifactBytes": 7642918,
+        "artifactSha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+        "catalogAssemblyVersion": "3.2.3.1",
+        "manifestInternalName": "",
+        "manifestPath": "LazyWTMath.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 5,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 5,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke"
+      ],
+      "capabilityIds": [
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": false,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+        "internalName": "LazyWTMath",
+        "manifestVersion": "3.2.3.1",
+        "observationId": 13458,
+        "observationKey": "manifest-87b7632013f4b2f751596be9908d",
+        "repositoryUrl": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8191
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 5,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 14,
+        "uncompressedBytes": 29496011
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+        "attemptId": "attempt-v2-60b54fb77a577580",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-83c2a7d06f288086",
+        "definitionsRevision": "defs-v1-bd39a35f9d247d4e",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8191",
+        "queueSeedRevision": "queue-seed-v2-d917e5bcb646432ea6ed",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+        "scannerBundleSha256": "888156b7764e1db7aa8eef82c0f79d2276d9d4281bb10f45fb6716f179857bed",
+        "scannerRevision": "scanner-v1-b7892db814c2ec40",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+        "sourceObservationRevision": "source-observations-v1-9995179eff482d4d",
+        "targetFingerprint": "source-target-v2-3ee6a9af89d4d4ac1119",
+        "variantId": 8191,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-08T05:21:34Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/dajoey/lalalazy"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/dajoey/lalalazy: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/dajoey/lalalazy",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 17,
+    "scanned_at_utc": "2026-09-08T05:21:34Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/dajoey/lalalazy",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8191
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+      "current_assembly_version": "3.2.3.1",
+      "current_scan_id": 17,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-08T05:21:34Z",
+      "previous_artifact_sha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+      "previous_assembly_version": "3.2.3.1",
+      "previous_scan_id": 8,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 8191
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 42,
+      "artifact_only_count": 42,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.51.0.8798"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:kamitoolkit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KamiToolKit",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lazywtmath",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "LazyWTMath",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "3.2.3.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.windows.sdk.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Microsoft.Windows.SDK.NET.dll",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sixlabors.imagesharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SixLabors.ImageSharp",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.compilerservices.unsafe",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography.algorithms",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography.Algorithms",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.codepages",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.CodePages",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xdocument",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:winrt.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "WinRT.Runtime",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:api-ms-win-core-com-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-com-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-com-l1-1-1",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-com-l1-1-1.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-winrt-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-winrt-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-winrt-string-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-winrt-string-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mono-2.0-bdwgc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mono-2.0-bdwgc.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:oleaut32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "oleaut32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-08T05:21:34Z",
+      "comparison_id": 16,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 17,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 8191,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "identityFingerprint": "b63680efea251d8e8044be9f8a031817c8e50a2914e766d95270cf90f1432650",
+    "observedAtUtc": "2026-09-11T00:26:26Z",
+    "reason": "current_analysis_replaced",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "superseded",
+    "supersededBy": {
+      "artifactSha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+      "identityFingerprint": "3c35ea4a3c04871eafe272a1c5fb2999005e8689b9694be85aa88d91ca5040db",
+      "scanId": 92198
+    },
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "78def6a9b6437d85a6f6e87b44d4be1f685ff5fb611bcd28a99357258236eede",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "8ffd3a8fb38656a5b0098b66ca8a9bb74e2b542956222955f4c0c860192e9f7d",
+        "records": 66,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "e65b204d99cf78128614c3bdcfb2dfe042a4e2eeac80e14c50e52d4d37f5c6f9",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "d80a6a7a163b28647d28c8f887361355be8b1f01704a0a03e30632c2f6d04c9a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "eff37a689022aae12ec4c57cbe1de2d03ab1190e6041a00495a3d7aaed25a309",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-2d2e40021575fe14907563779c8696db752acc187664111ba373d0f0e6351f0d",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Lazy WT Math",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "LazyWTMath",
+    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "plugin_id": 818
+  },
+  "pluginId": 818,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Upgraded for modern FFXIV.",
+      "images": [
+        "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/repo-icon.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 11177,
+      "summary": "FFXIV Wondrous Tails probability calculator.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "FFXIV Dalamud plugin repository",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/repo-icon.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/dajoey/lalalazy"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# ![](https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/repo-icon.png)\n\n# lalalazy — FFXIV Dalamud Plugins\n\nA collection of Dalamud plugins for Final Fantasy XIV, maintained by [dajoey](https://github.com/dajoey).\n\n## Plugins\n\n| Plugin | Description | Status |\n|--------|-------------|--------|\n| **Gluttony Combo** | XIVCombo for very lazy players. Condenses combos and mutually exclusive abilities onto a single button — and then some. Fork of Wrath Combo. | Active |\n| **PvP Solver** | Auto-rotation for PvP combat. All jobs. Activates automatically in PvP zones. Designed to run alongside Gluttony Combo. | Active |\n| **Dagobert Price Matcher** | Matches market board prices instead of undercutting. Default match amount: 0 (exact match). | Active |\n| **AutoPotion** | Auto-uses HP potions and deep dungeon regen potions at configurable HP thresholds. | Active |\n| **Armoire Auto-Fill** | Per-dungeon view of armoire-eligible gear pieces you're still missing. Detects in-armoire, in-inventory, and equipped state. | Active |\n| **Lazy WT Math** | Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Fork of EzWondrousTails. | Active |\n| **Lazy Currency Spender** | Finds the best way to spend your tomestones, scrips, and Poetics — backed by live Universalis market prices. Surfaces tomestone gear and missing collectibles you can buy. Fork of CurrencySpender. | Active |\n| **Lazy Fate Automation** | Fully automated FATE grinding utilizing vnavmesh, lifestream, and Gluttony Combo. | Active |\n| **Lazy Skyward Tracker** | Track your Skybuilders' (Skyward) points for all jobs toward the Pteranodon mount. | Active |\n| **LazyFoodBuff** | Auto-eats food in combat duties incl. deep dungeons. Per-job food selection, auto-select based on best stats, and a low-food (running-out) warning. | Active |\n| **LazyOccultCrescent** | Occult Crescent field companion covering South Horn and North Horn. Treasure and Fortune Carrot radar with optimal routes, live FATE/CE tracking, aethernet teleports, currency and EXP per hour, and an optional FATE/CE/mob farm loop. Fork of BOCCHI (AGPLv3). | Active |\n\n## Installation\n\n\nAdd this custom plugin repository URL in Dalamud:\n\n```\nhttps://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json\n```\n\n1. In-game, type `/xlsettings` and go to the **Experimental** tab\n2. Scroll to **Custom Plugin Repositories**\n3. Paste the URL above into the text field and click **+**\n4. Click the **Save** icon (bottom-right)\n5. Plugins will appear in the **Available Plugins** tab in `/xlplugins`\n\n> **Note:** Gluttony Combo replaces Wrath Combo. Disable Wrath Combo before installing Gluttony Combo — they cannot be loaded at the same time.\n\n## Credits & Origins\n\n### Gluttony Combo\nFork of [WrathCombo](https://github.com/PunishXIV/WrathCombo) by Team Wrath / PunishXIV. Licensed under GPLv3. Lalalazy-branded fork with custom improvements including healer raidwide mitigation overlap protection and ground-targeted heal auto-placement on tanks.\n\n### PvP Solver\nFork of [RotationSolverReborn](https://github.com/FFXIV-CombatReborn/RotationSolverReborn) by ArchiDog1998 / FFXIV-CombatReborn. Licensed under GPLv3. Rewired for PvP-only operation — PvE rotations stripped, action IDs remapped to PvP equivalents. Designed to run alongside Gluttony Combo for PvE coverage.\n\n### Dagobert Price Matcher\nFork of [Dagobert](https://github.com/SHOEGAZEssb/Dagobert) by SHOEGAZEssb. Licensed under AGPLv3. Changed default price behavior from undercutting to exact matching.\n\n### AutoPotion\nOriginal plugin by dajoey. Built from scratch using the Dalamud plugin SDK.\n\n### Armoire Auto-Fill\nOriginal plugin by dajoey. Reads the in-game Cabinet sheet for the canonical armoire-eligible item list, joined with [LuminaSupplemental.Excel](https://github.com/Critical-Impact/LuminaSupplemental) (GPL-3.0, by Critical-Impact) for dungeon drop attribution. Cabinet observation technique inspired by [seventhxiv/Collections](https://github.com/seventhxiv/Collections).\n\n## Build\n\nEach plugin builds with the Dalamud SDK (.NET 10 SDK required). See individual plugin READMEs in `src/` for details.\n\n```bash\ncd src/GluttonyCombo && dotnet build --configuration Release\ncd src/PvPSolver && dotnet build --configuration Release\ncd src/DagobertPriceMatcher && dotnet build --configuration Release\ncd src/AutoPotion && dotnet build --configuration Release\ncd src/ArmoireAutoFill && dotnet build --configuration Release\ncd src/LazyWTMath && dotnet build --configuration Release\ncd src/LazyCurrencySpender && dotnet build --configuration Release\ncd src/LazyFateAutomation && dotnet build --configuration Release\ncd src/LazySkywardTracker && dotnet build --configuration Release\ncd src/LazyGearCollector && dotnet build --configuration Release\ncd src/LazyFoodBuff/LazyFoodBuff && dotnet build --configuration Release\ncd src/LazyOccultCrescent/LazyOccultCrescent && dotnet build --configuration Release\n\n```\n\n## License\n\nIndividual plugins retain the licenses of their origin projects. See `COPYING` / `LICENSE` files in each `src/` subdirectory.",
+      "title": "lalalazy",
+      "url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "07fbe1d832c698567e743f245f941664f636c8c16cc2c4e1167b2b74ea287b90",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "53e5db8a4e268df7b8ba0340eeecd9e11b25f03012e40bdc2e5e78d0b8d072bd",
+        "records": 5
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "29d8a64896ba59d838fcd37bf4edae956aadaaebaefe57591e428a7c1c8f8ebe",
+        "records": 5
+      }
+    },
+    "projectionRevision": "projection-v1-2a4f9896d30f2a3c",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+    "artifact_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+    "assembly_version": "3.2.3.1",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 818,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+      "artifactBytes": 7642918,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.2.3.1",
+        "artifactBytes": 7642918,
+        "artifactSha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+        "catalogAssemblyVersion": "3.2.3.1",
+        "manifestInternalName": "",
+        "manifestPath": "LazyWTMath.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 5,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 5,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke"
+      ],
+      "capabilityIds": [
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": false,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+        "internalName": "LazyWTMath",
+        "manifestVersion": "3.2.3.1",
+        "observationId": 13458,
+        "observationKey": "manifest-87b7632013f4b2f751596be9908d",
+        "repositoryUrl": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8191
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 5,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 14,
+        "uncompressedBytes": 29496011
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-882049ef059db966",
+        "attemptId": "attempt-v2-60b54fb77a577580",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-83c2a7d06f288086",
+        "definitionsRevision": "defs-v1-bd39a35f9d247d4e",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8191",
+        "queueSeedRevision": "queue-seed-v2-d917e5bcb646432ea6ed",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+        "scannerBundleSha256": "888156b7764e1db7aa8eef82c0f79d2276d9d4281bb10f45fb6716f179857bed",
+        "scannerRevision": "scanner-v1-b7892db814c2ec40",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+        "sourceObservationRevision": "source-observations-v1-9995179eff482d4d",
+        "targetFingerprint": "source-target-v2-3ee6a9af89d4d4ac1119",
+        "variantId": 8191,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-08T05:21:34Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "294f952cce61caea79ef22dfefb50c172026d5ea4f573bcef90ea12dc7a1e8d1",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/dajoey/lalalazy"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/dajoey/lalalazy: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/dajoey/lalalazy",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 17,
+    "scanned_at_utc": "2026-09-08T05:21:34Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1006,
+    "source_repository": "https://github.com/dajoey/lalalazy",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8191
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "32cfa58da3c8566b11a021f74081b4899bec7a05ba48d3e93ed03dce2624de2c",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"6e03f9ee01f5d826b2850c82cef6601d7dc7f28965733f242f30307ba4cd3313\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-10T19:32:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-10T19:32:18Z",
+    "name": "dajoey/lalalazy",
+    "plugin_count": 15,
+    "provider": "dajoey/lalalazy",
+    "source_id": 1006,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json"
+  },
+  "sourceId": 1006,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "3.2.3.1",
+    "author": "daemitus, MidoriKami, dajoey",
+    "authors_json": [
+      "daemitus",
+      "MidoriKami",
+      "dajoey"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "v3.2.3.1 (2026-09-07)\n\n- Removed the `/lazywtmath` command introduced in 3.2.3.0. It existed only to reopen the \"What's new\" popup, and this plugin's only interface is the probability readout inside the Wondrous Tails window itself.\n- The changelog popup itself is unchanged: it still opens once automatically after an update, and it can be reopened any time from the Dalamud plugin installer (the plugin's \"Open\" button).\n- No math, plugin behaviour or configuration changed.\n\nv3.2.3.0 (2026-09-05)\n\n- Added the in-game \"What's new\" popup. After Lazy WT Math updates, its changelog now opens once inside the game so the changes are visible without a trip to GitHub. It waits until the character is logged in and out of combat, duty, cutscenes and zoning; closing it (Got it, X or Escape) marks it read.\n- New command `/lazywtmath` reopens that popup. This plugin had no command at all before: the probabilities still appear inside the Wondrous Tails window itself, exactly as before, and nothing about how they are calculated has changed.\n- The rebuild against current FFXIVClientStructs from 3.2.2.10 (which stopped the Wondrous Tails crash loop) is included.\n\nv3.2.2.10 - 2026-09-05\n- **Rebuilt against current FFXIVClientStructs (7.55.1.8875) to stop the WeeklyBingo crash loop.** The 3.2.2.9 binaries (built 2026-07-02) threw `System.TypeLoadException: Could not load type 'FFXIVClientStructs.FFXIV.Client.System.Memory.ICreatable'` from `AddonWeeklyBingoController.AddonRefresh` on every WeeklyBingo PostUpdate (3,032 errors in one session on 2026-09-05), because the bundled KamiToolKit.dll was compiled against an older FFXIVClientStructs whose `ICreatable<T>` shape no longer matches the one Dalamud ships. No source changes; clean Release rebuild of LazyWTMath + KamiToolKit against the Dalamud 15.0.3.2 hooks currently loading in the client (files: `KamiToolKit.dll`, `LazyWTMath.dll`).\n\n- Fix for Helm thread t-plugerr-52f9741c16e8 (kanban t_a7838408). If the crash persists after updating, the next step is merging upstream MidoriKami/EzWondrousTails and its current KamiToolKit.\n\nv3.2.2.9 - 2026-07-02\n- **Plugin icon now shows in the Dalamud installer.** Installed copies were built before\n\n- Part of the 2026-07-02 lalalazy repo cleanup pass.",
+    "dalamud_api_level": 15,
+    "description": "Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Upgraded for modern FFXIV.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+    "download_link_testing": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/testing/testing.zip",
+    "download_link_update": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+    "first_seen_utc": "2026-09-07T22:25:31Z",
+    "icon_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazywtmath-icon.png",
+    "image_urls_json": [
+      ""
+    ],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Lazy WT Math",
+    "plugin_id": 818,
+    "punchline": "FFXIV Wondrous Tails probability calculator.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "3.2.3.1",
+      "Author": "daemitus, MidoriKami, dajoey",
+      "CategoryTags": [
+        "utility"
+      ],
+      "Changelog": "v3.2.3.1 (2026-09-07)\n\n- Removed the `/lazywtmath` command introduced in 3.2.3.0. It existed only to reopen the \"What's new\" popup, and this plugin's only interface is the probability readout inside the Wondrous Tails window itself.\n- The changelog popup itself is unchanged: it still opens once automatically after an update, and it can be reopened any time from the Dalamud plugin installer (the plugin's \"Open\" button).\n- No math, plugin behaviour or configuration changed.\n\nv3.2.3.0 (2026-09-05)\n\n- Added the in-game \"What's new\" popup. After Lazy WT Math updates, its changelog now opens once inside the game so the changes are visible without a trip to GitHub. It waits until the character is logged in and out of combat, duty, cutscenes and zoning; closing it (Got it, X or Escape) marks it read.\n- New command `/lazywtmath` reopens that popup. This plugin had no command at all before: the probabilities still appear inside the Wondrous Tails window itself, exactly as before, and nothing about how they are calculated has changed.\n- The rebuild against current FFXIVClientStructs from 3.2.2.10 (which stopped the Wondrous Tails crash loop) is included.\n\nv3.2.2.10 - 2026-09-05\n- **Rebuilt against current FFXIVClientStructs (7.55.1.8875) to stop the WeeklyBingo crash loop.** The 3.2.2.9 binaries (built 2026-07-02) threw `System.TypeLoadException: Could not load type 'FFXIVClientStructs.FFXIV.Client.System.Memory.ICreatable'` from `AddonWeeklyBingoController.AddonRefresh` on every WeeklyBingo PostUpdate (3,032 errors in one session on 2026-09-05), because the bundled KamiToolKit.dll was compiled against an older FFXIVClientStructs whose `ICreatable<T>` shape no longer matches the one Dalamud ships. No source changes; clean Release rebuild of LazyWTMath + KamiToolKit against the Dalamud 15.0.3.2 hooks currently loading in the client (files: `KamiToolKit.dll`, `LazyWTMath.dll`).\n\n- Fix for Helm thread t-plugerr-52f9741c16e8 (kanban t_a7838408). If the crash persists after updating, the next step is merging upstream MidoriKami/EzWondrousTails and its current KamiToolKit.\n\nv3.2.2.9 - 2026-07-02\n- **Plugin icon now shows in the Dalamud installer.** Installed copies were built before\n\n- Part of the 2026-07-02 lalalazy repo cleanup pass.",
+      "DalamudApiLevel": 15,
+      "Description": "Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Upgraded for modern FFXIV.",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+      "DownloadLinkTesting": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/testing/testing.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/dajoey/lalalazy/main/plugins/LazyWTMath/latest/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazywtmath-icon.png",
+      "ImageUrls": [
+        ""
+      ],
+      "InternalName": "LazyWTMath",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": "0",
+      "Name": "Lazy WT Math",
+      "Punchline": "FFXIV Wondrous Tails probability calculator.",
+      "RepoUrl": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+      "Tags": [
+        "wondrous tails",
+        "math",
+        "calculator",
+        "probability"
+      ],
+      "TestingAssemblyVersion": "3.2.3.1",
+      "TestingDalamudApiLevel": 15
+    },
+    "repo_url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+    "source_entry_key": "lazywtmath|3.2.3.1|15|15|4",
+    "source_id": 1006,
+    "tags_json": [
+      "wondrous tails",
+      "math",
+      "calculator",
+      "probability"
+    ],
+    "testing_assembly_version": "3.2.3.1",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 8191
+  },
+  "variantId": 8191
+}

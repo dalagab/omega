@@ -1,0 +1,176 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Lemegeton.dll:Lemegeton.Core.FoodSelector.Cycle+0x159: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:Lemegeton.dll: powershell.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Lemegeton.dll: s://github.com/paissaheavyindustries/Lemegeton.git",
+      "artifact:Lemegeton.dll: s://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml",
+      "artifact:Lemegeton.dll: s://discord.gg/6f9MY55",
+      "artifact:Lemegeton.dll: s://github.com/paissaheavyindustries/Lemegeton"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Lemegeton.dll: Dalamud.Hooking",
+      "metadata:Lemegeton.dll: SigScanner",
+      "metadata:Lemegeton.dll: HookFromAddress",
+      "il:Lemegeton.dll:Lemegeton.Core.GameNetwork..ctor+0x24: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Lemegeton.dll:Lemegeton.Core.SigLocator..ctor+0x1a: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:Lemegeton.dll:Lemegeton.Core.SigLocator.ScanText+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:Lemegeton.dll:Lemegeton.Core.SigLocator.ScanData+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanData: SigScanner",
+      "il:Lemegeton.dll:Lemegeton.Core.SigLocator.ScanModule+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanModule: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Lemegeton.dll: System.Diagnostics.Process",
+      "metadata:Lemegeton.dll: ProcessStartInfo",
+      "metadata:Lemegeton.dll: ShellExecute",
+      "metadata:Lemegeton.dll: Process.Start",
+      "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x126: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x126: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x131: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:Lemegeton.dll:Lemegeton.Plugin.TextToSpeech+0x131: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Lemegeton.dll: FileStream",
+      "metadata:Lemegeton.dll: WriteAllText",
+      "metadata:Lemegeton.dll: File.Delete",
+      "metadata:Lemegeton.dll: Directory.CreateDirectory",
+      "il:Lemegeton.dll:Lemegeton.Plugin.BackupConfig+0x33: call System.IO.File.WriteAllText: WriteAllText",
+      "il:Lemegeton.dll:Lemegeton.Plugin.<GeneratePackage>b__158_0+0x244: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Lemegeton.dll:Lemegeton.Plugin.<GeneratePackage>b__158_0+0x300: call System.IO.File.Delete: File.Delete",
+      "il:Lemegeton.dll:Lemegeton.Plugin.<GeneratePackage>b__158_0+0x324: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.dll: https://discord.gg/6f9MY55"
+    ],
+    "rule_id": "network.endpoint.community-invite.31447ccde661",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.json: https://raw.githubusercontent.com/paissaheavyindustries/Dalamud-Repo/main/icons/lemegeton.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1c524fc46c4e",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.json: https://github.com/paissaheavyindustries/Lemegeton/releases/download/v1.0.8.6/Lemegeton_1_0_8_6.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.358296814806",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.json: https://github.com/paissaheavyindustries/Lemegeton"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4084d1ae85a2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.dll: https://github.com/paissaheavyindustries/Lemegeton"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.759c023edf45",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.dll: https://github.com/paissaheavyindustries/Lemegeton.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.81692313c467",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lemegeton.dll: https://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.baa414e5fd31",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Lemegeton.dll: System.Net.Http.HttpClient",
+      "il:Lemegeton.dll:Lemegeton.Core.NetworkDecoder.GetBlueprintFromURI+0x29: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Lemegeton.dll:Lemegeton.Core.NetworkDecoder.GetBlueprintFromURI+0x4d: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
