@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "4e9ccda62cb9a4303ca04a743184eba0667492bd728d57bdd288c70a51d0a353",
+    "analysisId": "033b01abeb0cbc16b71360435633f1a04684dc8dc8dc339e812841062e65b44a",
     "artifactSha256": "78aec4b80f7b65e589ff1af74addc6a46c9808c921a8a1578162aea39b7690f9",
-    "path": "artifacts/78/78aec4b80f7b65e589ff1af74addc6a46c9808c921a8a1578162aea39b7690f9/analyses/4e9ccda62cb9a4303ca04a743184eba0667492bd728d57bdd288c70a51d0a353",
-    "recordCount": 92
+    "path": "artifacts/78/78aec4b80f7b65e589ff1af74addc6a46c9808c921a8a1578162aea39b7690f9/analyses/033b01abeb0cbc16b71360435633f1a04684dc8dc8dc339e812841062e65b44a",
+    "recordCount": 582
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,7 +11,7 @@
     "artifact_url": "https://github.com/McVaxius/TTSL/releases/download/v0.0.1.15/latest.zip",
     "assembly_version": "0.0.1.15",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
       "Download/execute potential",
       "Endpoint: 127.0.0.1",
@@ -19,15 +19,15 @@
       "Endpoint: github.com",
       "Endpoint: ko-fi.com",
       "Endpoint: na.finalfantasyxiv.com",
+      "Endpoint: raw.githubusercontent.com",
       "Endpoint: www.microsoft.com0",
       "Hard-coded external file access",
       "Native/PInvoke",
       "Network access",
-      "Network destination undetermined",
       "Process execution",
       "Raw sockets"
     ],
-    "caution_count": 6,
+    "caution_count": 10,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -38,6 +38,21 @@
           "artifact:TTSL.dll: http://127.0.0.1:6942/"
         ],
         "ruleId": "network.endpoint.private-or-loopback.822979c73fe5",
+        "severity": "high",
+        "title": "Endpoint: 127.0.0.1"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal private, loopback, or link-local IP endpoint. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:TTSL/Configuration.cs: http://127.0.0.1:6942/",
+          "source:TTSL/Plugin.cs: http://127.0.0.1:6942/",
+          "source:TTSL/Windows/ConfigWindow.cs: http://127.0.0.1:6942/",
+          "source:TTSL/Windows/SetupWizardWindow.cs: http://127.0.0.1:6942/"
+        ],
+        "ruleId": "network.endpoint.private-or-loopback.5a8ef15895aa",
         "severity": "high",
         "title": "Endpoint: 127.0.0.1"
       },
@@ -67,6 +82,23 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:TTSL/Plugin.cs: Process.Start",
+          "source:TTSL/Plugin.cs: ProcessStartInfo",
+          "source:TTSL/Plugin.cs: ShellExecute",
+          "source:TTSL/Windows/ConfigWindow.cs: Process.Start",
+          "source:TTSL/Windows/ConfigWindow.cs: ProcessStartInfo",
+          "source:TTSL/Windows/ConfigWindow.cs: ShellExecute",
+          "source:TTSL/Windows/MainWindow.cs: Process.Start",
+          "source:TTSL/Windows/MainWindow.cs: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "network",
         "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
         "evidence": [
@@ -76,6 +108,28 @@
         "ruleId": "network.socket",
         "severity": "caution",
         "title": "Raw socket access"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "source:TTSL/Services/RemoteHudPublisherService.cs: Socket.Connect"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:TTSL/PluginInfo.cs: https://ko-fi.com/mcvaxius"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.c56becac0f92",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
       },
       {
         "category": "network-endpoint",
@@ -123,6 +177,21 @@
         "title": "Hard-coded external file path"
       },
       {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:TTSL/Plugin.cs: p://127.0.0.1:6942",
+          "source:TTSL/Plugin.cs: p://127.0.0.1:69420",
+          "source:TTSL/Plugin.cs: p://localhost:69420",
+          "source:TTSL/Plugin.cs: p://",
+          "source:TTSL/Plugin.cs: s://",
+          "source:TTSL/Plugin.cs: p://{trimmed}"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
         "category": "network",
         "description": "References HTTP/network client APIs.",
         "evidence": [
@@ -159,6 +228,18 @@
       },
       {
         "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:TTSL/TTSL.json: https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.60047584405d",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
         "evidence": [
           "artifact:TTSL.dll: https://github.com/McVaxius/TTSL/releases/latest"
@@ -166,6 +247,18 @@
         "ruleId": "network.endpoint.recognised-platform.31f43e12fc86",
         "severity": "informational",
         "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:TTSL/Windows/ConfigWindow.cs: https://na.finalfantasyxiv.com/lodestone/character/22423564/blog/4393835"
+        ],
+        "ruleId": "network.endpoint.ffxiv-lodestone-link.ea079e93b318",
+        "severity": "informational",
+        "title": "Official FFXIV Lodestone page link"
       },
       {
         "category": "network-endpoint",
@@ -180,12 +273,14 @@
       {
         "category": "network-endpoint",
         "confidence": "High",
-        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
-        "endpointOrigin": "derived-capability-gap",
-        "evidence": [],
-        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:TTSL/Services/RemoteHudPublisherService.cs: https://na.finalfantasyxiv.com/lodestone/character/"
+        ],
+        "ruleId": "network.endpoint.ffxiv-lodestone-link.1cf4472e77a9",
         "severity": "informational",
-        "title": "Network destination undetermined"
+        "title": "Official FFXIV Lodestone page link"
       },
       {
         "category": "network-endpoint",
@@ -196,15 +291,27 @@
         "ruleId": "network.endpoint.community-invite.d81f3d73dea6",
         "severity": "informational",
         "title": "Community invite: Discord"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:TTSL/PluginInfo.cs: https://discord.gg/VsXqydsvpu"
+        ],
+        "ruleId": "network.endpoint.community-invite.43450d454f08",
+        "severity": "informational",
+        "title": "Community invite: Discord"
       }
     ],
-    "high_count": 2,
+    "high_count": 3,
     "highest_severity": "high",
-    "informational_count": 7,
+    "informational_count": 10,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisRepresentativeScanId": 8,
       "artifactAnalysisReused": true,
-      "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
       "artifactBytes": 6717842,
       "artifactIdentity": {
         "artifactAssemblyVersion": "0.0.1.15",
@@ -221,7 +328,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -245,6 +352,78 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -279,6 +458,18 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
             "id": "network.socket",
             "label": "Raw socket access",
             "observed": true,
@@ -296,6 +487,18 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -303,8 +506,90 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "private-or-loopback"
+              ],
+              "confidence": "High",
+              "host": "127.0.0.1",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "private-or-loopback"
+              ],
+              "confidence": "High",
+              "host": "127.0.0.1",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -316,17 +601,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 6,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 14,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 6,
+          "observedWithoutProfileCount": 14,
           "unexplainedDestinationCount": 0
         }
       },
@@ -337,46 +622,94 @@
         "Endpoint: github.com",
         "Endpoint: ko-fi.com",
         "Endpoint: na.finalfantasyxiv.com",
+        "Endpoint: raw.githubusercontent.com",
         "Endpoint: www.microsoft.com0",
         "Hard-coded external file access",
         "Native/PInvoke",
         "Network access",
-        "Network destination undetermined",
         "Process execution",
         "Raw sockets"
       ],
       "capabilityIds": [
         "behavior.download-execute",
         "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.chat.read",
+        "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
         "native.interop",
         "network.http",
+        "network.outbound",
         "network.socket",
-        "process.execute"
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 6,
+        "caution": 10,
         "critical": 0,
-        "high": 2,
-        "informational": 7
+        "high": 3,
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 5,
+          "exactVersionObservedCount": 2,
+          "families": {
+            "native": 3,
+            "nuget": 2
+          },
+          "fingerprint": "85b9c486c45c462c98dbdbfd5db0686af7241b76b832625cbe3a043eacc0cb40",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
-            "platformLibrary": 0
+            "platformLibrary": 3
           },
-          "nativeRelationships": [],
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "TTSL/Services/WindowsGraphicsWindowCapture.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "",
+              "library": "combase.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "TTSL/Services/WindowsGraphicsWindowCapture.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "",
+              "library": "d3d11.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "TTSL/Services/RemoteHudPublisherService.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "",
+              "library": "user32.dll",
+              "managedName": "",
+              "targetPath": ""
+            }
+          ],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "observed": 3,
+            "required": 2
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -385,24 +718,97 @@
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
-          "notAnalyzed": 0,
+          "known": 2,
+          "notAnalyzed": 3,
           "requirements": {
             "bundled": 0,
-            "observed": 0,
+            "observed": 3,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 5
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "private-or-loopback"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "127.0.0.1",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "High",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "ffxiv-lodestone-link"
+              ],
+              "concreteCount": 0,
+              "confidence": "High",
+              "host": "na.finalfantasyxiv.com",
+              "literalCount": 2,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 8,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -410,7 +816,88 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "private-or-loopback",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "127.0.0.1",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "local/private network",
+            "url": "http://127.0.0.1:6942/"
+          },
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "discord.gg",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "community invite",
+            "url": "https://discord.gg/VsXqydsvpu"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/McVaxius/TTSL"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/McVaxius/TTSL/releases/latest"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "ko-fi.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/mcvaxius"
+          },
+          {
+            "classification": "ffxiv-lodestone-link",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "na.finalfantasyxiv.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "official FFXIV Lodestone page",
+            "url": "https://na.finalfantasyxiv.com/lodestone/character/"
+          },
+          {
+            "classification": "ffxiv-lodestone-link",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "na.finalfantasyxiv.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "official FFXIV Lodestone page",
+            "url": "https://na.finalfantasyxiv.com/lodestone/character/22423564/blog/4393835"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -433,33 +920,33 @@
         "uncompressedBytes": 25592142
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-575b127c5a93bda3",
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-c99fe45a6969cfb1",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-d474765b9a4c8808",
-        "definitionsRevision": "defs-v1-deded18de16d16f0",
+        "catalogRevision": "cat-json-v1-87eb1ef6783fdafc",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
         "primaryReason": "source_followup",
         "queueKey": "source-variant-8338",
-        "queueSeedRevision": "queue-seed-v2-f03b343d35ba109b",
+        "queueSeedRevision": "queue-seed-v2-77924fe26ff6a4669c2e",
         "reasons": [
           "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
-        "scannerBundleSha256": "6372d898682bf25e90f75f3c77cdb516788f54cbc2bfdae71c64a6ae7ff0aaf0",
-        "scannerRevision": "scanner-v1-0c97d67da5cc4c8d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
-        "sourceObservationRevision": "source-observations-v1-3b30fdd24ba2e05f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
         "targetFingerprint": "source-target-v2-bd458c15627c52719637",
         "variantId": 8338,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-09T12:01:04Z",
+      "scannedAtUtc": "2026-09-10T18:56:45Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -501,20 +988,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v0.0.1.15",
         "candidates": [
           "https://github.com/McVaxius/TTSL"
         ],
-        "commit": "",
+        "commit": "428dc30c608b5219610141164d6ae105e99ea140",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "e686cbc4286bee2f6cd4bb280c55f81b35185394eb24f22239ab4eda82ada6cc"
           }
         },
         "developerProfile": {
@@ -522,19 +1015,34 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/McVaxius/TTSL: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "0.0.1.15",
+          "manifestInternalName": "TTSL",
+          "manifestPath": "TTSL/TTSL.json",
+          "manifestRepoUrl": "https://github.com/McVaxius/TTSL",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.1.15",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "v0.0.1.15",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
         "repository": "https://github.com/McVaxius/TTSL",
-        "treeSha256": ""
+        "treeSha256": "0b44d549b902fe347d2d419edec7d5a3339612ff"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
@@ -543,40 +1051,541 @@
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 14,
-    "scanned_at_utc": "2026-09-09T12:01:04Z",
+    "scan_id": 11,
+    "scanned_at_utc": "2026-09-10T18:56:45Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "428dc30c608b5219610141164d6ae105e99ea140",
     "source_repository": "https://github.com/McVaxius/TTSL",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 8338
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "native:combase",
+        "current_json": {
+          "componentKey": "native:combase",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "combase.dll",
+          "normalizedName": "combase",
+          "origin": "source",
+          "paths": [
+            "TTSL/Services/WindowsGraphicsWindowCapture.cs"
+          ],
+          "requirements": [
+            "observed"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "not-analyzed"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "native-import",
+        "dependency_name": "combase.dll",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "native:d3d11",
+        "current_json": {
+          "componentKey": "native:d3d11",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3d11.dll",
+          "normalizedName": "d3d11",
+          "origin": "source",
+          "paths": [
+            "TTSL/Services/WindowsGraphicsWindowCapture.cs"
+          ],
+          "requirements": [
+            "observed"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "not-analyzed"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "native-import",
+        "dependency_name": "d3d11.dll",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "native:user32",
+        "current_json": {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "normalizedName": "user32",
+          "origin": "source",
+          "paths": [
+            "TTSL/Services/RemoteHudPublisherService.cs"
+          ],
+          "requirements": [
+            "observed"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "not-analyzed"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "native-import",
+        "dependency_name": "user32.dll",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "TTSL/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "TTSL/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service ICondition is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced.",
+            "Dalamud service IPartyList is referenced.",
+            "Dalamud service ITargetManager is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "A DllImport native library is declared.",
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 14,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 8338
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-10T18:56:49Z",
+        "drift_id": 15,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 8338
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "revalidation",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "78aec4b80f7b65e589ff1af74addc6a46c9808c921a8a1578162aea39b7690f9",
       "current_assembly_version": "0.0.1.15",
-      "current_scan_id": 14,
+      "current_scan_id": 11,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-09T12:01:04Z",
+      "current_source_commit": "428dc30c608b5219610141164d6ae105e99ea140",
+      "detected_at_utc": "2026-09-10T18:56:49Z",
       "previous_artifact_sha256": "78aec4b80f7b65e589ff1af74addc6a46c9808c921a8a1578162aea39b7690f9",
       "previous_assembly_version": "0.0.1.15",
-      "previous_scan_id": 6,
+      "previous_scan_id": 8,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 8338
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 38,
-      "artifact_only_count": 38,
+      "artifact_only_count": 35,
       "artifact_only_json": [
         {
           "componentKey": "assembly:dalamud",
@@ -1028,30 +2037,6 @@
           "versions": []
         },
         {
-          "componentKey": "native:combase",
-          "componentKind": "native",
-          "kinds": [
-            "native-import"
-          ],
-          "name": "combase.dll",
-          "requirements": [
-            "observed"
-          ],
-          "versions": []
-        },
-        {
-          "componentKey": "native:d3d11",
-          "componentKind": "native",
-          "kinds": [
-            "native-import"
-          ],
-          "name": "d3d11.dll",
-          "requirements": [
-            "observed"
-          ],
-          "versions": []
-        },
-        {
           "componentKey": "native:kernel32",
           "componentKind": "native",
           "kinds": [
@@ -1086,33 +2071,50 @@
             "observed"
           ],
           "versions": []
-        },
-        {
-          "componentKey": "native:user32",
-          "componentKind": "native",
-          "kinds": [
-            "native-import"
-          ],
-          "name": "user32.dll",
-          "requirements": [
-            "observed"
-          ],
-          "versions": []
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-09T12:01:04Z",
-      "comparison_id": 8,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-10T18:56:49Z",
+      "comparison_id": 9,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 3,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 14,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 11,
+      "source_available": 1,
+      "source_dependency_count": 5,
+      "source_only_count": 2,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        }
+      ],
+      "source_project_sha256": "ebb285d194be239f1ce280ed93514b4b0d5ad17de5db89e4fc132c6a5e53f1f0",
       "variant_id": 8338,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -1121,8 +2123,8 @@
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "2062eda89d124385a7e6a706f9bd464e4c19357222f599fb816a2f7cb955ad8e",
-    "observedAtUtc": "2026-09-09T21:13:09Z",
+    "identityFingerprint": "07f41fad650deeb5cdba2dae9f252208c17fb72ae783e3bd67696db676a92ba9",
+    "observedAtUtc": "2026-09-11T20:43:03Z",
     "reason": "catalog_variant_inactive",
     "rescanEligible": false,
     "schema": "omega.security-evidence.variant-lifecycle.v1",
@@ -1145,17 +2147,17 @@
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "0514b0565aabef4d421bfe63c40de8dff917ef06d8f60c7126175dcc53a7b146",
-        "records": 46,
+        "recordDigest": "5cd230ec844df527263666b911003be4f02652e36ef8ec3d537b35c3ab4334fd",
+        "records": 51,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1225,8 +2227,28 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "33500240446be6cd04b9864257d7551e5aa0eb9a128ca31e56f6704162900c05",
+        "records": 77,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "0664fcd0518050526c857c22043c628483f11aa6cd95312279124134258d4bc3",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "f09ce9d9da3bb7f76b2b1b36132b2b289fc15f8d416a0c583a2cd032199029bf",
+        "records": 8,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1245,28 +2267,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "e85a65dee78c217e61106c665e1d038f8016435516756ededa582be2271cefb4",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "be0159c43f93a474fcb976c03cd44641e3c163806f8ff3c8e0533cb734b1c950",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "efa5e6fef4c440e050daa47fe741a93351452e1c13c8c9442a3aaf250e8136cf",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "47f11b1c6d37df26a5c9fa8116a016e6655359188c7299e55927900d7e4113b7",
+        "records": 331,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "bd86332f96be7fc7858d0ffa52c99477b4382c1d521c2b4121e5014646544f3a",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "1c3b42ac6fec1ed45ced9b899b452fe72793c2162a10081eacbc31a78cfbc388",
+        "records": 13,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "4f33a07dfbd424410007275b89210c6e463e7502f55b0c1e5a22dae2353460e7",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "299e3f74c5bb090193b46aa161920edf4cc86383599ff62322ffd82db7d66d60",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "sourceProvenance": {
         "backingDataset": "sourceProvenance",
         "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
         "completeness": "retained",
-        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "recordDigest": "044a5b98b2374999e666535363b530a43cd0b0c71e67006e6a43e480888cf680",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "17d132ce15cb7f7c3d2c3107e43ff839e06ca3e823b7fd569107b7396aa5fe21",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "c3c885b0b0f8816ee89a98e1a133703136a21962fa2fa2a158d378cfe004b4d7",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "a4e09b398b7c25dca1105aad5d3f49b3bcacc106a16db7c850b2bab4efccbcb5",
+        "records": 10,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1275,25 +2417,11 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "binaryClassifications",
-      "nativeImports",
-      "networkEndpoints",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFiles",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications"
     ],
-    "observationDigest": "obs-c6de882f89a132f50bcec38ff7e5cf6d045d29268fb7ec687bc834e627f9708e",
+    "observationDigest": "obs-1a66f7427b6edbf21279cd4968150f45d01ad2cbd1b2ea195d0e0ffba87f170a",
     "providerRevisions": {
-      "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
     },
     "schema": "omega.sigmascope.observation-contract.v1"
@@ -1303,7 +2431,7 @@
     "canonical_name": "Thick Thighs Save Lives",
     "first_seen_utc": "2026-08-22T09:49:09Z",
     "internal_name": "TTSL",
-    "last_seen_utc": "2026-09-09T13:45:51Z",
+    "last_seen_utc": "2026-09-10T19:32:18Z",
     "plugin_id": 1161
   },
   "pluginId": 1161,
@@ -1352,17 +2480,17 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "e059e8e05b41c96bece05d8cf7d8534803a1140fd8a56d0fd41d70ea3304c527",
+        "recordDigest": "25c492364c5b4dafd82906d57249667fded92300ef578afcc2fc42541edd3209",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "c8f3a1dac04e44eaaa67236cc23e4022e9867dbcd5790d8438a4e41039fbb312",
-        "records": 6
+        "recordDigest": "af75ad4475a742dca26c23dd68a268baac0a3a442a808c4cbb028e3e9a501c29",
+        "records": 14
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "beaa8f18af35859d8763bb8c7f1a397177f73b56988c47903834d07413238539",
-        "records": 15
+        "recordDigest": "857cafc596db0e951752badb330d03e000834d5739f10784d9fbe4ef12b21bd0",
+        "records": 23
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -1387,25 +2515,25 @@
       "Endpoint: github.com",
       "Endpoint: ko-fi.com",
       "Endpoint: na.finalfantasyxiv.com",
+      "Endpoint: raw.githubusercontent.com",
       "Endpoint: www.microsoft.com0",
       "Hard-coded external file access",
       "Native/PInvoke",
       "Network access",
-      "Network destination undetermined",
       "Process execution",
       "Raw sockets"
     ],
-    "caution_count": 6,
+    "caution_count": 10,
     "critical_count": 0,
     "error": "",
-    "high_count": 2,
+    "high_count": 3,
     "highest_severity": "high",
-    "informational_count": 7,
+    "informational_count": 10,
     "plugin_id": 1161,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisRepresentativeScanId": 8,
       "artifactAnalysisReused": true,
-      "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+      "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
       "artifactBytes": 6717842,
       "artifactIdentity": {
         "artifactAssemblyVersion": "0.0.1.15",
@@ -1422,7 +2550,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -1446,6 +2574,78 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1480,6 +2680,18 @@
             "declaredDestinations": [],
             "developerReason": "",
             "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
             "id": "network.socket",
             "label": "Raw socket access",
             "observed": true,
@@ -1497,6 +2709,18 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -1504,8 +2728,90 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "private-or-loopback"
+              ],
+              "confidence": "High",
+              "host": "127.0.0.1",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "private-or-loopback"
+              ],
+              "confidence": "High",
+              "host": "127.0.0.1",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -1517,17 +2823,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 6,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 14,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 6,
+          "observedWithoutProfileCount": 14,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1538,46 +2844,94 @@
         "Endpoint: github.com",
         "Endpoint: ko-fi.com",
         "Endpoint: na.finalfantasyxiv.com",
+        "Endpoint: raw.githubusercontent.com",
         "Endpoint: www.microsoft.com0",
         "Hard-coded external file access",
         "Native/PInvoke",
         "Network access",
-        "Network destination undetermined",
         "Process execution",
         "Raw sockets"
       ],
       "capabilityIds": [
         "behavior.download-execute",
         "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.chat.read",
+        "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
         "native.interop",
         "network.http",
+        "network.outbound",
         "network.socket",
-        "process.execute"
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 6,
+        "caution": 10,
         "critical": 0,
-        "high": 2,
-        "informational": 7
+        "high": 3,
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 5,
+          "exactVersionObservedCount": 2,
+          "families": {
+            "native": 3,
+            "nuget": 2
+          },
+          "fingerprint": "85b9c486c45c462c98dbdbfd5db0686af7241b76b832625cbe3a043eacc0cb40",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
-            "platformLibrary": 0
+            "platformLibrary": 3
           },
-          "nativeRelationships": [],
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "TTSL/Services/WindowsGraphicsWindowCapture.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "",
+              "library": "combase.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "TTSL/Services/WindowsGraphicsWindowCapture.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "",
+              "library": "d3d11.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "TTSL/Services/RemoteHudPublisherService.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "",
+              "library": "user32.dll",
+              "managedName": "",
+              "targetPath": ""
+            }
+          ],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "observed": 3,
+            "required": 2
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -1586,24 +2940,97 @@
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
-          "notAnalyzed": 0,
+          "known": 2,
+          "notAnalyzed": 3,
           "requirements": {
             "bundled": 0,
-            "observed": 0,
+            "observed": 3,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 5
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "private-or-loopback"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "127.0.0.1",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "High",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "ffxiv-lodestone-link"
+              ],
+              "concreteCount": 0,
+              "confidence": "High",
+              "host": "na.finalfantasyxiv.com",
+              "literalCount": 2,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 8,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1611,7 +3038,88 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "private-or-loopback",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "127.0.0.1",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "local/private network",
+            "url": "http://127.0.0.1:6942/"
+          },
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "discord.gg",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "community invite",
+            "url": "https://discord.gg/VsXqydsvpu"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/McVaxius/TTSL"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/McVaxius/TTSL/releases/latest"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "ko-fi.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/mcvaxius"
+          },
+          {
+            "classification": "ffxiv-lodestone-link",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "na.finalfantasyxiv.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "official FFXIV Lodestone page",
+            "url": "https://na.finalfantasyxiv.com/lodestone/character/"
+          },
+          {
+            "classification": "ffxiv-lodestone-link",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "na.finalfantasyxiv.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "official FFXIV Lodestone page",
+            "url": "https://na.finalfantasyxiv.com/lodestone/character/22423564/blog/4393835"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/goatcorp/Dalamud/master/Dalamud/Configuration/PluginManifest/pluginmanifest.schema.json"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -1634,33 +3142,33 @@
         "uncompressedBytes": 25592142
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
-        "attemptId": "attempt-v2-575b127c5a93bda3",
+        "artifactAnalysisRevision": "artifact-analysis-v3-5e4b0200d0d6df63",
+        "attemptId": "attempt-v2-c99fe45a6969cfb1",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-d474765b9a4c8808",
-        "definitionsRevision": "defs-v1-deded18de16d16f0",
+        "catalogRevision": "cat-json-v1-87eb1ef6783fdafc",
+        "definitionsRevision": "defs-v1-25a6abf44e3cbbd7",
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
         "primaryReason": "source_followup",
         "queueKey": "source-variant-8338",
-        "queueSeedRevision": "queue-seed-v2-f03b343d35ba109b",
+        "queueSeedRevision": "queue-seed-v2-77924fe26ff6a4669c2e",
         "reasons": [
           "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
-        "scannerBundleSha256": "6372d898682bf25e90f75f3c77cdb516788f54cbc2bfdae71c64a6ae7ff0aaf0",
-        "scannerRevision": "scanner-v1-0c97d67da5cc4c8d",
+        "scannerBundleSha256": "22a358a5e47e48deafc4259aff15d3759d201b612918faaa098ba3dabbaebb4d",
+        "scannerRevision": "scanner-v1-2c3cf98d84c7d300",
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
-        "sourceObservationRevision": "source-observations-v1-3b30fdd24ba2e05f",
+        "sourceObservationRevision": "source-observations-v1-81243c6982a225b1",
         "targetFingerprint": "source-target-v2-bd458c15627c52719637",
         "variantId": 8338,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-09T12:01:04Z",
+      "scannedAtUtc": "2026-09-10T18:56:45Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1702,20 +3210,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "v0.0.1.15",
         "candidates": [
           "https://github.com/McVaxius/TTSL"
         ],
-        "commit": "",
+        "commit": "428dc30c608b5219610141164d6ae105e99ea140",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "e686cbc4286bee2f6cd4bb280c55f81b35185394eb24f22239ab4eda82ada6cc"
           }
         },
         "developerProfile": {
@@ -1723,19 +3237,34 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/McVaxius/TTSL: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "0.0.1.15",
+          "manifestInternalName": "TTSL",
+          "manifestPath": "TTSL/TTSL.json",
+          "manifestRepoUrl": "https://github.com/McVaxius/TTSL",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.0.1.15",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "v0.0.1.15",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
         "repository": "https://github.com/McVaxius/TTSL",
-        "treeSha256": ""
+        "treeSha256": "0b44d549b902fe347d2d419edec7d5a3339612ff"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
@@ -1744,11 +3273,11 @@
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 14,
-    "scanned_at_utc": "2026-09-09T12:01:04Z",
+    "scan_id": 11,
+    "scanned_at_utc": "2026-09-10T18:56:45Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "428dc30c608b5219610141164d6ae105e99ea140",
     "source_id": 1003,
     "source_repository": "https://github.com/McVaxius/TTSL",
     "source_to_binary_verified": 0,
@@ -1757,20 +3286,20 @@
   },
   "schema": "omega.security-evidence.variant.v2",
   "source": {
-    "content_sha256": "a3fbc5c6d86d1ea813ce7bb745cb4acffe8a1db69df58e54b4042f7f4f5d3d0a",
+    "content_sha256": "7ab96dc6b4ace4706176fc3914f510954f951cf9a624ada2dfc602e119efd04e",
     "curated_id": "",
     "description": "",
     "discovered_by": "catalog-data/sources/index.json",
     "enabled_by_default": 1,
-    "etag": "\"ee714d4f9b14039fa0be0f49aec252542a7f21a6a29e9139caf739d833f79e42\"",
+    "etag": "\"f57aeb9019b48f0ab725a1e37f39cc8498db36abf79852647f932245f026bcf1\"",
     "highest_api": 15,
     "integrate_with_dalamud": 0,
     "is_official": 0,
     "kind": "canonical",
-    "last_checked_utc": "2026-09-09T13:45:51Z",
+    "last_checked_utc": "2026-09-10T19:32:18Z",
     "last_error": "",
     "last_modified": "",
-    "last_success_utc": "2026-09-09T13:45:51Z",
+    "last_success_utc": "2026-09-10T19:32:18Z",
     "name": "yourShika/AetheryteRepo",
     "plugin_count": 18,
     "provider": "yourShika/AetheryteRepo",
@@ -1794,7 +3323,7 @@
     "dalamud_api_level": 15,
     "description": "An essential-state HUD for monitoring zone, position, combat state, durability, and party awareness when your main rendering setup is intentionally reduced.",
     "dip17_channel": "",
-    "download_count": 1153,
+    "download_count": 1160,
     "download_link_install": "https://github.com/McVaxius/TTSL/releases/download/v0.0.1.15/latest.zip",
     "download_link_testing": "",
     "download_link_update": "https://github.com/McVaxius/TTSL/releases/download/v0.0.1.15/latest.zip",
@@ -1803,7 +3332,7 @@
     "image_urls_json": [],
     "is_hide": 0,
     "is_testing_exclusive": 0,
-    "last_seen_utc": "2026-09-09T08:52:51Z",
+    "last_seen_utc": "2026-09-10T16:17:54Z",
     "last_update": 1785603656,
     "minimum_dalamud_version": null,
     "name": "Thick Thighs Save Lives",
@@ -1819,7 +3348,7 @@
       "Changelog": "",
       "DalamudApiLevel": 15,
       "Description": "An essential-state HUD for monitoring zone, position, combat state, durability, and party awareness when your main rendering setup is intentionally reduced.",
-      "DownloadCount": 1153,
+      "DownloadCount": 1160,
       "DownloadLinkInstall": "https://github.com/McVaxius/TTSL/releases/download/v0.0.1.15/latest.zip",
       "DownloadLinkUpdate": "https://github.com/McVaxius/TTSL/releases/download/v0.0.1.15/latest.zip",
       "IconUrl": "https://raw.githubusercontent.com/McVaxius/TTSL/master/TTSL/images/icon.png",

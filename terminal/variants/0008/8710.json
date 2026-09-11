@@ -1,0 +1,4046 @@
+{
+  "analysis": {
+    "analysisId": "d8161c962305a00c8bde87a2b4638aea29e1b58f7e33bbcc9df69e19207aa383",
+    "artifactSha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+    "path": "artifacts/bc/bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042/analyses/d8161c962305a00c8bde87a2b4638aea29e1b58f7e33bbcc9df69e19207aa383",
+    "recordCount": 775
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+    "artifact_url": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+    "assembly_version": "2.5.1.0",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: android.googlesource.com",
+      "Endpoint: ffxiv.eorzeacollection.com",
+      "Endpoint: github.com",
+      "Endpoint: ocsp.digicert.com0",
+      "Endpoint: ocsp.digicert.com0a",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0x",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: system.data.sqlite.org",
+      "Endpoint: urn.to",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Endpoint: www.sqlite.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Process memory access",
+      "Raw sockets",
+      "Remote thread creation",
+      "Shell/PowerShell"
+    ],
+    "caution_count": 21,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "Contains indicators for invoking command shells or PowerShell.",
+        "evidence": [
+          "artifact:deucalion-1.2.1.dll: cmd.exe",
+          "artifact:deucalion-1.3.1.dll: cmd.exe",
+          "artifact:lua54.dll: cmd.exe",
+          "artifact:runtimes/win-x86/native/lua54.dll: cmd.exe",
+          "artifact:runtimes/win-x64/native/lua54.dll: cmd.exe",
+          "artifact:runtimes/win-arm/native/lua54.dll: cmd.exe",
+          "artifact:runtimes/win-arm64/native/lua54.dll: cmd.exe"
+        ],
+        "ruleId": "shell.powershell",
+        "severity": "high",
+        "title": "Shell or PowerShell invocation"
+      },
+      {
+        "category": "memory",
+        "description": "References APIs commonly used to start execution in another process.",
+        "evidence": [
+          "metadata:Machina.FFXIV.dll: CreateRemoteThread",
+          "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0x17f: call Machina.FFXIV.Deucalion.DeucalionInjector.CreateRemoteThread -> kernel32.dll!CreateRemoteThread: CreateRemoteThread",
+          "artifact:Machina.FFXIV.dll: CreateRemoteThread"
+        ],
+        "ruleId": "memory.remote-thread",
+        "severity": "high",
+        "title": "Remote thread creation"
+      },
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:Machina.FFXIV.dll: OpenProcess",
+          "metadata:Machina.FFXIV.dll: VirtualAllocEx",
+          "metadata:Machina.FFXIV.dll: WriteProcessMemory",
+          "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0x58: call Machina.FFXIV.Deucalion.DeucalionInjector.OpenProcess -> kernel32.dll!OpenProcess: OpenProcess",
+          "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0xe0: call Machina.FFXIV.Deucalion.DeucalionInjector.VirtualAllocEx -> kernel32.dll!VirtualAllocEx: VirtualAllocEx",
+          "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0x12e: call Machina.FFXIV.Deucalion.DeucalionInjector.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory",
+          "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.UpdateProcessDACL+0x13: call Machina.FFXIV.Deucalion.DeucalionInjector.OpenProcess -> kernel32.dll!OpenProcess: OpenProcess",
+          "artifact:Machina.FFXIV.dll: OpenProcess"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Machina.dll: System.Diagnostics.Process",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.IsWindows+0x6: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+          "native-pe:deucalion-1.2.1.dll: import kernel32.dll!CreateProcessW: CreateProcess",
+          "artifact:deucalion-1.2.1.dll: CreateProcess",
+          "metadata:System.Data.SQLite.dll: System.Diagnostics.Process",
+          "metadata:System.Data.SQLite.dll: Process.Start",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.HelperMethods.GetProcessId+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.HelperMethods.GetProcessId+0xc: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:Machina.dll: System.Net.Sockets",
+          "metadata:Machina.dll: Socket.Connect",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StartCapture+0x61: callvirt System.Net.Sockets.Socket.BeginReceive: System.Net.Sockets",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x2a: callvirt System.Net.Sockets.Socket.Shutdown: System.Net.Sockets",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x36: callvirt System.Net.Sockets.Socket.Close: System.Net.Sockets",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x42: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.CreateRawSocket+0xe: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+          "il:Machina.dll:Machina.Sockets.RawCaptureSocket.CreateRawSocket+0x1d: callvirt System.Net.Sockets.Socket.Bind: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.Importer.dll: https://ffxiv.eorzeacollection.com/glamour/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.c79310b14680",
+        "severity": "caution",
+        "title": "Endpoint: ffxiv.eorzeacollection.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: https://urn.to/r/sds_see2"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.73d56f0b6cdb",
+        "severity": "caution",
+        "title": "Endpoint: urn.to"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: https://urn.to/r/sds_see1"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.64875a23208d",
+        "severity": "caution",
+        "title": "Endpoint: urn.to"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.Importer.dll: https://ffxiv.eorzeacollection.com/glamour/{id"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.6399562b5153",
+        "severity": "caution",
+        "title": "Endpoint: ffxiv.eorzeacollection.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SQLite.Interop.dll: https://www.sqlite.org/copyright.html",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: https://www.sqlite.org/copyright.html",
+          "artifact:runtimes/win-x64/native/SQLite.Interop.dll: https://www.sqlite.org/copyright.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.4b7959b86a28",
+        "severity": "caution",
+        "title": "Endpoint: www.sqlite.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: https://system.data.sqlite.org/",
+          "artifact:SQLite.Interop.dll: https://system.data.sqlite.org/",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: https://system.data.sqlite.org/",
+          "artifact:runtimes/win-x64/native/SQLite.Interop.dll: https://system.data.sqlite.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.25e9e82fe061",
+        "severity": "caution",
+        "title": "Endpoint: system.data.sqlite.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:runtimes/android-arm64/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project",
+          "artifact:runtimes/android-arm/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project",
+          "artifact:runtimes/android-x64/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project",
+          "artifact:runtimes/android-x86/native/liblua54.so: https://android.googlesource.com/toolchain/llvm-project"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.0575a452af0c",
+        "severity": "caution",
+        "title": "Endpoint: android.googlesource.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:deucalion-1.2.1.dll: http://ocsp.digicert.com0a/",
+          "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0a/",
+          "artifact:SQLite.Interop.dll: http://ocsp.digicert.com0a/",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: http://ocsp.digicert.com0a/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.fd1e7f05c01c",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0a"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0/",
+          "artifact:SQLite.Interop.dll: http://ocsp.digicert.com0/",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: http://ocsp.digicert.com0/",
+          "artifact:runtimes/win-x64/native/SQLite.Interop.dll: http://ocsp.digicert.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.f7ff339eaae3",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:deucalion-1.2.1.dll: http://ocsp.digicert.com0c/",
+          "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0c/",
+          "artifact:SQLite.Interop.dll: http://ocsp.digicert.com0c/",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: http://ocsp.digicert.com0c/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.c831a6f811e0",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0c"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Logging.Abstractions.dll: http://www.microsoft.com0/",
+          "artifact:Microsoft.Extensions.Options.dll: http://www.microsoft.com0/",
+          "artifact:Microsoft.Extensions.Primitives.dll: http://www.microsoft.com0/",
+          "artifact:Microsoft.Extensions.Logging.dll: http://www.microsoft.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.7b602439ebe0",
+        "severity": "caution",
+        "title": "Endpoint: www.microsoft.com0"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:deucalion-1.2.1.dll: http://ocsp.digicert.com0x/",
+          "artifact:System.Data.SQLite.dll: http://ocsp.digicert.com0x/",
+          "artifact:SQLite.Interop.dll: http://ocsp.digicert.com0x/",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: http://ocsp.digicert.com0x/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.666b870d9ed1",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0x"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: http://www.digicert.com/CPS0",
+          "artifact:SQLite.Interop.dll: http://www.digicert.com/CPS0",
+          "artifact:runtimes/win-x86/native/SQLite.Interop.dll: http://www.digicert.com/CPS0",
+          "artifact:runtimes/win-x64/native/SQLite.Interop.dll: http://www.digicert.com/CPS0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.0bda789b1ee3",
+        "severity": "caution",
+        "title": "Endpoint: www.digicert.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Machina.dll: DllImportAttribute",
+          "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+          "native-pe:deucalion-1.2.1.dll: import kernel32.dll!GetProcAddress: GetProcAddress",
+          "native-pe:deucalion-1.2.1.dll: import kernel32.dll!LoadLibraryA: LoadLibrary",
+          "artifact:deucalion-1.2.1.dll: LoadLibrary",
+          "artifact:deucalion-1.2.1.dll: GetProcAddress"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "network",
+        "description": "References APIs that can listen for inbound local/network connections.",
+        "evidence": [
+          "artifact:deucalion-1.2.1.dll: TcpListener",
+          "artifact:deucalion-1.3.1.dll: TcpListener"
+        ],
+        "ruleId": "local.listener",
+        "severity": "caution",
+        "title": "Local server/listener"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Athavar.FFXIV.Plugin.Models.dll: SigScanner",
+          "metadata:Athavar.FFXIV.Plugin.Models.dll: Dalamud.Hooking",
+          "artifact:Athavar.FFXIV.Plugin.Models.dll: Dalamud.Hooking",
+          "artifact:Athavar.FFXIV.Plugin.Models.dll: SigScanner",
+          "artifact:Athavar.FFXIV.Plugin.Models.dll: HookFromAddress",
+          "metadata:Athavar.FFXIV.Plugin.Dps.dll: Dalamud.Hooking",
+          "metadata:Athavar.FFXIV.Plugin.Dps.dll: HookFromAddress",
+          "il:Athavar.FFXIV.Plugin.Dps.dll:Athavar.FFXIV.Plugin.Dps.NetworkHandler..ctor+0x94: callvirt Athavar.FFXIV.Plugin.Models.Interfaces.IDalamudServices.SafeEnableHookFromAddress: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:FluentMigrator.dll: s://github.com/fluentmigrator/fluentmigrator.git",
+          "artifact:FluentMigrator.dll: D:\\a\\1\\s\\src\\FluentMigrator\\obj\\Release\\netstandard2.0\\FluentMigrator.pdb",
+          "artifact:deucalion-1.2.1.dll: \\\\?\\tA",
+          "artifact:deucalion-1.2.1.dll: C:\\Users\\runneradmin/.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\tokio-1.44.2\\src\\runtime\\task\\core.rs",
+          "artifact:deucalion-1.2.1.dll: C:\\Users\\runneradmin/.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\simplelog-0.12.2\\src\\loggers\\logging.rs",
+          "artifact:deucalion-1.2.1.dll: C:\\Users\\runneradmin/.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\tokio-1.44.2\\src\\sync\\mutex.rs(",
+          "artifact:deucalion-1.2.1.dll: C:\\Users\\runneradmin/.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\tokio-1.44.2\\src\\task\\join_set.rs",
+          "artifact:deucalion-1.2.1.dll: \\\\.\\pipe\\deucalion-"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Athavar.FFXIV.Plugin.dll: AssemblyLoadContext",
+          "il:Athavar.FFXIV.Plugin.dll:Athavar.FFXIV.Plugin.ModuleManager.LoadModules+0x37: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+          "il:Athavar.FFXIV.Plugin.dll:Athavar.FFXIV.Plugin.ModuleManager.LoadModules+0x80: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyName: AssemblyLoadContext",
+          "artifact:Athavar.FFXIV.Plugin.dll: AssemblyLoadContext",
+          "metadata:Dapper.dll: Reflection.Emit",
+          "il:Dapper.dll:Dapper.CommandDefinition.GetInit+0x8a: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+          "il:Dapper.dll:Dapper.CommandDefinition.GetInit+0x93: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+          "il:Dapper.dll:Dapper.CommandDefinition.GetInit+0xa4: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:System.Data.SQLite.dll:System.Data.SQLite.SQLiteConnection.BackupDatabase+0x9d: callvirt System.Data.SQLite.SQLiteBackupCallback.Invoke",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.SQLiteConnection.Open+0x883: callvirt System.Data.SQLite.SQLiteGetPasswordCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "deucalion-1.2.1.dll",
+          "deucalion-1.3.1.dll",
+          "SQLite.Interop.dll",
+          "lua54.dll",
+          "runtimes/win-x86/native/SQLite.Interop.dll",
+          "runtimes/win-x86/native/lua54.dll",
+          "runtimes/android-arm64/native/liblua54.so",
+          "runtimes/osx/native/liblua54.dylib"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:Athavar.FFXIV.Plugin.Models.dll: System.Net.Http.HttpClient",
+          "metadata:Athavar.FFXIV.Plugin.Importer.dll: System.Net.Http.HttpClient",
+          "il:Athavar.FFXIV.Plugin.Importer.dll:<LoadWebPageData>d__24.MoveNext+0xdc: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+          "metadata:HtmlAgilityPack.dll: System.Net.Http.HttpClient",
+          "metadata:HtmlAgilityPack.dll: WebRequest",
+          "metadata:HtmlAgilityPack.dll: HttpWebRequest",
+          "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x5: call System.Net.WebRequest.Create: WebRequest",
+          "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x31: callvirt System.Net.HttpWebRequest.set_MaximumAutomaticRedirections: WebRequest"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FluentMigrator.Runner.Core.dll: https://github.com/fluentmigrator/fluentmigrator/discussions"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.de027f510e7c",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Dapper.Contrib.dll: https://github.com/StackExchange/Dapper"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c339a1bc0638",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.Common.dll: https://raw.githubusercontent.com/Athavar/Athavar.FFXIV.DalaRepo/master/opcodes.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.bf7cb503d65c",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.json: https://github.com/Athavar/Athavar.FFXIV.Plugin"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b59379c4ff00",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Machina.dll: https://github.com/ravahn/machina",
+          "artifact:Machina.FFXIV.dll: https://github.com/ravahn/machina"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a0b383f93a9e",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/runtime",
+          "artifact:Microsoft.Extensions.Options.dll: https://github.com/dotnet/runtime",
+          "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/runtime",
+          "artifact:Microsoft.Extensions.Logging.dll: https://github.com/dotnet/runtime"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9f15c9767ba8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FluentMigrator.Runner.Core.dll: https://github.com/fluentmigrator/fluentmigrator"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.810003083c83",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.json: https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/latest"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.6a5cba98d8e5",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:HtmlAgilityPack.dll: https://github.com/zzzprojects/html-agility-pack/issues/513"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.5a2ea5f9cf28",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.json: https://raw.githubusercontent.com/Athavar/Athavar.FFXIV.DalaRepo/master/plugins/Athavar.FFXIV.Plugin/images/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.56a205da0edc",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Dapper.dll: https://github.com/DapperLib/Dapper"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.46da6f5b36ba",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.json: https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/latest/latest.zip"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3326ce3bc98b",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FluentMigrator.dll: https://github.com/fluentmigrator/fluentmigrator.git",
+          "artifact:FluentMigrator.Runner.SQLite.dll: https://github.com/fluentmigrator/fluentmigrator.git",
+          "artifact:FluentMigrator.Runner.Core.dll: https://github.com/fluentmigrator/fluentmigrator.git",
+          "artifact:FluentMigrator.Abstractions.dll: https://github.com/fluentmigrator/fluentmigrator.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.29789b64960b",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Athavar.FFXIV.Plugin.Models.dll: https://github.com/Athavar/Athavar.FFXIV.Plugin",
+          "artifact:Athavar.FFXIV.Plugin.dll: https://github.com/Athavar/Athavar.FFXIV.Plugin",
+          "artifact:Athavar.FFXIV.Plugin.Data.dll: https://github.com/Athavar/Athavar.FFXIV.Plugin",
+          "artifact:Athavar.FFXIV.Plugin.SliceIsRight.dll: https://github.com/Athavar/Athavar.FFXIV.Plugin"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0d87caf56a95",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.02c17b1985f5",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Athavar.FFXIV.Plugin.Data.dll: Directory.CreateDirectory",
+          "il:Athavar.FFXIV.Plugin.Data.dll:Athavar.FFXIV.Plugin.Data.ConnectionStringReader.BuildSQLiteConnectionString+0x1: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "artifact:deucalion-1.2.1.dll: FileStream",
+          "metadata:System.Data.SQLite.dll: FileStream",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.SQLite3.GetLegacyDatabasePageSize+0x15: newobj System.IO.FileStream..ctor: FileStream",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.SQLite3.DecryptLegacyDatabase+0xc9: newobj System.IO.FileStream..ctor: FileStream",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.SQLite3.DecryptLegacyDatabase+0x107: newobj System.IO.FileStream..ctor: FileStream",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.SQLiteExtra.WriteCrashFile+0x17: newobj System.IO.FileStream..ctor: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 4,
+    "highest_severity": "high",
+    "informational_count": 19,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 3,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+      "artifactBytes": 12075548,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.5.1.0",
+        "artifactBytes": 12075548,
+        "artifactSha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+        "catalogAssemblyVersion": "2.5.1.0",
+        "manifestInternalName": "",
+        "manifestPath": "Athavar.FFXIV.Plugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.remote-thread",
+            "label": "Remote thread creation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 14,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 14,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: android.googlesource.com",
+        "Endpoint: ffxiv.eorzeacollection.com",
+        "Endpoint: github.com",
+        "Endpoint: ocsp.digicert.com0",
+        "Endpoint: ocsp.digicert.com0a",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0x",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: system.data.sqlite.org",
+        "Endpoint: urn.to",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Endpoint: www.sqlite.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Process memory access",
+        "Raw sockets",
+        "Remote thread creation",
+        "Shell/PowerShell"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "memory.process",
+        "memory.remote-thread",
+        "native.interop",
+        "network.http",
+        "network.listener",
+        "network.socket",
+        "process.execute",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 21,
+        "critical": 0,
+        "high": 4,
+        "informational": 19
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+        "internalName": "Athavar.FFXIV.Plugin",
+        "manifestVersion": "2.5.1.0",
+        "observationId": 14304,
+        "observationKey": "manifest-248c4062516fa350982f2d56c7ab",
+        "repositoryUrl": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8710
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 38,
+        "bundledNativeLibraryCount": 18,
+        "fileCount": 82,
+        "uncompressedBytes": 27624907
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+        "attemptId": "attempt-v2-a30725eb48a34853",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-d474765b9a4c8808",
+        "definitionsRevision": "defs-v1-deded18de16d16f0",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8710",
+        "queueSeedRevision": "queue-seed-v2-f03b343d35ba109b",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "6372d898682bf25e90f75f3c77cdb516788f54cbc2bfdae71c64a6ae7ff0aaf0",
+        "scannerRevision": "scanner-v1-0c97d67da5cc4c8d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-3b30fdd24ba2e05f",
+        "targetFingerprint": "source-target-v2-a43de7c0e2b3ad1f9297",
+        "variantId": 8710,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-09T09:50:16Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Athavar/Athavar.FFXIV.Plugin"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/Athavar/Athavar.FFXIV.Plugin: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 14,
+    "scanned_at_utc": "2026-09-09T09:50:16Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8710
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+      "current_assembly_version": "2.5.1.0",
+      "current_scan_id": 14,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-09T09:50:16Z",
+      "previous_artifact_sha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+      "previous_assembly_version": "2.5.1.0",
+      "previous_scan_id": 3,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 8710
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 144,
+      "artifact_only_count": 144,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Athavar.FFXIV.Plugin",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.autospear",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Athavar.FFXIV.Plugin.AutoSpear",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.cheat",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Cheat",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.click",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Click",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Common",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.config",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Config",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.craftqueue",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Athavar.FFXIV.Plugin.CraftQueue",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.craftsimulator",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.CraftSimulator",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.data",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Data",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.dps",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Dps",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.dutyhistory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.DutyHistory",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.importer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Importer",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.instancinator",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Instancinator",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.macro",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Macro",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.models",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Models",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.opcodewizard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.OpcodeWizard",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.sliceisright",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Athavar.FFXIV.Plugin.SliceIsRight",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:athavar.ffxiv.plugin.yes",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Athavar.FFXIV.Plugin.Yes",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.3"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dapper",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Dapper",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dapper.contrib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Dapper.Contrib",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.9033"
+          ]
+        },
+        {
+          "componentKey": "assembly:fluentmigrator",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "FluentMigrator",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:fluentmigrator.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "FluentMigrator.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:fluentmigrator.abstractions.resources",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "FluentMigrator.Abstractions.resources",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:fluentmigrator.runner.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "FluentMigrator.Runner.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:fluentmigrator.runner.sqlite",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "FluentMigrator.Runner.SQLite",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:htmlagilitypack",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "HtmlAgilityPack",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.12.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:keralua",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KeraLua",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.4.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:machina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Machina",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.3.1.3"
+          ]
+        },
+        {
+          "componentKey": "assembly:machina.ffxiv",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Machina.FFXIV",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.4.3.3"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "5.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.configuration.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencyinjection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.logging.abstractions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.options",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Options",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.extensions.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Extensions.Primitives",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.visualbasic.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.VisualBasic.Core",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0",
+            "2.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:nlua",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NLua",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.7.4.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:reloaded.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Reloaded.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.specialized",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Specialized",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Annotations",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "5.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.sqlite",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.119.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.diagnosticsource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.DiagnosticSource",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracesource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.TraceSource",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.requests",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Requests",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.webheadercollection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebHeaderCollection",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.webproxy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebProxy",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.lightweight",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "5.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encodings.web",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encodings.Web",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.channels",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Channels",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.web.httputility",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Web.HttpUtility",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.readerwriter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xdocument",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xmlserializer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XmlSerializer",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xpath",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XPath",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:advapi32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "advapi32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-synch-l1-2-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-synch-l1-2-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-heap-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-heap-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-math-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-math-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-runtime-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-runtime-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-string-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-string-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:bcryptprimitives",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "bcryptprimitives.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:deucalion-1.2.1",
+          "componentKind": "native",
+          "kinds": [
+            "native-library"
+          ],
+          "name": "deucalion-1.2.1.dll",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:deucalion-1.3.1",
+          "componentKind": "native",
+          "kinds": [
+            "native-library"
+          ],
+          "name": "deucalion-1.3.1.dll",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:iphlpapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "iphlpapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libc",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libdl",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libdl",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:liblua54.dylib",
+          "componentKind": "native",
+          "kinds": [
+            "native-library"
+          ],
+          "name": "liblua54.dylib",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:liblua54.so",
+          "componentKind": "native",
+          "kinds": [
+            "native-library"
+          ],
+          "name": "liblua54.so",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:lua54",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "lua54.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mscoree",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mscoree.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ntdll",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ntdll.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:psapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "psapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:shell32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "shell32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:sqlite.interop",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "SQLite.Interop.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:userenv",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "userenv.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:vcruntime140",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "VCRUNTIME140.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:wintrust",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "WINTRUST.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:wpcap",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "wpcap.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ws2_32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ws2_32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dapper",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Dapper",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.66"
+          ]
+        },
+        {
+          "componentKey": "nuget:dapper.contrib",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Dapper.Contrib",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.78"
+          ]
+        },
+        {
+          "componentKey": "nuget:fluentmigrator",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "FluentMigrator",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:fluentmigrator.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "FluentMigrator.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:fluentmigrator.runner.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "FluentMigrator.Runner.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:fluentmigrator.runner.sqlite",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "FluentMigrator.Runner.SQLite",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:htmlagilitypack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "HtmlAgilityPack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.12.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:keralua",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "KeraLua",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.4.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:machina",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Machina",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.3.1.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:machina.ffxiv",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Machina.FFXIV",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.4.3.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.configuration.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.logging.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.options",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Options",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.extensions.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Extensions.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:nlua",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NLua",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.7.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:stub.system.data.sqlite.core.netstandard",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Stub.System.Data.SQLite.Core.NetStandard",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.119"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.data.sqlite.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Data.SQLite.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.119"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-09T09:50:16Z",
+      "comparison_id": 9,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 14,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 8710,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "7fae6439454492378dad2dca7f7f7b072c9797234369e1cdbeea8b466aab6a3b",
+    "observedAtUtc": "2026-09-11T20:43:07Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "b25de24dd2602d5449e91873cf2bf7f58ec2e79e94c7a5dee1566b5e0596a139",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "ad98a6dba21ec3c607c295ace3ae215210735647b3db449698f1e5536ab65f3a",
+        "records": 628,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "e2d67498d744017b1ab25ada8f2e500cbccf267be69148414badc1a0e7f88152",
+        "records": 38,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "44499d4b5d92de972cc42aaa9c248034d76e3f0514201aad5390c76bf269e9d6",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "8369c7e20ac9018fcda93a8dd979dad336ef8022802f8dcd28d06288f088a4d2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-7d0aa4d485f62800dd2d6bc1719226b9c324ad28d7e71174f23990c255e5e271",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Athavar's ToolBox",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Athavar.FFXIV.Plugin",
+    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "plugin_id": 662
+  },
+  "pluginId": 662,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Various tools for private use. Module: AutoSpear, CraftQueue, Dps, DutyHistory, Instancinator, Macro, OpcodeWizard, SliceIsRight, Yes",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1113,
+      "summary": "Various tools for private use.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Athavar/Athavar.FFXIV.Plugin"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Athavar.FFXIV.Plugin\n\n## Installation\n\n- Add `https://raw.githubusercontent.com/Athavar/Athavar.FFXIV.DalaRepo/master/pluginmaster.json` to your list of repos\n  in /xlsettings\n\n## Moduls\n\n- `AutoSpear`: Catch fishes during spearfishing by name.\n- `CraftQueue`: Tool to verify crafting rotations and queue crafts.\n- `Dps`: Damage meter without the use of ACT. Note: Dot&Hot are assigned to players by potency of current target status.\n  effects. Buffs and gear are not taken into account.\n- `DutyHistory`: Track duty runs.\n- `Instancinator`: Open window for fast instance change on aetheryte.\n- `Macro`: Save and run unlimited Text macros.\n- `SliceIsRight`: Shows where Bamboo falls during the Gate \"The Slice Is Right\".\n- `Yes`: Auto Yes or select for Dialog windows.\n\n## Inspirations\n\n- UI of [`Dps`] based on [LMeter](https://github.com/lichie567/LMeter).\n- [`Instancinator`] Base code from [Instancinator](https://github.com/NightmareXIV/Instancinator).\n- [`Macro`] Base code from [SomethingNeedDoing](https://github.com/daemitus/SomethingNeedDoing).\n- [`Yes`] Base code from [YesAlready](https://github.com/daemitus/YesAlready).\n- Lib [`Click`] Base code from [ClickLib](https://github.com/daemitus/ClickLib).\n- Lib [`CraftSimulator`] Inspired by typescript code\n  from [Teamcraft simulator](https://github.com/ffxiv-teamcraft/simulator).\n- [`SliceIsRight`] Base code from [carvelli](https://github.com/carvelli/). Repository was deleted or set to private.",
+      "title": "Athavar.FFXIV.Plugin",
+      "url": "https://github.com/Athavar/Athavar.FFXIV.Plugin"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "9968cd6f0694e2cc2d636e2cc9342fa5a94f87ff88df4745f62c61570c58ff83",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "34e3b93640836efd0f77be5b96ae5843e9ce79e42296ec8a3395f62cb1766dc4",
+        "records": 14
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "e71e9520ed17321cd4aed883b9f6215ff165b2cf1c31b288c2a170a4284ba335",
+        "records": 44
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+    "artifact_url": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+    "assembly_version": "2.5.1.0",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: android.googlesource.com",
+      "Endpoint: ffxiv.eorzeacollection.com",
+      "Endpoint: github.com",
+      "Endpoint: ocsp.digicert.com0",
+      "Endpoint: ocsp.digicert.com0a",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0x",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: system.data.sqlite.org",
+      "Endpoint: urn.to",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Endpoint: www.sqlite.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Process memory access",
+      "Raw sockets",
+      "Remote thread creation",
+      "Shell/PowerShell"
+    ],
+    "caution_count": 21,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 4,
+    "highest_severity": "high",
+    "informational_count": 19,
+    "plugin_id": 662,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 3,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+      "artifactBytes": 12075548,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.5.1.0",
+        "artifactBytes": 12075548,
+        "artifactSha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+        "catalogAssemblyVersion": "2.5.1.0",
+        "manifestInternalName": "",
+        "manifestPath": "Athavar.FFXIV.Plugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.remote-thread",
+            "label": "Remote thread creation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 14,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 14,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: android.googlesource.com",
+        "Endpoint: ffxiv.eorzeacollection.com",
+        "Endpoint: github.com",
+        "Endpoint: ocsp.digicert.com0",
+        "Endpoint: ocsp.digicert.com0a",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0x",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: system.data.sqlite.org",
+        "Endpoint: urn.to",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Endpoint: www.sqlite.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Process memory access",
+        "Raw sockets",
+        "Remote thread creation",
+        "Shell/PowerShell"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "memory.process",
+        "memory.remote-thread",
+        "native.interop",
+        "network.http",
+        "network.listener",
+        "network.socket",
+        "process.execute",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 21,
+        "critical": 0,
+        "high": 4,
+        "informational": 19
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+        "internalName": "Athavar.FFXIV.Plugin",
+        "manifestVersion": "2.5.1.0",
+        "observationId": 14304,
+        "observationKey": "manifest-248c4062516fa350982f2d56c7ab",
+        "repositoryUrl": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 8710
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 38,
+        "bundledNativeLibraryCount": 18,
+        "fileCount": 82,
+        "uncompressedBytes": 27624907
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-e040acf34b86849b",
+        "attemptId": "attempt-v2-a30725eb48a34853",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-d474765b9a4c8808",
+        "definitionsRevision": "defs-v1-deded18de16d16f0",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-8710",
+        "queueSeedRevision": "queue-seed-v2-f03b343d35ba109b",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "6372d898682bf25e90f75f3c77cdb516788f54cbc2bfdae71c64a6ae7ff0aaf0",
+        "scannerRevision": "scanner-v1-0c97d67da5cc4c8d",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-3b30fdd24ba2e05f",
+        "targetFingerprint": "source-target-v2-a43de7c0e2b3ad1f9297",
+        "variantId": 8710,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-09T09:50:16Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "bc1005895978320d60861a19f3ace3539e377865505897019512d36028af1042",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Athavar/Athavar.FFXIV.Plugin"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/Athavar/Athavar.FFXIV.Plugin: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 14,
+    "scanned_at_utc": "2026-09-09T09:50:16Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 691,
+    "source_repository": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 8710
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "8e606a8faef309b268188fcdc8250bee24423402ee85288e3e614f2aa3493eaa",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"cd8593ac3b869f7ab32c7e7afb52d7960bde2058f603075fba351afd435f6909\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-10T19:32:18Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-10T19:32:18Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 118,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 691,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/repos/automation.json"
+  },
+  "sourceId": 691,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "2.5.1.0",
+    "author": "Athavar",
+    "authors_json": [
+      "Athavar"
+    ],
+    "category_tags_json": [],
+    "changelog": "Go to https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/latest to find the last changes.",
+    "dalamud_api_level": 15,
+    "description": "Various tools for private use. Module: AutoSpear, CraftQueue, Dps, DutyHistory, Instancinator, Macro, OpcodeWizard, SliceIsRight, Yes",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+    "download_link_testing": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+    "download_link_update": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+    "first_seen_utc": "2026-09-09T08:52:51Z",
+    "icon_url": "https://raw.githubusercontent.com/Athavar/Athavar.FFXIV.DalaRepo/master/plugins/Athavar.FFXIV.Plugin/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-10T16:17:54Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Athavar's ToolBox",
+    "plugin_id": 662,
+    "punchline": "Various tools for private use.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": false,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "2.5.1.0",
+      "Author": "Athavar",
+      "CanUnloadAsync": false,
+      "Changelog": "Go to https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/latest to find the last changes.",
+      "DalamudApiLevel": 15,
+      "Description": "Various tools for private use. Module: AutoSpear, CraftQueue, Dps, DutyHistory, Instancinator, Macro, OpcodeWizard, SliceIsRight, Yes",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Athavar/Athavar.FFXIV.Plugin/releases/download/v2.5.1.0/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/Athavar/Athavar.FFXIV.DalaRepo/master/plugins/Athavar.FFXIV.Plugin/images/icon.png",
+      "ImageUrls": [],
+      "InternalName": "Athavar.FFXIV.Plugin",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdated": "1788903062",
+      "LoadPriority": 0,
+      "LoadSync": false,
+      "Name": "Athavar's ToolBox",
+      "Punchline": "Various tools for private use.",
+      "RepoUrl": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+      "_Category": "automation",
+      "_SourceId": "athavar-athavar-ffxiv-dalarepo",
+      "_SourceName": "Athavar / Athavar.FFXIV.DalaRepo",
+      "_SourceUrl": "https://raw.githubusercontent.com/Athavar/Athavar.FFXIV.DalaRepo/master/pluginmaster.json"
+    },
+    "repo_url": "https://github.com/Athavar/Athavar.FFXIV.Plugin",
+    "source_entry_key": "athavar.ffxiv.plugin|2.5.1.0|15|0|11",
+    "source_id": 691,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 8710
+  },
+  "variantId": 8710
+}

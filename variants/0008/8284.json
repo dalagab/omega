@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "8257e4bfbb3783a5658c4ba0f65bb85e5167a7736b149a1b669795c480108f31",
+    "analysisId": "ca05b07d6da9c1078e7edc9d5a11d90e4573091d301c3fd606f33cc01d4cbf1e",
     "artifactSha256": "0e9c3d3bb929ba50a6b91fdf7931c1df760287bcb1225159724417e8cee22edd",
-    "path": "artifacts/0e/0e9c3d3bb929ba50a6b91fdf7931c1df760287bcb1225159724417e8cee22edd/analyses/8257e4bfbb3783a5658c4ba0f65bb85e5167a7736b149a1b669795c480108f31",
-    "recordCount": 43
+    "path": "artifacts/0e/0e9c3d3bb929ba50a6b91fdf7931c1df760287bcb1225159724417e8cee22edd/analyses/ca05b07d6da9c1078e7edc9d5a11d90e4573091d301c3fd606f33cc01d4cbf1e",
+    "recordCount": 884
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,14 +11,14 @@
     "artifact_url": "https://raw.githubusercontent.com/AiriTsukino/GambaAssistant/main/GambaAssistant.zip",
     "assembly_version": "0.1.9.1",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
       "Filesystem write",
       "Game memory/hooks",
       "Hard-coded external file access",
       "Process execution"
     ],
-    "caution_count": 3,
+    "caution_count": 5,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -40,11 +40,36 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:GambaAssistant/UI/MainWindow.cs: Process.Start",
+          "source:GambaAssistant/UI/MainWindow.cs: ProcessStartInfo",
+          "source:GambaAssistant/UI/MainWindow.cs: ShellExecute",
+          "source:GambaAssistant/UI/SettingsWindow.cs: Process.Start",
+          "source:GambaAssistant/UI/SettingsWindow.cs: ProcessStartInfo",
+          "source:GambaAssistant/UI/SettingsWindow.cs: ShellExecute"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "game-memory",
         "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
         "evidence": [
           "metadata:GambaAssistant.dll: SigScanner",
           "artifact:GambaAssistant.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:GambaAssistant/DalamudServices.cs: SigScanner"
         ],
         "ruleId": "game.hooking",
         "severity": "caution",
@@ -74,13 +99,28 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:GambaAssistant/Services/ExportService.cs: WriteAllText",
+          "source:GambaAssistant/Services/ExportService.cs: Directory.CreateDirectory",
+          "source:GambaAssistant/Services/PersistenceService.cs: WriteAllText",
+          "source:GambaAssistant/Services/PersistenceService.cs: File.Delete",
+          "source:GambaAssistant/Services/PersistenceService.cs: File.Move",
+          "source:GambaAssistant/Services/ProfileService.cs: File.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 1,
+    "informational_count": 2,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 1,
+      "artifactAnalysisRepresentativeScanId": 11,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-fe73bc6ab92d05ac",
       "artifactBytes": 185559,
@@ -99,7 +139,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -128,6 +168,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -135,6 +187,30 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -150,6 +226,18 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -157,8 +245,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -176,11 +306,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 4,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 4,
+          "observedWithoutProfileCount": 8,
           "unexplainedDestinationCount": 0
         }
       },
@@ -193,25 +323,31 @@
       "capabilityIds": [
         "filesystem.external-path",
         "filesystem.write",
+        "game.chat.read",
         "game.memory.read",
-        "process.execute"
+        "game.state.read",
+        "game.ui.read",
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 5,
         "critical": 0,
         "high": 0,
-        "informational": 1
+        "informational": 2
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 2,
+          "exactVersionObservedCount": 2,
+          "families": {
+            "nuget": 2
+          },
+          "fingerprint": "aecf1e1437857310bda4ae178730b7e204d2377f65c7ecb10d0cbdbc9f37efd8",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -219,7 +355,9 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 2
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -228,24 +366,49 @@
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 2,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 2
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 2,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -253,7 +416,28 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "ko-fi.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/airitsukino"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/AiriTsukino/GambaAssistant/main/GambaAssistant/Resources/GALogo.png"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -276,33 +460,35 @@
         "uncompressedBytes": 405668
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-fe73bc6ab92d05ac",
-        "attemptId": "attempt-v2-0d651d037f081a68",
+        "artifactAnalysisRevision": "artifact-analysis-v3-f7f0d46209cfa17f",
+        "attemptId": "attempt-v2-0bedc336a40c7e2e",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-33358992909b38a6",
-        "definitionsRevision": "defs-v1-8d71943b3daa8e44",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-3ddb285e1472629e",
+        "definitionsRevision": "defs-v1-a423a09696c3826f",
+        "observedSourceCommit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/AiriTsukino/GambaAssistant",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-8284",
-        "queueSeedRevision": "queue-seed-v2-b5b7efae0692b4212d41",
+        "queueSeedRevision": "queue-seed-v2-38e3da9a7fcc3dc7",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
-        "scannerBundleSha256": "88cc13f5602d481c827bde20cbb5a559f898b3e5038322d6ce06c0a19518e8b6",
-        "scannerRevision": "scanner-v1-28ef959e333ba8dc",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "2596256b0f1b945b76d529cb9ebfe8c5287823f03f83bb473284e439d0508932",
+        "scannerRevision": "scanner-v1-5a4ee8e68174bd1b",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-0b08b27fb14118c1",
-        "targetFingerprint": "source-target-v2-dd2fbfdc4b91d80c380c",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-fcc954fbbd334756",
+        "targetFingerprint": "source-target-v2-8cb21d1fbb8ce68bee7d",
         "variantId": 8284,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T09:45:50Z",
+      "scannedAtUtc": "2026-09-11T20:33:08Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -344,20 +530,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "main",
         "candidates": [
           "https://github.com/AiriTsukino/GambaAssistant"
         ],
-        "commit": "",
+        "commit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "f87109c8834bda0ce5a6d87cdfc95d5b8000c2c2e772f4e7c5cf0396e16f17db"
           }
         },
         "developerProfile": {
@@ -365,56 +557,340 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/AiriTsukino/GambaAssistant: 0.1.9.1: HTTP Error 422: Unprocessable Entity; v0.1.9.1: HTTP Error 422: Unprocessable Entity; main: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "0.1.9.1",
+          "manifestInternalName": "",
+          "manifestPath": "GambaAssistant/GambaAssistant.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.1.9.1",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "main",
+          "selectedRefKind": "metadata-ref",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
         "repository": "https://github.com/AiriTsukino/GambaAssistant",
-        "treeSha256": ""
+        "treeSha256": "bf5a2a34aca405cac1fd5bb966b11483a6754dca"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 11,
-    "scanned_at_utc": "2026-09-08T09:45:50Z",
+    "scan_id": 20,
+    "scanned_at_utc": "2026-09-11T20:33:08Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
     "source_repository": "https://github.com/AiriTsukino/GambaAssistant",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 8284
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "GambaAssistant/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "GambaAssistant/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud service ISigScanner is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service IObjectTable is referenced.",
+            "Dalamud service IPartyList is referenced.",
+            "Dalamud service ITargetManager is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 14,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 15,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "caution",
+        "variant_id": 8284
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 20,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-11T20:33:32Z",
+        "drift_id": 16,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 11,
+        "severity": "informational",
+        "variant_id": 8284
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "revalidation",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "0e9c3d3bb929ba50a6b91fdf7931c1df760287bcb1225159724417e8cee22edd",
       "current_assembly_version": "0.1.9.1",
-      "current_scan_id": 11,
+      "current_scan_id": 20,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-08T09:46:03Z",
+      "current_source_commit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
+      "detected_at_utc": "2026-09-11T20:33:32Z",
       "previous_artifact_sha256": "0e9c3d3bb929ba50a6b91fdf7931c1df760287bcb1225159724417e8cee22edd",
       "previous_assembly_version": "0.1.9.1",
-      "previous_scan_id": 1,
+      "previous_scan_id": 11,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 8284
     },
     "sourceArtifactComparison": {
@@ -661,18 +1137,47 @@
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-08T09:46:03Z",
-      "comparison_id": 8,
-      "comparison_status": "source-unavailable",
+      "compared_at_utc": "2026-09-11T20:33:32Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
       "matched_component_count": 0,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 11,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 20,
+      "source_available": 1,
+      "source_dependency_count": 2,
+      "source_only_count": 2,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        }
+      ],
+      "source_project_sha256": "bf5623f67d6498bee1e1d13a8c7f392fea05d822275a70f390eb2b4f878cf672",
       "variant_id": 8284,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -710,36 +1215,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 16126,
+          "bytes": 18022,
           "encoding": "json",
           "path": "derived/variants/0008/8284/dependency-resolutions.json",
-          "recordDigest": "d1ebde369e88bc2db1f6958edbfc9db43213c996a6093837ddaf658586d5b089",
-          "records": 17,
-          "sha256": "716566fa0fcfca7c969c2b69269e74b668bf338c94cb54b1852438882790e0ef"
+          "recordDigest": "0197d32601e5b081bbbfac9d40dd3e5b7ac541757429147b67551fb31422ea13",
+          "records": 19,
+          "sha256": "7757316907ad5064f3badbf95597f062610736420da1b68c0931739503218c6b"
         }
       ],
-      "recordDigest": "d1ebde369e88bc2db1f6958edbfc9db43213c996a6093837ddaf658586d5b089",
-      "records": 17
+      "recordDigest": "0197d32601e5b081bbbfac9d40dd3e5b7ac541757429147b67551fb31422ea13",
+      "records": 19
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 476949,
           "encoding": "json",
           "path": "derived/variants/0008/8284/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "5c0aa7757d6c1dea816a17e4fd30ad1ba94f581353953fecdf0e16dcb295b778",
+          "records": 1,
+          "sha256": "870b65ba0a226d882edf6ee369ec90141b2c043a2d5c631af80115f968bbb303"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "5c0aa7757d6c1dea816a17e4fd30ad1ba94f581353953fecdf0e16dcb295b778",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "153d0c4c2ccfef4203c4f9eaaced8b75ca61b350dd82fee84bbaabfe587f0cd4",
+    "identityFingerprint": "81f03d2e023e1e10d76d5f9b6ab7ee51752388dd9422d26d0ae9c38a9212f37c",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -759,17 +1264,17 @@
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "3ee56611053bec806f0f07c070f3ef90fc4a85e9e7f8d86dbce621b00d27584d",
-        "records": 17,
+        "recordDigest": "8efb7e0bc05daa8f2fcb4d12e79ea88dad3cc3f3627fcbd226a8b219a776d56f",
+        "records": 19,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -839,8 +1344,18 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "4e2e7de4fbf3eda09c34f2186b365642256dde8aa062a4b8e4de623ea76bed4a",
+        "records": 158,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "312d07f90726d73c2106fd03aeb74ec39def369b9f310457605801f98fa11d24",
+        "records": 2,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -859,28 +1374,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "e85a65dee78c217e61106c665e1d038f8016435516756ededa582be2271cefb4",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "e551e6b27f6b77485c6ffbf8b01bfbb504724e65cdc8cec33eba16d442310abd",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "521f16a3211dc45018b986019f608b6bd1ef262356fd638f45c5e6d7c9a45edd",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "31252d36d6316d72e6ca0b57330719e8d598b561bd915132e22b3e54b8ac6778",
+        "records": 544,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "4471665284aa3cc50078ded7a1e74d9d41766d5a93f4f261876ef5819126abca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "f960fb444200d7b3e1c0f0db5b5116b25a4531f894abc234167596e331160b6d",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "59f29175610ccf9845e430acaa7777ff2fc73fd9560affe63198e4d8a921508d",
+        "records": 60,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "46282b0131f477bbb373a49ba766481d70eb41f8112305a09050cc1045dca8b7",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "7ef6e23b3185f12fb90feb00e88179a156e7e5802f42835b364877a990ba79f3",
+        "records": 25,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "sourceProvenance": {
         "backingDataset": "sourceProvenance",
         "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
         "completeness": "retained",
-        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "recordDigest": "56148ca859fa067681b6e02c2f5448a19af495ee1eafa5f257e250102f70b2a5",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "57b78a9c618e24df0f23f068e6b150829fd099e8af4bd5070b8a9ed05d713063",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "999a1944c064d7730732a395ed28a9e866013f8cd2667c1dfbe9a2200763c3ab",
+        "records": 13,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -890,25 +1525,12 @@
     "legacyCompatibility": false,
     "missingCollections": [
       "binaryClassifications",
-      "nativeImports",
-      "networkEndpoints",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFiles",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "nativeImports"
     ],
-    "observationDigest": "obs-27f97f98ef347721fc9baab835f670c5bd882c3a4fe19038461568cfda982001",
+    "observationDigest": "obs-088b52e80b4060ad3de654c5a7a37a33633f139c12dcdc14c79ddea9b107fedb",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-fe73bc6ab92d05ac",
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
     },
     "schema": "omega.sigmascope.observation-contract.v1"
   },
@@ -917,7 +1539,7 @@
     "canonical_name": "GambaAssistant",
     "first_seen_utc": "2026-08-22T00:07:47Z",
     "internal_name": "GambaAssistant",
-    "last_seen_utc": "2026-09-10T19:32:18Z",
+    "last_seen_utc": "2026-09-11T20:07:31Z",
     "plugin_id": 1082
   },
   "pluginId": 1082,
@@ -966,27 +1588,27 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "85ed4928cd7be2fbaf1156cf938c04de683d81bc94b164ac129866ba66c0de5b",
+        "recordDigest": "61eface63cde13e3dc448dc8ee3c6d4ceb792f4d8f7640e41f00b10fb01c6871",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "10e0e9bb3a962683eed3f692b84f9f2c9686ec4a95a72998a57ab614a4360fe9",
-        "records": 4
+        "recordDigest": "c3a2f55567eef505ffbf9f52f9dfa946a473c78710a897cc3aba5ce81a20bb3b",
+        "records": 8
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "cd437f69ce0f560dfafd5aaf0fdaa8295e4acde9da8efcd9114f3ba049afd1d3",
-        "records": 4
+        "recordDigest": "71bfaa264388c1513c52035e22806ba878b7594b5b4b14b57d7499f87ddecd52",
+        "records": 7
       }
     },
-    "projectionRevision": "projection-v1-2a4f9896d30f2a3c",
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
     "recursiveInputsForbidden": [
       "findings",
       "permissionCandidates",
       "automationCapabilities",
       "behaviorConsistency"
     ],
-    "ruleSetRevision": "rules-v1-93f233907bb8c33f",
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
     "schema": "omega.sigmascope.projection-contract.v1"
   },
   "scan": {
@@ -1000,15 +1622,15 @@
       "Hard-coded external file access",
       "Process execution"
     ],
-    "caution_count": 3,
+    "caution_count": 5,
     "critical_count": 0,
     "error": "",
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 1,
+    "informational_count": 2,
     "plugin_id": 1082,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 1,
+      "artifactAnalysisRepresentativeScanId": 11,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-fe73bc6ab92d05ac",
       "artifactBytes": 185559,
@@ -1027,7 +1649,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -1056,6 +1678,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -1063,6 +1697,30 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1078,6 +1736,18 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -1085,8 +1755,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -1104,11 +1816,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 4,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 4,
+          "observedWithoutProfileCount": 8,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1121,25 +1833,31 @@
       "capabilityIds": [
         "filesystem.external-path",
         "filesystem.write",
+        "game.chat.read",
         "game.memory.read",
-        "process.execute"
+        "game.state.read",
+        "game.ui.read",
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 5,
         "critical": 0,
         "high": 0,
-        "informational": 1
+        "informational": 2
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 2,
+          "exactVersionObservedCount": 2,
+          "families": {
+            "nuget": 2
+          },
+          "fingerprint": "aecf1e1437857310bda4ae178730b7e204d2377f65c7ecb10d0cbdbc9f37efd8",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -1147,7 +1865,9 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 2
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -1156,24 +1876,49 @@
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 2,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 2,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 2
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 2,
           "networkCapabilityObserved": false,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1181,7 +1926,28 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "ko-fi.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/airitsukino"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/AiriTsukino/GambaAssistant/main/GambaAssistant/Resources/GALogo.png"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -1204,33 +1970,35 @@
         "uncompressedBytes": 405668
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-fe73bc6ab92d05ac",
-        "attemptId": "attempt-v2-0d651d037f081a68",
+        "artifactAnalysisRevision": "artifact-analysis-v3-f7f0d46209cfa17f",
+        "attemptId": "attempt-v2-0bedc336a40c7e2e",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-33358992909b38a6",
-        "definitionsRevision": "defs-v1-8d71943b3daa8e44",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-3ddb285e1472629e",
+        "definitionsRevision": "defs-v1-a423a09696c3826f",
+        "observedSourceCommit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/AiriTsukino/GambaAssistant",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-8284",
-        "queueSeedRevision": "queue-seed-v2-b5b7efae0692b4212d41",
+        "queueSeedRevision": "queue-seed-v2-38e3da9a7fcc3dc7",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-93f233907bb8c33f",
-        "scannerBundleSha256": "88cc13f5602d481c827bde20cbb5a559f898b3e5038322d6ce06c0a19518e8b6",
-        "scannerRevision": "scanner-v1-28ef959e333ba8dc",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "2596256b0f1b945b76d529cb9ebfe8c5287823f03f83bb473284e439d0508932",
+        "scannerRevision": "scanner-v1-5a4ee8e68174bd1b",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-0b08b27fb14118c1",
-        "targetFingerprint": "source-target-v2-dd2fbfdc4b91d80c380c",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-fcc954fbbd334756",
+        "targetFingerprint": "source-target-v2-8cb21d1fbb8ce68bee7d",
         "variantId": 8284,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T09:45:50Z",
+      "scannedAtUtc": "2026-09-11T20:33:08Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1272,20 +2040,26 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "main",
         "candidates": [
           "https://github.com/AiriTsukino/GambaAssistant"
         ],
-        "commit": "",
+        "commit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "f87109c8834bda0ce5a6d87cdfc95d5b8000c2c2e772f4e7c5cf0396e16f17db"
           }
         },
         "developerProfile": {
@@ -1293,32 +2067,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/AiriTsukino/GambaAssistant: 0.1.9.1: HTTP Error 422: Unprocessable Entity; v0.1.9.1: HTTP Error 422: Unprocessable Entity; main: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "very-high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "0.1.9.1",
+          "manifestInternalName": "",
+          "manifestPath": "GambaAssistant/GambaAssistant.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "0.1.9.1",
           "schema": "omega.plugin-source-provenance.v1",
-          "versionMatched": false
+          "selectedRef": "main",
+          "selectedRefKind": "metadata-ref",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
         },
         "repository": "https://github.com/AiriTsukino/GambaAssistant",
-        "treeSha256": ""
+        "treeSha256": "bf5a2a34aca405cac1fd5bb966b11483a6754dca"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 11,
-    "scanned_at_utc": "2026-09-08T09:45:50Z",
+    "scan_id": 20,
+    "scanned_at_utc": "2026-09-11T20:33:08Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "c855539e82b8235b37b1968e08f011bd97c0e4d6",
     "source_id": 593,
     "source_repository": "https://github.com/AiriTsukino/GambaAssistant",
     "source_to_binary_verified": 0,
@@ -1327,20 +2116,20 @@
   },
   "schema": "omega.security-evidence.variant.v2",
   "source": {
-    "content_sha256": "e9d9feadf9eedc7feb227d34cfe64ddc85f3e48357c31efa070fe639dbf15e14",
+    "content_sha256": "22ff90bf331890294e2d4baa0f7c5efe9cb8307a254c6e786a1b762c57300484",
     "curated_id": "",
     "description": "",
     "discovered_by": "catalog-data/sources/index.json",
     "enabled_by_default": 1,
-    "etag": "\"d12f94a497dd052232d8f452c6daedaa8ce44816fdbb3e454749fe030174513b\"",
+    "etag": "\"1b67c15670de16cf5a53725e32f944b34b5d4e2cd1472e1af8502db3a59c864a\"",
     "highest_api": 15,
     "integrate_with_dalamud": 0,
     "is_official": 0,
     "kind": "canonical",
-    "last_checked_utc": "2026-09-10T19:32:18Z",
+    "last_checked_utc": "2026-09-11T20:07:31Z",
     "last_error": "",
     "last_modified": "",
-    "last_success_utc": "2026-09-10T19:32:18Z",
+    "last_success_utc": "2026-09-11T20:07:31Z",
     "name": "yourShika/AetheryteRepo",
     "plugin_count": 52,
     "provider": "yourShika/AetheryteRepo",
@@ -1371,7 +2160,7 @@
     "image_urls_json": [],
     "is_hide": 0,
     "is_testing_exclusive": 0,
-    "last_seen_utc": "2026-09-10T16:17:54Z",
+    "last_seen_utc": "2026-09-11T20:07:31Z",
     "last_update": 1780889334,
     "minimum_dalamud_version": null,
     "name": "GambaAssistant",
