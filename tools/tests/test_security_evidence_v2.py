@@ -26,6 +26,12 @@ from validate_security_evidence_v2 import infer_database_from_migration_state, v
 import definition_packs
 from production_sigmascope_v2_pipeline import materialize_definition_provenance_index
 from evidence_contract_reader import read_identity_index, read_workbench_relationship_index
+from plugin_index_transport import (
+    PLUGIN_INDEX_LEGACY_SCHEMA,
+    PLUGIN_INDEX_SCHEMA,
+    PLUGIN_INDEX_STORAGE,
+    read_plugin_index,
+)
 
 
 class SecurityEvidenceV2Tests(unittest.TestCase):
@@ -103,7 +109,15 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             first = json.loads((output / "variants" / "0000" / "1.json").read_text(encoding="utf-8"))
             second = json.loads((output / "variants" / "0000" / "2.json").read_text(encoding="utf-8"))
             self.assertEqual(first["analysis"]["analysisId"], second["analysis"]["analysisId"])
-            plugins_index = json.loads((output / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            plugins_manifest = json.loads((output / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            self.assertEqual(PLUGIN_INDEX_SCHEMA, plugins_manifest["schema"])
+            self.assertEqual(PLUGIN_INDEX_STORAGE, plugins_manifest["storage"])
+            self.assertLess((output / "indexes" / "plugins.json").stat().st_size, 64 * 1024)
+            for descriptor in plugins_manifest["datasets"].values():
+                for shard in descriptor["files"]:
+                    self.assertEqual("jsonl+gzip", shard["encoding"])
+                    self.assertLessEqual(int(shard["bytes"]), MAX_PUBLISH_FILE_BYTES)
+            plugins_index = read_plugin_index(output)
             first_index = next(row for row in plugins_index["currentVariants"] if row["variantId"] == 1)
             self.assertEqual(64, len(first_index["variantSha256"]))
             self.assertEqual("FixturePlugin", first_index["summary"]["canonical_name"])
@@ -129,6 +143,52 @@ class SecurityEvidenceV2Tests(unittest.TestCase):
             publication = preflight(output)
             self.assertGreater(publication["files"], 0)
             self.assertEqual(publication["evidenceRevision"], "ev-test")
+
+    def test_plugin_reader_accepts_legacy_inline_v2(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-legacy-plugins-") as td:
+            root = Path(td)
+            path = root / "indexes" / "plugins.json"
+            path.parent.mkdir(parents=True)
+            payload = {
+                "schema": PLUGIN_INDEX_LEGACY_SCHEMA,
+                "currentVariants": [{"variantId": 7, "variantPath": "variants/0000/7.json"}],
+            }
+            path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            root_index = {
+                "schema": "omega.security-evidence.v2",
+                "formatVersion": 2,
+                "indexes": {"plugins": file_entry(root, path, records=1, encoding="json")},
+            }
+            (root / "index.json").write_text(
+                json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+            )
+            logical = read_plugin_index(root)
+            self.assertEqual(payload["currentVariants"], logical["currentVariants"])
+            self.assertEqual([], logical["terminalVariants"])
+            self.assertEqual([], logical["historicalSnapshots"])
+
+    def test_plugin_shards_are_intrinsically_validated(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-plugin-shard-validation-") as td:
+            root = Path(td)
+            database = self.make_database(root / "evidence.sqlite")
+            output = root / "v2"
+            migrate(database, output, reset=True, chunk_bytes=1024 * 1024)
+            manifest = json.loads((output / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            shard = manifest["datasets"]["currentVariants"]["files"][0]
+            shard_path = output / shard["path"]
+            shard_path.write_bytes(shard_path.read_bytes() + b"corruption")
+
+            report = validate_snapshot(output)
+
+            self.assertFalse(report["ok"])
+            self.assertTrue(
+                any(
+                    "plugins index unreadable" in error
+                    and ("size mismatch" in error or "sha256 mismatch" in error)
+                    for error in report["errors"]
+                ),
+                report,
+            )
 
     def test_identity_reader_accepts_legacy_inline_v2(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-legacy-identities-") as td:
