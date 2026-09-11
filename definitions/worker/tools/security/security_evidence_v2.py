@@ -530,7 +530,7 @@ def sha256_bytes(data: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
+    with platform_path(path).open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -754,14 +754,16 @@ def safe_relpath(path: str) -> str:
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
+    target = platform_path(path)
+    directory = platform_path(path.parent)
+    directory.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=directory)
     try:
         with os.fdopen(fd, "wb") as stream:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temp_name, path)
+        os.replace(temp_name, target)
     finally:
         try:
             os.unlink(temp_name)
@@ -1017,11 +1019,11 @@ def read_record_dataset(root: Path, descriptor: dict[str, Any]) -> list[dict[str
         path = root.resolve() / rel
         encoding = str(file_info.get("encoding") or "")
         if encoding == "json":
-            value = json.loads(path.read_text(encoding="utf-8"))
+            value = json.loads(platform_path(path).read_text(encoding="utf-8"))
             values = value if isinstance(value, list) else [value]
             rows.extend(item for item in values if isinstance(item, dict))
         elif encoding == "jsonl+gzip":
-            with gzip.open(path, "rt", encoding="utf-8") as stream:
+            with gzip.open(platform_path(path), "rt", encoding="utf-8") as stream:
                 for line in stream:
                     if not line.strip():
                         continue
@@ -1051,7 +1053,7 @@ def read_json_file(root: Path, relative: str) -> Any:
         raise ValueError(f"evidence path escaped root: {relative!r}")
     if not platform_path(path).is_file():
         raise FileNotFoundError(path)
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(platform_path(path).read_text(encoding="utf-8"))
 
 
 def read_dataset_rows(root: Path, analysis_path: str, dataset: str) -> list[dict[str, Any]]:
@@ -1067,13 +1069,13 @@ def read_dataset_rows(root: Path, analysis_path: str, dataset: str) -> list[dict
         path = root / rel
         encoding = str(entry.get("encoding") or "")
         if encoding == "json":
-            value = json.loads(path.read_text(encoding="utf-8"))
+            value = json.loads(platform_path(path).read_text(encoding="utf-8"))
             if isinstance(value, list):
                 rows.extend(item for item in value if isinstance(item, dict))
             elif isinstance(value, dict):
                 rows.append(value)
         elif encoding == "jsonl+gzip":
-            with gzip.open(path, "rt", encoding="utf-8") as stream:
+            with gzip.open(platform_path(path), "rt", encoding="utf-8") as stream:
                 for line in stream:
                     if not line.strip():
                         continue
@@ -1086,14 +1088,12 @@ def read_dataset_rows(root: Path, analysis_path: str, dataset: str) -> list[dict
 
 
 def iter_variant_entries(root: Path) -> Iterator[tuple[dict[str, Any], dict[str, Any]]]:
-    index = read_json_file(root, "index.json")
-    if index.get("schema") != SCHEMA:
-        raise ValueError(f"unsupported evidence schema: {index.get('schema')!r}")
-    plugins_entry = ((index.get("indexes") or {}).get("plugins") or {})
-    plugins = read_json_file(root, str(plugins_entry.get("path") or "indexes/plugins.json"))
-    for entry in plugins.get("currentVariants") or []:
-        if not isinstance(entry, dict):
-            continue
+    try:
+        from .plugin_index_transport import iter_plugin_index_records
+    except ImportError:
+        from plugin_index_transport import iter_plugin_index_records  # type: ignore
+
+    for entry in iter_plugin_index_records(root, "currentVariants"):
         payload = read_json_file(root, str(entry.get("variantPath") or ""))
         yield entry, payload
 
@@ -1595,8 +1595,11 @@ def validate_snapshot(
     historical_entries: list[dict[str, Any]] = []
     lifecycle_contract = 0
     try:
-        plugins_path = str((indexes.get("plugins") or {}).get("path") or "")
-        plugins = read_json_file(root, plugins_path)
+        try:
+            from .plugin_index_transport import read_plugin_index
+        except ImportError:
+            from plugin_index_transport import read_plugin_index  # type: ignore
+        plugins = read_plugin_index(root)
         plugin_entries = [item for item in (plugins.get("currentVariants") or []) if isinstance(item, dict)]
         terminal_entries = [item for item in (plugins.get("terminalVariants") or []) if isinstance(item, dict)]
         historical_entries = [item for item in (plugins.get("historicalSnapshots") or []) if isinstance(item, dict)]
@@ -2050,7 +2053,7 @@ def validate_snapshot(
         if rel.startswith(".git/") or rel.startswith(".staging/") or path.name == ".omega-security-evidence-v2-migration.json":
             continue
         all_files.add(rel)
-        if path.stat().st_size > MAX_PUBLISH_FILE_BYTES:
+        if platform_path(path).stat().st_size > MAX_PUBLISH_FILE_BYTES:
             errors.append(f"published file exceeds {MAX_PUBLISH_FILE_BYTES} byte ceiling: {rel}")
     if require_no_orphans:
         for path in sorted(all_files):

@@ -70,6 +70,7 @@ from security_evidence_v2 import (  # noqa: E402
     write_record_dataset,
 )
 import observation_projection  # noqa: E402
+from plugin_index_transport import write_plugin_index  # noqa: E402
 
 STATE_FILE = ".omega-security-evidence-v2-migration.json"
 DERIVED_DATASETS = {
@@ -998,13 +999,12 @@ def migrate(
         advisory_entry, advisory_count = _export_global_table(db, output, "plugin_security_dependency_advisory_matches", "advisories")
         workbench_relationship_entry, workbench_relationship_counts = _export_workbench_relationship_index(db, output, variant_ids=variant_ids)
 
-        plugin_payload = {
-            "schema": "omega.security-evidence.plugins-index.v2",
-            "currentVariants": plugin_index,
-        }
-        plugins_path = output / "indexes" / "plugins.json"
-        _write_json(plugins_path, plugin_payload)
-        plugins_entry = file_entry(output, plugins_path, records=len(plugin_index), encoding="json")
+        plugins_entry = write_plugin_index(
+            output,
+            current_variants=plugin_index,
+            lifecycle_contract_version=0,
+            chunk_bytes=chunk_bytes,
+        )
 
         artifacts_payload = {
             "schema": "omega.security-evidence.artifacts-index.v2",
