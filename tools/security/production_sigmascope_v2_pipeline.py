@@ -70,6 +70,7 @@ from security_evidence_v2 import (  # noqa: E402
     dataset_record_digest,
     file_entry,
     normalize_row,
+    platform_path,
     read_dataset_rows,
     read_json_file,
     read_record_dataset,
@@ -85,6 +86,7 @@ from security_evidence_v2 import (  # noqa: E402
     verify_file_entry,
 )
 import security_system_state  # noqa: E402
+from plugin_index_transport import iter_plugin_index_records, write_plugin_index  # noqa: E402
 
 PIPELINE_SCHEMA = "omega.security-evidence.production-v2.v1"
 SNAPSHOT_VALIDATION_SCHEMA = "omega.security-evidence.snapshot-validation.v2"
@@ -249,12 +251,7 @@ def _drop_security_state(db: sqlite3.Connection) -> None:
 
 
 def _current_variant_entries(evidence: Path) -> list[dict[str, Any]]:
-    root = read_json_file(evidence, "index.json")
-    if root.get("schema") != SCHEMA:
-        raise RuntimeError(f"unsupported current evidence schema: {root.get('schema')!r}")
-    plugins_path = str((((root.get("indexes") or {}).get("plugins") or {}).get("path") or "indexes/plugins.json"))
-    plugins = read_json_file(evidence, plugins_path)
-    return [item for item in (plugins.get("currentVariants") or []) if isinstance(item, dict)]
+    return list(iter_plugin_index_records(evidence, "currentVariants"))
 
 
 def _restore_source_analysis_cache(db: sqlite3.Connection, evidence: Path, payload: dict[str, Any], scan_id: int) -> int:
@@ -550,10 +547,10 @@ def _restore_last_known_good(database: Path, previous: dict[int, dict[str, Any]]
 
 
 def _copy_evidence_tree(source: Path, target: Path) -> None:
-    if target.exists():
-        shutil.rmtree(target)
+    if platform_path(target).exists():
+        shutil.rmtree(platform_path(target))
     ignore = shutil.ignore_patterns(".git", ".omega-security-evidence-v2-migration.json", ".staging")
-    shutil.copytree(source, target, ignore=ignore)
+    shutil.copytree(platform_path(source), platform_path(target), ignore=ignore)
     # Sparse Evidence is a worker-input projection only. A full candidate may inherit
     # payload bytes from a formerly damaged head, but it must never inherit the marker
     # that describes that tree as a sparse view.
@@ -573,14 +570,14 @@ def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
     copied_artifacts = 0
     archived_snapshots = 0
     for path in (subset / "artifacts").rglob("*") if (subset / "artifacts").exists() else []:
-        if not path.is_file():
+        if not platform_path(path).is_file():
             continue
         rel = path.relative_to(subset)
         destination = candidate / rel
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if destination.exists() and sha256_file(destination) == sha256_file(path):
+        platform_path(destination.parent).mkdir(parents=True, exist_ok=True)
+        if platform_path(destination).exists() and sha256_file(platform_path(destination)) == sha256_file(platform_path(path)):
             continue
-        shutil.copy2(path, destination)
+        shutil.copy2(platform_path(path), platform_path(destination))
         copied_artifacts += 1
     for path in (subset / "variants").rglob("*.json") if (subset / "variants").exists() else []:
         rel = path.relative_to(subset)
@@ -1058,13 +1055,13 @@ def _build_plugins_artifacts_indexes(candidate: Path, *, lifecycle_contract_vers
     current_rows.sort(key=lambda row: int(row["variantId"]))
     terminal_rows.sort(key=lambda row: (int(row["variantId"]), int(row["scanId"])))
     history_rows.sort(key=lambda row: (int(row["variantId"]), int(row["scanId"]), str(row["variantPath"])))
-    plugins_payload = {
-        "schema": "omega.security-evidence.plugins-index.v2",
-        "lifecycleContractVersion": lifecycle_contract_version,
-        "currentVariants": current_rows,
-        "terminalVariants": terminal_rows,
-        "historicalSnapshots": history_rows,
-    }
+    plugins_entry = write_plugin_index(
+        candidate,
+        current_variants=current_rows,
+        terminal_variants=terminal_rows,
+        historical_snapshots=history_rows,
+        lifecycle_contract_version=lifecycle_contract_version,
+    )
     artifacts_payload = {
         "schema": "omega.security-evidence.artifacts-index.v2",
         "lifecycleContractVersion": lifecycle_contract_version,
@@ -1080,12 +1077,10 @@ def _build_plugins_artifacts_indexes(candidate: Path, *, lifecycle_contract_vers
             for key, value in sorted(artifacts.items())
         ],
     }
-    plugins_path = candidate / "indexes" / "plugins.json"
     artifacts_path = candidate / "indexes" / "artifacts.json"
-    write_json(plugins_path, plugins_payload)
     write_json(artifacts_path, artifacts_payload)
     return (
-        file_entry(candidate, plugins_path, records=len(current_rows) + len(terminal_rows) + len(history_rows), encoding="json"),
+        plugins_entry,
         file_entry(candidate, artifacts_path, records=len(artifacts), encoding="json"),
         len(current_rows), len(terminal_rows), len(history_rows), len(analyses), len(artifacts),
     )

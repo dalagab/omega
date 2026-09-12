@@ -27,9 +27,10 @@ if str(CATALOG_DIR) not in sys.path:
     sys.path.insert(0, str(CATALOG_DIR))
 
 try:
-    from . import definition_packs, rule_reprojection, security_evidence_v2, srl_evidence_replay
+    from . import definition_packs, plugin_index_transport, rule_reprojection, security_evidence_v2, srl_evidence_replay
 except ImportError:  # direct script / frozen worker execution
     import definition_packs  # type: ignore
+    import plugin_index_transport  # type: ignore
     import rule_reprojection  # type: ignore
     import security_evidence_v2  # type: ignore
     import srl_evidence_replay  # type: ignore
@@ -61,12 +62,9 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _current_variant_ids(evidence_root: Path) -> list[int]:
-    root = security_evidence_v2.read_json_file(evidence_root, "index.json")
-    plugins_descriptor = ((root.get("indexes") or {}).get("plugins") or {}) if isinstance(root, Mapping) else {}
-    plugins = security_evidence_v2.read_json_file(evidence_root, str(plugins_descriptor.get("path") or "indexes/plugins.json"))
     ids = {
         int(item.get("variantId") or 0)
-        for item in plugins.get("currentVariants") or []
+        for item in plugin_index_transport.iter_plugin_index_records(evidence_root, "currentVariants")
         if isinstance(item, Mapping) and int(item.get("variantId") or 0) > 0
     }
     return sorted(ids)

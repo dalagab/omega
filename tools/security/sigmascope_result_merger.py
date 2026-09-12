@@ -51,6 +51,7 @@ from production_sigmascope_v2_pipeline import (  # noqa: E402
     synchronize_candidate,
     write_json,
 )
+from plugin_index_transport import read_plugin_index, write_plugin_index  # noqa: E402
 from security_evidence_v2 import sha256_file, validate_snapshot  # noqa: E402
 
 SCHEMA = "omega.sigmascope-result-merge.v1"
@@ -118,17 +119,19 @@ def _copy_derived_payload(payload_root: Path, candidate: Path) -> int:
 
 
 def _prepare_transport_plugins_index(candidate: Path, bundle_docs: list[dict[str, Any]]) -> None:
-    """Make the temporary merged tree materializable before global indexes are rebuilt.
-
-    ``materialize_current_state`` only needs ``variantId`` and ``variantPath`` from the
-    plugins transport index.  The file is deliberately temporary/stale with respect to
-    the root descriptor and is replaced by ``rebuild_candidate_indexes`` before any
-    validation or publication can occur.
-    """
-    path = candidate / "indexes" / "plugins.json"
-    payload = _read(path) if path.is_file() else {"schema": "omega.security-evidence.plugins-index.v2", "currentVariants": []}
-    rows = [dict(row) for row in payload.get("currentVariants") or [] if isinstance(row, dict)]
-    by_variant = {int(row.get("variantId") or 0): row for row in rows if int(row.get("variantId") or 0) > 0}
+    # materialize_current_state consumes the plugin transport before the global
+    # indexes are rebuilt. Keep both the v3 shards and root descriptor valid here.
+    logical = read_plugin_index(candidate)
+    rows = [
+        dict(row)
+        for row in logical.get("currentVariants") or []
+        if isinstance(row, dict)
+    ]
+    by_variant = {
+        int(row.get("variantId") or 0): row
+        for row in rows
+        if int(row.get("variantId") or 0) > 0
+    }
     for doc in bundle_docs:
         outcome = doc.get("outcome") if isinstance(doc.get("outcome"), dict) else {}
         if str(outcome.get("status") or "") != "complete":
@@ -149,8 +152,29 @@ def _prepare_transport_plugins_index(candidate: Path, bundle_docs: list[dict[str
             "analysisId": str(analysis.get("analysisId") or ""),
             "variantPath": variant_file.relative_to(candidate).as_posix(),
         }
-    payload["currentVariants"] = [by_variant[key] for key in sorted(by_variant)]
-    write_json(path, payload)
+
+    plugins_entry = write_plugin_index(
+        candidate,
+        current_variants=[by_variant[key] for key in sorted(by_variant)],
+        terminal_variants=[
+            dict(row)
+            for row in logical.get("terminalVariants") or []
+            if isinstance(row, dict)
+        ],
+        historical_snapshots=[
+            dict(row)
+            for row in logical.get("historicalSnapshots") or []
+            if isinstance(row, dict)
+        ],
+        lifecycle_contract_version=int(logical.get("lifecycleContractVersion") or 0),
+    )
+    root_path = candidate / "index.json"
+    root_index = _read(root_path)
+    indexes = root_index.setdefault("indexes", {})
+    if not isinstance(indexes, dict):
+        raise ValueError("Security Evidence root indexes descriptor is malformed")
+    indexes["plugins"] = plugins_entry
+    write_json(root_path, root_index)
 
 
 def _completion_entry(item: dict[str, Any]) -> dict[str, Any]:

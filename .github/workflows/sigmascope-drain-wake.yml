@@ -68,7 +68,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --workflow sigmascope-parallel-drain.yml \
               --limit 100 \
-              --json databaseId,status,url,createdAt
+              --json databaseId,status,conclusion,headSha,url,createdAt
           }
 
           active_json="$(active_runs)"
@@ -85,6 +85,57 @@ jobs:
               jq -r '.[] | select(.status != "completed") | "- \(.status): [run \(.databaseId)](\(.url)) started \(.createdAt)"' <<<"$active_json"
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
+          fi
+
+          # Automatic wake circuit breaker. A failed canonical production drain is
+          # deterministic for frozen source/Evidence inputs, so do not spend another
+          # 8x8 worker wave rediscovering the same failure. Either authority head
+          # changing closes the circuit automatically. Direct/manual drain dispatch
+          # remains available for deliberate operator retries. Historical inspection
+          # is fail-open: if its plan artifact is unavailable, dispatch normally.
+          current_source="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/sigmascope" --jq '.object.sha' 2>/dev/null || true)"
+          current_evidence="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/security-evidence-v2" --jq '.object.sha' 2>/dev/null || true)"
+          latest_completed="$(jq -c '[.[] | select(.status == "completed")][0] // empty' <<<"$active_json")"
+          latest_id="$(jq -r '.databaseId // empty' <<<"${latest_completed:-{}}")"
+          latest_conclusion="$(jq -r '.conclusion // empty' <<<"${latest_completed:-{}}")"
+          latest_source="$(jq -r '.headSha // empty' <<<"${latest_completed:-{}}")"
+
+          if [[ "$current_source" =~ ^[0-9a-f]{40}$ ]] && \
+             [[ "$current_evidence" =~ ^[0-9a-f]{40}$ ]] && \
+             [ "$latest_conclusion" = "failure" ] && \
+             [ "$latest_source" = "$current_source" ] && \
+             [[ "$latest_id" =~ ^[0-9]+$ ]]; then
+            breaker_dir="$(mktemp -d)"
+            trap 'rm -rf "$breaker_dir"' EXIT
+            if gh run download "$latest_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name omega-sigmascope-drain-plan \
+              --dir "$breaker_dir" >/dev/null 2>&1; then
+              plan_path="$(find "$breaker_dir" -name sigmascope-drain-plan.json -type f -print -quit)"
+              if [ -n "$plan_path" ]; then
+                previous_evidence="$(jq -r '.executionContext.baseEvidenceHead // empty' "$plan_path")"
+                previous_capacity="$(jq -r '.capacity // 0' "$plan_path")"
+                if [ "$previous_evidence" = "$current_evidence" ] && [ "$previous_capacity" -eq 64 ]; then
+                  failure_fingerprint="production-drain-failure"
+                  breaker_key="$(printf '%s:%s:%s' "$current_source" "$current_evidence" "$failure_fingerprint" | sha256sum | cut -d' ' -f1)"
+                  echo "Automatic production drain suppressed: unchanged failed source/Evidence tuple ($breaker_key)."
+                  {
+                    echo "### SigmaScope drain wake circuit open"
+                    echo
+                    echo "- Previous failed run: \`$latest_id\`"
+                    echo "- SigmaScope source: \`$current_source\`"
+                    echo "- Evidence authority: \`$current_evidence\`"
+                    echo "- Failure fingerprint: \`$failure_fingerprint\`"
+                    echo "- Breaker key: \`$breaker_key\`"
+                    echo "- Automatic retry: suppressed until SigmaScope source or Evidence authority changes"
+                    echo "- Manual direct drain dispatch: still available"
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  exit 0
+                fi
+              fi
+            else
+              echo "::warning::Could not inspect the latest failed drain plan; circuit breaker is fail-open."
+            fi
           fi
 
           gh workflow run sigmascope-parallel-drain.yml \
