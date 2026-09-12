@@ -19,6 +19,13 @@ import subprocess
 import sys
 from typing import Any, Callable, Iterable
 
+from plugin_index_transport import (
+    PLUGIN_INDEX_DATASETS,
+    PLUGIN_INDEX_LEGACY_SCHEMA,
+    PLUGIN_INDEX_SCHEMA,
+    read_plugin_index,
+)
+
 SCHEMA = "omega.sigmascope.sparse-evidence-view.v1"
 
 
@@ -144,6 +151,61 @@ def git_output(repo: Path, *args: str) -> str:
     return subprocess.run(["git", "-C", str(repo), *args], check=True, text=True, encoding="utf-8", stdout=subprocess.PIPE).stdout.strip()
 
 
+def read_source_plugin_index(
+    repo: Path,
+    ref: str,
+    output: Path,
+    source_index_bytes: bytes,
+    plugins_rel: str,
+    plugins_bytes: bytes,
+) -> dict[str, Any]:
+    """Read a source plugin index, verifying v3 transport shards before use.
+
+    Sparse workers fetch one frozen Evidence commit but do not check out the full
+    Evidence tree. For v3 we therefore materialize only the plugin transport files
+    declared by the manifest into a short-lived local root, then delegate all file,
+    count, and semantic-digest validation to plugin_index_transport.
+    """
+    manifest = read_json_bytes(plugins_bytes)
+    schema = str(manifest.get("schema") or "")
+    if schema == PLUGIN_INDEX_LEGACY_SCHEMA:
+        return manifest
+    if schema != PLUGIN_INDEX_SCHEMA:
+        raise ValueError(f"unsupported plugins index schema: {schema!r}")
+
+    source_root = output / ".sigmascope-plugin-index-source"
+    if source_root.exists():
+        shutil.rmtree(source_root, onexc=_remove_readonly)
+    try:
+        (source_root / "index.json").parent.mkdir(parents=True, exist_ok=True)
+        (source_root / "index.json").write_bytes(source_index_bytes)
+        manifest_path = source_root / safe_relpath(plugins_rel)
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_bytes(plugins_bytes)
+
+        datasets = manifest.get("datasets")
+        if not isinstance(datasets, dict):
+            raise ValueError("plugins v3 manifest datasets descriptor is missing")
+        for dataset_name in PLUGIN_INDEX_DATASETS:
+            descriptor = datasets.get(dataset_name)
+            if not isinstance(descriptor, dict):
+                raise ValueError(f"plugins v3 dataset {dataset_name} descriptor is missing")
+            files = descriptor.get("files")
+            if not isinstance(files, list):
+                raise ValueError(f"plugins v3 dataset {dataset_name} files descriptor is malformed")
+            for file_info in files:
+                if not isinstance(file_info, dict) or not file_info.get("path"):
+                    raise ValueError(f"plugins v3 dataset {dataset_name} has malformed file metadata")
+                relpath = safe_relpath(str(file_info["path"]))
+                if not write_git_file(repo, ref, source_root, relpath):
+                    raise FileNotFoundError(relpath)
+
+        return read_plugin_index(source_root)
+    finally:
+        if source_root.exists():
+            shutil.rmtree(source_root, onexc=_remove_readonly)
+
+
 def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path, queue_seed: Path | None = None) -> dict[str, Any]:
     if output.exists():
         shutil.rmtree(output, onexc=_remove_readonly)
@@ -176,13 +238,27 @@ def build_sparse_view(repo: Path, ref: str, queue_keys: list[str], output: Path,
     indexes = root_index.get("indexes") if isinstance(root_index.get("indexes"), dict) else {}
     plugins_rel = str((indexes.get("plugins") or {}).get("path") or "indexes/plugins.json")
     artifacts_rel = str((indexes.get("artifacts") or {}).get("path") or "indexes/artifacts.json")
-    plugins = read_json_bytes(git_show(repo, ref, plugins_rel))
+    plugins_bytes = git_show(repo, ref, plugins_rel)
+    plugins = read_source_plugin_index(
+        repo,
+        ref,
+        output,
+        source_index_bytes,
+        plugins_rel,
+        plugins_bytes,
+    )
     artifacts = read_json_bytes(git_show(repo, ref, artifacts_rel))
 
-    filtered_plugins: dict[str, Any] = dict(plugins)
+    filtered_plugins: dict[str, Any] = {
+        "schema": PLUGIN_INDEX_LEGACY_SCHEMA,
+        "lifecycleContractVersion": int(plugins.get("lifecycleContractVersion") or 0),
+        "currentVariants": [],
+        "terminalVariants": [],
+        "historicalSnapshots": [],
+    }
     artifact_shas: set[str] = set()
     completed_analysis_ids: set[str] = set()
-    for collection in ("currentVariants", "terminalVariants", "historicalSnapshots"):
+    for collection in PLUGIN_INDEX_DATASETS:
         rows = [row for row in (plugins.get(collection) or []) if isinstance(row, dict) and int(row.get("variantId") or 0) in selected_variant_ids]
         filtered_plugins[collection] = rows
         for row in rows:
