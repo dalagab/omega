@@ -48,6 +48,7 @@ from production_sigmascope_v2_pipeline import (
     materialize_srl_reprojection_sidecar,
 )
 from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, verify_file_entry, write_record_dataset
+from plugin_index_transport import read_plugin_index, write_plugin_index
 
 
 class ProductionSecurityV2PipelineTests(unittest.TestCase):
@@ -105,7 +106,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
 
             _plugins, _artifacts, current_count, terminal_count, history_count, analysis_count, _groups = _build_plugins_artifacts_indexes(candidate)
             self.assertEqual((0, 1, 0, 1), (current_count, terminal_count, history_count, analysis_count))
-            index = json.loads((candidate / "indexes" / "plugins.json").read_text(encoding="utf-8"))
+            index = read_plugin_index(candidate, verify_root=False)
             self.assertEqual([], index["currentVariants"])
             self.assertEqual(variant_id, index["terminalVariants"][0]["variantId"])
 
@@ -693,8 +694,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             evidence = root / "evidence"
             migrate(database, evidence, reset=True)
 
-            plugin_index_path = evidence / "indexes" / "plugins.json"
-            plugin_index = json.loads(plugin_index_path.read_text(encoding="utf-8"))
+            plugin_index = read_plugin_index(evidence)
             first_entry = next(item for item in plugin_index["currentVariants"] if int(item["variantId"]) == variant_id)
             first_path = evidence / str(first_entry["variantPath"])
             first_payload = json.loads(first_path.read_text(encoding="utf-8"))
@@ -739,7 +739,17 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             second_entry["variantPath"] = second_rel.as_posix()
             plugin_index["currentVariants"].append(second_entry)
             plugin_index["currentVariants"].sort(key=lambda item: int(item.get("variantId") or 0))
-            plugin_index_path.write_text(json.dumps(plugin_index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            plugins_entry = write_plugin_index(
+                evidence,
+                current_variants=plugin_index["currentVariants"],
+                terminal_variants=plugin_index.get("terminalVariants") or [],
+                historical_snapshots=plugin_index.get("historicalSnapshots") or [],
+                lifecycle_contract_version=int(plugin_index.get("lifecycleContractVersion") or 0),
+            )
+            root_index_path = evidence / "index.json"
+            root_index = json.loads(root_index_path.read_text(encoding="utf-8"))
+            root_index.setdefault("indexes", {})["plugins"] = plugins_entry
+            root_index_path.write_text(json.dumps(root_index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
 
             base = root / "base.sqlite"
             shutil.copy2(database, base)
@@ -1486,15 +1496,17 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             # internally consistent, but the legacy plugins-index summary no longer
             # matches the canonical variant payload. A clean epoch reset must be able
             # to discard this state instead of trying to validate/inherit it.
-            plugins_entry = legacy_index["indexes"]["plugins"]
-            plugins_path = legacy_evidence / str(plugins_entry["path"])
-            plugins_doc = json.loads(plugins_path.read_text(encoding="utf-8"))
+            plugins_doc = read_plugin_index(legacy_evidence)
             self.assertTrue(plugins_doc["currentVariants"])
             plugins_doc["currentVariants"][0]["summary"] = {"status": "stale-legacy-summary"}
-            plugins_bytes = (json.dumps(plugins_doc, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
-            plugins_path.write_bytes(plugins_bytes)
-            plugins_entry["bytes"] = len(plugins_bytes)
-            plugins_entry["sha256"] = hashlib.sha256(plugins_bytes).hexdigest()
+            plugins_entry = write_plugin_index(
+                legacy_evidence,
+                current_variants=plugins_doc["currentVariants"],
+                terminal_variants=plugins_doc.get("terminalVariants") or [],
+                historical_snapshots=plugins_doc.get("historicalSnapshots") or [],
+                lifecycle_contract_version=int(plugins_doc.get("lifecycleContractVersion") or 0),
+            )
+            legacy_index.setdefault("indexes", {})["plugins"] = plugins_entry
             (legacy_evidence / "index.json").write_text(
                 json.dumps(legacy_index, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
                 encoding="utf-8",
@@ -1640,14 +1652,16 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             invalid_same_epoch = root / "invalid-same-epoch"
             shutil.copytree(root / "candidate-2", invalid_same_epoch)
             invalid_index = json.loads((invalid_same_epoch / "index.json").read_text(encoding="utf-8"))
-            invalid_plugins_entry = invalid_index["indexes"]["plugins"]
-            invalid_plugins_path = invalid_same_epoch / str(invalid_plugins_entry["path"])
-            invalid_plugins_doc = json.loads(invalid_plugins_path.read_text(encoding="utf-8"))
+            invalid_plugins_doc = read_plugin_index(invalid_same_epoch)
             invalid_plugins_doc["currentVariants"][0]["summary"] = {"status": "same-epoch-corruption"}
-            invalid_plugins_bytes = (json.dumps(invalid_plugins_doc, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode("utf-8")
-            invalid_plugins_path.write_bytes(invalid_plugins_bytes)
-            invalid_plugins_entry["bytes"] = len(invalid_plugins_bytes)
-            invalid_plugins_entry["sha256"] = hashlib.sha256(invalid_plugins_bytes).hexdigest()
+            invalid_plugins_entry = write_plugin_index(
+                invalid_same_epoch,
+                current_variants=invalid_plugins_doc["currentVariants"],
+                terminal_variants=invalid_plugins_doc.get("terminalVariants") or [],
+                historical_snapshots=invalid_plugins_doc.get("historicalSnapshots") or [],
+                lifecycle_contract_version=int(invalid_plugins_doc.get("lifecycleContractVersion") or 0),
+            )
+            invalid_index.setdefault("indexes", {})["plugins"] = invalid_plugins_entry
             (invalid_same_epoch / "index.json").write_text(
                 json.dumps(invalid_index, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
                 encoding="utf-8",

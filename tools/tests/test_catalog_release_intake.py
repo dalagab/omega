@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -38,11 +39,25 @@ class CatalogReleaseIntakeTests(unittest.TestCase):
         catalog_json_store.export_snapshot(self.root / "built/omega-catalog.sqlite", self.root / "catalog")
         self.evidence = self.root / "evidence"
         intake.write(self.evidence / "indexes/nuget.json", {"schema": "omega.security-evidence.nuget-index.v2", "packages": []})
-        intake.write(self.evidence / "indexes/plugins.json", {"currentVariants": []})
+        plugins_path = self.evidence / "indexes/plugins.json"
+        intake.write(plugins_path, {
+            "schema": "omega.security-evidence.plugins-index.v2",
+            "currentVariants": [],
+        })
+        plugins_bytes = plugins_path.read_bytes()
         intake.write(self.evidence / "index.json", {
             "schema": "omega.security-evidence.v2",
             "revisions": {"evidenceRevision": "ev-fixture", "catalogIdentityEpoch": catalog_json_store.IDENTITY_EPOCH},
-            "indexes": {"nuget": {"path": "indexes/nuget.json"}, "plugins": {"path": "indexes/plugins.json"}},
+            "indexes": {
+                "nuget": {"path": "indexes/nuget.json"},
+                "plugins": {
+                    "path": "indexes/plugins.json",
+                    "bytes": len(plugins_bytes),
+                    "sha256": hashlib.sha256(plugins_bytes).hexdigest(),
+                    "records": 0,
+                    "encoding": "json",
+                },
+            },
         })
         advisories = self.root / "advisories.json"
         intake.write(advisories, {"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet",
@@ -181,8 +196,22 @@ class CatalogReleaseIntakeTests(unittest.TestCase):
         variant = scan_queue.catalog_variants(self.state / "catalog")[0]
         intake.write(self.evidence / "plugins/old.json", {"variantId": variant["variantId"], "pluginId": variant["pluginId"],
             "current": {"status": "complete", "scan_id": 10, "scanned_at_utc": NOW, "artifact_sha256": "a" * 64}})
-        intake.write(self.evidence / "indexes/plugins.json", {"currentVariants": [
-            {"variantId": variant["variantId"], "variantPath": "plugins/old.json"}]})
+        plugins_path = self.evidence / "indexes/plugins.json"
+        intake.write(plugins_path, {
+            "schema": "omega.security-evidence.plugins-index.v2",
+            "currentVariants": [
+                {"variantId": variant["variantId"], "variantPath": "plugins/old.json"}
+            ],
+        })
+        plugins_bytes = plugins_path.read_bytes()
+        evidence_index = intake.read(self.evidence / "index.json")
+        evidence_index["indexes"]["plugins"].update({
+            "bytes": len(plugins_bytes),
+            "sha256": hashlib.sha256(plugins_bytes).hexdigest(),
+            "records": 1,
+            "encoding": "json",
+        })
+        intake.write(self.evidence / "index.json", evidence_index)
         self.build()
         seed = intake.read(self.root / "candidate/scan-queue.json")
         update = next(item for item in seed["items"] if item.get("releaseUpdate"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import tempfile
 import unittest
@@ -142,15 +143,33 @@ class ScanQueueTests(unittest.TestCase):
         if current is not None:
             variant_path = f"plugins/{variant_id}.json"
             (target / "plugins").mkdir(exist_ok=True)
-            (target / variant_path).write_text(json.dumps({"variantId": variant_id, "current": current}), encoding="utf-8")
+            (target / variant_path).write_text(
+                json.dumps({"variantId": variant_id, "current": current}),
+                encoding="utf-8",
+            )
             entries.append({"variantId": variant_id, "variantPath": variant_path})
-        (target / "indexes" / "plugins.json").write_text(json.dumps({"currentVariants": entries}), encoding="utf-8")
+
+        plugins_payload = {
+            "schema": "omega.security-evidence.plugins-index.v2",
+            "currentVariants": entries,
+        }
+        plugins_bytes = json.dumps(plugins_payload).encode("utf-8")
+        plugins_path = target / "indexes" / "plugins.json"
+        plugins_path.write_bytes(plugins_bytes)
+        plugins_entry = {
+            "path": "indexes/plugins.json",
+            "bytes": len(plugins_bytes),
+            "sha256": hashlib.sha256(plugins_bytes).hexdigest(),
+            "records": len(entries),
+            "encoding": "json",
+        }
+
         if identity_epoch is None:
             identity_epoch = catalog_json_store.IDENTITY_EPOCH
         (target / "index.json").write_text(json.dumps({
             "schema": "omega.security-evidence.v2",
             "revisions": {"catalogIdentityEpoch": identity_epoch, "advisoryRevision": advisory_revision},
-            "indexes": {"plugins": {"path": "indexes/plugins.json"}},
+            "indexes": {"plugins": plugins_entry},
         }), encoding="utf-8")
         return target
 
