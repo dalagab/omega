@@ -96,9 +96,12 @@ jobs:
           current_source="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/sigmascope" --jq '.object.sha' 2>/dev/null || true)"
           current_evidence="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/security-evidence-v2" --jq '.object.sha' 2>/dev/null || true)"
           latest_completed="$(jq -c '[.[] | select(.status == "completed")][0] // empty' <<<"$active_json")"
-          latest_id="$(jq -r '.databaseId // empty' <<<"${latest_completed:-{}}")"
-          latest_conclusion="$(jq -r '.conclusion // empty' <<<"${latest_completed:-{}}")"
-          latest_source="$(jq -r '.headSha // empty' <<<"${latest_completed:-{}}")"
+          if [ -z "$latest_completed" ]; then
+            latest_completed='{}'
+          fi
+          latest_id="$(jq -r '.databaseId // empty' <<<"$latest_completed")"
+          latest_conclusion="$(jq -r '.conclusion // empty' <<<"$latest_completed")"
+          latest_source="$(jq -r '.headSha // empty' <<<"$latest_completed")"
 
           if [[ "$current_source" =~ ^[0-9a-f]{40}$ ]] && \
              [[ "$current_evidence" =~ ^[0-9a-f]{40}$ ]] && \

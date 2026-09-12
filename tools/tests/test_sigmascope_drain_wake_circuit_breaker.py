@@ -31,6 +31,9 @@ class SigmaScopeDrainWakeCircuitBreakerTests(unittest.TestCase):
         self.assertIn('[ "$previous_capacity" -eq 64 ]', text)
         self.assertIn('[ "$previous_evidence" = "$current_evidence" ]', text)
         self.assertIn('[ "$latest_source" = "$current_source" ]', text)
+        self.assertIn('latest_completed=\'{}\'', text)
+        self.assertIn('<<<"$latest_completed"', text)
+        self.assertNotIn('${latest_completed:-{}}', text)
 
 
 if __name__ == "__main__":
