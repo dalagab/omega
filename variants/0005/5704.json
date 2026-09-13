@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "1f78b3b9a7d0dd82052ebbaaa45af082c95ec6d9cdf3ff6a20d2c2ddf9aeab5a",
+    "analysisId": "ca3f54417a630cfad8faf767ed1012c345091c0ee5c1581d0255e047501a6be1",
     "artifactSha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
-    "path": "artifacts/10/10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71/analyses/1f78b3b9a7d0dd82052ebbaaa45af082c95ec6d9cdf3ff6a20d2c2ddf9aeab5a",
-    "recordCount": 216
+    "path": "artifacts/10/10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71/analyses/ca3f54417a630cfad8faf767ed1012c345091c0ee5c1581d0255e047501a6be1",
+    "recordCount": 504
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,7 +11,7 @@
     "artifact_url": "https://github.com/FFXIV-CombatReborn/RebornToolbox/releases/download/7.5.0.0/RebornToolbox.zip",
     "assembly_version": "7.5.0.0",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
       "Character target control",
       "Clipboard access",
@@ -44,7 +44,7 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 24,
+    "caution_count": 26,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -82,6 +82,18 @@
           "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
           "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
           "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: Process.Start",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: ProcessStartInfo",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: ShellExecute"
         ],
         "ruleId": "process.launch",
         "severity": "caution",
@@ -296,6 +308,17 @@
         "title": "Hard-coded external file path"
       },
       {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: s://github.com/NostraThomas99/SupermarketSweep",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: t:\\n"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
         "category": "dynamic-code",
         "description": "References APIs that can load code dynamically at runtime.",
         "evidence": [
@@ -417,6 +440,18 @@
       },
       {
         "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: Universalis (FFXIV market data). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/Models/ShoppingListItem.cs: https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.590d735c6f89",
+        "severity": "informational",
+        "title": "Endpoint: universalis.app"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
         "evidence": [
           "artifact:RebornToolbox.dll: https://universalis.app/api/v2/"
@@ -424,6 +459,18 @@
         "ruleId": "network.endpoint.recognised-platform.48e0f530ab27",
         "severity": "informational",
         "title": "Endpoint: universalis.app"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: https://github.com/NostraThomas99/SupermarketSweep"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0b57b69aafd6",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
       },
       {
         "category": "network-endpoint",
@@ -437,9 +484,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "High",
         "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
-        "endpointOrigin": "derived-capability-gap",
         "evidence": [],
         "ruleId": "network.endpoint.dynamic-or-undetermined",
         "severity": "informational",
@@ -473,6 +518,17 @@
         "title": "Filesystem write access"
       },
       {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:RebornToolbox/Common/Configuration.cs: WriteAllText",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
         "category": "privacy",
         "description": "References APIs that can read or modify clipboard contents.",
         "evidence": [
@@ -485,9 +541,9 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 12,
+    "informational_count": 15,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 5,
+      "artifactAnalysisRepresentativeScanId": 12,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "artifactBytes": 2512099,
@@ -506,7 +562,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -578,6 +634,18 @@
             "expected": null,
             "id": "game.character.target",
             "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.input.read",
+            "label": "Game input/key state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -665,6 +733,18 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -672,8 +752,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "universalis.app",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "universalis.app",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -685,17 +807,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 13,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 13,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -738,30 +860,35 @@
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
+        "game.input.read",
         "game.memory.read",
         "game.ui.callback",
         "memory.process",
         "native.interop",
         "network.http",
         "privacy.clipboard",
-        "process.execute"
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 26,
         "critical": 0,
         "high": 2,
-        "informational": 12
+        "informational": 15
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 5,
+          "families": {
+            "nuget": 7,
+            "project": 2
+          },
+          "fingerprint": "149016b14f2aed085fc526dcda7af3be9532fc4630d732438edc41b08a6c31c2",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -769,33 +896,73 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 9
+          },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 2
         },
         "coverage": {
           "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 9,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 9,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "source-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "universalis.app",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 6,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -803,7 +970,68 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataListing.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataRecentHistory.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataResponse.cs"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/NostraThomas99/SupermarketSweep"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://raw.githubusercontent.com/FFXIV-CombatReborn/RebornAssets/blob/main/IconAssets/BPR_Icon.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "universalis.app",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "FFXIV market data",
+            "url": "https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -826,33 +1054,35 @@
         "uncompressedBytes": 3913846
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-        "attemptId": "attempt-v2-68a6c2a7b7b7373f",
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-72ae7f4d4b1b25d2",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-867717d81267889c",
-        "definitionsRevision": "defs-v1-37b1eec5c72b9332",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-634f06ee2483a669",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-5704",
-        "queueSeedRevision": "queue-seed-v2-2f0de189a116ddf4",
+        "queueSeedRevision": "queue-seed-v2-78d6c556e7845634",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
-        "scannerBundleSha256": "1f58e9ae7a7350630a8e5979afed1eb1f197ee037e700248d27c227c72a2b5a1",
-        "scannerRevision": "scanner-v1-81ec9049a0b1ea9d",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-696f0aaa304f4d1a",
-        "targetFingerprint": "source-target-v2-ef29702724d8f9f3e38e",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-192c1603325b732e1dab",
         "variantId": 5704,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T15:44:07Z",
+      "scannedAtUtc": "2026-09-13T02:56:22Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -894,20 +1124,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "7.5.0.0",
         "candidates": [
           "https://github.com/FFXIV-CombatReborn/RebornToolbox"
         ],
-        "commit": "",
+        "commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "428ca5f34dadd6fcc5b1d77bf7ebff323147da1f84400fcb3a3a1d3da1623918"
           }
         },
         "developerProfile": {
@@ -915,61 +1150,559 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/FFXIV-CombatReborn/RebornToolbox: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "RebornToolbox",
+          "manifestPath": "RebornToolbox/RebornToolbox.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "7.5.0.0",
           "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "7.5.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
           "versionMatched": false
         },
         "repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
-        "treeSha256": ""
+        "treeSha256": "47db54d8fff0af854e71535fe872e7c7f6036362"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 12,
-    "scanned_at_utc": "2026-09-08T15:44:07Z",
+    "scan_id": 21,
+    "scanned_at_utc": "2026-09-13T02:56:22Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
     "source_repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 5704
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ecommons",
+        "current_json": {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ecommons",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "ecommons",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:jetbrains.annotations",
+        "current_json": {
+          "componentKey": "nuget:jetbrains.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "JetBrains.Annotations",
+          "normalizedName": "jetbrains.annotations",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "2024.3.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "2024.3.0"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "JetBrains.Annotations",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:microsoft.extensions.dependencyinjection",
+        "current_json": {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection",
+          "normalizedName": "microsoft.extensions.dependencyinjection",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "9.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Microsoft.Extensions.DependencyInjection",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+        "current_json": {
+          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "normalizedName": "microsoft.extensions.dependencyinjection.abstractions",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "9.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "9.0.2"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ottergui",
+        "current_json": {
+          "componentKey": "nuget:ottergui",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ottergui",
+          "normalizedName": "ottergui",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "ottergui",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:ecommons",
+        "current_json": {
+          "componentKey": "project:ecommons",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\ECommons\\ECommons\\ECommons.csproj",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/RebornToolbox.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\ECommons\\ECommons\\ECommons.csproj",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:ottergui",
+        "current_json": {
+          "componentKey": "project:ottergui",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\OtterGui\\OtterGui.csproj",
+          "normalizedName": "ottergui",
+          "origin": "source",
+          "paths": [
+            "RebornToolbox/RebornToolbox.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\OtterGui\\OtterGui.csproj",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.input.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.input.read",
+          "reasons": [
+            "Dalamud key-state APIs are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "permission",
+        "dependency_name": "game.input.read",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "informational",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "caution",
+        "variant_id": 5704
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 21,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-13T02:56:27Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 12,
+        "severity": "informational",
+        "variant_id": 5704
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "revalidation",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
       "current_assembly_version": "7.5.0.0",
-      "current_scan_id": 12,
+      "current_scan_id": 21,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-08T15:44:07Z",
+      "current_source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
+      "detected_at_utc": "2026-09-13T02:56:27Z",
       "previous_artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
       "previous_assembly_version": "7.5.0.0",
-      "previous_scan_id": 5,
+      "previous_scan_id": 12,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 5704
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 62,
-      "artifact_only_count": 62,
+      "artifact_only_count": 59,
       "artifact_only_json": [
         {
           "componentKey": "assembly:dalamud",
@@ -1804,63 +2537,98 @@
             "observed"
           ],
           "versions": []
-        },
-        {
-          "componentKey": "nuget:jetbrains.annotations",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "JetBrains.Annotations",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "2024.3.0"
-          ]
-        },
-        {
-          "componentKey": "nuget:microsoft.extensions.dependencyinjection",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Microsoft.Extensions.DependencyInjection",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "9.0.2"
-          ]
-        },
-        {
-          "componentKey": "nuget:microsoft.extensions.dependencyinjection.abstractions",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "9.0.2"
-          ]
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-08T15:44:07Z",
-      "comparison_id": 11,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-13T02:56:27Z",
+      "comparison_id": 9,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 3,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 12,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 21,
+      "source_available": 1,
+      "source_dependency_count": 9,
+      "source_only_count": 6,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ecommons",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:ottergui",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "ottergui",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "project:ecommons",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\ECommons\\ECommons\\ECommons.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "project:ottergui",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\OtterGui\\OtterGui.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        }
+      ],
+      "source_project_sha256": "af8799369c1c39c6f7b6124da7dc1015b932ea0e719adc26edc6b370d5ae5186",
       "variant_id": 5704,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -1898,36 +2666,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 114841,
+          "bytes": 123386,
           "encoding": "json",
           "path": "derived/variants/0005/5704/dependency-resolutions.json",
-          "recordDigest": "b63a86ccf764a7306f162108f88e4a7b230b2727ae5d3d13a530a5a8d3a3afda",
-          "records": 119,
-          "sha256": "031e568da977dfa9da8e0bf11cb3711e9c858a2bdbbfd0ce2b2c6433ecb1a7c8"
+          "recordDigest": "0c76408228e7e7b0da426d9924d34affeabff0140e160d689553abb2fa9eca9c",
+          "records": 128,
+          "sha256": "df2df7db7eba21f8f81783b6fbc02a9f916c53453ccdac336589200c2bd5be49"
         }
       ],
-      "recordDigest": "b63a86ccf764a7306f162108f88e4a7b230b2727ae5d3d13a530a5a8d3a3afda",
-      "records": 119
+      "recordDigest": "0c76408228e7e7b0da426d9924d34affeabff0140e160d689553abb2fa9eca9c",
+      "records": 128
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 147905,
           "encoding": "json",
           "path": "derived/variants/0005/5704/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "a316a7f1d71532715f25e42203a4996e56814318207772223f9c0521a65fd287",
+          "records": 1,
+          "sha256": "8e2fbf17cdb59130a940ac5d4c31be513befbb80890747895647fc1bae6282e9"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "a316a7f1d71532715f25e42203a4996e56814318207772223f9c0521a65fd287",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "62b2e0c20d4977bd78c91ed7086f7f3b6d9475078c2e9e2646317cf53660a2db",
+    "identityFingerprint": "92bc2a5d76ee7145dd2b0da065897dde8e2728c7f1b5a49c9570f95b51dbbfa9",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1947,17 +2715,17 @@
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "a23a07e04e909c0849b1e64b2af4b49fc5c4aac240d37a75a43d20f7e0f9fc73",
-        "records": 119,
+        "recordDigest": "d8233053bb578de06e87eea30dc65b41fcc0bf58fd54c3f49ae81ad3fb6fe889",
+        "records": 128,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -2027,8 +2795,18 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "66188a30c195828700eb48c1c12e17d66eddeba8074565cb8d07465c93538f68",
+        "records": 110,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "6b2229e107b2658bbcb40497f3ce4c2992b8b94d9823ed14d3624d1cd43fb6f1",
+        "records": 6,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2047,28 +2825,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "52d77080df15e36cade1de72b56f7cf1f1fac256d80cadeb4bd5348d8ae40207",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "c5d7490bba2c880f276180d962f38dc32a2f8390bb0826b94c0142a16f57e812",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "5dcead99ab481c097c1ebb4f6e3af1eaeb400289a131f9ace833f11fd5a4ae6f",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "298a5f0e5829a78e68098e02b7dcff64403295457b75d725417148b6ed4b1cd4",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "73507aa035ae095df5826edbe39ce067d48f5f4b1b0d6eed1873634dbc35f656",
+        "records": 97,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "eb1a8d006b09f650e04633a6aec4d85707c0f89a3811dd07f7ba4297b622a0c2",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "1357df9d54146fb72528850d2ede1a99b26ac0c395807c48b5cd95c168f8f3f6",
+        "records": 21,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "568b13216b1b403c7126fef659eca4a67aaa826bdbe9481c4da7cba0331cc6a5",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "6a78f40d2d4635355d4ecbcd84f080f04a689594ca67871edd551036ded2f91a",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "sourceProvenance": {
         "backingDataset": "sourceProvenance",
         "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
         "completeness": "retained",
-        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "recordDigest": "650caa075c80622dfbce3d810b1e652dae84c95d4d46b05f5ca6db8919faeb39",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "b805eb0f7a6ec8d3e6b0d235980be50f112c19880bff8e98250346f040acbd0c",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "78eac85c44a07e7b387311972a7a7f19f7052b3da963cfe36075ec33f03bbc7d",
+        "records": 6,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "8a0f16ee36dce5e2537ebbef8c8676b644f5e2452471e0209effbd5d0bb0f14b",
+        "records": 5,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2078,25 +2976,12 @@
     "legacyCompatibility": false,
     "missingCollections": [
       "binaryClassifications",
-      "nativeImports",
-      "networkEndpoints",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFiles",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "nativeImports"
     ],
-    "observationDigest": "obs-6cd2f7a1c8147fb85fd7ea32f564718e390149be06bcecb9d63b67303a0c28fc",
+    "observationDigest": "obs-3855f4ad42632f0aa01de05ed4ee4d8f1ab495111cf7691c3d471bd7ea4028b8",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
     },
     "schema": "omega.sigmascope.observation-contract.v1"
   },
@@ -2143,27 +3028,27 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "e1ab697b7b003921e787f901b98abc192b96e1256a99f20010e5181694243df5",
+        "recordDigest": "fdca41ebc859cc220f28858839e0a9a3654bb829ad5997f55c06eb97774369f0",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "4ec29eca549c9b204de4feac87cba18145825fec685119a905c4c98cb89e7432",
-        "records": 13
+        "recordDigest": "c7e59134b34f648cf1320442c8f4c35f52b2d6ca24531064e2af7e87f8d8b88d",
+        "records": 15
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "78d2d4bce02462137e999667b6b5ccf1de5f203ad0c7cb244ce96049b98cc5d9",
-        "records": 38
+        "recordDigest": "902715501525f8c1a12e72bfa2b5955f55948886f7c1b5192316e676d7917f37",
+        "records": 43
       }
     },
-    "projectionRevision": "projection-v1-05013341cd43895f",
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
     "recursiveInputsForbidden": [
       "findings",
       "permissionCandidates",
       "automationCapabilities",
       "behaviorConsistency"
     ],
-    "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
     "schema": "omega.sigmascope.projection-contract.v1"
   },
   "scan": {
@@ -2203,15 +3088,15 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 24,
+    "caution_count": 26,
     "critical_count": 0,
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 12,
+    "informational_count": 15,
     "plugin_id": 7,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 5,
+      "artifactAnalysisRepresentativeScanId": 12,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "artifactBytes": 2512099,
@@ -2230,7 +3115,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -2302,6 +3187,18 @@
             "expected": null,
             "id": "game.character.target",
             "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.input.read",
+            "label": "Game input/key state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -2389,6 +3286,18 @@
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
           }
         ],
         "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
@@ -2396,8 +3305,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "universalis.app",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "universalis.app",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -2409,17 +3360,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 13,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 13,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -2462,30 +3413,35 @@
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
+        "game.input.read",
         "game.memory.read",
         "game.ui.callback",
         "memory.process",
         "native.interop",
         "network.http",
         "privacy.clipboard",
-        "process.execute"
+        "process.execute",
+        "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 26,
         "critical": 0,
         "high": 2,
-        "informational": 12
+        "informational": 15
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 5,
+          "families": {
+            "nuget": 7,
+            "project": 2
+          },
+          "fingerprint": "149016b14f2aed085fc526dcda7af3be9532fc4630d732438edc41b08a6c31c2",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -2493,33 +3449,73 @@
           },
           "nativeRelationships": [],
           "pluginRelationships": [],
-          "requirements": {},
+          "requirements": {
+            "required": 9
+          },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 2
         },
         "coverage": {
           "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
+          "known": 9,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
+            "required": 9,
             "soft": 0,
             "unknown": 0
           },
-          "total": 0
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "source-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "universalis.app",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 6,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -2527,7 +3523,68 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataListing.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataRecentHistory.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Caraxi/MarketBoardPlugin/blob/develop/MarketBoardPlugin/Models/Universalis/MarketDataResponse.cs"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/NostraThomas99/SupermarketSweep"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://raw.githubusercontent.com/FFXIV-CombatReborn/RebornAssets/blob/main/IconAssets/BPR_Icon.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "universalis.app",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "FFXIV market data",
+            "url": "https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -2550,33 +3607,35 @@
         "uncompressedBytes": 3913846
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-        "attemptId": "attempt-v2-68a6c2a7b7b7373f",
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-72ae7f4d4b1b25d2",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-867717d81267889c",
-        "definitionsRevision": "defs-v1-37b1eec5c72b9332",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-634f06ee2483a669",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-5704",
-        "queueSeedRevision": "queue-seed-v2-2f0de189a116ddf4",
+        "queueSeedRevision": "queue-seed-v2-78d6c556e7845634",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
-        "scannerBundleSha256": "1f58e9ae7a7350630a8e5979afed1eb1f197ee037e700248d27c227c72a2b5a1",
-        "scannerRevision": "scanner-v1-81ec9049a0b1ea9d",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-696f0aaa304f4d1a",
-        "targetFingerprint": "source-target-v2-ef29702724d8f9f3e38e",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-192c1603325b732e1dab",
         "variantId": 5704,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T15:44:07Z",
+      "scannedAtUtc": "2026-09-13T02:56:22Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2618,20 +3677,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "7.5.0.0",
         "candidates": [
           "https://github.com/FFXIV-CombatReborn/RebornToolbox"
         ],
-        "commit": "",
+        "commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "428ca5f34dadd6fcc5b1d77bf7ebff323147da1f84400fcb3a3a1d3da1623918"
           }
         },
         "developerProfile": {
@@ -2639,32 +3703,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/FFXIV-CombatReborn/RebornToolbox: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "RebornToolbox",
+          "manifestPath": "RebornToolbox/RebornToolbox.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "7.5.0.0",
           "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "7.5.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
           "versionMatched": false
         },
         "repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
-        "treeSha256": ""
+        "treeSha256": "47db54d8fff0af854e71535fe872e7c7f6036362"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 12,
-    "scanned_at_utc": "2026-09-08T15:44:07Z",
+    "scan_id": 21,
+    "scanned_at_utc": "2026-09-13T02:56:22Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
     "source_id": 837,
     "source_repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
     "source_to_binary_verified": 0,

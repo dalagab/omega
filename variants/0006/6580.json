@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "ac1473902c3ea98f1c256724ce18dbb16e30497dc14478a7a973e3cef1997e35",
+    "analysisId": "6f5cf1099c97b6de29664912a78c7d9ca515d9ca16687362751ca46d2e78539e",
     "artifactSha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
-    "path": "artifacts/10/10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71/analyses/ac1473902c3ea98f1c256724ce18dbb16e30497dc14478a7a973e3cef1997e35",
-    "recordCount": 216
+    "path": "artifacts/10/10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71/analyses/6f5cf1099c97b6de29664912a78c7d9ca515d9ca16687362751ca46d2e78539e",
+    "recordCount": 217
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,7 +11,7 @@
     "artifact_url": "https://github.com/FFXIV-CombatReborn/RebornToolbox/releases/download/7.5.0.0/RebornToolbox.zip",
     "assembly_version": "7.5.0.0",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
       "Character target control",
       "Clipboard access",
@@ -44,7 +44,7 @@
       "Process memory access",
       "World/NPC interaction control"
     ],
-    "caution_count": 24,
+    "caution_count": 26,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -82,6 +82,18 @@
           "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
           "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
           "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: Process.Start",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: ProcessStartInfo",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: ShellExecute"
         ],
         "ruleId": "process.launch",
         "severity": "caution",
@@ -296,6 +308,17 @@
         "title": "Hard-coded external file path"
       },
       {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: s://github.com/NostraThomas99/SupermarketSweep",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: t:\\n"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
         "category": "dynamic-code",
         "description": "References APIs that can load code dynamically at runtime.",
         "evidence": [
@@ -417,6 +440,18 @@
       },
       {
         "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: Universalis (FFXIV market data). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/Models/ShoppingListItem.cs: https://universalis.app/api/v2/{Plugin.Configuration.ShoppingListConfig.ShoppingRegion.ToUniversalisString()}/{ItemId"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.590d735c6f89",
+        "severity": "informational",
+        "title": "Endpoint: universalis.app"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
         "evidence": [
           "artifact:RebornToolbox.dll: https://universalis.app/api/v2/"
@@ -424,6 +459,18 @@
         "ruleId": "network.endpoint.recognised-platform.48e0f530ab27",
         "severity": "informational",
         "title": "Endpoint: universalis.app"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.UI.cs: https://github.com/NostraThomas99/SupermarketSweep"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0b57b69aafd6",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
       },
       {
         "category": "network-endpoint",
@@ -437,9 +484,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "High",
         "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
-        "endpointOrigin": "derived-capability-gap",
         "evidence": [],
         "ruleId": "network.endpoint.dynamic-or-undetermined",
         "severity": "informational",
@@ -473,6 +518,17 @@
         "title": "Filesystem write access"
       },
       {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:RebornToolbox/Common/Configuration.cs: WriteAllText",
+          "source:RebornToolbox/Features/MBShoppingList/MBShoppingList.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
         "category": "privacy",
         "description": "References APIs that can read or modify clipboard contents.",
         "evidence": [
@@ -485,9 +541,9 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 12,
+    "informational_count": 15,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 4,
+      "artifactAnalysisRepresentativeScanId": 12,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "artifactBytes": 2512099,
@@ -748,10 +804,10 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 26,
         "critical": 0,
         "high": 2,
-        "informational": 12
+        "informational": 15
       },
       "engineVersion": "2.15.0",
       "error": "",
@@ -826,33 +882,35 @@
         "uncompressedBytes": 3913846
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-        "attemptId": "attempt-v2-768d9f517bb5699f",
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-4236fdbfeb5a367f",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-867717d81267889c",
-        "definitionsRevision": "defs-v1-37b1eec5c72b9332",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-634f06ee2483a669",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-6580",
-        "queueSeedRevision": "queue-seed-v2-2f0de189a116ddf4",
+        "queueSeedRevision": "queue-seed-v2-78d6c556e7845634",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
-        "scannerBundleSha256": "1f58e9ae7a7350630a8e5979afed1eb1f197ee037e700248d27c227c72a2b5a1",
-        "scannerRevision": "scanner-v1-81ec9049a0b1ea9d",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-696f0aaa304f4d1a",
-        "targetFingerprint": "source-target-v2-5bce7c5fc9c75ed793de",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-359c9cd1f817192a26f0",
         "variantId": 6580,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T15:44:14Z",
+      "scannedAtUtc": "2026-09-13T02:56:22Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -894,20 +952,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "artifact_origin",
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "7.5.0.0",
         "candidates": [
           "https://github.com/FFXIV-CombatReborn/RebornToolbox"
         ],
-        "commit": "",
+        "commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "428ca5f34dadd6fcc5b1d77bf7ebff323147da1f84400fcb3a3a1d3da1623918"
           }
         },
         "developerProfile": {
@@ -915,32 +978,51 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/FFXIV-CombatReborn/RebornToolbox: HTTP Error 403: rate limit exceeded",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": true,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "distributionSource": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/williamw1979-ffxiv.json",
+          "identityMatched": true,
+          "inheritedArtifactSha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
+          "inheritedFromVariantId": 5704,
+          "inheritedViaArtifact": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "RebornToolbox",
+          "manifestPath": "RebornToolbox/RebornToolbox.json",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "7.5.0.0",
           "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "7.5.0.0",
+          "selectedRefKind": "version-tag",
+          "sourceToBinaryVerified": false,
           "versionMatched": false
         },
         "repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
-        "treeSha256": ""
+        "treeSha256": "47db54d8fff0af854e71535fe872e7c7f6036362"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 12,
-    "scanned_at_utc": "2026-09-08T15:44:14Z",
+    "scan_id": 25,
+    "scanned_at_utc": "2026-09-13T02:56:22Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
     "source_repository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
     "source_to_binary_verified": 0,
     "status": "complete",
@@ -954,13 +1036,13 @@
       "change_basis": "revalidation",
       "current_artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
       "current_assembly_version": "7.5.0.0",
-      "current_scan_id": 12,
+      "current_scan_id": 25,
       "current_scanner_version": "2.15.0",
       "current_source_commit": "",
-      "detected_at_utc": "2026-09-08T15:44:15Z",
+      "detected_at_utc": "2026-09-13T02:56:29Z",
       "previous_artifact_sha256": "10a325aa9ea310392e5446f88677ab793daf81e385595cbcc7e7ad9cf0c57e71",
       "previous_assembly_version": "7.5.0.0",
-      "previous_scan_id": 5,
+      "previous_scan_id": 18,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
@@ -1849,13 +1931,13 @@
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-08T15:44:15Z",
-      "comparison_id": 11,
+      "compared_at_utc": "2026-09-13T02:56:29Z",
+      "comparison_id": 13,
       "comparison_status": "source-unavailable",
       "matched_component_count": 0,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 12,
+      "scan_id": 25,
       "source_available": 0,
       "source_dependency_count": 0,
       "source_only_count": 0,
@@ -1901,12 +1983,12 @@
           "bytes": 114841,
           "encoding": "json",
           "path": "derived/variants/0006/6580/dependency-resolutions.json",
-          "recordDigest": "3937d5148133266b83bcdb3fc8367d1e9cee2126ab28effb0da64e176583740e",
+          "recordDigest": "1bf562f6ebc5ac2853bcde3ca5767a2263e6dd73e126edaf1f2bd93bab7054aa",
           "records": 119,
-          "sha256": "ba01889e09971e9c378a02e7482e8eb722546b20627302dd2a5bda10a67031b0"
+          "sha256": "036e7ecf26fb262b2fa05d66ef9d8b3a953e432d2cf30afc4b005a281d9cd9c9"
         }
       ],
-      "recordDigest": "3937d5148133266b83bcdb3fc8367d1e9cee2126ab28effb0da64e176583740e",
+      "recordDigest": "1bf562f6ebc5ac2853bcde3ca5767a2263e6dd73e126edaf1f2bd93bab7054aa",
       "records": 119
     },
     "sourceAnalysisCache": {
@@ -1927,7 +2009,7 @@
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "8a0a22649daeab502c5a97a4e20135a995faba5c41dc3034c692476ed12f4ae0",
+    "identityFingerprint": "9c0497ff60840d912882c48178784f3d95ab439148f9c2cc3473942c612dd89e",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1957,7 +2039,7 @@
         "backingDataset": "compact-report",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
         "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -2093,10 +2175,10 @@
       "sourceReleaseWorkflows",
       "sourceTriggers"
     ],
-    "observationDigest": "obs-3a48eada638206ae13ac468bd0a78a76598e86c4c428481adf1d7ffd360733be",
+    "observationDigest": "obs-4b3a05fd13b47f36a7e3035cba87f9d2a61d8fa1d2a0544189edd9322d958077",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3"
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
     },
     "schema": "omega.sigmascope.observation-contract.v1"
   },
@@ -2152,18 +2234,18 @@
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "78d2d4bce02462137e999667b6b5ccf1de5f203ad0c7cb244ce96049b98cc5d9",
-        "records": 38
+        "recordDigest": "823567ff9d5b3bebcef6a94c656b48a18fb5fb7aa7219b44aa3380ccd1eeefa2",
+        "records": 39
       }
     },
-    "projectionRevision": "projection-v1-05013341cd43895f",
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
     "recursiveInputsForbidden": [
       "findings",
       "permissionCandidates",
       "automationCapabilities",
       "behaviorConsistency"
     ],
-    "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
     "schema": "omega.sigmascope.projection-contract.v1"
   },
   "scan": {
@@ -2208,10 +2290,10 @@
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 12,
+    "informational_count": 13,
     "plugin_id": 7,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 4,
+      "artifactAnalysisRepresentativeScanId": 12,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
       "artifactBytes": 2512099,
@@ -2475,7 +2557,7 @@
         "caution": 24,
         "critical": 0,
         "high": 2,
-        "informational": 12
+        "informational": 13
       },
       "engineVersion": "2.15.0",
       "error": "",
@@ -2550,33 +2632,35 @@
         "uncompressedBytes": 3913846
       },
       "scanProvenance": {
-        "artifactAnalysisRevision": "artifact-analysis-v3-7ca9f50ffd8887c2",
-        "attemptId": "attempt-v2-768d9f517bb5699f",
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-4236fdbfeb5a367f",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-867717d81267889c",
-        "definitionsRevision": "defs-v1-37b1eec5c72b9332",
-        "observedSourceCommit": "",
-        "observedSourceRef": "",
-        "observedSourceRepository": "",
-        "primaryReason": "source_followup",
+        "catalogRevision": "cat-json-v1-634f06ee2483a669",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "a4f41b345423e65be7ae9028a9cf489edf09602a",
+        "observedSourceRef": "refs/heads/main",
+        "observedSourceRepository": "https://github.com/FFXIV-CombatReborn/RebornToolbox",
+        "primaryReason": "source_analysis_changed",
         "queueKey": "source-variant-6580",
-        "queueSeedRevision": "queue-seed-v2-2f0de189a116ddf4",
+        "queueSeedRevision": "queue-seed-v2-78d6c556e7845634",
         "reasons": [
-          "source_followup"
+          "source_analysis_changed",
+          "source_candidate_observed",
+          "source_unresolved"
         ],
-        "ruleSetRevision": "rules-v1-6635a25af7c90ed2",
-        "scannerBundleSha256": "1f58e9ae7a7350630a8e5979afed1eb1f197ee037e700248d27c227c72a2b5a1",
-        "scannerRevision": "scanner-v1-81ec9049a0b1ea9d",
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
         "schema": "omega.sigmascope.scan-provenance.v1",
-        "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
-        "sourceObservationRevision": "source-observations-v1-696f0aaa304f4d1a",
-        "targetFingerprint": "source-target-v2-5bce7c5fc9c75ed793de",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-359c9cd1f817192a26f0",
         "variantId": 6580,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-08T15:44:15Z",
+      "scannedAtUtc": "2026-09-13T02:56:29Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2655,13 +2739,13 @@
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "source-analysis-v1-c41a2063bc55e6f3",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 12,
-    "scanned_at_utc": "2026-09-08T15:44:15Z",
+    "scan_id": 25,
+    "scanned_at_utc": "2026-09-13T02:56:29Z",
     "scanner_version": "2.15.0",
     "source_available": 0,
     "source_commit": "",
