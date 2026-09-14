@@ -1,0 +1,557 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:SharpGen.Runtime.dll: OpenProcess",
+      "il:SharpGen.Runtime.dll:SharpGen.Runtime.PlatformDetection.GetCurrentProcessToken+0xb: call SharpGen.Runtime.PlatformDetection.OpenProcessToken -> advapi32.dll!OpenProcessToken: OpenProcess",
+      "artifact:SharpGen.Runtime.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:K4os.Compression.LZ4.Streams.dll: s://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+      "artifact:K4os.Compression.LZ4.Streams.dll: D:\\Projects\\K4os.Compression.LZ4\\src\\K4os.Compression.LZ4.Streams\\obj\\Release\\net6.0\\K4os.Compression.LZ4.Streams.pdb",
+      "artifact:MessagePack.dll: g:/A",
+      "artifact:MessagePack.dll: \\\\c\\i\\",
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb",
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/runtime/issues/97057"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Blake3.dll: DllImportAttribute",
+      "native-pe:blake3_dotnet.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:blake3_dotnet.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:blake3_dotnet.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:blake3_dotnet.dll: LoadLibrary",
+      "artifact:blake3_dotnet.dll: GetProcAddress",
+      "metadata:ElezenTools.dll: DllImportAttribute",
+      "native-pe:e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/ismanaged"
+    ],
+    "rule_id": "network.endpoint.insecure-http.332a1b9e70b7",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/osversion"
+    ],
+    "rule_id": "network.endpoint.insecure-http.58447317c4de",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/displayname"
+    ],
+    "rule_id": "network.endpoint.insecure-http.874cadae0651",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/ostype"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a2f77c8f5f26",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://openid.net/specs/jwt/1.0",
+      "artifact:System.IdentityModel.Tokens.Jwt.dll: http://openid.net/specs/jwt/1.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.df8a0791ba00",
+    "severity": "caution",
+    "title": "Endpoint: openid.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/identifier"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e13ea633b264",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: http://schemas.microsoft.com/2012/01/devicecontext/claims/isregistereduser"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fbe7622e2e5f",
+    "severity": "caution",
+    "title": "Endpoint: schemas.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.dll: https://patreon.com/elznmods"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b784051fb9f6",
+    "severity": "caution",
+    "title": "Endpoint: patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.dll: https://docs.snowcloak-sync.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e69c5c7be2cb",
+    "severity": "caution",
+    "title": "Endpoint: docs.snowcloak-sync.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: System.Net.Sockets",
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x562: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x5dd: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "metadata:Snowcloak.dll: System.Net.Sockets",
+      "artifact:Snowcloak.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:MessagePack.dll: System.Diagnostics.Process",
+      "artifact:MessagePack.dll: ProcessStartInfo",
+      "artifact:SharpGen.Runtime.COM.dll: CreateProcess",
+      "metadata:Snowcloak.dll: System.Diagnostics.Process",
+      "metadata:Snowcloak.dll: ProcessStartInfo",
+      "metadata:Snowcloak.dll: ShellExecute",
+      "metadata:Snowcloak.dll: Process.Start",
+      "il:Snowcloak.dll:Snowcloak.UI.EventViewerUI.DrawInternal+0x208: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "il:Microsoft.Extensions.Configuration.FileExtensions.dll:Microsoft.Extensions.Configuration.FileConfigurationProvider.<Load>g__OpenRead|6_0+0x17: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "metadata:Microsoft.Extensions.DependencyModel.dll: FileStream",
+      "il:Microsoft.Extensions.DependencyModel.dll:Microsoft.Extensions.DependencyModel.FileWrapper.OpenFile+0x9: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.DependencyModel.dll: FileStream",
+      "metadata:Microsoft.Extensions.FileProviders.Physical.dll: FileStream",
+      "il:Microsoft.Extensions.FileProviders.Physical.dll:Microsoft.Extensions.FileProviders.Physical.PhysicalFileInfo.CreateReadStream+0x11: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.dll: https://discord.gg/QhcKWGMhXd"
+    ],
+    "rule_id": "network.endpoint.community-invite.8fc1e86507d7",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.API.dll: https://github.com/Etheirys/Brio.API"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.05923b86861f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Vortice.Mathematics.dll: https://github.com/amerkoleci/Vortice.Mathematics"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0eb79cf9a56e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.dll: https://github.com/Eauldane/SnowcloakClient"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.123b56271b6c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.json: https://raw.githubusercontent.com/Eauldane/SnowcloakClient/refs/heads/main/Snowcloak/images/logo.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2cbc6c3d2fcd",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SharpGen.Runtime.COM.dll: https://github.com/SharpGenTools/SharpGenTools",
+      "artifact:SharpGen.Runtime.dll: https://github.com/SharpGenTools/SharpGenTools"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.36ea9ab7e70a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ZstdSharp.dll: https://github.com/oleg-st/ZstdSharp.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4031a2c93a52",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: https://github.com/dotnet/runtime/issues/97057"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.52b4e7e02b68",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Scrutor.dll: https://github.com/khellang/Scrutor"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.630c54ee95e4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MemoryPack.Core.dll: https://github.com/Cysharp/MemoryPack"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.65221cd51a97",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.CacheFile.dll: https://github.com/Eauldane/SnowcloakCacheFile"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7b7b8fe30dd4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.Abstractions.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Logging.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: https://github.com/AzureAD/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7e3f986def99",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:K4os.Compression.LZ4.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+      "artifact:K4os.Compression.LZ4.Legacy.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+      "artifact:K4os.Compression.LZ4.Streams.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8d6d7403ad8a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.json: https://github.com/Eauldane/SnowcloakClient"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a5a4b07a80fa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Blake3.dll: https://github.com/xoofx/Blake3.NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.af42454cb465",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ElezenTools.Core.dll: https://github.com/Eauldane/ElezenTools",
+      "artifact:ElezenTools.dll: https://github.com/Eauldane/ElezenTools",
+      "artifact:Snowcloak.API.dll: https://github.com/Eauldane/ElezenTools"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bc30f31506ea",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Client.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.SignalR.Client.Core.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cfabce510df0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Snowcloak.dll: https://raw.githubusercontent.com/Eauldane/SnowcloakClient/refs/heads/main/Snowcloak/images/logo.png[/img"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d6fdbfe34f86",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Vortice.DirectX.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.DXGI.dll: https://github.com/amerkoleci/Vortice.Windows"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f3f194cb7761",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:K4os.Hash.xxHash.dll: https://github.com/MiloszKrajewski/K4os.Hash.xxHash"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f7addd8e764e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x3a: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x4c: callvirt System.Net.Http.HttpClientHandler.set_CookieContainer: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xa6: callvirt System.Net.Http.HttpClientHandler.get_ClientCertificates: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xdd: callvirt System.Net.Http.HttpClientHandler.set_UseDefaultCredentials: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x113: callvirt System.Net.Http.HttpClientHandler.set_Credentials: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x169: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "blake3_dotnet.dll",
+      "e_sqlite3.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
