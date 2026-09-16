@@ -1,0 +1,95 @@
+[
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:H.Pipes.dll: s://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: \\\\.\\pipe\\",
+      "artifact:Macrology.dll: D:\\a\\Macrology\\Macrology\\Macrology\\obj\\x64\\Release\\Macrology.pdb",
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Macrology.dll: SigScanner",
+      "il:Macrology.dll:Macrology.Common.Functions.Chat..cctor+0x7: call Macrology.Common.Functions.Api.get_SigScanner: SigScanner",
+      "il:Macrology.dll:Macrology.Common.Functions.Chat..cctor+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:Macrology.dll:Macrology.Common.Functions.Chat..cctor+0x25: call Macrology.Common.Functions.Api.get_SigScanner: SigScanner",
+      "il:Macrology.dll:Macrology.Common.Functions.Chat..cctor+0x31: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "artifact:Macrology.dll: SigScanner",
+      "metadata:XivCommon.dll: SigScanner",
+      "metadata:XivCommon.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Memory.Data.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:H.Pipes.AccessControl.dll: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:H.Pipes.AccessControl.Utilities.ProcessUtilities.GetProcessesCount+0x6: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<>c__DisplayClass12_0.<TrySendAsync>b__1+0x1: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<>c__DisplayClass12_0.<TrySendAsync>b__1+0xc: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<TrySendAsync>d__12.MoveNext+0x21f: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<TrySendAsync>d__12.MoveNext+0x228: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<TrySendAsync>d__12.MoveNext+0x26d: callvirt System.Diagnostics.Process.Kill: System.Diagnostics.Process",
+      "artifact:H.Pipes.AccessControl.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Macrology.dll: WriteAllText",
+      "il:Macrology.dll:Macrology.Configuration.Save+0x14: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:Macrology.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
