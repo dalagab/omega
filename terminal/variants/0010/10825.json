@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "cfbace67a6568c18ff87832a7470a91cc81a18207627146de593f21773345028",
+    "analysisId": "1a22133f7dc7470df5537b5b4d337cde5b65a7259f88606619bf572231aa6480",
     "artifactSha256": "4dd51eabebd8d25a28447a6d0368810168a9141dbbdb097eb6ad52294d21318c",
-    "path": "artifacts/4d/4dd51eabebd8d25a28447a6d0368810168a9141dbbdb097eb6ad52294d21318c/analyses/cfbace67a6568c18ff87832a7470a91cc81a18207627146de593f21773345028",
-    "recordCount": 313
+    "path": "artifacts/4d/4dd51eabebd8d25a28447a6d0368810168a9141dbbdb097eb6ad52294d21318c/analyses/1a22133f7dc7470df5537b5b4d337cde5b65a7259f88606619bf572231aa6480",
+    "recordCount": 877
   },
   "current": {
     "artifact_channel": "stable",
@@ -11,7 +11,7 @@
     "artifact_url": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.13/install/latest.zip",
     "assembly_version": "2.2.0.13",
     "automation_capabilities_json": [],
-    "automation_level": "none",
+    "automation_level": "observational",
     "capabilities_json": [
       "Clipboard access",
       "Download/execute potential",
@@ -28,6 +28,7 @@
       "Endpoint: love.puni.sh",
       "Endpoint: ns.adobe.com",
       "Endpoint: puni.sh",
+      "Endpoint: s3.puni.sh",
       "Endpoint: subscribe.nightmarexiv.org",
       "Endpoint: www.boost.org",
       "Endpoint: www.patreon.com",
@@ -37,11 +38,10 @@
       "Hard-coded external file access",
       "Native/PInvoke",
       "Network access",
-      "Network destination undetermined",
       "Process execution",
       "Process memory access"
     ],
-    "caution_count": 20,
+    "caution_count": 22,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -156,6 +156,18 @@
       },
       {
         "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:Avarice/Avarice.json: https://s3.puni.sh/media/plugin/11/icon-d95r9462spc.png"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.535e2aeed69a",
+        "severity": "caution",
+        "title": "Endpoint: s3.puni.sh"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
         "evidence": [
           "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
@@ -253,6 +265,16 @@
           "artifact:Avarice.dll: SigScanner",
           "metadata:ECommons.dll: Dalamud.Hooking",
           "metadata:ECommons.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:Avarice/Memory.cs: SigScanner"
         ],
         "ruleId": "game.hooking",
         "severity": "caution",
@@ -381,16 +403,6 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "High",
-        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
-        "endpointOrigin": "derived-capability-gap",
-        "evidence": [],
-        "ruleId": "network.endpoint.dynamic-or-undetermined",
-        "severity": "informational",
-        "title": "Network destination undetermined"
-      },
-      {
-        "category": "network-endpoint",
         "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
         "evidence": [
           "artifact:PunishLib.dll: https://discord.gg/Zzrcc8kmvy"
@@ -429,9 +441,9 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 11,
+    "informational_count": 10,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisRepresentativeScanId": 7,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
       "artifactBytes": 2203255,
@@ -450,7 +462,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -486,6 +498,18 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -592,8 +616,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "s3.puni.sh",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "s3.puni.sh",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -605,17 +671,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 11,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 11,
+          "observedWithoutProfileCount": 12,
           "unexplainedDestinationCount": 0
         }
       },
@@ -635,6 +701,7 @@
         "Endpoint: love.puni.sh",
         "Endpoint: ns.adobe.com",
         "Endpoint: puni.sh",
+        "Endpoint: s3.puni.sh",
         "Endpoint: subscribe.nightmarexiv.org",
         "Endpoint: www.boost.org",
         "Endpoint: www.patreon.com",
@@ -644,7 +711,6 @@
         "Hard-coded external file access",
         "Native/PInvoke",
         "Network access",
-        "Network destination undetermined",
         "Process execution",
         "Process memory access"
       ],
@@ -652,6 +718,7 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
+        "filesystem.read",
         "filesystem.write",
         "game.memory.read",
         "game.ui.callback",
@@ -663,28 +730,45 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 20,
+        "caution": 22,
         "critical": 0,
         "high": 2,
-        "informational": 11
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 6,
+          "exactVersionObservedCount": 4,
+          "families": {
+            "ipc": 1,
+            "nuget": 4,
+            "project": 1
+          },
+          "fingerprint": "a650b31168f47f131573e352d2af0f4944983538b85cde75309b696abacaa636",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
           "nativeRelationships": [],
-          "pluginRelationships": [],
-          "requirements": {},
+          "pluginRelationships": [
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Avarice.CardinalDirection",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            }
+          ],
+          "requirements": {
+            "required": 5,
+            "soft": 1
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -692,25 +776,50 @@
           "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
-          "known": 0,
+          "externalPlugin": 1,
+          "known": 5,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
-            "soft": 0,
+            "required": 5,
+            "soft": 1,
             "unknown": 0
           },
-          "total": 0
+          "total": 6
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "s3.puni.sh",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 2,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -718,7 +827,28 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/PunishXIV/Avarice"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "s3.puni.sh",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://s3.puni.sh/media/plugin/11/icon-d95r9462spc.png"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -742,18 +872,18 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
-        "attemptId": "attempt-v2-c9ba944ce60b5cca",
+        "attemptId": "attempt-v2-fa4d736b4639ac1b",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-c6a8ca7ce400b13b",
+        "catalogRevision": "cat-json-v1-9fb799034258c617",
         "definitionsRevision": "defs-v1-9422463c2f2b7a54",
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
         "primaryReason": "source_followup",
         "queueKey": "source-variant-10825",
-        "queueSeedRevision": "queue-seed-v2-e38a7cd87e7c293b8f3d",
+        "queueSeedRevision": "queue-seed-v2-909affa953ed91084fb5",
         "reasons": [
           "source_followup"
         ],
@@ -767,7 +897,7 @@
         "variantId": 10825,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-15T13:54:47Z",
+      "scannedAtUtc": "2026-09-16T20:12:02Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -809,20 +939,24 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/PunishXIV/Avarice"
         ],
-        "commit": "",
+        "commit": "cbf6a9c42a122b3e65dad136fdcf32478c014c9d",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "e02b004413308802862a754070b823bda513e0a0a98ad00412ad4b71bfbc87e2"
           }
         },
         "developerProfile": {
@@ -830,19 +964,34 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/PunishXIV/Avarice: HTTP Error 429: too many requests",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "Avarice",
+          "manifestPath": "Avarice/Avarice.json",
+          "manifestRepoUrl": "https://github.com/PunishXIV/Avarice",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "2.2.0.13",
           "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
           "versionMatched": false
         },
         "repository": "https://github.com/PunishXIV/Avarice",
-        "treeSha256": ""
+        "treeSha256": "874ae1e06877f7de858011a01e605171617fe906"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
@@ -851,40 +1000,372 @@
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 12,
-    "scanned_at_utc": "2026-09-15T13:54:47Z",
+    "scan_id": 27,
+    "scanned_at_utc": "2026-09-16T20:12:02Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "cbf6a9c42a122b3e65dad136fdcf32478c014c9d",
     "source_repository": "https://github.com/PunishXIV/Avarice",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 10825
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:avarice.cardinaldirection",
+        "current_json": {
+          "componentKey": "ipc:avarice.cardinaldirection",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Avarice.CardinalDirection",
+          "normalizedName": "avarice.cardinaldirection",
+          "origin": "source",
+          "paths": [
+            "Avarice/ConfigurationWindow/ConfigWindow.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "ipc",
+        "dependency_name": "Avarice.CardinalDirection",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "informational",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:csvhelper",
+        "current_json": {
+          "componentKey": "nuget:csvhelper",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "CsvHelper",
+          "normalizedName": "csvhelper",
+          "origin": "source",
+          "paths": [
+            "Avarice/Avarice.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "33.0.1"
+          ],
+          "versions": [
+            "33.0.1"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "nuget",
+        "dependency_name": "CsvHelper",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "caution",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "Avarice/Avarice.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "15.0.0"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "nuget",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "caution",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ecommons",
+        "current_json": {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "ECommons",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "Avarice/Avarice.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "3.2.1.15"
+          ],
+          "versions": [
+            "3.2.1.15"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "nuget",
+        "dependency_name": "ECommons",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "caution",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:pictomancy",
+        "current_json": {
+          "componentKey": "nuget:pictomancy",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "Pictomancy",
+          "normalizedName": "pictomancy",
+          "origin": "source",
+          "paths": [
+            "Avarice/Avarice.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "1.0.10"
+          ],
+          "versions": [
+            "1.0.10"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "nuget",
+        "dependency_name": "Pictomancy",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "caution",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:punishlib",
+        "current_json": {
+          "componentKey": "project:punishlib",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\PunishLib\\PunishLib\\PunishLib.csproj",
+          "normalizedName": "punishlib",
+          "origin": "source",
+          "paths": [
+            "Avarice/Avarice.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\PunishLib\\PunishLib\\PunishLib.csproj",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "caution",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "informational",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "informational",
+        "variant_id": 10825
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 27,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-16T20:12:11Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 7,
+        "severity": "caution",
+        "variant_id": 10825
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "revalidation",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "4dd51eabebd8d25a28447a6d0368810168a9141dbbdb097eb6ad52294d21318c",
       "current_assembly_version": "2.2.0.13",
-      "current_scan_id": 12,
+      "current_scan_id": 27,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-15T13:54:47Z",
+      "current_source_commit": "cbf6a9c42a122b3e65dad136fdcf32478c014c9d",
+      "detected_at_utc": "2026-09-16T20:12:11Z",
       "previous_artifact_sha256": "4dd51eabebd8d25a28447a6d0368810168a9141dbbdb097eb6ad52294d21318c",
       "previous_assembly_version": "2.2.0.13",
-      "previous_scan_id": 9,
+      "previous_scan_id": 7,
       "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 10825
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 90,
-      "artifact_only_count": 90,
+      "artifact_only_count": 87,
       "artifact_only_json": [
         {
           "componentKey": "assembly:avarice",
@@ -2026,34 +2507,6 @@
           "versions": []
         },
         {
-          "componentKey": "nuget:csvhelper",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "CsvHelper",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "33.0.1"
-          ]
-        },
-        {
-          "componentKey": "nuget:ecommons",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "ECommons",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "3.2.1.15"
-          ]
-        },
-        {
           "componentKey": "nuget:kamitoolkit",
           "componentKind": "nuget",
           "kinds": [
@@ -2065,20 +2518,6 @@
           ],
           "versions": [
             "1.1.2"
-          ]
-        },
-        {
-          "componentKey": "nuget:pictomancy",
-          "componentKind": "nuget",
-          "kinds": [
-            "nuget-resolved"
-          ],
-          "name": "Pictomancy",
-          "requirements": [
-            "required"
-          ],
-          "versions": [
-            "1.0.9"
           ]
         },
         {
@@ -2181,28 +2620,77 @@
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-15T13:54:47Z",
-      "comparison_id": 11,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-16T20:12:11Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 3,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 12,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 27,
+      "source_available": 1,
+      "source_dependency_count": 6,
+      "source_only_count": 3,
+      "source_only_json": [
+        {
+          "componentKey": "ipc:avarice.cardinaldirection",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Avarice.CardinalDirection",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "project:punishlib",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\PunishLib\\PunishLib\\PunishLib.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        }
+      ],
+      "source_project_sha256": "9c3ffefaad2bb991d52af17b975810b534ff58a5b6a1913d75d6bc362481eddb",
       "variant_id": 10825,
-      "version_mismatch_count": 0,
-      "version_mismatches_json": []
+      "version_mismatch_count": 1,
+      "version_mismatches_json": [
+        {
+          "artifactVersions": [
+            "1.0.9"
+          ],
+          "componentKey": "nuget:pictomancy",
+          "sourceVersions": [
+            "1.0.10"
+          ]
+        }
+      ]
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "7c0e37cf293860a082edfa9c54b8e0e8095ad54d0d39661ecc91a4073c6657a4",
-    "observedAtUtc": "2026-09-16T04:51:09Z",
+    "identityFingerprint": "f4fe05565387576f33035d57915d045d60140717a394da5a98b581cd697ba019",
+    "observedAtUtc": "2026-09-17T19:48:45Z",
     "reason": "catalog_variant_inactive",
     "rescanEligible": false,
     "schema": "omega.security-evidence.variant-lifecycle.v1",
@@ -2225,17 +2713,17 @@
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "86e13d2903c0f5eacd6f9dafdcb6f0fc487dab25a2f6bdd572abf256e22abcbc",
-        "records": 217,
+        "recordDigest": "a141f14243f606649b6c15fc5648a01c42a86e7c0f457a4cb07fee2cd80c8601",
+        "records": 223,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -2245,8 +2733,8 @@
         "backingDataset": "ipc",
         "collectionSchema": "omega.sigmascope.observation.ipc.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "bfec299f5026086c16eabbc1fcfe7304b891e587e3492835ee5c0b1aae0120e5",
+        "records": 2,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2305,8 +2793,18 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "7dc9a4aea36a736dc68e3534672796c4a182bd6065d60a3285e6c756a07b49b0",
+        "records": 113,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "b195a3d0e4ddc41cfd9f02678a10aefc01a703d223236321edd23c82ebf116ff",
+        "records": 2,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2325,28 +2823,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "a22bdd7d3dbb6918af67534eb3e8e0f316ccd852ef3481ca408531cb30f8b525",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "c687ed6124d724b88550bada70f2bdf7d3a079f96943ebeadd376121b68352cd",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "bf9c0cf8c8f9302b6006ceebcbb972409310a747ca1c27bf09cc51d85a720ed1",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "8bff9d7b34d71f58b760df184aa6e593360e8581bfb8883daaaf29daed50f3e7",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "3dc636744476d2bbb07b8e97b780961206800d500b4cea076780bbedd686ae31",
+        "records": 367,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "8cfb1cd0ba82d958058798837d808d8176f9bbcf464417c9f09c180d620ea19c",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "32e075a7d6c4e489079b20fc1e965033d6d2f9a0c4c0847bc5dbf019007388e0",
+        "records": 48,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "c1e9d6f2472597cbbea14a70df6c13e6513c036367b8a898d4efc23ca9f372f9",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "sourceProvenance": {
         "backingDataset": "sourceProvenance",
         "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
         "completeness": "retained",
-        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "recordDigest": "e992251c7f013c9ccb6a331cbee002b9915a45d02f9c599f2505d21c50450891",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "e0d1ddd232e4fd53a7129a4615deac5b5c400f7658f372715dfab7f03e5f43f7",
+        "records": 10,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "a5a20bc5823930209a49e9f5bcb9a7466f6c37533d567b8fe7320b1ec51e51ed",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2356,22 +2974,9 @@
     "legacyCompatibility": false,
     "missingCollections": [
       "binaryClassifications",
-      "nativeImports",
-      "networkEndpoints",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFiles",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "nativeImports"
     ],
-    "observationDigest": "obs-06897d5f6154a7947a7464b92bcff96f48c07acf00b42ee28306309de36a3592",
+    "observationDigest": "obs-5539c03621dffa70122767069555e22923438c840e48ddf086466585d5762114",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -2383,7 +2988,7 @@
     "canonical_name": "Avarice",
     "first_seen_utc": "2026-08-19T22:49:06Z",
     "internal_name": "Avarice",
-    "last_seen_utc": "2026-09-15T21:13:49Z",
+    "last_seen_utc": "2026-09-17T15:29:18Z",
     "plugin_id": 495
   },
   "pluginId": 495,
@@ -2443,17 +3048,17 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "e8994323a5be648f5b6f5f72554ce58b1d5773df28b7a8243884a7bcde93bf4f",
+        "recordDigest": "b66d0b874c7c3313cac9f7d49ebe1470cf52e798f74e181e114fc7e23b305b01",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "7af59b0310f4e9b0f2c268abe0204ecc3466571fe3e00c1f8840b2eaef4916b0",
-        "records": 11
+        "recordDigest": "f6d554571b204c2fded23079257ac6e18ee2a341a7afd711ea425876958ee97a",
+        "records": 12
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "a83b01b72218bdb992375402a341dd84776ef78f1ab92dac34708d26c8f46514",
-        "records": 33
+        "recordDigest": "1451c43dfd3ad4310ec6e2902e7f540e4e265fdd5c2b690b2e744ee717efffc7",
+        "records": 34
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -2487,6 +3092,7 @@
       "Endpoint: love.puni.sh",
       "Endpoint: ns.adobe.com",
       "Endpoint: puni.sh",
+      "Endpoint: s3.puni.sh",
       "Endpoint: subscribe.nightmarexiv.org",
       "Endpoint: www.boost.org",
       "Endpoint: www.patreon.com",
@@ -2496,19 +3102,18 @@
       "Hard-coded external file access",
       "Native/PInvoke",
       "Network access",
-      "Network destination undetermined",
       "Process execution",
       "Process memory access"
     ],
-    "caution_count": 20,
+    "caution_count": 22,
     "critical_count": 0,
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 11,
+    "informational_count": 10,
     "plugin_id": 495,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisRepresentativeScanId": 7,
       "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
       "artifactBytes": 2203255,
@@ -2527,7 +3132,7 @@
       "artifactIdentityContractVersion": 1,
       "automation": {
         "capabilities": [],
-        "level": "none"
+        "level": "observational"
       },
       "behaviorConsistency": {
         "capabilities": [
@@ -2563,6 +3168,18 @@
             "expected": null,
             "id": "filesystem.external-path",
             "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -2669,8 +3286,50 @@
           "declared": [],
           "declaredNotObserved": [],
           "explained": [],
-          "observed": [],
-          "observedWithoutProfile": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "s3.puni.sh",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "s3.puni.sh",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
           "unexplained": []
         },
         "developerProfileSha256": "",
@@ -2682,17 +3341,17 @@
           "declaredCapabilityCount": 0,
           "declaredDestinationCount": 0,
           "declaredDestinationNotObservedCount": 0,
-          "destinationsUndetermined": true,
+          "destinationsUndetermined": false,
           "expectedNotObservedCount": 0,
           "expectedObservedCount": 0,
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 11,
-          "observedConcreteDestinationCount": 0,
-          "observedDestinationWithoutProfileCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 11,
+          "observedWithoutProfileCount": 12,
           "unexplainedDestinationCount": 0
         }
       },
@@ -2712,6 +3371,7 @@
         "Endpoint: love.puni.sh",
         "Endpoint: ns.adobe.com",
         "Endpoint: puni.sh",
+        "Endpoint: s3.puni.sh",
         "Endpoint: subscribe.nightmarexiv.org",
         "Endpoint: www.boost.org",
         "Endpoint: www.patreon.com",
@@ -2721,7 +3381,6 @@
         "Hard-coded external file access",
         "Native/PInvoke",
         "Network access",
-        "Network destination undetermined",
         "Process execution",
         "Process memory access"
       ],
@@ -2729,6 +3388,7 @@
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
+        "filesystem.read",
         "filesystem.write",
         "game.memory.read",
         "game.ui.callback",
@@ -2740,28 +3400,45 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 20,
+        "caution": 22,
         "critical": 0,
         "high": 2,
-        "informational": 11
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 0,
-          "exactVersionObservedCount": 0,
-          "families": {},
-          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "dependencyCount": 6,
+          "exactVersionObservedCount": 4,
+          "families": {
+            "ipc": 1,
+            "nuget": 4,
+            "project": 1
+          },
+          "fingerprint": "a650b31168f47f131573e352d2af0f4944983538b85cde75309b696abacaa636",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
           "nativeRelationships": [],
-          "pluginRelationships": [],
-          "requirements": {},
+          "pluginRelationships": [
+            {
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Avarice.CardinalDirection",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
+            }
+          ],
+          "requirements": {
+            "required": 5,
+            "soft": 1
+          },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
@@ -2769,25 +3446,50 @@
           "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
-          "known": 0,
+          "externalPlugin": 1,
+          "known": 5,
           "notAnalyzed": 0,
           "requirements": {
             "bundled": 0,
             "observed": 0,
             "optional": 0,
-            "required": 0,
-            "soft": 0,
+            "required": 5,
+            "soft": 1,
             "unknown": 0
           },
-          "total": 0
+          "total": 6
         },
         "endpointSummary": {
-          "concreteDestinationCount": 0,
-          "destinationsUndetermined": true,
-          "hostCount": 0,
-          "hosts": [],
-          "literalCount": 0,
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "s3.puni.sh",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 2,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -2795,7 +3497,28 @@
           "droppedByCollection": {},
           "truncated": false
         },
-        "networkEndpoints": []
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/PunishXIV/Avarice"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "s3.puni.sh",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://s3.puni.sh/media/plugin/11/icon-d95r9462spc.png"
+          }
+        ]
       },
       "manifestObservation": {
         "channel": "stable",
@@ -2819,18 +3542,18 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
-        "attemptId": "attempt-v2-c9ba944ce60b5cca",
+        "attemptId": "attempt-v2-fa4d736b4639ac1b",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
-        "catalogRevision": "cat-json-v1-c6a8ca7ce400b13b",
+        "catalogRevision": "cat-json-v1-9fb799034258c617",
         "definitionsRevision": "defs-v1-9422463c2f2b7a54",
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
         "primaryReason": "source_followup",
         "queueKey": "source-variant-10825",
-        "queueSeedRevision": "queue-seed-v2-e38a7cd87e7c293b8f3d",
+        "queueSeedRevision": "queue-seed-v2-909affa953ed91084fb5",
         "reasons": [
           "source_followup"
         ],
@@ -2844,7 +3567,7 @@
         "variantId": 10825,
         "workType": "source"
       },
-      "scannedAtUtc": "2026-09-15T13:54:47Z",
+      "scannedAtUtc": "2026-09-16T20:12:02Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -2886,20 +3609,24 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/PunishXIV/Avarice"
         ],
-        "commit": "",
+        "commit": "cbf6a9c42a122b3e65dad136fdcf32478c014c9d",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "e02b004413308802862a754070b823bda513e0a0a98ad00412ad4b71bfbc87e2"
           }
         },
         "developerProfile": {
@@ -2907,19 +3634,34 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
-        "error": "https://github.com/PunishXIV/Avarice: HTTP Error 429: too many requests",
+        "error": "",
         "provenance": {
-          "identityMatched": false,
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "Avarice",
+          "manifestPath": "Avarice/Avarice.json",
+          "manifestRepoUrl": "https://github.com/PunishXIV/Avarice",
+          "manifestRepositoryMatched": true,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "2.2.0.13",
           "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
           "versionMatched": false
         },
         "repository": "https://github.com/PunishXIV/Avarice",
-        "treeSha256": ""
+        "treeSha256": "874ae1e06877f7de858011a01e605171617fe906"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
@@ -2928,11 +3670,11 @@
       "status": "complete",
       "workType": "source"
     },
-    "scan_id": 12,
-    "scanned_at_utc": "2026-09-15T13:54:47Z",
+    "scan_id": 27,
+    "scanned_at_utc": "2026-09-16T20:12:02Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "cbf6a9c42a122b3e65dad136fdcf32478c014c9d",
     "source_id": 138,
     "source_repository": "https://github.com/PunishXIV/Avarice",
     "source_to_binary_verified": 0,
@@ -2941,7 +3683,7 @@
   },
   "schema": "omega.security-evidence.variant.v2",
   "source": {
-    "content_sha256": "71e60a6ceaf1ba7ef1e127328a863f4e24679255ee5e42fc9ff88b97ae429cd5",
+    "content_sha256": "0b1f2f67eb31a28f20fe4dc521f187128cdf3afe9345494ce099f0e6659554d0",
     "curated_id": "",
     "description": "",
     "discovered_by": "catalog-data/sources/index.json",
@@ -2951,10 +3693,10 @@
     "integrate_with_dalamud": 0,
     "is_official": 0,
     "kind": "canonical",
-    "last_checked_utc": "2026-09-15T21:13:49Z",
+    "last_checked_utc": "2026-09-17T15:29:18Z",
     "last_error": "",
     "last_modified": "",
-    "last_success_utc": "2026-09-15T21:13:49Z",
+    "last_success_utc": "2026-09-17T15:29:18Z",
     "name": "puni.sh-studio",
     "plugin_count": 14,
     "provider": "puni.sh-studio",
@@ -2977,7 +3719,7 @@
     "dalamud_api_level": 15,
     "description": "Positional feedback with pixel perfect rear/flank tracking, range indicators, and more.",
     "dip17_channel": "",
-    "download_count": 388865,
+    "download_count": 390103,
     "download_link_install": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.13/install/latest.zip",
     "download_link_testing": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.15/install/testing.zip",
     "download_link_update": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.13/update/latest.zip",
@@ -2986,7 +3728,7 @@
     "image_urls_json": [],
     "is_hide": 0,
     "is_testing_exclusive": 0,
-    "last_seen_utc": "2026-09-15T21:13:49Z",
+    "last_seen_utc": "2026-09-17T15:29:18Z",
     "last_update": 1785546003,
     "minimum_dalamud_version": null,
     "name": "Avarice",
@@ -2999,7 +3741,7 @@
       "Changelog": "- Update RSR IPC",
       "DalamudApiLevel": "15",
       "Description": "Positional feedback with pixel perfect rear/flank tracking, range indicators, and more.",
-      "DownloadCount": 388865,
+      "DownloadCount": 390103,
       "DownloadLinkInstall": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.13/install/latest.zip",
       "DownloadLinkTesting": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.15/install/testing.zip",
       "DownloadLinkUpdate": "https://puni.sh/api/plugins/download/11/Avarice/versions/2.2.0.13/update/latest.zip",
