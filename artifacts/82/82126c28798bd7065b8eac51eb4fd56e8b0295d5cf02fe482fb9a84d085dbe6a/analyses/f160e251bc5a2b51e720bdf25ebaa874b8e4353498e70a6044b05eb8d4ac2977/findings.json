@@ -1,0 +1,80 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:LangSwap.dll: SigScanner",
+      "metadata:LangSwap.dll: Dalamud.Hooking",
+      "metadata:LangSwap.dll: HookFromAddress",
+      "il:LangSwap.dll:LangSwap.hook.template.TooltipHook.get_SigScanner+0x0: call LangSwap.Plugin.get_SigScanner: SigScanner",
+      "il:LangSwap.dll:LangSwap.hook.template.TooltipHook.Enable+0xa: call LangSwap.hook.template.TooltipHook.get_SigScanner: SigScanner",
+      "il:LangSwap.dll:LangSwap.hook.template.TooltipHook.Enable+0x15: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:LangSwap.dll:LangSwap.hook.template.TooltipHook.Enable+0x3b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:LangSwap.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LangSwap.dll: https://my-home.ovh/LangSwap-WS/api/obfuscated-translations"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f99ae33a4e24",
+    "severity": "caution",
+    "title": "Endpoint: my-home.ovh"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LangSwap.dll: https://github.com/Jo44/LangSwap.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.70d4de8131af",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LangSwap.json: https://raw.githubusercontent.com/Jo44/LangSwap/refs/heads/main/data/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e1fc3cd7a269",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LangSwap.dll: https://raw.githubusercontent.com/Jo44/LangSwap/refs/heads/main/data/obfuscated_translations.csv"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.eee048de65c3",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:LangSwap.dll: System.Net.Http.HttpClient",
+      "il:LangSwap.dll:LangSwap.sync.SyncService..ctor+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:LangSwap.dll:<GetRemoteObfuscatedTranslations>d__20.MoveNext+0x60: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "il:LangSwap.dll:<SendCandidatesAsync>d__27.MoveNext+0x173: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
