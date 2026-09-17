@@ -1,0 +1,1686 @@
+{
+  "analysis": {
+    "analysisId": "314b28d99b822f08cd6a80deea3843f8986463ec98b9c9cea8c8adb7d0ae1faa",
+    "artifactSha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+    "path": "artifacts/4b/4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd/analyses/314b28d99b822f08cd6a80deea3843f8986463ec98b9c9cea8c8adb7d0ae1faa",
+    "recordCount": 66
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+    "artifact_url": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+    "assembly_version": "1.1.2.0",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Endpoint: api.openai.com",
+      "Endpoint: github.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: localhost",
+      "Endpoint: ollama.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "network-endpoint",
+        "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZeroTweaks.dll: http://localhost:11434/api/chat"
+        ],
+        "ruleId": "network.endpoint.private-or-loopback.7ae3aeb946b5",
+        "severity": "high",
+        "title": "Endpoint: localhost"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:ZeroTweaks.dll: System.Diagnostics.Process",
+          "metadata:ZeroTweaks.dll: ProcessStartInfo",
+          "metadata:ZeroTweaks.dll: ShellExecute",
+          "metadata:ZeroTweaks.dll: Process.Start",
+          "il:ZeroTweaks.dll:ZeroTweaks.Windows.MainWindow.OpenBrowser+0x0: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+          "il:ZeroTweaks.dll:ZeroTweaks.Windows.MainWindow.OpenBrowser+0x6: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:ZeroTweaks.dll:ZeroTweaks.Windows.MainWindow.OpenBrowser+0x6: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:ZeroTweaks.dll:ZeroTweaks.Windows.MainWindow.OpenBrowser+0xd: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZeroTweaks.dll: https://api.openai.com/v1/chat/completions"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9a12cfdafe96",
+        "severity": "caution",
+        "title": "Endpoint: api.openai.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZeroTweaks.dll: https://ollama.com/download"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.67f037f6e90e",
+        "severity": "caution",
+        "title": "Endpoint: ollama.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZeroTweaks.dll: https://ko-fi.com/raidenvblack"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.527ce381730b",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:ZeroTweaks.dll: SigScanner",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.PartyFinderTemplateService..ctor+0x11: call ZeroTweaks.Plugin.get_SigScanner: SigScanner",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.PartyFinderTemplateService..ctor+0x1d: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "artifact:ZeroTweaks.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.PartyFinderPageAutomation.Click+0x91: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:ZeroTweaks.dll: System.Net.Http.HttpClient",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.ChatGPTModule..ctor+0x1c: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.ChatGPTModule..ctor+0x27: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:ZeroTweaks.dll:<SendPrompt>d__17.MoveNext+0x10c: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZeroTweaks.dll: https://github.com/RaidenvBlack/Zero-Tweaks"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.81f492e28cf8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:ZeroTweaks.json: https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/icons/zero.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.12f5186e9b19",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:ZeroTweaks.dll: Directory.CreateDirectory",
+          "metadata:ZeroTweaks.dll: WriteAllText",
+          "metadata:ZeroTweaks.dll: File.Move",
+          "il:ZeroTweaks.dll:ZeroTweaks.Windows.UiBuilderWindow.ExportProject+0x1d: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:ZeroTweaks.dll:ZeroTweaks.Windows.UiBuilderWindow.ExportProject+0x9b: call System.IO.File.WriteAllText: WriteAllText",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.ConfigurationTransferService.TryBackup+0x1d: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.ConfigurationTransferService.TryBackup+0xd3: call System.IO.File.WriteAllText: WriteAllText",
+          "il:ZeroTweaks.dll:ZeroTweaks.Modules.LootHistoryStore.Load+0x93: call System.IO.File.Move: File.Move"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 19,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 1187947,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.1.2.0",
+        "artifactBytes": 1187947,
+        "artifactSha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+        "catalogAssemblyVersion": "1.1.2.0",
+        "manifestInternalName": "",
+        "manifestPath": "ZeroTweaks.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 7,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 7,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Endpoint: api.openai.com",
+        "Endpoint: github.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: localhost",
+        "Endpoint: ollama.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 2,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+        "internalName": "ZeroTweaks",
+        "manifestVersion": "1.1.2.0",
+        "observationId": 19518,
+        "observationKey": "manifest-de76663eb20ae7fc6806f93ffde4",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 11970
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 1460669
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-1e9b3ba4941d5680",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-9fb799034258c617",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-11970",
+        "queueSeedRevision": "queue-seed-v2-909affa953ed91084fb5",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-9fd51a0e367422bdaa7b",
+        "variantId": 11970,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-16T23:46:15Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": true,
+        "branch": "main",
+        "candidates": [
+          "https://github.com/RaidenvBlack/RaidenvPlugins"
+        ],
+        "commit": "9440331da88dd16b57e8b192934ea7fc0dc836b8",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "omega.plugin-profile-observation.v1",
+          "sha256": "",
+          "status": "absent",
+          "valid": false
+        },
+        "error": "https://github.com/RaidenvBlack/RaidenvPlugins: repository inspected but plugin identity did not match",
+        "provenance": {
+          "identityMatched": false,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "requestedAssemblyVersion": "1.1.2.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "metadata-ref",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/RaidenvBlack/RaidenvPlugins",
+        "treeSha256": "256237866e1849f5fe31122f5c0956c69e5713fb"
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 28,
+    "scanned_at_utc": "2026-09-16T23:46:15Z",
+    "scanner_version": "2.15.0",
+    "source_available": 1,
+    "source_commit": "9440331da88dd16b57e8b192934ea7fc0dc836b8",
+    "source_repository": "https://github.com/RaidenvBlack/RaidenvPlugins",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 11970
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "source-changed",
+      "current_artifact_sha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+      "current_assembly_version": "1.1.2.0",
+      "current_scan_id": 28,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "9440331da88dd16b57e8b192934ea7fc0dc836b8",
+      "detected_at_utc": "2026-09-16T23:46:16Z",
+      "previous_artifact_sha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+      "previous_assembly_version": "1.1.2.0",
+      "previous_scan_id": 19,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 1,
+      "variant_id": 11970
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 20,
+      "artifact_only_count": 20,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.4"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.9047"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:zerotweaks",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "ZeroTweaks",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.1.2.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-16T23:46:16Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 28,
+      "source_available": 1,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 11970,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "c8788dbc1b49193a3416b68cc78e99f0d65b5652ae466b9e193b6ff191828466",
+    "observedAtUtc": "2026-09-17T16:08:13Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "4e49f6bf7096451da6dd0f6bc04c3e41032c07d1977e2e76880573781e09a8fa",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "b7c6404805fca15d33a6614dac4a08ffd3082d42b89998793d0993872273b12f",
+        "records": 20,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "developerProfile",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "6242159b57c1c268eae34700fe262b97ae9b93f1b1f1c1d5d8a86120eb4a02ef",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "1032c7335dd86d155e74bd7d49485d22572bb8043d17338a9f581ac21b9d49a7",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "0944d6e42a640c8b6e6b43d78da79b790254c3aa7b8d1967776329a03eb73b11",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "00dda30ae20bb16b6319e1a823a42c2a6e5a1ee121774055866cd72a240dd079",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "418fb36c65f00616d31f369570f734379c417cee61a38b88097557afbd1316ec",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceReleaseWorkflows"
+    ],
+    "observationDigest": "obs-ee87978d9c905f459760ea217dd6506eec0cb1db53c1e7e1df3d592c8cb6ecc4",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "ZeroTweaks",
+    "first_seen_utc": "2026-08-22T09:49:09Z",
+    "internal_name": "ZeroTweaks",
+    "last_seen_utc": "2026-09-17T00:38:44Z",
+    "plugin_id": 1168
+  },
+  "pluginId": 1168,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Tweaks that are already working: Loot Roll Tracker, ChatGPT, Lightless switcher",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 179,
+      "summary": "Tweaks that are already working: Loot Roll Tracker, ChatGPT, Lightless switcher",
+      "webEnriched": false
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "cad756c2d08710385585f3a9439b5856baf508f2e03619452e4b2342542b8e2e",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "32bfb1fe103188177d5c800393972ef2854a45eaf31d091a30d9a428138b45dd",
+        "records": 7
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "f78d144904e1aeb48bf3ec6c3624940a19200913524d9109764057626f5702a0",
+        "records": 14
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+    "artifact_url": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+    "assembly_version": "1.1.2.0",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Endpoint: api.openai.com",
+      "Endpoint: github.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: localhost",
+      "Endpoint: ollama.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "plugin_id": 1168,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 19,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 1187947,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.1.2.0",
+        "artifactBytes": 1187947,
+        "artifactSha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+        "catalogAssemblyVersion": "1.1.2.0",
+        "manifestInternalName": "",
+        "manifestPath": "ZeroTweaks.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 7,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 7,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Endpoint: api.openai.com",
+        "Endpoint: github.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: localhost",
+        "Endpoint: ollama.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 2,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+        "internalName": "ZeroTweaks",
+        "manifestVersion": "1.1.2.0",
+        "observationId": 19518,
+        "observationKey": "manifest-de76663eb20ae7fc6806f93ffde4",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 11970
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 1460669
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-1e9b3ba4941d5680",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-9fb799034258c617",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-11970",
+        "queueSeedRevision": "queue-seed-v2-909affa953ed91084fb5",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-9fd51a0e367422bdaa7b",
+        "variantId": 11970,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-16T23:46:15Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4ba80edbd6a04483410a1bb8767b7a4b3e671a561a0313093b986356f4f50fbd",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [
+            "release_or_tag"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": true,
+        "branch": "main",
+        "candidates": [
+          "https://github.com/RaidenvBlack/RaidenvPlugins"
+        ],
+        "commit": "9440331da88dd16b57e8b192934ea7fc0dc836b8",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "omega.plugin-profile-observation.v1",
+          "sha256": "",
+          "status": "absent",
+          "valid": false
+        },
+        "error": "https://github.com/RaidenvBlack/RaidenvPlugins: repository inspected but plugin identity did not match",
+        "provenance": {
+          "identityMatched": false,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "requestedAssemblyVersion": "1.1.2.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "metadata-ref",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/RaidenvBlack/RaidenvPlugins",
+        "treeSha256": "256237866e1849f5fe31122f5c0956c69e5713fb"
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 28,
+    "scanned_at_utc": "2026-09-16T23:46:15Z",
+    "scanner_version": "2.15.0",
+    "source_available": 1,
+    "source_commit": "9440331da88dd16b57e8b192934ea7fc0dc836b8",
+    "source_id": 595,
+    "source_repository": "https://github.com/RaidenvBlack/RaidenvPlugins",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 11970
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "fcfdf36e00384b7c4f492c8cfb65488080cdb82492cee8515f3f88e4d7661131",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"f996983d96901ea4452bb83ee2950abb9fe6c38e7b8697bdd78f9b8f07a826c3\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-17T00:38:44Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-17T00:38:44Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 145,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 595,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/repos/qol.json"
+  },
+  "sourceId": 595,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.1.2.0",
+    "author": "Raiden",
+    "authors_json": [
+      "Raiden"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Tweaks that are already working: Loot Roll Tracker, ChatGPT, Lightless switcher",
+    "dip17_channel": "",
+    "download_count": 69,
+    "download_link_install": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+    "download_link_testing": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+    "download_link_update": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+    "first_seen_utc": "2026-09-16T09:27:38Z",
+    "icon_url": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/icons/zero.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-17T00:38:44Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "ZeroTweaks",
+    "plugin_id": 1168,
+    "punchline": "",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.1.2.0",
+      "Author": "Raiden",
+      "DalamudApiLevel": 15,
+      "Description": "Tweaks that are already working: Loot Roll Tracker, ChatGPT, Lightless switcher",
+      "DownloadCount": 69,
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+      "DownloadLinkTesting": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/zero.zip",
+      "IconUrl": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/icons/zero.png",
+      "InternalName": "ZeroTweaks",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdated": 0,
+      "Name": "ZeroTweaks",
+      "Tags": [
+        "zero",
+        "tweaks",
+        "helper",
+        "loot",
+        "tracker"
+      ],
+      "_Category": "qol",
+      "_SourceId": "raidenvblack-raidenvplugins",
+      "_SourceName": "RaidenvBlack / RaidenvPlugins",
+      "_SourceUrl": "https://raw.githubusercontent.com/RaidenvBlack/RaidenvPlugins/main/repo.json"
+    },
+    "repo_url": "",
+    "source_entry_key": "zerotweaks|1.1.2.0|15|0|144",
+    "source_id": 595,
+    "tags_json": [
+      "zero",
+      "tweaks",
+      "helper",
+      "loot",
+      "tracker"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 11970
+  },
+  "variantId": 11970
+}

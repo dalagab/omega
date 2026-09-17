@@ -1,0 +1,3760 @@
+{
+  "analysis": {
+    "analysisId": "096f8d835521e7f09c38a07940e8517f56fc9c695518ee6f2b9ca8842e8ef458",
+    "artifactSha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+    "path": "artifacts/ba/ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7/analyses/096f8d835521e7f09c38a07940e8517f56fc9c695518ee6f2b9ca8842e8ef458",
+    "recordCount": 1010
+  },
+  "current": {
+    "artifact_channel": "testing",
+    "artifact_sha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+    "artifact_url": "https://puni.sh/api/plugins/download/153/Housingway/versions/1.0.2.0/install/testing.zip",
+    "assembly_version": "1.0.2.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "artifact:SharpDX.Direct3D11.dll: CreateProcess",
+          "artifact:SharpDX.dll: CreateProcess"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Pictomancy.dll: DllImportAttribute",
+          "metadata:SharpDX.D3DCompiler.dll: DllImportAttribute",
+          "metadata:SharpDX.Direct2D1.dll: DllImportAttribute",
+          "metadata:SharpDX.Direct3D11.dll: DllImportAttribute",
+          "metadata:SharpDX.dll: DllImportAttribute",
+          "metadata:SharpDX.dll: GetProcAddress",
+          "il:SharpDX.dll:SharpDX.Utilities.GetProcAddress+0x2: call SharpDX.Utilities.GetProcAddress_ -> kernel32!GetProcAddress: GetProcAddress",
+          "artifact:SharpDX.dll: GetProcAddress"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Housingway.dll: SigScanner",
+          "metadata:Housingway.dll: Dalamud.Hooking",
+          "il:Housingway.dll:Housingway.Structs.AreaCullingManager.Instance+0x0: call Housingway.Service.get_SigScanner: SigScanner",
+          "il:Housingway.dll:Housingway.Structs.AreaCullingManager.Instance+0xb: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+          "artifact:Housingway.dll: Dalamud.Hooking",
+          "artifact:Housingway.dll: SigScanner",
+          "metadata:KamiToolKit.dll: Dalamud.Hooking",
+          "metadata:KamiToolKit.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:Housingway/Service.cs: SigScanner",
+          "source:Housingway/Structs/AreaCullingManager.cs: SigScanner",
+          "source:Housingway/Tweaks/OverrideSkybox/EnvService.cs: Dalamud.Hooking",
+          "source:Housingway/Tweaks/OverrideSkybox/EnvService.cs: Hook<"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Housingway.dll: s://github.com/Abyeon/Housingway.git",
+          "artifact:Housingway.dll: p://www.w3.org/1999/02/22-rdf-syntax-ns#",
+          "artifact:Housingway.dll: p://ns.adobe.com/xap/1.0/",
+          "artifact:Housingway.dll: p://ns.adobe.com/photoshop/1.0/",
+          "artifact:Housingway.dll: p://purl.org/dc/elements/1.1/",
+          "artifact:Housingway.dll: p://ns.adobe.com/exif/1.0/",
+          "artifact:Housingway.dll: p://ns.adobe.com/tiff/1.0/",
+          "artifact:Housingway.dll: p://ns.adobe.com/xap/1.0/mm/"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:Housingway/Interface/Windows/ProfileWindow.cs: \\\\\"[(int)(ImGui.GetTime() / 0.05f) & 3"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Housingway.dll: FileStream",
+          "metadata:Housingway.dll: File.Delete",
+          "metadata:Housingway.dll: WriteAllText",
+          "il:Housingway.dll:<DeleteFile>d__8.MoveNext+0x4c: newobj System.IO.FileStream..ctor: FileStream",
+          "il:Housingway.dll:<DeleteFile>d__8.MoveNext+0xd3: call System.IO.File.Delete: File.Delete",
+          "il:Housingway.dll:<SaveFile>d__7`1.MoveNext+0x42: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+          "il:Housingway.dll:<<Delete>b__20_0>d.MoveNext+0x12: call Housingway.Profiles.Profile.DeleteAsync: File.Delete",
+          "il:Housingway.dll:<<Render>b__4>d.MoveNext+0x88: callvirt Housingway.Profiles.Profile.DeleteAsync: File.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:Housingway/Interface/Windows/ProfileWindow.cs: File.Delete",
+          "source:Housingway/Utils/Serializer.cs: WriteAllText",
+          "source:Housingway/Utils/Serializer.cs: FileStream",
+          "source:Housingway/Utils/Serializer.cs: File.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 2,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 2293226,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.2.0",
+        "artifactBytes": 2293226,
+        "artifactSha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+        "catalogAssemblyVersion": "1.0.2.0",
+        "manifestInternalName": "",
+        "manifestPath": "Housingway.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "exd.camora.dev",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "exd.camora.dev",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.chat.read",
+        "game.memory.read",
+        "game.state.read",
+        "game.ui.callback",
+        "game.ui.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 2
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 16,
+          "exactVersionObservedCount": 16,
+          "families": {
+            "nuget": 16
+          },
+          "fingerprint": "527725bcbbe49fe294cdfaaa4283cbc0d566a4f1f7c7b2ef995938ac77b6d3c9",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "required": 16
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 16,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 16,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 16
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 4,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "High",
+              "host": "exd.camora.dev",
+              "literalCount": 2,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 5,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 9,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "exd.camora.dev",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://exd.camora.dev/sheet/HousingFurniture"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "exd.camora.dev",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://exd.camora.dev/sheet/HousingYardObject"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/Abyeon/Housingway"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Infiziert90/ChatTwo/blob/<redacted>/ChatTwo/Util/ImGuiUtil.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/goatcorp/Dalamud/blob/<redacted>/Dalamud/Interface/Windowing/WindowHost.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/ktisis-tools/Ktisis/blob/<redacted>/Ktisis/Scene/Modules/EnvModule.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/ktisis-tools/Ktisis/blob/v0.3/main/Ktisis/Services/Data/HousingDataService.cs"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "ko-fi.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/abyeon"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Abyeon/Housingway/refs/heads/master/Housingway/Assets/Icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "testing",
+        "downloadUrl": "https://puni.sh/api/plugins/download/153/Housingway/versions/1.0.2.0/install/testing.zip",
+        "internalName": "Housingway",
+        "manifestVersion": "1.0.2.0",
+        "observationId": 19280,
+        "observationKey": "manifest-e32f150c2cee682ff60e4957c7da",
+        "repositoryUrl": "https://github.com/Abyeon/Housingway",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 11820
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 11,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 13,
+        "uncompressedBytes": 5263787
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-38850b508f621485",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-6b6c718e611a232e",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-11820",
+        "queueSeedRevision": "queue-seed-v2-52aec1e2cbbb1c830321",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-9b36a165cf03a3a5abad",
+        "variantId": 11820,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-16T12:16:45Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": true,
+        "branch": "master",
+        "candidates": [
+          "https://github.com/Abyeon/Housingway"
+        ],
+        "commit": "0fb7377ea9587de533a2eac7c9ebc8d29af56554",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": "78134eadf42d9e62ef79daca6a21e5457e89beb1fc4571d393955053080542df"
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "omega.plugin-profile-observation.v1",
+          "sha256": "",
+          "status": "absent",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.2.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Abyeon/Housingway",
+        "treeSha256": "0ebde1c3827cc05a0eb478dafa6d954c212d449d"
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-16T12:16:45Z",
+    "scanner_version": "2.15.0",
+    "source_available": 1,
+    "source_commit": "0fb7377ea9587de533a2eac7c9ebc8d29af56554",
+    "source_repository": "https://github.com/Abyeon/Housingway",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 11820
+  },
+  "derived": {
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:jetbrains.annotations",
+        "current_json": {
+          "componentKey": "nuget:jetbrains.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "JetBrains.Annotations",
+          "normalizedName": "jetbrains.annotations",
+          "origin": "source",
+          "paths": [
+            "Housingway/Housingway.csproj",
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "2026.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "2026.2.0",
+            "[2026.2.0, )"
+          ],
+          "versions": [
+            "2026.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget",
+        "dependency_name": "JetBrains.Annotations",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:kamitoolkit",
+        "current_json": {
+          "componentKey": "nuget:kamitoolkit",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "KamiToolKit",
+          "normalizedName": "kamitoolkit",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.1.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "1.1.2"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "KamiToolKit",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:microsoft.netcore.platforms",
+        "current_json": {
+          "componentKey": "nuget:microsoft.netcore.platforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Microsoft.NETCore.Platforms",
+          "normalizedName": "microsoft.netcore.platforms",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.1.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "Microsoft.NETCore.Platforms",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:netstandard.library",
+        "current_json": {
+          "componentKey": "nuget:netstandard.library",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "NETStandard.Library",
+          "normalizedName": "netstandard.library",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.6.1"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "1.6.1"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "NETStandard.Library",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:pictomancy",
+        "current_json": {
+          "componentKey": "nuget:pictomancy",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "Pictomancy",
+          "normalizedName": "pictomancy",
+          "origin": "source",
+          "paths": [
+            "Housingway/Housingway.csproj",
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.0.10"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "1.0.10",
+            "[1.0.10, )"
+          ],
+          "versions": [
+            "1.0.10"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget",
+        "dependency_name": "Pictomancy",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sharpdx",
+        "current_json": {
+          "componentKey": "nuget:sharpdx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SharpDX",
+          "normalizedName": "sharpdx",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "4.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SharpDX",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sharpdx.d3dcompiler",
+        "current_json": {
+          "componentKey": "nuget:sharpdx.d3dcompiler",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SharpDX.D3DCompiler",
+          "normalizedName": "sharpdx.d3dcompiler",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "4.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SharpDX.D3DCompiler",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sharpdx.direct2d1",
+        "current_json": {
+          "componentKey": "nuget:sharpdx.direct2d1",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SharpDX.Direct2D1",
+          "normalizedName": "sharpdx.direct2d1",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "4.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SharpDX.Direct2D1",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sharpdx.direct3d11",
+        "current_json": {
+          "componentKey": "nuget:sharpdx.direct3d11",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SharpDX.Direct3D11",
+          "normalizedName": "sharpdx.direct3d11",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "4.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SharpDX.Direct3D11",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sharpdx.dxgi",
+        "current_json": {
+          "componentKey": "nuget:sharpdx.dxgi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SharpDX.DXGI",
+          "normalizedName": "sharpdx.dxgi",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "4.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SharpDX.DXGI",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sharpdx.mathematics",
+        "current_json": {
+          "componentKey": "nuget:sharpdx.mathematics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SharpDX.Mathematics",
+          "normalizedName": "sharpdx.mathematics",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "4.2.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SharpDX.Mathematics",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:sixlabors.imagesharp",
+        "current_json": {
+          "componentKey": "nuget:sixlabors.imagesharp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "SixLabors.ImageSharp",
+          "normalizedName": "sixlabors.imagesharp",
+          "origin": "source",
+          "paths": [
+            "Housingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "3.1.12"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": [
+            "3.1.12"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "SixLabors.ImageSharp",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 14,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 15,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 16,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 17,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud hooking APIs are imported.",
+            "Dalamud service IGameInteropProvider is referenced.",
+            "Dalamud service ISigScanner is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 18,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 19,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 20,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 21,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 22,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 11820
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 12,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-16T12:17:11Z",
+        "drift_id": 23,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 11820
+      }
+    ],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "source-changed",
+      "current_artifact_sha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+      "current_assembly_version": "1.0.2.0",
+      "current_scan_id": 12,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "0fb7377ea9587de533a2eac7c9ebc8d29af56554",
+      "detected_at_utc": "2026-09-16T12:17:11Z",
+      "previous_artifact_sha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+      "previous_assembly_version": "1.0.2.0",
+      "previous_scan_id": 9,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 1,
+      "variant_id": 11820
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 68,
+      "artifact_only_count": 58,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0",
+            "15.0.2.1",
+            "15.0.3.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.7966",
+            "7.51.0.8398",
+            "7.51.0.8798"
+          ]
+        },
+        {
+          "componentKey": "assembly:housingway",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Housingway",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:jetbrains.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "JetBrains.Annotations",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "4242.42.42.42"
+          ]
+        },
+        {
+          "componentKey": "assembly:kamitoolkit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KamiToolKit",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.1.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:pictomancy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Pictomancy",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.d3dcompiler",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.D3DCompiler",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.direct2d1",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "SharpDX.Direct2D1",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.direct3d11",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.Direct3D11",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.dxgi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.DXGI",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.mathematics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sixlabors.imagesharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SixLabors.ImageSharp",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.debug",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.globalization",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Globalization",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.brotli",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.Brotli",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.resources.resourcemanager",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.compilerservices.unsafe",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography.algorithms",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography.Algorithms",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.codepages",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.CodePages",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xdocument",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:cimgui",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cimgui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:d2d1",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d2d1.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:d3d11",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3d11.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:d3dcompiler_47",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3dcompiler_47.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dwrite",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dwrite.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dxgi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dxgi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-16T12:17:11Z",
+      "comparison_id": 9,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 10,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 12,
+      "source_available": 1,
+      "source_dependency_count": 14,
+      "source_only_count": 4,
+      "source_only_json": [
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.platforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "Microsoft.NETCore.Platforms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:netstandard.library",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "NETStandard.Library",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.6.1"
+          ]
+        }
+      ],
+      "source_project_sha256": "fc64e920c16695c5f019120a1775bf0dffac407f1d4cc2a72351c60dfe2df013",
+      "variant_id": 11820,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "810840ba4eb437162cba728fe0b944c754db9ee2cdf855bca85fc04bcfc654e4",
+    "observedAtUtc": "2026-09-17T16:08:12Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "9181be565e0af5a39406d77c7adc3278c496237f8528778a084f9474c4d0928b",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "19c5935c767dc20e266e8301fa24e56f7561adda9dd9f03972d2e18e9c87d9a0",
+        "records": 166,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "developerProfile",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "5db4e667773a9d18fb359c0e5c92d96c012074eeeb5f46579bdc765f92162f69",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "27bebaca286defdce8da5a293fcb13ba0dcacab15ffc956a7b5c57439fd54742",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "7f5fc9176aa4063c765c7589acaec8cfcd94ce743f2f99cc4d798e726fcab8ab",
+        "records": 308,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "4575d515637ba61def3a7b3b6f627b82d1a6f0808ac93a94ee5c42fd8b777660",
+        "records": 9,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "453a5a4f0342fcc2614d9c81187d54f281cf19ba096592bbcc4b943a9709fbed",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "a22bdd7d3dbb6918af67534eb3e8e0f316ccd852ef3481ca408531cb30f8b525",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "b912aa48da3ce82f8beffc62c7042f7464433b6f46ac8969b0204082303bcb46",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "ffce39ce3c514067c7a3298dd6125144c923a589e53c9d6209abee8787129f3e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "3171bacfd0999afd487a1a38c4656e575ebcb045449a8e22c1c2c616521b20b6",
+        "records": 342,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "c575552b2eb90dfa8e27f3cb50f2020e375c2cea55368e50f7e6c5cb2e6da518",
+        "records": 16,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "ff747f9bcb67dc204cef75f3b856d9c3f835c1a7d13e7bb1dfc0dd48ff2266a0",
+        "records": 68,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "df1bf778455c736c365e8d838e997a9db9ba445f1ebd1e511cc68cc2465b6e38",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "036452060936a258de86f63714362134fabc771fa788feacb34792303e628cfa",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "22dcc707a91e9b68dbf80d816750c66bc68492dd78748254ac2dd1d74e9cfb81",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "817240c02cda16a8d66d42ac7a99392d50fc2e9db41655eb24866c13be2562fa",
+        "records": 31,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "793225a9deb28666ba42ba7fffd531909c591bdd72a55dc53e8aab665008bf18",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports"
+    ],
+    "observationDigest": "obs-eefff0acff8a12c0a9876326d7d659546bd6295fa7cd0eddf9a29e23ccb1639c",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Housingway",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Housingway",
+    "last_seen_utc": "2026-09-17T00:38:44Z",
+    "plugin_id": 677
+  },
+  "pluginId": 677,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "A Dalamud tweak collection plugin for FF14 housing.",
+      "images": [
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/IconNoBg.png",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/Skybox.png",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/InteriorLighting.gif",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/HighlightPhasedObjects.gif",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/CollisionDisplay.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 51061,
+      "summary": "Experience better housing!",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Abyeon/Housingway",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "A Dalamud tweak collection plugin for FF14 housing.",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/IconNoBg.png",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/Skybox.png",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/InteriorLighting.gif",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/HighlightPhasedObjects.gif",
+        "https://raw.githubusercontent.com/Abyeon/Housingway/master/Housingway/Assets/Showcase/CollisionDisplay.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Abyeon/Housingway"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "<p align=\"center\">\n    <img src=\"Housingway/Assets/IconNoBg.png\" alt=\"Housingway Icon\" height=\"250\">\n</p>\n\n<h1 align=\"center\">Housingway</h1>\n<p align=\"center\">A FFXIV tweak collection plugin for housing. Custom skyboxes, helper tools, and adjustments for all your housing needs!</p>\n\n## Showcase\n<table>\n    <tr>\n        <td><img src=\"Housingway/Assets/Showcase/Skybox.png\" alt=\"Skybox Showcase\" height=\"175\"></td>\n        <td><img src=\"Housingway/Assets/Showcase/InteriorLighting.gif\" alt=\"Override Interior Lighting\" height=\"175\"></td>\n        <td><img src=\"Housingway/Assets/Showcase/HighlightPhasedObjects.gif\" alt=\"Highlight Phased Objects\" height=\"175\"></td>\n        <td><img src=\"Housingway/Assets/Showcase/CollisionDisplay.png\" alt=\"Collision Display\" height=\"175\"></td>\n    </tr>\n</table>\n\n## Tweaks\n\n<details>\n<summary>Open to view tweaks</summary>\n\n### Disable Camera Collision\nAllows the camera to clip through *furnishings*.\n\n### Disable Cast Shadows\nDisables the shadows casted by different light objects when within housing.\nThis may help with performance and some disgusting lighting pop-in.\n\n### Disable SSAO\nDisables SSAO within housing.\n\n### Display Pop Range\nOverlays the area in which you may spawn in.\n\n### Door Command\nAdds the /door command to easily return to the entrance of a house, plot, or apartment.\n\n### Furniture Info\nLess of a tweak, more of a tool for learning about different furniture.\n\n### Highlight Phased Objects\nHighlights objects that have had their player collision disabled.\n\n### Indoor Sun\nEnables the Sun when indoors!\n\n### Model Adjustments\nSome toggleable adjustments geared towards void builders.\nNo more house shell or shame cube.\n\n### Override Interior Lighting\nOverrides the interior lighting of other player's houses to your desired setting.\n\n### Skybox\nOverrides the interior skybox.\n\n</details>\n\n## Contributing\nFeel free to add your own tweaks. Simply fork, clone, and copy the relevant template from `Housingway/Tweaks/_Templates` into the `Tweaks` folder to get started making your own.\nUse any of the other tweaks as reference as needed.\n\n## Credits\n* [Ktisis](https://github.com/ktisis-tools/Ktisis) for Skyboxes, Interior Lighting, and Ambient Occlusion tech\n* [HaselTweaks](https://github.com/Haselnussbomber/HaselTweaks/tree/main) for some architectural inspiration\n* [Pictomancy](https://github.com/sourpuh/ffxiv_pictomancy) for in-world drawing tools",
+      "title": "Housingway",
+      "url": "https://github.com/Abyeon/Housingway"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "0b2c501daca6ac54a32d2dc12937ffa0bc4d7d3c8262c79526d7e3bc33a67f30",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "4a35fc7a2502c83f91a88098dc5c37df42da0b425c5b6da6e91b81d6c562148d",
+        "records": 11
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "e9ad26ec0cae1c4343ba75c9a256562204aad95c24e791ebedbaea771237900b",
+        "records": 9
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "testing",
+    "artifact_sha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+    "artifact_url": "https://puni.sh/api/plugins/download/153/Housingway/versions/1.0.2.0/install/testing.zip",
+    "assembly_version": "1.0.2.0",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 2,
+    "plugin_id": 677,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 2293226,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.2.0",
+        "artifactBytes": 2293226,
+        "artifactSha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+        "catalogAssemblyVersion": "1.0.2.0",
+        "manifestInternalName": "",
+        "manifestPath": "Housingway.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "exd.camora.dev",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "exd.camora.dev",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "github.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.chat.read",
+        "game.memory.read",
+        "game.state.read",
+        "game.ui.callback",
+        "game.ui.read",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 2
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 16,
+          "exactVersionObservedCount": 16,
+          "families": {
+            "nuget": 16
+          },
+          "fingerprint": "527725bcbbe49fe294cdfaaa4283cbc0d566a4f1f7c7b2ef995938ac77b6d3c9",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "required": 16
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 16,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 16,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 16
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 4,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "High",
+              "host": "exd.camora.dev",
+              "literalCount": 2,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "github.com",
+              "literalCount": 5,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "High",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "source-code"
+              ]
+            }
+          ],
+          "literalCount": 9,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "exd.camora.dev",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://exd.camora.dev/sheet/HousingFurniture"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "exd.camora.dev",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://exd.camora.dev/sheet/HousingYardObject"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://github.com/Abyeon/Housingway"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Infiziert90/ChatTwo/blob/<redacted>/ChatTwo/Util/ImGuiUtil.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/goatcorp/Dalamud/blob/<redacted>/Dalamud/Interface/Windowing/WindowHost.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/ktisis-tools/Ktisis/blob/<redacted>/Ktisis/Scene/Modules/EnvModule.cs"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
+            "host": "github.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/ktisis-tools/Ktisis/blob/v0.3/main/Ktisis/Services/Data/HousingDataService.cs"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "ko-fi.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/abyeon"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "High",
+            "host": "raw.githubusercontent.com",
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Abyeon/Housingway/refs/heads/master/Housingway/Assets/Icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "testing",
+        "downloadUrl": "https://puni.sh/api/plugins/download/153/Housingway/versions/1.0.2.0/install/testing.zip",
+        "internalName": "Housingway",
+        "manifestVersion": "1.0.2.0",
+        "observationId": 19280,
+        "observationKey": "manifest-e32f150c2cee682ff60e4957c7da",
+        "repositoryUrl": "https://github.com/Abyeon/Housingway",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 11820
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 11,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 13,
+        "uncompressedBytes": 5263787
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-38850b508f621485",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-6b6c718e611a232e",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-11820",
+        "queueSeedRevision": "queue-seed-v2-52aec1e2cbbb1c830321",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-9b36a165cf03a3a5abad",
+        "variantId": 11820,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-16T12:16:45Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "ba2ca656c39b187d6c7f7d196a5c8a11af7bf71d8d391494e679854b3c5ccef7",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": true,
+        "branch": "master",
+        "candidates": [
+          "https://github.com/Abyeon/Housingway"
+        ],
+        "commit": "0fb7377ea9587de533a2eac7c9ebc8d29af56554",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": "78134eadf42d9e62ef79daca6a21e5457e89beb1fc4571d393955053080542df"
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "omega.plugin-profile-observation.v1",
+          "sha256": "",
+          "status": "absent",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.2.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Abyeon/Housingway",
+        "treeSha256": "0ebde1c3827cc05a0eb478dafa6d954c212d449d"
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-16T12:16:45Z",
+    "scanner_version": "2.15.0",
+    "source_available": 1,
+    "source_commit": "0fb7377ea9587de533a2eac7c9ebc8d29af56554",
+    "source_id": 594,
+    "source_repository": "https://github.com/Abyeon/Housingway",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 11820
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "36bb67f057bbb07188a257f06a455011b85292b89b119a56337df98883e0ea22",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"896a0f31f7599dfb50a201b9275e3044347657ea9987976508808bb845983391\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-17T00:38:44Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-17T00:38:44Z",
+    "name": "NexusFFXIV/DalamudRepo",
+    "plugin_count": 145,
+    "provider": "NexusFFXIV/DalamudRepo",
+    "source_id": 594,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/gen-repo.json"
+  },
+  "sourceId": 594,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.2.0",
+    "author": "Abyeon",
+    "authors_json": [
+      "Abyeon"
+    ],
+    "category_tags_json": [],
+    "changelog": "+ Fix model adjustments not applying",
+    "dalamud_api_level": 15,
+    "description": "A housing tweak collection plugin.",
+    "dip17_channel": "",
+    "download_count": 936,
+    "download_link_install": "",
+    "download_link_testing": "https://puni.sh/api/plugins/download/153/Housingway/versions/1.0.2.0/install/testing.zip",
+    "download_link_update": "",
+    "first_seen_utc": "2026-09-16T09:27:38Z",
+    "icon_url": "https://puni.sh/api/plugins/icon/153",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 1,
+    "last_seen_utc": "2026-09-16T09:27:38Z",
+    "last_update": 1786650805,
+    "minimum_dalamud_version": null,
+    "name": "Housingway",
+    "plugin_id": 677,
+    "punchline": "Experience better housing!",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.2.0",
+      "Author": "Abyeon",
+      "Changelog": "+ Fix model adjustments not applying",
+      "DalamudApiLevel": "15",
+      "Description": "A housing tweak collection plugin.",
+      "DownloadCount": 936,
+      "DownloadLinkTesting": "https://puni.sh/api/plugins/download/153/Housingway/versions/1.0.2.0/install/testing.zip",
+      "IconUrl": "https://puni.sh/api/plugins/icon/153",
+      "InternalName": "Housingway",
+      "IsTestingExclusive": true,
+      "LastUpdate": 1786650805,
+      "Name": "Housingway",
+      "Punchline": "Experience better housing!",
+      "RepoUrl": "https://github.com/Abyeon/Housingway",
+      "Tags": [
+        "util",
+        "housing",
+        "tweak"
+      ],
+      "TestingAssemblyVersion": "1.0.2.0",
+      "TestingDalamudApiLevel": "15"
+    },
+    "repo_url": "https://github.com/Abyeon/Housingway",
+    "source_entry_key": "housingway|1.0.2.0|15|15|55",
+    "source_id": 594,
+    "tags_json": [
+      "util",
+      "housing",
+      "tweak"
+    ],
+    "testing_assembly_version": "1.0.2.0",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 11820
+  },
+  "variantId": 11820
+}
