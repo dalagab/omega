@@ -22,7 +22,7 @@ LEASE_SCHEMA = "omega.work-lease.v1"
 MAX_ITEMS = 20_000
 MAX_REASON = 512
 MAX_RESULT_TEXT = 2048
-STATES = {"pending", "leased", "completed", "blocked", "terminal"}
+STATES = {"pending", "leased", "completed", "blocked", "terminal", "superseded"}
 CLAIMABLE_STATES = {"pending"}
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -314,7 +314,39 @@ def recover_expired(queue: Mapping[str, Any], *, now: str = "") -> tuple[dict[st
     return payload, recovered
 
 
-def claim(queue: Mapping[str, Any], *, owner: str, lease_seconds: int = 1800, now: str = "") -> tuple[dict[str, Any], dict[str, Any] | None]:
+def supersede_pending(queue: Mapping[str, Any], *, keep_work_id: str, now: str = "",
+                      reason: str = "newer required revision") -> tuple[dict[str, Any], int]:
+    """Mark obsolete unleased work as superseded while preserving queue history.
+
+    Snapshot-style collectors only need the newest required revision.  A currently leased
+    item is deliberately left alone so an in-flight worker can settle normally; only
+    pending work other than ``keep_work_id`` is retired.
+    """
+    payload = validate_queue(queue)
+    at = now or utc_now()
+    keep_work_id = _clean_text(keep_work_id, "keep_work_id", maximum=128)
+    reason = _clean_text(reason, "reason", maximum=MAX_RESULT_TEXT)
+    superseded = 0
+    for item in payload["items"]:
+        if item["workId"] == keep_work_id or item["state"] != "pending":
+            continue
+        item["state"] = "superseded"
+        item["updatedAtUtc"] = at
+        item["lease"] = None
+        item["settlement"] = {
+            "outcome": "superseded",
+            "reason": reason,
+            "settledAtUtc": at,
+        }
+        superseded += 1
+    if superseded:
+        payload["updatedAtUtc"] = at
+        stamp_queue(payload)
+    return payload, superseded
+
+
+def claim(queue: Mapping[str, Any], *, owner: str, lease_seconds: int = 1800, now: str = "",
+          work_id: str = "") -> tuple[dict[str, Any], dict[str, Any] | None]:
     payload, _ = recover_expired(queue, now=now)
     at = now or utc_now(); at_dt = _parse_utc(at)
     owner = _clean_text(owner, "owner", maximum=256)
@@ -325,6 +357,9 @@ def claim(queue: Mapping[str, Any], *, owner: str, lease_seconds: int = 1800, no
         item for item in payload["items"]
         if item["state"] in CLAIMABLE_STATES and _parse_utc(item["notBeforeUtc"]) <= at_dt
     ]
+    if work_id:
+        exact_work_id = _clean_text(work_id, "work_id", maximum=128)
+        candidates = [item for item in candidates if item["workId"] == exact_work_id]
     candidates.sort(key=lambda item: (-int(item["priority"]), item["createdAtUtc"], item["workId"]))
     if not candidates:
         return payload, None

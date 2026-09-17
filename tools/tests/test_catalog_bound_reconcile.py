@@ -15,7 +15,7 @@ import reconcile_work  # noqa: E402
 
 
 def _policy() -> dict:
-    return {
+    policy = {
         "schema": "omega.orchestration-policy.v1",
         "version": 4,
         "queues": [
@@ -64,6 +64,11 @@ def _policy() -> dict:
     }
 
 
+    for row in policy["queues"]:
+        row["pendingPolicy"] = "supersede-stale"
+    return policy
+
+
 def _catalog(root: Path, revision: str) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     (root / "index.json").write_text(json.dumps({"catalogRevision": revision}) + "\n", encoding="utf-8")
@@ -107,6 +112,8 @@ class CatalogBoundReconcileTests(unittest.TestCase):
             for queue_id in ("catalog-enrichment", "catalog-scrape", "source-head-observation"):
                 queue = json.loads((second_root / "queues" / f"{queue_id}.json").read_text(encoding="utf-8"))
                 self.assertEqual(2, len(queue["items"]), queue_id)
+                self.assertEqual("superseded", queue["items"][0]["state"], queue_id)
+                self.assertEqual("pending", queue["items"][-1]["state"], queue_id)
                 self.assertTrue(queue["items"][-1]["requiredRevision"].startswith("work-inputs-v1-"))
             discovery = json.loads((second_root / "queues" / "catalog-discovery.json").read_text(encoding="utf-8"))
             self.assertEqual(1, len(discovery["items"]))
@@ -156,6 +163,8 @@ class CatalogBoundReconcileTests(unittest.TestCase):
         by_id = {row["queueId"]: row for row in policy["queues"]}
         for queue_id in ("catalog-enrichment", "catalog-scrape", "source-head-observation"):
             self.assertEqual(["catalog"], by_id[queue_id].get("revisionInputs"), queue_id)
+        for queue_id, row in by_id.items():
+            self.assertEqual("supersede-stale", row.get("pendingPolicy"), queue_id)
 
     def test_reconcile_workflow_supplies_authoritative_catalog_identity(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "security-reconcile.yml").read_text(encoding="utf-8")

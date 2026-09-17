@@ -118,12 +118,15 @@ def validate_policy(value: Mapping[str, Any]) -> dict[str, Any]:
         unknown_revision_inputs = sorted(set(revision_inputs) - {"catalog", "operator-sources", "external-analysis-registry"})
         if unknown_revision_inputs:
             raise ValueError(f"queue {queue_id} has unknown revisionInputs: {unknown_revision_inputs}")
+        pending_policy = str(row.get("pendingPolicy") or "fifo").strip()
+        if pending_policy not in {"fifo", "supersede-stale"}:
+            raise ValueError(f"queue {queue_id} has unsupported pendingPolicy: {pending_policy}")
         queues.append({
             "queueId": queue_id, "component": component, "kind": kind,
             "cadenceSeconds": cadence, "priority": priority, "subject": dict(subject),
             "reason": reason, "consumer": _clean_consumer(row, queue_id),
             "prerequisites": [str(item).strip() for item in (row.get("prerequisites") or []) if str(item).strip()],
-            "revisionInputs": revision_inputs,
+            "revisionInputs": revision_inputs, "pendingPolicy": pending_policy,
         })
     known = {row["queueId"] for row in queues}
     for row in queues:
@@ -177,16 +180,8 @@ def _operator_sources_revision(operations_root: Path | None) -> str:
     return f"operator-sources-v1-{_sha(semantic)[:20]}"
 
 
-def _latest_item(queue: Mapping[str, Any]) -> dict[str, Any] | None:
-    rows = [dict(item) for item in queue.get("items") or [] if isinstance(item, Mapping)]
-    if not rows:
-        return None
-    rows.sort(key=lambda row: (str(row.get("createdAtUtc") or ""), str(row.get("workId") or "")))
-    return rows[-1]
-
-
 def _required_revision(*, spec: Mapping[str, Any], bucket: str, catalog_revision: str,
-                       operator_sources_revision: str, processed_queues: Mapping[str, Mapping[str, Any]]) -> str:
+                       operator_sources_revision: str, processed_required_revisions: Mapping[str, str]) -> str:
     cadence = {
         "queueId": str(spec["queueId"]),
         "bucket": bucket,
@@ -201,15 +196,10 @@ def _required_revision(*, spec: Mapping[str, Any], bucket: str, catalog_revision
         revision_inputs["operatorSourceRevision"] = operator_sources_revision
     prerequisites: dict[str, str] = {}
     for prerequisite in spec.get("prerequisites") or []:
-        dependency = processed_queues.get(str(prerequisite))
-        if dependency is None:
+        revision = str(processed_required_revisions.get(str(prerequisite)) or "")
+        if not revision:
             raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} must appear earlier in policy")
-        latest = _latest_item(dependency)
-        if latest is None:
-            raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} has no required revision")
-        prerequisites[str(prerequisite)] = str(latest.get("requiredRevision") or "")
-        if not prerequisites[str(prerequisite)]:
-            raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} has no requiredRevision")
+        prerequisites[str(prerequisite)] = revision
     if not revision_inputs and not prerequisites:
         return f"cadence-v1-{_sha(cadence)[:20]}"
     semantic = {"cadence": cadence, "revisionInputs": revision_inputs, "prerequisites": prerequisites}
@@ -279,7 +269,9 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
     descriptors: list[dict[str, Any]] = []
     dispatches: list[dict[str, Any]] = []
     processed_queues: dict[str, dict[str, Any]] = {}
-    created_total = 0; recovered_total = 0; settled_total = 0; claimed_total = 0
+    required_work_ids: dict[str, str] = {}
+    required_revisions: dict[str, str] = {}
+    created_total = 0; recovered_total = 0; settled_total = 0; claimed_total = 0; superseded_total = 0
     for spec in policy_value["queues"]:
         queue = _load_previous_queue(previous_root, spec["queueId"], spec["component"], at)
         queue, settled = _settle_lane_result(queue, spec, results_root, at)
@@ -289,7 +281,7 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
         bucket = _bucket(at_dt, spec["cadenceSeconds"])
         required_revision = _required_revision(
             spec=spec, bucket=bucket, catalog_revision=catalog_revision,
-            operator_sources_revision=operator_sources_revision, processed_queues=processed_queues,
+            operator_sources_revision=operator_sources_revision, processed_required_revisions=required_revisions,
         )
         queue, _item, created = work_queue.enqueue(
             queue,
@@ -301,6 +293,14 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
             now=at,
         )
         created_total += int(created)
+        required_work_ids[spec["queueId"]] = _item["workId"]
+        required_revisions[spec["queueId"]] = required_revision
+        if spec["pendingPolicy"] == "supersede-stale":
+            queue, superseded = work_queue.supersede_pending(
+                queue, keep_work_id=_item["workId"], now=at,
+                reason=f"superseded by required work {_item['workId']}",
+            )
+            superseded_total += superseded
         consumer = spec["consumer"]
         claim = None
         prerequisites_ready = True
@@ -308,13 +308,19 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
             dependency = processed_queues.get(prerequisite)
             if dependency is None:
                 raise ValueError(f"queue {spec['queueId']} prerequisite {prerequisite} must appear earlier in policy")
-            dep_items = list(dependency.get("items") or [])
-            if not dep_items or sorted(dep_items, key=lambda row: (row.get("createdAtUtc", ""), row.get("workId", "")))[-1].get("state") != "completed":
+            required_work_id = required_work_ids.get(prerequisite, "")
+            dependency_item = next(
+                (item for item in dependency.get("items") or [] if str(item.get("workId") or "") == required_work_id),
+                None,
+            )
+            if dependency_item is None or dependency_item.get("state") != "completed":
                 prerequisites_ready = False
                 break
         if consumer.get("implemented") and prerequisites_ready and _leased_item(queue) is None:
+            exact_work_id = _item["workId"] if spec["pendingPolicy"] == "supersede-stale" else ""
             queue, claim = work_queue.claim(
-                queue, owner=consumer["leaseOwner"], lease_seconds=int(consumer["leaseSeconds"]), now=at,
+                queue, owner=consumer["leaseOwner"], lease_seconds=int(consumer["leaseSeconds"]),
+                now=at, work_id=exact_work_id,
             )
         if claim is not None:
             claimed_total += 1
@@ -341,6 +347,8 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
             "currentCadenceBucketUtc": bucket,
             "revisionInputs": list(spec.get("revisionInputs") or []),
             "requiredRevision": required_revision,
+            "requiredWorkId": _item["workId"],
+            "pendingPolicy": spec["pendingPolicy"],
             "consumerImplemented": bool(consumer.get("implemented")),
             "resultBranch": str(consumer.get("resultBranch") or ""),
             "activeLeaseWorkId": str((active or {}).get("workId") or ""),
@@ -353,6 +361,7 @@ def reconcile(*, policy: Mapping[str, Any], previous_root: Path | None, output_r
         "createdWorkItems": created_total,
         "settledWorkItems": settled_total,
         "claimedWorkItems": claimed_total,
+        "supersededPendingWorkItems": superseded_total,
         "recoveredExpiredLeases": recovered_total,
         "publicationAuthority": "orchestration-only",
         "securityAuthority": False,

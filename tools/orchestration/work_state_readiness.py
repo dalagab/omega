@@ -39,6 +39,16 @@ def _latest(queue: Mapping[str, Any]) -> dict[str, Any] | None:
     return items[-1]
 
 
+def _required_item(queue: Mapping[str, Any], descriptor: Mapping[str, Any]) -> dict[str, Any] | None:
+    required_work_id = str(descriptor.get("requiredWorkId") or "")
+    if not required_work_id:
+        return _latest(queue)
+    for row in queue.get("items") or []:
+        if isinstance(row, Mapping) and str(row.get("workId") or "") == required_work_id:
+            return dict(row)
+    return None
+
+
 def evaluate(*, work_state: Path, policy_path: Path) -> tuple[int, dict[str, Any]]:
     state = reconcile_work.validate_work_state(work_state)
     policy = reconcile_work.validate_policy(_read_json(policy_path))
@@ -65,7 +75,7 @@ def evaluate(*, work_state: Path, policy_path: Path) -> tuple[int, dict[str, Any
             waiting = True
             continue
         queue = work_queue.validate_queue(_read_json(queue_path))
-        item = _latest(queue)
+        item = _required_item(queue, descriptor)
         if item is None:
             rows.append({"queueId": queue_id, "state": "empty"})
             waiting = True

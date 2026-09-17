@@ -74,6 +74,26 @@ class WorkStateReadinessTests(unittest.TestCase):
         self.assertFalse(report["ready"])
         self.assertFalse(report["terminal"])
 
+    def test_required_work_id_is_authoritative_over_legacy_latest_sorting(self):
+        descriptors = self.write_queues({"one": "completed", "two": "completed"})
+        queue_path = self.root / "queues" / "two.json"
+        queue = json.loads(queue_path.read_text())
+        queue["items"].append({
+            "workId": "work-two-stale",
+            "createdAtUtc": "2026-08-27T00:00:00Z",
+            "state": "pending",
+        })
+        queue_path.write_text(json.dumps(queue))
+        for descriptor in descriptors:
+            descriptor["requiredWorkId"] = f"work-{descriptor['queueId']}"
+        with mock.patch.object(readiness.reconcile_work, "validate_work_state", return_value={"workStateRevision": "rev", "queues": descriptors}), \
+             mock.patch.object(readiness.reconcile_work, "validate_policy", return_value=self.policy_value()), \
+             mock.patch.object(readiness.work_queue, "validate_queue", side_effect=lambda value: value):
+            code, report = readiness.evaluate(work_state=self.root, policy_path=self.policy)
+        self.assertEqual(readiness.READY, code)
+        self.assertTrue(report["ready"])
+        self.assertEqual("work-two", next(row for row in report["queues"] if row["queueId"] == "two")["workId"])
+
     def test_blocked_or_terminal_queue_fails_closed(self):
         descriptors = self.write_queues({"one": "completed", "two": "blocked"})
         with mock.patch.object(readiness.reconcile_work, "validate_work_state", return_value={"workStateRevision": "rev", "queues": descriptors}), \

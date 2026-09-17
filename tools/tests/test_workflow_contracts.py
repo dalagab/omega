@@ -14,6 +14,14 @@ class WorkflowContractTests(unittest.TestCase):
         for snippet in snippets:
             self.assertIn(snippet, text, f"workflow contract missing: {snippet}")
 
+    def test_active_workflows_do_not_use_retired_upload_artifact_v4(self) -> None:
+        workflows = common.ROOT / ".github" / "workflows"
+        offenders = []
+        for path in sorted(workflows.glob("*.yml")):
+            if "actions/upload-artifact@v4" in path.read_text(encoding="utf-8"):
+                offenders.append(path.name)
+        self.assertEqual([], offenders, f"retired actions/upload-artifact@v4 found in: {offenders}")
+
     def test_catalog_builder_is_explicit_authoritative_freeze_without_client_publication(self) -> None:
         text = self.read("catalog-builder.yml")
         self.assert_has(

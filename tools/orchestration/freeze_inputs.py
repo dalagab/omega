@@ -23,6 +23,19 @@ def _latest(queue: dict[str, Any]) -> dict[str, Any]:
     return items[-1]
 
 
+def _required_item(queue: dict[str, Any], descriptor: dict[str, Any]) -> dict[str, Any]:
+    required_work_id = str(descriptor.get("requiredWorkId") or "")
+    if not required_work_id:
+        return _latest(queue)
+    item = next(
+        (row for row in queue.get("items") or [] if str(row.get("workId") or "") == required_work_id),
+        None,
+    )
+    if item is None:
+        raise ValueError(f"queue {queue.get('queueId')} lacks required work item {required_work_id}")
+    return item
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -47,7 +60,7 @@ def validate_freeze_inputs(*, work_state: Path, policy_path: Path, lanes_root: P
         if descriptor is None:
             raise ValueError(f"work state lacks required queue {spec['queueId']}")
         queue = work_queue.validate_queue(_read_json(work_state / str(descriptor["path"])))
-        item = _latest(queue)
+        item = _required_item(queue, descriptor)
         if item["state"] != "completed":
             raise ValueError(f"required queue {spec['queueId']} latest work is {item['state']}, not completed")
         settlement = item.get("settlement") or {}

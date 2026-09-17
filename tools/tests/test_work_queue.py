@@ -77,6 +77,96 @@ class WorkQueueTests(unittest.TestCase):
         self.assertEqual(queue["items"][0]["state"], "pending")
         self.assertEqual(queue["items"][0]["settlement"]["outcome"], "lease-expired")
 
+    def test_supersede_pending_preserves_history_and_exact_claim_targets_current_work(self) -> None:
+        queue = work_queue.new_queue("catalog-scrape", "omega.catalog", now="2026-08-25T20:00:00Z")
+        queue, old, _ = work_queue.enqueue(
+            queue, kind="refresh", subject={"type": "catalog"}, reason=["old"], priority=900,
+            required_revision="work-inputs-v1-old", now="2026-08-25T20:00:00Z",
+        )
+        queue, current, _ = work_queue.enqueue(
+            queue, kind="refresh", subject={"type": "catalog"}, reason=["new"], priority=100,
+            required_revision="work-inputs-v1-current", now="2026-08-25T20:01:00Z",
+        )
+        queue, superseded = work_queue.supersede_pending(
+            queue, keep_work_id=current["workId"], now="2026-08-25T20:02:00Z",
+        )
+        self.assertEqual(1, superseded)
+        by_id = {item["workId"]: item for item in queue["items"]}
+        self.assertEqual("superseded", by_id[old["workId"]]["state"])
+        self.assertEqual("superseded", by_id[old["workId"]]["settlement"]["outcome"])
+        self.assertEqual("pending", by_id[current["workId"]]["state"])
+        self.assertEqual(1, queue["counts"]["superseded"])
+        queue, claim = work_queue.claim(
+            queue, owner="worker-current", work_id=current["workId"], now="2026-08-25T20:03:00Z",
+        )
+        self.assertIsNotNone(claim)
+        self.assertEqual(current["workId"], claim["workId"])
+
+    def test_supersede_pending_does_not_cancel_in_flight_lease(self) -> None:
+        queue = work_queue.new_queue("catalog-scrape", "omega.catalog", now="2026-08-25T20:00:00Z")
+        queue, old, _ = work_queue.enqueue(
+            queue, kind="refresh", subject={"type": "catalog"}, reason=["old"], priority=100,
+            required_revision="work-inputs-v1-old", now="2026-08-25T20:00:00Z",
+        )
+        queue, leased = work_queue.claim(
+            queue, owner="worker-old", work_id=old["workId"], now="2026-08-25T20:01:00Z",
+        )
+        queue, current, _ = work_queue.enqueue(
+            queue, kind="refresh", subject={"type": "catalog"}, reason=["new"], priority=100,
+            required_revision="work-inputs-v1-current", now="2026-08-25T20:02:00Z",
+        )
+        queue, superseded = work_queue.supersede_pending(
+            queue, keep_work_id=current["workId"], now="2026-08-25T20:03:00Z",
+        )
+        self.assertEqual(0, superseded)
+        by_id = {item["workId"]: item for item in queue["items"]}
+        self.assertEqual("leased", by_id[leased["workId"]]["state"])
+        self.assertEqual("pending", by_id[current["workId"]]["state"])
+
+    def test_reconciler_supersedes_backlog_and_dispatches_newest_required_snapshot(self) -> None:
+        policy = {
+            "schema": "omega.orchestration-policy.v1",
+            "version": 1,
+            "queues": [{
+                "queueId": "catalog-scrape", "component": "omega.catalog",
+                "kind": "refresh-website-scrape", "cadenceSeconds": 3600, "priority": 290,
+                "subject": {"type": "catalog-websites"}, "reason": ["test"],
+                "pendingPolicy": "supersede-stale",
+                "consumer": {
+                    "implemented": True, "leaseOwner": "omega.worker.catalog-scrape",
+                    "workflow": "catalog-scrape-worker.yml", "resultBranch": "catalog-scrape-state",
+                    "leaseSeconds": 3600,
+                },
+            }],
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            previous = root / "previous"
+            (previous / "queues").mkdir(parents=True)
+            queue = work_queue.new_queue("catalog-scrape", "omega.catalog", now="2026-08-25T00:00:00Z")
+            for hour in range(5):
+                queue, _, _ = work_queue.enqueue(
+                    queue, kind="refresh-website-scrape", subject={"type": "catalog-websites"},
+                    reason=["old"], priority=290, required_revision=f"cadence-v1-old-{hour}",
+                    now=f"2026-08-25T0{hour}:00:00Z",
+                )
+            (previous / "queues" / "catalog-scrape.json").write_text(
+                json.dumps(queue, indent=2, sort_keys=True) + "\n", encoding="utf-8",
+            )
+            output = root / "output"
+            result = reconcile_work.reconcile(
+                policy=policy, previous_root=previous, output_root=output, now="2026-08-26T00:01:00Z",
+            )
+            self.assertEqual(5, result["supersededPendingWorkItems"])
+            reconciled = json.loads((output / "queues" / "catalog-scrape.json").read_text(encoding="utf-8"))
+            self.assertEqual(5, reconciled["counts"]["superseded"])
+            self.assertEqual(1, reconciled["counts"]["leased"])
+            descriptor = result["queues"][0]
+            current = next(item for item in reconciled["items"] if item["workId"] == descriptor["requiredWorkId"])
+            self.assertEqual("leased", current["state"])
+            dispatch = json.loads((output / "dispatch.json").read_text(encoding="utf-8"))["dispatches"]
+            self.assertEqual([current["workId"]], [row["workId"] for row in dispatch])
+
     def test_reconciler_creates_one_item_per_cadence_bucket_and_never_requests_client_build(self) -> None:
         policy = {
             "schema": "omega.orchestration-policy.v1",
