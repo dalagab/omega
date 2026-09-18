@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "08993835139f3378a3e674d9c867d021c54db06951f076f937216851087aa947",
+    "analysisId": "11258218dd49b9b17cc00c10fcb1b31819b9d385981dfc06bd967933825c1e2a",
     "artifactSha256": "cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7",
-    "path": "artifacts/cc/cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7/analyses/08993835139f3378a3e674d9c867d021c54db06951f076f937216851087aa947",
-    "recordCount": 26184
+    "path": "artifacts/cc/cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7/analyses/11258218dd49b9b17cc00c10fcb1b31819b9d385981dfc06bd967933825c1e2a",
+    "recordCount": 559
   },
   "current": {
     "artifact_channel": "stable",
@@ -24,6 +24,7 @@
       "Endpoint: googlechromelabs.github.io",
       "Endpoint: product-details.mozilla.org",
       "Endpoint: proxy.iinact.com",
+      "Endpoint: skia.googlesource.com",
       "Endpoint: storage.googleapis.com",
       "Endpoint: www.apache.org",
       "Endpoint: www.microsoft.com0",
@@ -36,21 +37,39 @@
       "Raw sockets",
       "Registry access"
     ],
-    "caution_count": 24,
+    "caution_count": 31,
     "critical_count": 0,
     "error": "",
     "findings_json": [
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:CactusWatcher.dll: http://127.0.0.1/"
         ],
         "ruleId": "network.endpoint.private-or-loopback.6d426df3ca31",
         "severity": "high",
         "title": "Endpoint: 127.0.0.1"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal private, loopback, or link-local IP endpoint. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:CactusWatcher/src/Puppeteer/PuppeteerHttpSource.cs: http://127.0.0.1:9222/json/version"
+        ],
+        "ruleId": "network.endpoint.private-or-loopback.1b080693719b",
+        "severity": "high",
+        "title": "Endpoint: 127.0.0.1"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
       },
       {
         "category": "compound",
@@ -93,6 +112,20 @@
         "title": "Process execution"
       },
       {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "source:CactusWatcher/src/Helpers/ProcessLauncher.cs: Process.Start",
+          "source:CactusWatcher/src/Helpers/ProcessLauncher.cs: ShellExecute",
+          "source:CactusWatcher/src/Window/ConfigWindow.cs: Process.Start",
+          "source:CactusWatcher/src/Window/ConfigWindow.cs: ProcessStartInfo",
+          "source:CactusWatcher/src/Window/ConfigWindow.cs: ShellExecute"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
         "category": "network",
         "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
         "evidence": [
@@ -106,10 +139,31 @@
         "title": "Raw socket access"
       },
       {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "source:CactusWatcher/src/Puppeteer/PuppeteerHttpSource.cs: System.Net.Sockets",
+          "source:CactusWatcher/src/TotallyNotCef/TotallyNotCefCactbotHttpSource.cs: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:CactusWatcher/CactusWatcher.csproj: https://codeberg.org/joshua-software-dev/CactusParser/releases/download/v1.0.0.0/cactus_parser_x86_64-windows-gnu.zip"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b8804fd6c79e",
+        "severity": "caution",
+        "title": "Endpoint: codeberg.org"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:CactusWatcher.json: https://codeberg.org/joshua-software-dev/CactusWatcher"
         ],
@@ -119,9 +173,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:CactusWatcher.dll: https://codeberg.org/joshua-software-dev/CactusWatcher"
         ],
@@ -131,9 +183,31 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:CactusWatcher/src/MagicValues.cs: https://proxy.iinact.com/overlay/cactbot/ui/raidboss/raidboss.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.62fccf50bba6",
+        "severity": "caution",
+        "title": "Endpoint: proxy.iinact.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:CactusWatcher/src/MagicValues.cs: https://codeberg.org/api/v1/repos/joshua-software-dev/goTNCEF/releases/latest"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.5e928b3ca8b9",
+        "severity": "caution",
+        "title": "Endpoint: codeberg.org"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://archive.mozilla.org/pub/firefox/releases"
         ],
@@ -143,9 +217,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json"
         ],
@@ -155,9 +227,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central"
         ],
@@ -167,9 +237,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://googlechromelabs.github.io/chrome-for-testing/"
         ],
@@ -179,9 +247,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:CactusWatcher/src/Helpers/FontLoader.cs: https://skia.googlesource.com/external/github.com/ocornut/imgui/+/v1.53/extra_fonts/README.txt"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.3562a80616cb",
+        "severity": "caution",
+        "title": "Endpoint: skia.googlesource.com"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:CactusWatcher.dll: https://codeberg.org/api/v1/repos/joshua-software-dev/goTNCEF/releases/latest"
         ],
@@ -191,9 +269,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://archive.mozilla.org/pub/devedition/releases"
         ],
@@ -203,9 +279,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://product-details.mozilla.org/1.0/firefox_versions.json"
         ],
@@ -215,9 +289,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:CactusWatcher.dll: https://proxy.iinact.com/overlay/cactbot/ui/raidboss/raidboss.html"
         ],
@@ -227,9 +299,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://storage.googleapis.com/<redacted>"
         ],
@@ -239,9 +309,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: http://dummy.test/dummy/blocklist/"
         ],
@@ -251,9 +319,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:cactus_parser.dll: http://www.w3.org/2000/xmlns/"
         ],
@@ -263,9 +329,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Microsoft.Extensions.Logging.dll: http://www.microsoft.com0/",
           "artifact:Microsoft.Extensions.Logging.Abstractions.dll: http://www.microsoft.com0/",
@@ -278,9 +342,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: http://dummy.test/dummy/healthreport/"
         ],
@@ -290,9 +352,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: http://www.apache.org/licenses/LICENSE-2.0"
         ],
@@ -302,9 +362,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: http://dummy.test/dummy/discoveryURL"
         ],
@@ -314,9 +372,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:cactus_parser.dll: http://www.w3.org/XML/1998/namespace"
         ],
@@ -353,6 +409,19 @@
           "artifact:PuppeteerSharp.dll: \\\\.\\\\d{${args.precision}}`",
           "artifact:PuppeteerSharp.dll: \\\\.\\\\d+)?`",
           "artifact:PuppeteerSharp.dll: \\\\d|2[0-3]):[0-5]\\\\d(:${secondsRegexSource})${secondsQuantifier}`"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:CactusWatcher/src/TotallyNotCef/TotallyNotCefCactbotHttpSource.cs: p://127.0.0.1:{http_port}",
+          "source:CactusWatcher/src/Window/ConfigWindow.cs: n:\\n",
+          "source:CactusWatcher/src/Window/ConfigWindow.cs: r:\\n{MagicValues.PuppeteerTroubleshootingUrl}",
+          "source:CactusWatcher/src/Window/ConfigWindow.cs: r:\\n{MagicValues.TotallyNotCefTroubleshootingUrl}"
         ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
@@ -403,10 +472,18 @@
         "title": "Network access"
       },
       {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "source:CactusWatcher/CactusWatcher.csproj: DownloadFile"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://github.com/GoogleChromeLabs/chromium-bidi"
         ],
@@ -416,9 +493,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:PuppeteerSharp.dll: https://github.com/hardkoded/puppeteer-sharp"
         ],
@@ -428,9 +503,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Microsoft.Extensions.Logging.dll: https://github.com/dotnet/dotnet",
           "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/dotnet",
@@ -443,9 +516,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:WebDriverBiDi.dll: https://github.com/webdriverbidi-net/webdriverbidi-net"
         ],
@@ -455,9 +526,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
         ],
@@ -481,14 +550,24 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:CactusWatcher/src/TotallyNotCef/TotallyNotCefCactbotHttpSource.cs: File.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
-    "high_count": 2,
+    "high_count": 4,
     "highest_severity": "high",
-    "informational_count": 8,
+    "informational_count": 10,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "artifactBytes": 2570826,
       "artifactIdentity": {
@@ -496,10 +575,10 @@
         "artifactBytes": 2570826,
         "artifactSha256": "cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7",
         "catalogAssemblyVersion": "1.0.0.11",
-        "manifestInternalName": "CactusWatcher",
+        "manifestInternalName": "",
         "manifestPath": "CactusWatcher.json",
-        "manifestRepositoryUrl": "https://codeberg.org/joshua-software-dev/CactusWatcher",
-        "resolvedArtifactUrl": "https://codeberg.org/joshua-software-dev/CactusWatcher/releases/download/v1.0.0.11/latest.zip",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -566,6 +645,42 @@
             "expected": null,
             "id": "filesystem.write",
             "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -665,121 +780,40 @@
               "classifications": [
                 "private-or-loopback"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "127.0.0.1",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "archive.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "codeberg.org",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "dummy.test",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "googlechromelabs.github.io",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "product-details.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "proxy.iinact.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "storage.googleapis.com",
+              "confidence": "High",
+              "host": "skia.googlesource.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.apache.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -788,121 +822,40 @@
               "classifications": [
                 "private-or-loopback"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "127.0.0.1",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "archive.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "codeberg.org",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "dummy.test",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "googlechromelabs.github.io",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "product-details.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "proxy.iinact.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "storage.googleapis.com",
+              "confidence": "High",
+              "host": "skia.googlesource.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.apache.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -923,11 +876,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 12,
-          "observedConcreteDestinationCount": 12,
-          "observedDestinationWithoutProfileCount": 12,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 12,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -943,6 +896,7 @@
         "Endpoint: googlechromelabs.github.io",
         "Endpoint: product-details.mozilla.org",
         "Endpoint: proxy.iinact.com",
+        "Endpoint: skia.googlesource.com",
         "Endpoint: storage.googleapis.com",
         "Endpoint: www.apache.org",
         "Endpoint: www.microsoft.com0",
@@ -961,6 +915,9 @@
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.chat.read",
+        "game.memory.read",
+        "game.state.read",
         "native.interop",
         "network.http",
         "network.outbound",
@@ -971,346 +928,82 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 31,
         "critical": 0,
-        "high": 2,
-        "informational": 8
+        "high": 4,
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 139,
-          "exactVersionObservedCount": 134,
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 134,
-            "native": 5
+            "managed-assembly": 6,
+            "native": 1,
+            "nuget": 2
           },
-          "fingerprint": "8fd681fd9ca0a3163cb138e4de094234df0e33152f6ad2f7a2c35a4b08abeb44",
+          "fingerprint": "791f9ee2b9a900403128308d1868b2cb7a42826300a5ea06f440a61776251edf",
           "nativeRelationshipCounts": {
-            "bundledComponent": 7,
+            "bundledComponent": 0,
             "externalOrRuntimeResolved": 1,
-            "platformLibrary": 33
+            "platformLibrary": 0
           },
           "nativeRelationships": [
             {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_cactbot_state_ingest_html",
+              "confidence": "Medium",
+              "consumerPath": "CactusWatcher/src/Native/CactusParserFunctions.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "",
               "library": "cactus_parser",
-              "managedName": "cactus_parser_cactbot_state_ingest_html",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_calculate_time_info",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_calculate_time_info",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_check_for_notification_update",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_check_for_notification_update",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_free_html_document",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_free_html_document",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_get_unix_time",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_get_unix_time",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_init_cactbot_state",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_init_cactbot_state",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_parse_html_document",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_parse_html_document",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "CreateToolhelp32Snapshot",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "ExitProcess",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetConsoleMode",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetConsoleScreenBufferInfo",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetCurrentProcess",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetFileSizeEx",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetLastError",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetSystemTimeAsFileTime",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "K32GetModuleFileNameExW",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "Module32First",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "Module32Next",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "ReadFile",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "RtlCaptureContext",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "RtlLookupFunctionEntry",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "RtlVirtualUnwind",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "SetConsoleTextAttribute",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "SetFilePointerEx",
-              "library": "KERNEL32.dll",
               "managedName": "",
               "targetPath": ""
             }
           ],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 11,
-            "observed": 128
+            "observed": 1,
+            "required": 8
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 6
         },
         "coverage": {
-          "analyzed": 138,
-          "binaryOnly": 1,
+          "analyzed": 0,
+          "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
-          "notAnalyzed": 0,
+          "known": 8,
+          "notAnalyzed": 1,
           "requirements": {
-            "bundled": 11,
-            "observed": 128,
+            "bundled": 0,
+            "observed": 1,
             "optional": 0,
-            "required": 0,
+            "required": 8,
             "soft": 0,
             "unknown": 0
           },
-          "total": 139
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 24,
+          "concreteDestinationCount": 6,
           "destinationsUndetermined": false,
-          "hostCount": 14,
+          "hostCount": 5,
           "hosts": [
             {
               "classifications": [
                 "private-or-loopback"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "127.0.0.1",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 3,
-              "confidence": "Low",
-              "host": "archive.mozilla.org",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1319,72 +1012,23 @@
                 "unrecognised-host"
               ],
               "concreteCount": 3,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "codeberg.org",
               "literalCount": 5,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
-                "certificate-infrastructure"
+                "source-reference"
               ],
               "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl.microsoft.com",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 3,
-              "confidence": "Low",
-              "host": "dummy.test",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 5,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "googlechromelabs.github.io",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "product-details.mozilla.org",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1392,11 +1036,11 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "proxy.iinact.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1404,432 +1048,112 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "storage.googleapis.com",
+              "confidence": "High",
+              "host": "skia.googlesource.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.apache.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "www.microsoft.com",
-              "literalCount": 8,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 36,
+          "literalCount": 9,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 28435
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
             "classification": "private-or-loopback",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "127.0.0.1",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "local/private network",
-            "url": "http://127.0.0.1/"
+            "url": "http://127.0.0.1:9222/json/version"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "archive.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://archive.mozilla.org/pub/devedition/releases"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "archive.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "archive.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://archive.mozilla.org/pub/firefox/releases"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://codeberg.org/api/v1/repos/joshua-software-dev/goTNCEF/releases/latest"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
-            "url": "https://codeberg.org/joshua-software-dev/CactusWatcher"
+            "url": "https://codeberg.org/joshua-software-dev/CactusParser/releases/download/v1.0.0.0/cactus_parser_x86_64-windows-gnu.zip"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://codeberg.org/joshua-software-dev/CactusWatcher"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
             "url": "https://codeberg.org/joshua-software-dev/CactusWatcher/raw/branch/master/deps/img/icon.png"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
             "url": "https://codeberg.org/joshua-software-dev/CactusWatcher/src/branch/master/Troubleshooting.md"
           },
           {
-            "classification": "certificate-infrastructure",
+            "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "dummy.test",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://dummy.test/dummy/blocklist/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "dummy.test",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://dummy.test/dummy/discoveryURL"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "dummy.test",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://dummy.test/dummy/healthreport/"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/GoogleChromeLabs/chromium-bidi"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/dotnet/dotnet"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/hardkoded/puppeteer-sharp"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/mono/linker/issues/1416"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/webdriverbidi-net/webdriverbidi-net"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/goatcorp/dalamud-distrib/raw/main/latest.zip"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "googlechromelabs.github.io",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://googlechromelabs.github.io/chrome-for-testing/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "googlechromelabs.github.io",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "product-details.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://product-details.mozilla.org/1.0/firefox_versions.json"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "proxy.iinact.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://proxy.iinact.com/overlay/cactbot/ui/raidboss/raidboss.html"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "storage.googleapis.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "confidence": "High",
+            "host": "skia.googlesource.com",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
-            "url": "https://storage.googleapis.com/<redacted>"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.apache.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.microsoft.com0",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.microsoft.com0/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.w3.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.w3.org/2000/xmlns/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.w3.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.w3.org/XML/1998/namespace"
+            "url": "https://skia.googlesource.com/external/github.com/ocornut/imgui/+/v1.53/extra_fonts/README.txt"
           }
         ]
       },
@@ -1855,7 +1179,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
-        "attemptId": "attempt-v2-a29cc27c7b0281e1",
+        "attemptId": "attempt-v2-0df418aa08bd6c0a",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -1864,11 +1188,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-13388",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13388",
         "queueSeedRevision": "queue-seed-v2-e0394d7f11fa62ac28b9",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
@@ -1876,11 +1200,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
-        "targetFingerprint": "artifact-target-v2-aa3b2d30f6d2c7675e82",
+        "targetFingerprint": "source-target-v2-ce6d3fdb1972d65460ad",
         "variantId": 13388,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-18T19:38:42Z",
+      "scannedAtUtc": "2026-09-18T20:31:33Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1922,20 +1246,24 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "refs/heads/master",
         "candidates": [
           "https://codeberg.org/joshua-software-dev/CactusWatcher"
         ],
-        "commit": "",
+        "commit": "dc2c33ca96799a7c183ad6d489b47940fd3b28f4",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "c4a03df522916b92a746751179e035ee2ffc08aef1c65cb71b20aecbd95274dc"
           }
         },
         "developerProfile": {
@@ -1943,57 +1271,692 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.0.11",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "refs/heads/master",
+          "selectedRefKind": "git-head",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://codeberg.org/joshua-software-dev/CactusWatcher",
-        "treeSha256": ""
+        "treeSha256": "a80155e4a1614213efe23f4e35f8f3a13e2ce689"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-18T19:38:42Z",
+    "scan_id": 98697,
+    "scanned_at_utc": "2026-09-18T20:31:33Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "dc2c33ca96799a7c183ad6d489b47940fd3b28f4",
     "source_repository": "https://codeberg.org/joshua-software-dev/CactusWatcher",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 13388
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:dalamud",
+        "current_json": {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Dalamud",
+          "normalizedName": "dalamud",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Dalamud",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:dalamud.bindings.imgui",
+        "current_json": {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "normalizedName": "dalamud.bindings.imgui",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Dalamud.Bindings.ImGui",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:ffxivclientstructs",
+        "current_json": {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "normalizedName": "ffxivclientstructs",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "FFXIVClientStructs",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:lumina",
+        "current_json": {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Lumina",
+          "normalizedName": "lumina",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Lumina",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:lumina.excel",
+        "current_json": {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "normalizedName": "lumina.excel",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Lumina.Excel",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "assembly:newtonsoft.json",
+        "current_json": {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "normalizedName": "newtonsoft.json",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "assembly-reference",
+        "dependency_name": "Newtonsoft.Json",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "native:cactus_parser",
+        "current_json": {
+          "componentKey": "native:cactus_parser",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cactus_parser",
+          "normalizedName": "cactus_parser",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/src/Native/CactusParserFunctions.cs"
+          ],
+          "requirements": [
+            "observed"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "not-analyzed"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "native-import",
+        "dependency_name": "cactus_parser",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "15.0.0"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "nuget",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:puppeteersharp",
+        "current_json": {
+          "componentKey": "nuget:puppeteersharp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "PuppeteerSharp",
+          "normalizedName": "puppeteersharp",
+          "origin": "source",
+          "paths": [
+            "CactusWatcher/CactusWatcher.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "24.40.0"
+          ],
+          "versions": [
+            "24.40.0"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "nuget",
+        "dependency_name": "PuppeteerSharp",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 14,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 15,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "FFXIVClientStructs package/reference is declared."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 16,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service ICondition is referenced.",
+            "Dalamud service IDataManager is referenced."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 17,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "A DllImport native library is declared.",
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 18,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 19,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 20,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13388
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 98697,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-18T20:32:09Z",
+        "drift_id": 21,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13388
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7",
       "current_assembly_version": "1.0.0.11",
-      "current_scan_id": 8,
+      "current_scan_id": 98697,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-18T19:38:48Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "dc2c33ca96799a7c183ad6d489b47940fd3b28f4",
+      "detected_at_utc": "2026-09-18T20:32:09Z",
+      "previous_artifact_sha256": "cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7",
+      "previous_assembly_version": "1.0.0.11",
+      "previous_scan_id": 8,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 13388
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 56,
-      "artifact_only_count": 56,
+      "artifact_only_count": 52,
       "artifact_only_json": [
         {
           "componentKey": "assembly:cactuswatcher",
@@ -2007,34 +1970,6 @@
           ],
           "versions": [
             "1.0.0.11"
-          ]
-        },
-        {
-          "componentKey": "assembly:dalamud",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Dalamud",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "15.0.0.3"
-          ]
-        },
-        {
-          "componentKey": "assembly:dalamud.bindings.imgui",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Dalamud.Bindings.ImGui",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "1.0.0.0"
           ]
         },
         {
@@ -2161,20 +2096,6 @@
           ],
           "versions": [
             "10.0.0.0"
-          ]
-        },
-        {
-          "componentKey": "assembly:newtonsoft.json",
-          "componentKind": "assembly",
-          "kinds": [
-            "managed-assembly-reference"
-          ],
-          "name": "Newtonsoft.Json",
-          "requirements": [
-            "observed"
-          ],
-          "versions": [
-            "13.0.0.0"
           ]
         },
         {
@@ -2749,20 +2670,6 @@
           ]
         },
         {
-          "componentKey": "native:cactus_parser",
-          "componentKind": "native",
-          "kinds": [
-            "native-import",
-            "native-library"
-          ],
-          "name": "cactus_parser.dll",
-          "requirements": [
-            "bundled",
-            "observed"
-          ],
-          "versions": []
-        },
-        {
           "componentKey": "native:kernel32",
           "componentKind": "native",
           "kinds": [
@@ -2800,18 +2707,83 @@
         }
       ],
       "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-18T19:38:48Z",
-      "comparison_id": 2,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
+      "compared_at_utc": "2026-09-18T20:32:09Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 4,
       "requirement_mismatch_count": 0,
       "requirement_mismatches_json": [],
-      "scan_id": 8,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "scan_id": 98697,
+      "source_available": 1,
+      "source_dependency_count": 9,
+      "source_only_count": 5,
+      "source_only_json": [
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:puppeteersharp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget"
+          ],
+          "name": "PuppeteerSharp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "24.40.0"
+          ]
+        }
+      ],
+      "source_project_sha256": "74aba361d2490593089a56caeccdb7de83e9fed9ee2b65866edd6b120bdea511",
       "variant_id": 13388,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -2849,36 +2821,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 137001,
+          "bytes": 145177,
           "encoding": "json",
           "path": "derived/variants/0013/13388/dependency-resolutions.json",
-          "recordDigest": "7f46a4283a93b4d77171abe549f713200bb1bc92a4686c683715f954b81e8eca",
-          "records": 139,
-          "sha256": "cd325f7494c974e8d2435af7807fb65225200ee4236e7ba905d934c19dba0f19"
+          "recordDigest": "0f9e284e40e935962deaa8bca6ee8e17dd00f8cc5e5cc40a689c2c0555790635",
+          "records": 148,
+          "sha256": "c80e6fde2cf5309feb7493b10a3feef743e052a2721f3e26e292cb3e87893cc4"
         }
       ],
-      "recordDigest": "7f46a4283a93b4d77171abe549f713200bb1bc92a4686c683715f954b81e8eca",
-      "records": 139
+      "recordDigest": "0f9e284e40e935962deaa8bca6ee8e17dd00f8cc5e5cc40a689c2c0555790635",
+      "records": 148
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 160869,
           "encoding": "json",
           "path": "derived/variants/0013/13388/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "b1bfb61201f3ae19a5264a830098ac550e6c83c4612ffd263ac8c1f3b9a5de97",
+          "records": 1,
+          "sha256": "936b2ae0e17a4f352885aad1fc7823809bd7305799a909617101fecf1b7f97f3"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "b1bfb61201f3ae19a5264a830098ac550e6c83c4612ffd263ac8c1f3b9a5de97",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "4c1a421d5a0aa31060e422b99bb0f7e635bd3c23d4e6aa38777bec5c1a95ffcd",
+    "identityFingerprint": "b09918b4e672f56510cc78f2225ba570b185e758416104461f813733930491a2",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -2888,37 +2860,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "4fb8acba947e22e29ddb6e2f20e891c5f435293b5c16f3ee70b42ee95cf9534c",
+        "recordDigest": "eb04c594ede8c604c7879b42d8865147cfbfa8a5aabb21152dd7f6c6d9b34a59",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "051d7c4ef0aaa699cf4f75da886a1a3009c55a38ca0cc8988fc261450b77f8ac",
-        "records": 11,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "c35248499bbbd2bb8d1c285eb7bd18ee68b3c74470a00f791940d0811d15eb0b",
-        "records": 139,
+        "recordDigest": "278d5b41ebb211ffde805214ee447999275c83af74b9370ded4a154d2c6f3817",
+        "records": 148,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -2948,8 +2910,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "ccd936d9f90a52b562498c50a54750ac56bc35eca8821771aa5c069d632d196b",
-        "records": 20000,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2958,8 +2920,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "22840a940303fe37b771e0365a62ddbe5524909ae9fdae5c0ddd9bef8c0e4f83",
-        "records": 204,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2968,8 +2930,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "36fc6625a75ad182bfe57570e19e5b74860720898695919e316029266ffb0d74",
-        "records": 5329,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2988,8 +2950,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "3e40bc47030f5686cd582cb41ed38bbeac846b6f8eec358be261298055e3113a",
+        "records": 98,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2998,8 +2960,8 @@
         "backingDataset": "nativeImports",
         "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
         "completeness": "retained",
-        "recordDigest": "9ccddc82513fbc748db4aa73fd158694220397fcc7cb5d0f932dbb8b95c4ce9a",
-        "records": 41,
+        "recordDigest": "803bb910b5e8339f92950ed6b5c18859ffaabdc6be2cae82144aa0e7e2827f8f",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3008,8 +2970,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "c3fa41e5eb55742b6a3afd9e3ede28a0bc3b5e381a6d8a88dd56d70433cd1329",
-        "records": 36,
+        "recordDigest": "00a3c8733707c6f894f7ae440e64d9f4ebdf104a383d8d347d51831b355a009a",
+        "records": 9,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3028,28 +2990,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "a22bdd7d3dbb6918af67534eb3e8e0f316ccd852ef3481ca408531cb30f8b525",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "ce98112869d412f8c8c6089952367341dc2d8f56712a738b410e520360465034",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "85e36fc134694be2fc943e4bc7e29a14e3f7785ff5ede80f1e7f7616bb4d5ca7",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "317c81865b6ce74d37ca5b80d17108c15664e18c2721bbf830a8324807b453c0",
+        "records": 121,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "7223c6d93fb15da9c382acd98bf20a633c077615f0fc2d224c4f88213bfc6333",
+        "records": 8,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "31cd2a6c72eba68aade2bfe2302bbd800d9b344999af81a2fbca2c4481778fa6",
-        "records": 1,
+        "recordDigest": "9e00e2d82bb0c7b0de2dbdc00dc3ce287e20dc3b7de26f1847c96ec650083db6",
+        "records": 41,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "9bc8544b5ab11757725bd381a3e0f035f133d1cb764a451bbb1c08e2cc73def0",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "66aa5c0136bdf9f503e95e870026b52cd3dced1d171ffa3c887031c0eed9cda3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "57f1c823a312ff13b3a73b1c8c0d09e386b0cef42e674837852687ee26c9d65b",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "3f3d4b0671be3c4dda51d4b4e918bb7ee6c22741046f28d4185487d9d00fb420",
-        "records": 332,
+        "recordDigest": "fc2aca414598ef550f797e1f33926ecd9c3df05e920a4ce3d501a56c9b608ea8",
+        "records": 9,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -3058,20 +3140,9 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications"
     ],
-    "observationDigest": "obs-66770ff872d997cb956158a7d944c89fa3fa043521e246acbefeaebeb0a714b8",
+    "observationDigest": "obs-caeaa4edcc6d172c180d32874392494c82f79a71bf6c8472bc494bcc8e6a098e",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -3121,17 +3192,17 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "5e194a1471a6c6e443e9b8fe327740b62f2dab7db6c0bd37f38c622d033eb6e3",
+        "recordDigest": "4e47461cc3a2793b6f3f52fa5f6853f23423314678e9e6d34c819bcf08f4f080",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "6628262c4cdfee180af6425e3d2dacc2514c4b229196cf601d04eac82e885618",
-        "records": 12
+        "recordDigest": "1edce4bf2ce2919540bb527aa90f0fb006d4ae1f8d473ad46a19ad30a9d46037",
+        "records": 15
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "7c058f8843dd25c63108f1188388fca97e6e19b91dfbfd48f454e0ebb141f902",
-        "records": 34
+        "recordDigest": "14281ca428dbf7d5c5db88bf607469f4822502cec66c7732328dec5cb01bf6d1",
+        "records": 45
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -3161,6 +3232,7 @@
       "Endpoint: googlechromelabs.github.io",
       "Endpoint: product-details.mozilla.org",
       "Endpoint: proxy.iinact.com",
+      "Endpoint: skia.googlesource.com",
       "Endpoint: storage.googleapis.com",
       "Endpoint: www.apache.org",
       "Endpoint: www.microsoft.com0",
@@ -3173,16 +3245,16 @@
       "Raw sockets",
       "Registry access"
     ],
-    "caution_count": 24,
+    "caution_count": 31,
     "critical_count": 0,
     "error": "",
-    "high_count": 2,
+    "high_count": 4,
     "highest_severity": "high",
-    "informational_count": 8,
+    "informational_count": 10,
     "plugin_id": 1054,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "artifactBytes": 2570826,
       "artifactIdentity": {
@@ -3190,10 +3262,10 @@
         "artifactBytes": 2570826,
         "artifactSha256": "cca0fe796fa46329a1c3e31b68d1e7027af28ad3df2030ebbfac7e2803a3dae7",
         "catalogAssemblyVersion": "1.0.0.11",
-        "manifestInternalName": "CactusWatcher",
+        "manifestInternalName": "",
         "manifestPath": "CactusWatcher.json",
-        "manifestRepositoryUrl": "https://codeberg.org/joshua-software-dev/CactusWatcher",
-        "resolvedArtifactUrl": "https://codeberg.org/joshua-software-dev/CactusWatcher/releases/download/v1.0.0.11/latest.zip",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -3260,6 +3332,42 @@
             "expected": null,
             "id": "filesystem.write",
             "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -3359,121 +3467,40 @@
               "classifications": [
                 "private-or-loopback"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "127.0.0.1",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "archive.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "codeberg.org",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "dummy.test",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "googlechromelabs.github.io",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "product-details.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "proxy.iinact.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "storage.googleapis.com",
+              "confidence": "High",
+              "host": "skia.googlesource.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.apache.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -3482,121 +3509,40 @@
               "classifications": [
                 "private-or-loopback"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "127.0.0.1",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "archive.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "codeberg.org",
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "dummy.test",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "Low",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "googlechromelabs.github.io",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "product-details.mozilla.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "proxy.iinact.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
-              "host": "storage.googleapis.com",
+              "confidence": "High",
+              "host": "skia.googlesource.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.apache.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -3617,11 +3563,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 12,
-          "observedConcreteDestinationCount": 12,
-          "observedDestinationWithoutProfileCount": 12,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 12,
+          "observedWithoutProfileCount": 15,
           "unexplainedDestinationCount": 0
         }
       },
@@ -3637,6 +3583,7 @@
         "Endpoint: googlechromelabs.github.io",
         "Endpoint: product-details.mozilla.org",
         "Endpoint: proxy.iinact.com",
+        "Endpoint: skia.googlesource.com",
         "Endpoint: storage.googleapis.com",
         "Endpoint: www.apache.org",
         "Endpoint: www.microsoft.com0",
@@ -3655,6 +3602,9 @@
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.chat.read",
+        "game.memory.read",
+        "game.state.read",
         "native.interop",
         "network.http",
         "network.outbound",
@@ -3665,346 +3615,82 @@
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 24,
+        "caution": 31,
         "critical": 0,
-        "high": 2,
-        "informational": 8
+        "high": 4,
+        "informational": 10
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 139,
-          "exactVersionObservedCount": 134,
+          "dependencyCount": 9,
+          "exactVersionObservedCount": 2,
           "families": {
-            "managed-assembly": 134,
-            "native": 5
+            "managed-assembly": 6,
+            "native": 1,
+            "nuget": 2
           },
-          "fingerprint": "8fd681fd9ca0a3163cb138e4de094234df0e33152f6ad2f7a2c35a4b08abeb44",
+          "fingerprint": "791f9ee2b9a900403128308d1868b2cb7a42826300a5ea06f440a61776251edf",
           "nativeRelationshipCounts": {
-            "bundledComponent": 7,
+            "bundledComponent": 0,
             "externalOrRuntimeResolved": 1,
-            "platformLibrary": 33
+            "platformLibrary": 0
           },
           "nativeRelationships": [
             {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_cactbot_state_ingest_html",
+              "confidence": "Medium",
+              "consumerPath": "CactusWatcher/src/Native/CactusParserFunctions.cs",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "",
               "library": "cactus_parser",
-              "managedName": "cactus_parser_cactbot_state_ingest_html",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_calculate_time_info",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_calculate_time_info",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 2,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_check_for_notification_update",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_check_for_notification_update",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_free_html_document",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_free_html_document",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_get_unix_time",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_get_unix_time",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_init_cactbot_state",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_init_cactbot_state",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "CactusWatcher.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "bundled-component",
-              "entryPoint": "cactus_parser_parse_html_document",
-              "library": "cactus_parser",
-              "managedName": "cactus_parser_parse_html_document",
-              "targetPath": "cactus_parser.dll"
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "CreateToolhelp32Snapshot",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "ExitProcess",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetConsoleMode",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetConsoleScreenBufferInfo",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetCurrentProcess",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetFileSizeEx",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetLastError",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "GetSystemTimeAsFileTime",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "K32GetModuleFileNameExW",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "Module32First",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "Module32Next",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "ReadFile",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "RtlCaptureContext",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "RtlLookupFunctionEntry",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "RtlVirtualUnwind",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "SetConsoleTextAttribute",
-              "library": "KERNEL32.dll",
-              "managedName": "",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "cactus_parser.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "platform-library",
-              "entryPoint": "SetFilePointerEx",
-              "library": "KERNEL32.dll",
               "managedName": "",
               "targetPath": ""
             }
           ],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 11,
-            "observed": 128
+            "observed": 1,
+            "required": 8
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 6
         },
         "coverage": {
-          "analyzed": 138,
-          "binaryOnly": 1,
+          "analyzed": 0,
+          "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 0,
-          "notAnalyzed": 0,
+          "known": 8,
+          "notAnalyzed": 1,
           "requirements": {
-            "bundled": 11,
-            "observed": 128,
+            "bundled": 0,
+            "observed": 1,
             "optional": 0,
-            "required": 0,
+            "required": 8,
             "soft": 0,
             "unknown": 0
           },
-          "total": 139
+          "total": 9
         },
         "endpointSummary": {
-          "concreteDestinationCount": 24,
+          "concreteDestinationCount": 6,
           "destinationsUndetermined": false,
-          "hostCount": 14,
+          "hostCount": 5,
           "hosts": [
             {
               "classifications": [
                 "private-or-loopback"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "127.0.0.1",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 3,
-              "confidence": "Low",
-              "host": "archive.mozilla.org",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -4013,72 +3699,23 @@
                 "unrecognised-host"
               ],
               "concreteCount": 3,
-              "confidence": "VeryHigh",
+              "confidence": "High",
               "host": "codeberg.org",
               "literalCount": 5,
               "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             },
             {
               "classifications": [
-                "certificate-infrastructure"
+                "source-reference"
               ],
               "concreteCount": 0,
-              "confidence": "Low",
-              "host": "crl.microsoft.com",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 3,
-              "confidence": "Low",
-              "host": "dummy.test",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 5,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 5,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "googlechromelabs.github.io",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "product-details.mozilla.org",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -4086,11 +3723,11 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "proxy.iinact.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -4098,432 +3735,112 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "storage.googleapis.com",
+              "confidence": "High",
+              "host": "skia.googlesource.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.apache.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "certificate-infrastructure"
-              ],
-              "concreteCount": 0,
-              "confidence": "Low",
-              "host": "www.microsoft.com",
-              "literalCount": 8,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.microsoft.com0",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "insecure-http"
-              ],
-              "concreteCount": 2,
-              "confidence": "Low",
-              "host": "www.w3.org",
-              "literalCount": 2,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 36,
+          "literalCount": 9,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 28435
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
             "classification": "private-or-loopback",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "127.0.0.1",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "local/private network",
-            "url": "http://127.0.0.1/"
+            "url": "http://127.0.0.1:9222/json/version"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "archive.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://archive.mozilla.org/pub/devedition/releases"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "archive.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "archive.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://archive.mozilla.org/pub/firefox/releases"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://codeberg.org/api/v1/repos/joshua-software-dev/goTNCEF/releases/latest"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
-            "url": "https://codeberg.org/joshua-software-dev/CactusWatcher"
+            "url": "https://codeberg.org/joshua-software-dev/CactusParser/releases/download/v1.0.0.0/cactus_parser_x86_64-windows-gnu.zip"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://codeberg.org/joshua-software-dev/CactusWatcher"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "VeryHigh",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-config",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
             "url": "https://codeberg.org/joshua-software-dev/CactusWatcher/raw/branch/master/deps/img/icon.png"
           },
           {
             "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "codeberg.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source-code reference",
             "url": "https://codeberg.org/joshua-software-dev/CactusWatcher/src/branch/master/Troubleshooting.md"
           },
           {
-            "classification": "certificate-infrastructure",
+            "classification": "source-reference",
             "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "crl.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "dummy.test",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://dummy.test/dummy/blocklist/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "dummy.test",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://dummy.test/dummy/discoveryURL"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "dummy.test",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://dummy.test/dummy/healthreport/"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/GoogleChromeLabs/chromium-bidi"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/dotnet/dotnet"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/hardkoded/puppeteer-sharp"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/mono/linker/issues/1416"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/webdriverbidi-net/webdriverbidi-net"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/goatcorp/dalamud-distrib/raw/main/latest.zip"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "googlechromelabs.github.io",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://googlechromelabs.github.io/chrome-for-testing/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "googlechromelabs.github.io",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "product-details.mozilla.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://product-details.mozilla.org/1.0/firefox_versions.json"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "proxy.iinact.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://proxy.iinact.com/overlay/cactbot/ui/raidboss/raidboss.html"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "storage.googleapis.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "confidence": "High",
+            "host": "skia.googlesource.com",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
-            "url": "https://storage.googleapis.com/<redacted>"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.apache.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
-          },
-          {
-            "classification": "certificate-infrastructure",
-            "concreteDestinationEvidence": false,
-            "confidence": "Low",
-            "host": "www.microsoft.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "certificate/revocation infrastructure",
-            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.microsoft.com0",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.microsoft.com0/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.w3.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.w3.org/2000/xmlns/"
-          },
-          {
-            "classification": "insecure-http",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.w3.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unencrypted web traffic",
-            "url": "http://www.w3.org/XML/1998/namespace"
+            "url": "https://skia.googlesource.com/external/github.com/ocornut/imgui/+/v1.53/extra_fonts/README.txt"
           }
         ]
       },
@@ -4549,7 +3866,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
-        "attemptId": "attempt-v2-a29cc27c7b0281e1",
+        "attemptId": "attempt-v2-0df418aa08bd6c0a",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -4558,11 +3875,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-13388",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13388",
         "queueSeedRevision": "queue-seed-v2-e0394d7f11fa62ac28b9",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
@@ -4570,11 +3887,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
-        "targetFingerprint": "artifact-target-v2-aa3b2d30f6d2c7675e82",
+        "targetFingerprint": "source-target-v2-ce6d3fdb1972d65460ad",
         "variantId": 13388,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-18T19:38:42Z",
+      "scannedAtUtc": "2026-09-18T20:31:33Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -4616,20 +3933,24 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "refs/heads/master",
         "candidates": [
           "https://codeberg.org/joshua-software-dev/CactusWatcher"
         ],
-        "commit": "",
+        "commit": "dc2c33ca96799a7c183ad6d489b47940fd3b28f4",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "c4a03df522916b92a746751179e035ee2ffc08aef1c65cb71b20aecbd95274dc"
           }
         },
         "developerProfile": {
@@ -4637,28 +3958,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.0.11",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "refs/heads/master",
+          "selectedRefKind": "git-head",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://codeberg.org/joshua-software-dev/CactusWatcher",
-        "treeSha256": ""
+        "treeSha256": "a80155e4a1614213efe23f4e35f8f3a13e2ce689"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-18T19:38:42Z",
+    "scan_id": 98697,
+    "scanned_at_utc": "2026-09-18T20:31:33Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "dc2c33ca96799a7c183ad6d489b47940fd3b28f4",
     "source_id": 737,
     "source_repository": "https://codeberg.org/joshua-software-dev/CactusWatcher",
     "source_to_binary_verified": 0,
