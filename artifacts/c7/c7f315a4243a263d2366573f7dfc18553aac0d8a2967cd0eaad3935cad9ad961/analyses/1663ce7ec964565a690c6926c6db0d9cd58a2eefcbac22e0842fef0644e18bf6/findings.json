@@ -1,0 +1,620 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NBitcoin.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Api/HonseConstants.cs: https://localhost:5101/",
+      "source:HonseFarm.Api/Services/BootstrapService.cs: https://localhost:5101/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.b36d1a342f16",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xba: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xbf: callvirt System.Reflection.Emit.MethodBuilder.GetILGenerator: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xcd: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0xd9: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x103: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x10f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.Resolvers.DynamicEnumResolver.BuildType+0x142: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:HonseFarm.Client.dll: p://gitlab-ci-token:glcbt-64_SKckJ8rAZMuz5ERVPSpb@gitlab/astraea/honse-farm.git",
+      "artifact:HonseFarm.Client.dll: \\\\[\\w\\s\\-\\\\]+?|\\/(?:[\\w\\s\\-\\/])+?)$",
+      "artifact:HonseFarm.Client.dll: s://discord.gg/uWnDgXzsMN",
+      "artifact:HonseFarm.Client.dll: C:\\HonseCache - avoid using Documents, Downloads, or OneDrive folders.",
+      "artifact:HonseFarm.Client.dll: s://discord.gg/",
+      "artifact:HonseFarm.Client.dll: s://server.example.com",
+      "artifact:HonseFarm.Client.dll: s://na.finalfantasyxiv.com/lodestone/account/select_character/",
+      "artifact:HonseFarm.Client.dll: s://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: \\\\\", StringComparison.Ordinal).Replace(\"\\\\\\\\",
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: \\\\') ? PenumbraPrefix + '\\\\",
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: \\\\') ? CachePrefix + '\\\\",
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: \\\\\", \"\\\\",
+      "source:HonseFarm.Client/Interop/GameModel/MdlFile.cs: s://github.com/Ottermandias/Penumbra.GameData/blob/main/Files/MdlFile.cs",
+      "source:HonseFarm.Client/Services/CharacterAnalyzer.cs: S:\\n\\r- For HonseFarm up- and downloads only the compressed size is relevant.\\n\\r- An unusually high total files count beyond 200 and up will also increase your download time to others significantly.",
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step2Storage.cs: C:\\\\HonseCache - avoid using Documents, Downloads, or OneDrive folders.",
+      "source:HonseFarm.Client/UI/UISharedService.cs: C:\\\\Storage) in a new empty folder. DO NOT point this to your game folder. DO NOT point this to your Penumbra folder."
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:HonseFarm.Client.dll: SigScanner",
+      "artifact:HonseFarm.Client.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "source:HonseFarm.Client/Plugin.cs: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Blake3.dll: DllImportAttribute",
+      "metadata:DnsClient.dll: DllImportAttribute",
+      "metadata:HonseFarm.Client.dll: DllImportAttribute",
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.CommandLine.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HonseFarm.Client.json: https://git.honse.farm/astraea/honse-farm"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.672cdb844b97",
+    "severity": "caution",
+    "title": "Endpoint: git.honse.farm"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:DnsClient.dll: System.Net.Sockets",
+      "metadata:DnsClient.dll: TcpClient",
+      "il:DnsClient.dll:DnsClient.DnsMessageHandler.IsTransientException+0x26: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets",
+      "il:DnsClient.dll:DnsClient.DnsTcpMessageHandler.QueryInternal+0x8: callvirt System.Net.Sockets.TcpClient.GetStream: System.Net.Sockets",
+      "il:DnsClient.dll:DnsClient.DnsTcpMessageHandler.QueryInternal+0x8: callvirt System.Net.Sockets.TcpClient.GetStream: TcpClient",
+      "il:DnsClient.dll:DnsClient.DnsTcpMessageHandler.QueryInternal+0x179: callvirt System.Net.Sockets.NetworkStream.get_DataAvailable: System.Net.Sockets",
+      "il:DnsClient.dll:DnsClient.DnsUdpMessageHandler.Query+0x9: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:DnsClient.dll:DnsClient.DnsUdpMessageHandler.Query+0x3f: callvirt System.Net.Sockets.Socket.set_ReceiveTimeout: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:HonseFarm.Client.dll: System.Diagnostics.Process",
+      "metadata:HonseFarm.Client.dll: ProcessStartInfo",
+      "metadata:HonseFarm.Client.dll: ShellExecute",
+      "metadata:HonseFarm.Client.dll: Process.Start",
+      "il:HonseFarm.Client.dll:HonseFarm.Client.UI.EventViewerUI.DrawInternal+0xfa: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:HonseFarm.Client.dll:HonseFarm.Client.UI.EventViewerUI.DrawInternal+0xfa: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:HonseFarm.Client.dll:HonseFarm.Client.UI.EventViewerUI.DrawInternal+0x10b: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:HonseFarm.Client.dll:HonseFarm.Client.UI.EventViewerUI.DrawInternal+0x10b: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/EventViewerUI.cs: Process.Start",
+      "source:HonseFarm.Client/UI/EventViewerUI.cs: ProcessStartInfo",
+      "source:HonseFarm.Client/UI/EventViewerUI.cs: ShellExecute",
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step0BetaWelcome.cs: Process.Start",
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step0BetaWelcome.cs: ProcessStartInfo",
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step0BetaWelcome.cs: ShellExecute",
+      "source:HonseFarm.Client/UI/HonseServerMoveUI.Step05Lodestone.cs: Process.Start",
+      "source:HonseFarm.Client/UI/HonseServerMoveUI.Step05Lodestone.cs: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:DnsClient.dll: Microsoft.Win32.Registry",
+      "metadata:DnsClient.dll: RegistryKey",
+      "il:DnsClient.dll:DnsClient.Windows.NameResolutionPolicy.Resolve+0x19: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:DnsClient.dll:DnsClient.Windows.NameResolutionPolicy.Resolve+0x19: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:DnsClient.dll:DnsClient.Windows.NameResolutionPolicy.Resolve+0x29: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:DnsClient.dll:DnsClient.Windows.NameResolutionPolicy.Resolve+0x29: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:DnsClient.dll:DnsClient.Windows.NameResolutionPolicy.Resolve+0x39: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:DnsClient.dll:DnsClient.Windows.NameResolutionPolicy.Resolve+0x39: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HonseFarm.Client.dll: FileStream",
+      "metadata:HonseFarm.Client.dll: Directory.CreateDirectory",
+      "metadata:HonseFarm.Client.dll: File.Delete",
+      "metadata:HonseFarm.Client.dll: WriteAllBytes",
+      "metadata:HonseFarm.Client.dll: WriteAllText",
+      "metadata:HonseFarm.Client.dll: File.Move",
+      "il:HonseFarm.Client.dll:HonseFarm.Client.Plugin..ctor+0xdf: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HonseFarm.Client.dll:HonseFarm.Client.Plugin..ctor+0x11d: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "source:HonseFarm.Client/FileCache/CacheMonitor.cs: File.Delete",
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: WriteAllText",
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: FileStream",
+      "source:HonseFarm.Client/FileCache/FileCacheManager.cs: File.Delete",
+      "source:HonseFarm.Client/FileCache/FileCompactor.cs: WriteAllBytes",
+      "source:HonseFarm.Client/FileCache/FileCompactor.cs: FileStream",
+      "source:HonseFarm.Client/HonseConfiguration/ConfigurationSaveService.cs: WriteAllText",
+      "source:HonseFarm.Client/HonseConfiguration/ConfigurationSaveService.cs: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal community forum link; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HonseFarm.Client.dll: https://forums.honse.farm/"
+    ],
+    "rule_id": "network.endpoint.community-forum.01ef7232f786",
+    "severity": "informational",
+    "title": "Community forum: forums.honse.farm"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal community forum link; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/Changelog/ChangelogRegistry.cs: https://forums.honse.farm/"
+    ],
+    "rule_id": "network.endpoint.community-forum.7a0c607f9f85",
+    "severity": "informational",
+    "title": "Community forum: forums.honse.farm"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step4ServerSelection.cs: https://discord.gg/{server.DiscordLink"
+    ],
+    "rule_id": "network.endpoint.community-invite.4c380b54f8eb",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HonseFarm.Client.dll: https://discord.gg/uWnDgXzsMN"
+    ],
+    "rule_id": "network.endpoint.community-invite.6cb1c45fcea3",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step0BetaWelcome.cs: https://discord.gg/uWnDgXzsMN"
+    ],
+    "rule_id": "network.endpoint.community-invite.7b1505a14c52",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HonseFarm.Client.dll: https://discord.gg/"
+    ],
+    "rule_id": "network.endpoint.community-invite.b6412e430a24",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step4ServerSelection.cs: https://discord.gg/Bz4CJTzu"
+    ],
+    "rule_id": "network.endpoint.community-invite.d4e05ee62370",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/HonseServerMoveUI.Step05Lodestone.cs: https://eu.finalfantasyxiv.com/lodestone/character/{lodestoneId}/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.0ac696648bca",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step5Registration.LodestoneInput.cs: https://na.finalfantasyxiv.com/lodestone/account/select_character/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.204196cc70a7",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HonseFarm.Client.dll: https://eu.finalfantasyxiv.com/lodestone/character/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.3b68d9b19b68",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/UI/HonseOnboardingUI.Step5Registration.SecretCode.cs: https://na.finalfantasyxiv.com/lodestone/my/setting/profile/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.cd133b7cd8e0",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.API.dll: https://github.com/Etheirys/Brio.API"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.05923b86861f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:HonseFarm.Client/WebAPI/Files/ThrottledStream.cs: https://github.com/bezzad/Downloader"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0717cb569305",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.dll: https://github.com/neuecc/MessagePack-CSharp/issues/1134"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.415d35873630",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NBitcoin.dll: https://github.com/MetacoSA/NBitcoin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7ca012c29522",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.Abstractions.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.JsonWebTokens.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Logging.dll: https://github.com/AzureAD/<redacted>",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: https://github.com/AzureAD/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7e3f986def99",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/linux-musl-arm/native/libsodium.so: https://github.com/ziglang/zig-bootstrap",
+      "artifact:runtimes/linux-musl-x64/native/libsodium.so: https://github.com/ziglang/zig-bootstrap",
+      "artifact:runtimes/linux-musl-arm64/native/libsodium.so: https://github.com/ziglang/zig-bootstrap",
+      "artifact:runtimes/linux-arm64/native/libsodium.so: https://github.com/ziglang/zig-bootstrap"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8207937f32f2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:K4os.Compression.LZ4.Legacy.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4",
+      "artifact:K4os.Compression.LZ4.dll: https://github.com/MiloszKrajewski/K4os.Compression.LZ4"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8d6d7403ad8a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Blake3.dll: https://github.com/xoofx/Blake3.NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.af42454cb465",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DnsClient.dll: https://github.com/MichaCo/DnsClient.NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b2818a096013",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Client.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.SignalR.Client.Core.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NReco.Logging.File.dll: https://github.com/nreco/logging"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ca67590d8ba5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NSec.Cryptography.dll: https://github.com/ektrah/nsec.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.de48d37f13f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.ToString+0x20: callvirt HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0x13: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_FileExists: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0x3a: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_Hash: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0x53: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_Url: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0x6c: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_Size: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0x93: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_IsForbidden: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0xba: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_ForbiddenBy: DownloadFile",
+      "il:HonseFarm.Api.dll:HonseFarm.Api.Dto.Files.DownloadFileDto.PrintMembers+0xd3: call HonseFarm.Api.Dto.Files.DownloadFileDto.get_RawSize: DownloadFile"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "source:HonseFarm.Api/Dto/Files/DownloadFileDto.cs: DownloadFile",
+      "source:HonseFarm.Client/PlayerData/Handlers/PairHandler.cs: DownloadFile",
+      "source:HonseFarm.Client/Services/PlayerPerformanceService.cs: DownloadFile",
+      "source:HonseFarm.Client/WebAPI/Files/FileDownloadManager.cs: DownloadFile",
+      "source:HonseFarm.Client/WebAPI/Files/Models/DownloadFileTransfer.cs: DownloadFile",
+      "source:HonseFarm.Client/WebAPI/Files/Models/FileTransfer.cs: DownloadFile"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-musl-arm/native/libsodium.so",
+      "runtimes/osx-x64/native/libblake3_dotnet.dylib",
+      "runtimes/osx-x64/native/libsodium.dylib",
+      "runtimes/osx-arm64/native/libblake3_dotnet.dylib",
+      "runtimes/osx-arm64/native/libsodium.dylib",
+      "runtimes/linux-musl-x64/native/libblake3_dotnet.so",
+      "runtimes/linux-musl-x64/native/libsodium.so",
+      "runtimes/linux-musl-arm64/native/libblake3_dotnet.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

@@ -1,0 +1,64 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:DutyRecorder.dll: s://dlog.luyulight.cn"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DutyRecorder.dll: https://dlog.luyulight.cn/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9a24ba6661a0",
+    "severity": "caution",
+    "title": "Endpoint: dlog.luyulight.cn"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:DutyRecorder.dll: FileStream",
+      "metadata:DutyRecorder.dll: WriteAllText",
+      "metadata:DutyRecorder.dll: File.Delete",
+      "il:DutyRecorder.dll:DutyRecorder.Logger.Entry.SaveInProgressEntry+0x1e: call System.IO.File.WriteAllText: WriteAllText",
+      "il:DutyRecorder.dll:DutyRecorder.Logger.Entry.LoadInProgressEntry+0x35: call System.IO.File.Delete: File.Delete",
+      "il:DutyRecorder.dll:DutyRecorder.Logger.FileRecorder.RecordCsv+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:DutyRecorder.dll:DutyRecorder.Logger.FileRecorder.WriteProgress+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:DutyRecorder.dll:DutyRecorder.Logger.FileRecorder.RecordDuty+0x4: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+    "evidence_json": [],
+    "rule_id": "network.endpoint.dynamic-or-undetermined",
+    "severity": "informational",
+    "title": "Network destination undetermined"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DutyRecorder.dll: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:DutyRecorder.DlogUtils.DlogClient..ctor+0x14: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:DutyRecorder.DlogUtils.DlogClient..ctor+0x20: callvirt System.Net.Http.HttpClientHandler.set_CookieContainer: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:DutyRecorder.DlogUtils.DlogClient..ctor+0x26: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:DutyRecorder.DlogUtils.DlogClient..ctor+0x36: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:<GetStatMaze>d__8.MoveNext+0x2a: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:<GetStatProf>d__7.MoveNext+0x2a: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:DutyRecorder.dll:<PostLogin>d__5.MoveNext+0x60: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
