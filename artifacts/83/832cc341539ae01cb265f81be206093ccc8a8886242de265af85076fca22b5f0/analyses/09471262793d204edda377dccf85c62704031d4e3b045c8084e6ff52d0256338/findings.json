@@ -1,0 +1,116 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:DashaTweaks.dll:DashaTweaks.Features.Leves.LeveRunner.TryInteract+0x69: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:DashaTweaks.dll:DashaTweaks.Features.Submarines.AutoRepairer.Tick+0x104: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:DashaTweaks.dll:DashaTweaks.Features.Submarines.VoyageSelector.SelectIndex+0xa2: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:DashaTweaks.dll:DashaTweaks.Features.Leves.LeveRunner.TryAdvanceTalk+0x55: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:DashaTweaks.dll:DashaTweaks.Features.Leves.LeveRunner.FireCallback+0x35: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:DashaTweaks.dll: SigScanner",
+      "metadata:DashaTweaks.dll: Dalamud.Hooking",
+      "metadata:DashaTweaks.dll: HookFromAddress",
+      "il:DashaTweaks.dll:DashaTweaks.Features.Submarines.VoyageCutsceneSkipper..ctor+0x61: call DashaTweaks.Plugin.get_SigScanner: SigScanner",
+      "il:DashaTweaks.dll:DashaTweaks.Features.Submarines.VoyageCutsceneSkipper..ctor+0x6d: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:DashaTweaks.dll:DashaTweaks.Features.GlamourSync.GlamourSyncFeature..ctor+0x59: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:DashaTweaks.dll:DashaTweaks.Features.GlamourSync.GlamourSyncFeature..ctor+0x86: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:DashaTweaks.dll:DashaTweaks.Features.CursorColor.CursorColorFeature..ctor+0x9f: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:DashaTweaks.dll: DllImportAttribute",
+      "metadata:DashaTweaks.dll: GetProcAddress",
+      "il:DashaTweaks.dll:DashaTweaks.Features.CursorColor.CursorColorFeature..ctor+0x82: call DashaTweaks.Features.CursorColor.CursorColorFeature.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "artifact:DashaTweaks.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+    "evidence_json": [],
+    "rule_id": "network.endpoint.dynamic-or-undetermined",
+    "severity": "informational",
+    "title": "Network destination undetermined"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DashaTweaks.dll: https://universalis.app/api/v2/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48e0f530ab27",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DashaTweaks.dll: https://github.com/DashaDaymoon/DashaTweaks.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.50c8d52ac544",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DashaTweaks.json: https://github.com/DashaDaymoon/DashaTweaksRepo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a552554f1786",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DashaTweaks.dll: System.Net.Http.HttpClient",
+      "il:DashaTweaks.dll:DashaTweaks.Features.RetainerValue.UniversalisClient..ctor+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DashaTweaks.dll:DashaTweaks.Features.RetainerValue.UniversalisClient..ctor+0x17: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient",
+      "il:DashaTweaks.dll:DashaTweaks.Features.RetainerValue.UniversalisClient..ctor+0x25: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:DashaTweaks.dll:DashaTweaks.Features.RetainerValue.UniversalisClient..ctor+0x64: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:DashaTweaks.dll:<FetchAsync>d__5.MoveNext+0x15d: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
