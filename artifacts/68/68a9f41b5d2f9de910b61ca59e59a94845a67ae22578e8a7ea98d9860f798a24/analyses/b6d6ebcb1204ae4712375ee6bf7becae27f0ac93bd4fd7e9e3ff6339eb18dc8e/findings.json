@@ -1,0 +1,258 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.ProcessCraftMacroActions+0x29b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.ProcessRemoteCraft+0x4d0: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.PrepareCraftConsumable+0x190: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.AdvanceLoginJob+0xb07: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.ClickLoginButton+0x74: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.FireLoadedLoginCallback+0x4c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.PrepareCraftBatch+0x184: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: s://github.com/QuserH/Xivchat.git",
+      "artifact:MessagePack.dll: g:/A",
+      "artifact:MessagePack.dll: \\\\c\\i\\",
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: Dalamud.Hooking",
+      "metadata:EorzeaPhone.dll: SigScanner",
+      "metadata:EorzeaPhone.dll: HookFromAddress",
+      "il:EorzeaPhone.dll:XIVChatPlugin.GameFunctions.RequestFriendList+0x3c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Plugin.ScanText+0x0: call XIVChatPlugin.Plugin.get_SigScanner: SigScanner",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Plugin.ScanText+0x6: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Plugin.GetStaticAddressFromSig+0x0: call XIVChatPlugin.Plugin.get_SigScanner: SigScanner",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Plugin.GetStaticAddressFromSig+0x7: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: TcpListener",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.Dispose+0x6d: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:EorzeaPhone.dll:<GetTcpClient>d__0.MoveNext+0x26: ldftn System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:EorzeaPhone.dll:<GetTcpClient>d__0.MoveNext+0x56: callvirt System.Net.Sockets.TcpListener.AcceptTcpClientAsync: TcpListener",
+      "il:EorzeaPhone.dll:<<Spawn>b__0>d.MoveNext+0x36: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:EorzeaPhone.dll:<<Spawn>b__0>d.MoveNext+0x4e: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+      "il:EorzeaPhone.dll:<<Spawn>b__0>d.MoveNext+0x64: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:EorzeaPhone.dll:<<Spawn>b__0>d.MoveNext+0x90: callvirt System.Net.Sockets.TcpListener.get_LocalEndpoint: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: DllImportAttribute",
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Noise.dll: DllImportAttribute",
+      "metadata:Sodium.Core.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Peeping Tom.Ipc.dll: https://git.anna.lgbt/anna/PeepingTom"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e2e90e61032c",
+    "severity": "caution",
+    "title": "Endpoint: git.anna.lgbt"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: System.Net.Sockets",
+      "metadata:EorzeaPhone.dll: TcpClient",
+      "metadata:EorzeaPhone.dll: UdpClient",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected.get_Connected+0x10: callvirt System.Net.Sockets.TcpClient.get_Connected: System.Net.Sockets",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected.get_Connected+0x10: callvirt System.Net.Sockets.TcpClient.get_Connected: TcpClient",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected..ctor+0x18: callvirt System.Net.Sockets.TcpClient.set_ReceiveTimeout: System.Net.Sockets",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected..ctor+0x18: callvirt System.Net.Sockets.TcpClient.set_ReceiveTimeout: TcpClient",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected..ctor+0x28: callvirt System.Net.Sockets.TcpClient.set_SendTimeout: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: System.Diagnostics.Process",
+      "metadata:EorzeaPhone.dll: ProcessStartInfo",
+      "metadata:EorzeaPhone.dll: ShellExecute",
+      "metadata:EorzeaPhone.dll: Process.Start",
+      "il:EorzeaPhone.dll:XIVChatPlugin.PluginUi.DrawHistorySettings+0x1b7: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:EorzeaPhone.dll:XIVChatPlugin.PluginUi.DrawHistorySettings+0x1b7: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:EorzeaPhone.dll:XIVChatPlugin.PluginUi.DrawHistorySettings+0x1be: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:EorzeaPhone.dll:XIVChatPlugin.PluginUi.DrawHistorySettings+0x1be: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: FileStream",
+      "metadata:EorzeaPhone.dll: Directory.CreateDirectory",
+      "metadata:EorzeaPhone.dll: File.Move",
+      "metadata:EorzeaPhone.dll: WriteAllText",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ChatHistoryStore.ChangeDirectory+0x27: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ChatHistoryStore.ChangeDirectory+0x5b: newobj System.IO.FileStream..ctor: FileStream",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ChatHistoryStore.ChangeDirectory+0x6d: callvirt System.IO.FileStream.Flush: FileStream",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ChatHistoryStore.WriteAtomic+0x6: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-arm\\native\\libsodium.so: https://github.com/ziglang/zig-bootstrap",
+      "artifact:runtimes\\linux-arm64\\native\\libsodium.so: https://github.com/ziglang/zig-bootstrap",
+      "artifact:runtimes\\linux-musl-arm\\native\\libsodium.so: https://github.com/ziglang/zig-bootstrap",
+      "artifact:runtimes\\linux-musl-arm64\\native\\libsodium.so: https://github.com/ziglang/zig-bootstrap"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8207937f32f2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://github.com/QuserH/Xivchat.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.85a9793a45f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sodium.Core.dll: https://github.com/ektrah/libsodium-core.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.89d00ad54d56",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.json: https://github.com/QuserH/Xivchat"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.aa6a7d02a042",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "libsodium.dll",
+      "runtimes\\linux-arm\\native\\libsodium.so",
+      "runtimes\\linux-arm64\\native\\libsodium.so",
+      "runtimes\\linux-musl-arm\\native\\libsodium.so",
+      "runtimes\\linux-musl-arm64\\native\\libsodium.so",
+      "runtimes\\linux-musl-x64\\native\\libsodium.so",
+      "runtimes\\linux-x64\\native\\libsodium.so",
+      "runtimes\\osx-arm64\\native\\libsodium.dylib"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
