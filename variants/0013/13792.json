@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "06579d6b210c7045859a4e388d62e2b20b5ac9c05af22e03a2c746c2d13a402f",
+    "analysisId": "fc37eef0972f39b15a05eb2298edcdd812df4faa1df4679de12639a97bb0617d",
     "artifactSha256": "a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b",
-    "path": "artifacts/a0/a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b/analyses/06579d6b210c7045859a4e388d62e2b20b5ac9c05af22e03a2c746c2d13a402f",
-    "recordCount": 24206
+    "path": "artifacts/a0/a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b/analyses/fc37eef0972f39b15a05eb2298edcdd812df4faa1df4679de12639a97bb0617d",
+    "recordCount": 468
   },
   "current": {
     "artifact_channel": "stable",
@@ -13,48 +13,27 @@
     "automation_capabilities_json": [
       {
         "automationLevel": "character-automation",
-        "capabilityId": "game.character.interact",
-        "confidence": "high",
+        "capabilityId": "automation.via_ipc",
+        "confidence": "medium",
         "evidence": [
-          "il:ECommons.dll:<>c__DisplayClass1_0.<InteractWithObject>b__0+0x52: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+          "IPC channel: Lifestream.ExecuteCommand"
         ],
-        "indirect": false,
-        "label": "World/NPC interaction control",
+        "indirect": true,
+        "label": "Indirect automation via IPC",
         "reachable": false,
-        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+        "reason": "Uses an IPC integration associated with automation functionality supplied by another plugin."
       },
       {
         "automationLevel": "character-automation",
-        "capabilityId": "game.character.target",
-        "confidence": "high",
+        "capabilityId": "game.character.teleport",
+        "confidence": "medium",
         "evidence": [
-          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
-          "il:ECommons.dll:<>c__DisplayClass0_0.<ApproachObjectViaAutomove>b__0+0xb5: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
-          "il:ECommons.dll:<>c__DisplayClass1_0.<InteractWithObject>b__0+0x72: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+          "IPC channel: Lifestream.ExecuteCommand"
         ],
-        "indirect": false,
-        "label": "Character target control",
+        "indirect": true,
+        "label": "Teleport/travel control via IPC",
         "reachable": false,
-        "reason": "References a target-setting API rather than only reading the current target."
-      },
-      {
-        "automationLevel": "ui-automation",
-        "capabilityId": "game.ui.callback",
-        "confidence": "high",
-        "evidence": [
-          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxCreateDetour+0x4d: callvirt StaticVfxCreateCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxRunDetour+0x21: callvirt StaticVfxRunCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxDtorDetour+0x1f: callvirt StaticVfxDtorCallbackDelegate.Invoke",
-          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt FireCallback.Invoke"
-        ],
-        "indirect": false,
-        "label": "Game UI callback/control",
-        "reachable": false,
-        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+        "reason": "References an IPC channel associated with an external automation provider; this is indirect capability evidence."
       }
     ],
     "automation_level": "character-automation",
@@ -75,13 +54,15 @@
       "Game memory/hooks",
       "Game UI callback/control",
       "Hard-coded external file access",
+      "Indirect automation via IPC",
       "Native/PInvoke",
       "Network access",
       "Process execution",
       "Process memory access",
+      "Teleport/travel control via IPC",
       "World/NPC interaction control"
     ],
-    "caution_count": 15,
+    "caution_count": 20,
     "critical_count": 0,
     "error": "",
     "findings_json": [
@@ -126,9 +107,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Buildingway.dll: https://puni.sh/api/repository/kawaii"
         ],
@@ -138,9 +117,19 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:Buildingway/Windows/MainWindow.cs: https://puni.sh/api/repository/kawaii"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.d7a93d904582",
+        "severity": "caution",
+        "title": "Endpoint: puni.sh"
+      },
+      {
+        "category": "network-endpoint",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
         ],
@@ -150,9 +139,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
         ],
@@ -162,9 +149,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
         ],
@@ -174,9 +159,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
         ],
@@ -186,9 +169,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
         ],
@@ -198,9 +179,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
         ],
@@ -236,6 +215,16 @@
         "title": "Game memory/signature hooking"
       },
       {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:Buildingway/Plugin.cs: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [
@@ -247,6 +236,16 @@
           "artifact:ECommons.dll: s://crypto.nightmarexiv.org/",
           "artifact:ECommons.dll: s://discord.nightmarexiv.org",
           "artifact:ECommons.dll: s://explore.nightmarexiv.org"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:Buildingway/Windows/MainWindow.cs: s://puni.sh/api/repository/kawaii"
         ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
@@ -280,6 +279,16 @@
       },
       {
         "category": "automation",
+        "description": "Static analysis found capability evidence for teleport/travel control via ipc. This does not prove that the behavior executes during normal use. This capability is provided indirectly through IPC.",
+        "evidence": [
+          "IPC channel: Lifestream.ExecuteCommand"
+        ],
+        "ruleId": "automation.game.character.teleport",
+        "severity": "caution",
+        "title": "Teleport/travel control via IPC"
+      },
+      {
+        "category": "automation",
         "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
         "evidence": [
           "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
@@ -301,6 +310,16 @@
         "title": "World/NPC interaction control"
       },
       {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for indirect automation via ipc. This does not prove that the behavior executes during normal use. This capability is provided indirectly through IPC.",
+        "evidence": [
+          "IPC channel: Lifestream.ExecuteCommand"
+        ],
+        "ruleId": "automation.automation.via_ipc",
+        "severity": "caution",
+        "title": "Indirect automation via IPC"
+      },
+      {
         "category": "network",
         "description": "References HTTP/network client APIs.",
         "evidence": [
@@ -319,9 +338,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Buildingway.dll: https://github.com/Abyeon/Buildingway.git"
         ],
@@ -331,9 +348,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
         ],
@@ -343,9 +358,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:Anyder.dll: https://github.com/Abyeon/Anyder"
         ],
@@ -355,9 +368,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:AbeUtils.dll: https://github.com/Abyeon/AbeUtils"
         ],
@@ -383,6 +394,16 @@
         "title": "Filesystem write access"
       },
       {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:Buildingway/Windows/MainWindow.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
         "category": "privacy",
         "description": "References APIs that can read or modify clipboard contents.",
         "evidence": [
@@ -395,10 +416,10 @@
     ],
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 7,
+    "informational_count": 8,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "artifactBytes": 398196,
       "artifactIdentity": {
@@ -406,10 +427,10 @@
         "artifactBytes": 398196,
         "artifactSha256": "a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b",
         "catalogAssemblyVersion": "1.0.1.6",
-        "manifestInternalName": "Buildingway",
+        "manifestInternalName": "",
         "manifestPath": "Buildingway.json",
         "manifestRepositoryUrl": "",
-        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/120/versions/1.0.1.6.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20260918%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260918T184916Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=455e81e45bc815fed113d94d4040c383cdbae558593033d93f9d0d9a36598d44",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -418,26 +439,18 @@
         "capabilities": [
           {
             "automationLevel": "character-automation",
-            "capabilityId": "game.character.interact",
-            "confidence": "high",
-            "indirect": false,
-            "label": "World/NPC interaction control",
+            "capabilityId": "automation.via_ipc",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Indirect automation via IPC",
             "reachable": false
           },
           {
             "automationLevel": "character-automation",
-            "capabilityId": "game.character.target",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Character target control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "ui-automation",
-            "capabilityId": "game.ui.callback",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Game UI callback/control",
+            "capabilityId": "game.character.teleport",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Teleport/travel control via IPC",
             "reachable": false
           }
         ],
@@ -445,6 +458,18 @@
       },
       "behaviorConsistency": {
         "capabilities": [
+          {
+            "category": "automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "automation.via_ipc",
+            "label": "Indirect automation via IPC",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
           {
             "category": "process",
             "declared": false,
@@ -530,6 +555,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -542,6 +579,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-automation",
             "declared": false,
             "declaredDestinations": [],
@@ -549,6 +598,18 @@
             "expected": null,
             "id": "game.ui.callback",
             "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -585,18 +646,6 @@
             "expected": null,
             "id": "network.http",
             "label": "HTTP/network client access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "network",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "network.outbound",
-            "label": "Outbound network access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -646,164 +695,44 @@
           "observed": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "puni.sh",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
           "observedWithoutProfile": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "puni.sh",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -824,11 +753,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 16,
-          "observedConcreteDestinationCount": 8,
-          "observedDestinationWithoutProfileCount": 8,
+          "observedCapabilityCount": 19,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 16,
+          "observedWithoutProfileCount": 19,
           "unexplainedDestinationCount": 0
         }
       },
@@ -849,13 +778,16 @@
         "Game memory/hooks",
         "Game UI callback/control",
         "Hard-coded external file access",
+        "Indirect automation via IPC",
         "Native/PInvoke",
         "Network access",
         "Process execution",
         "Process memory access",
+        "Teleport/travel control via IPC",
         "World/NPC interaction control"
       ],
       "capabilityIds": [
+        "automation.via_ipc",
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
@@ -863,209 +795,95 @@
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
+        "game.character.teleport",
         "game.memory.read",
+        "game.state.read",
         "game.ui.callback",
+        "game.ui.read",
         "memory.process",
         "native.interop",
         "network.http",
-        "network.outbound",
         "privacy.clipboard",
         "process.execute",
         "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 15,
+        "caution": 20,
         "critical": 0,
         "high": 2,
-        "informational": 7
+        "informational": 8
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 73,
-          "exactVersionObservedCount": 71,
+          "dependencyCount": 11,
+          "exactVersionObservedCount": 6,
           "families": {
-            "managed-assembly": 70,
-            "native": 2,
-            "nuget": 1
+            "ipc": 1,
+            "nuget": 8,
+            "project": 2
           },
-          "fingerprint": "90e40ddbd6a96d1ef4440c36823508a935061b3d1138d7b55ef77cfd6b438e76",
+          "fingerprint": "f63605d441474c7f449d5ac1ea8b16d2d0b362da71477c2bb21ea60175e644fa",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 7,
+            "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
-          "nativeRelationships": [
+          "nativeRelationships": [],
+          "pluginRelationships": [
             {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayBack",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayBack",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayFront",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayFront",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igClosePopupToLevel",
-              "library": "cimgui",
-              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igFindWindowDisplayIndex",
-              "library": "cimgui",
-              "managedName": "igFindWindowDisplayIndex",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igGetCurrentWindow",
-              "library": "cimgui",
-              "managedName": "igGetCurrentWindow",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetOpenFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetOpenFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetSaveFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetSaveFileName",
-              "targetPath": ""
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Lifestream.ExecuteCommand",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
             }
           ],
-          "pluginRelationships": [],
           "requirements": {
-            "bundled": 4,
-            "observed": 68,
-            "required": 1
+            "required": 10,
+            "soft": 1
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 2
         },
         "coverage": {
-          "analyzed": 72,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
-          "known": 1,
+          "externalPlugin": 1,
+          "known": 10,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 4,
-            "observed": 68,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 1,
-            "soft": 0,
+            "required": 10,
+            "soft": 1,
             "unknown": 0
           },
-          "total": 73
+          "total": 11
         },
         "endpointSummary": {
-          "concreteDestinationCount": 11,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
-          "hostCount": 8,
+          "hostCount": 2,
           "hosts": [
             {
               "classifications": [
-                "unrecognised-host"
+                "recognised-platform",
+                "source-reference"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 4,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 4,
+              "literalCount": 3,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -1073,158 +891,62 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "puni.sh",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 11,
+          "literalCount": 4,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 520
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "crypto.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://crypto.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "discord.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://discord.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "donate.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://donate.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "explore.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://explore.nightmarexiv.org/"
-          },
-          {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/Abyeon/AbeUtils"
+            "url": "https://github.com/Abyeon/Buildingway"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Abyeon/Anyder"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Etheirys/Brio/blob/<redacted>/Brio/Core/MathHelpers.cs"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Abyeon/Buildingway.git"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/ECommons"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Infiziert90/ChatTwo/blob/<redacted>/ChatTwo/Util/ImGuiUtil.cs"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "puni.sh",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://puni.sh/api/repository/kawaii"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "subscribe.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://subscribe.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/NightmareXIV"
           }
         ]
       },
@@ -1250,7 +972,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
-        "attemptId": "attempt-v2-7b6c4d622a6f645d",
+        "attemptId": "attempt-v2-eb75937b4c6d9245",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -1259,11 +981,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-13792",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13792",
         "queueSeedRevision": "queue-seed-v2-e0394d7f11fa62ac28b9",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
@@ -1271,11 +993,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
-        "targetFingerprint": "artifact-target-v2-655a7537b00bd9d1f6b1",
+        "targetFingerprint": "source-target-v2-c843b959342bd137edd2",
         "variantId": 13792,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-18T18:49:16Z",
+      "scannedAtUtc": "2026-09-18T19:42:12Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1317,20 +1039,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/Abyeon/Buildingway"
         ],
-        "commit": "",
+        "commit": "5f4ca39621224be3c504a689c2c763aad4fb3963",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "e90e4473add07f63bc37cad2bd8d7dc1c95b39853f0590c78cd9056cf73cc68e"
           }
         },
         "developerProfile": {
@@ -1338,57 +1065,617 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.1.6",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/Abyeon/Buildingway",
-        "treeSha256": ""
+        "treeSha256": "72d201d81ec7624bc3dc6c769aea8943b8a5836a"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-18T18:49:16Z",
+    "scan_id": 4204,
+    "scanned_at_utc": "2026-09-18T19:42:12Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "5f4ca39621224be3c504a689c2c763aad4fb3963",
     "source_repository": "https://github.com/Abyeon/Buildingway",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 13792
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "ipc:lifestream.executecommand",
+        "current_json": {
+          "componentKey": "ipc:lifestream.executecommand",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Lifestream.ExecuteCommand",
+          "normalizedName": "lifestream.executecommand",
+          "origin": "source",
+          "paths": [
+            "Buildingway/Utils/LifestreamIpcHandler.cs"
+          ],
+          "requirements": [
+            "soft"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "external-plugin"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "ipc",
+        "dependency_name": "Lifestream.ExecuteCommand",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:abeutils",
+        "current_json": {
+          "componentKey": "nuget:abeutils",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "abeutils",
+          "normalizedName": "abeutils",
+          "origin": "source",
+          "paths": [
+            "Buildingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "abeutils",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:anyder",
+        "current_json": {
+          "componentKey": "nuget:anyder",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "anyder",
+          "normalizedName": "anyder",
+          "origin": "source",
+          "paths": [
+            "Buildingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "anyder",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "Buildingway/Buildingway.csproj",
+            "Buildingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "15.0.0",
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "nuget",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "Buildingway/Buildingway.csproj",
+            "Buildingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "2.0.2"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "2.0.2",
+            "[2.0.2, )"
+          ],
+          "versions": [
+            "2.0.2"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "nuget",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:ecommons",
+        "current_json": {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "ECommons",
+          "normalizedName": "ecommons",
+          "origin": "source",
+          "paths": [
+            "Buildingway/Buildingway.csproj",
+            "Buildingway/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "3.2.0.19"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "3.2.0.19",
+            "[3.2.0.19, )"
+          ],
+          "versions": [
+            "3.2.0.19"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "nuget",
+        "dependency_name": "ECommons",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:abeutils",
+        "current_json": {
+          "componentKey": "project:abeutils",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\AbeUtils\\AbeUtils\\AbeUtils.csproj",
+          "normalizedName": "abeutils",
+          "origin": "source",
+          "paths": [
+            "Buildingway/Buildingway.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\AbeUtils\\AbeUtils\\AbeUtils.csproj",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "project:anyder",
+        "current_json": {
+          "componentKey": "project:anyder",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\Anyder\\Anyder\\Anyder.csproj",
+          "normalizedName": "anyder",
+          "origin": "source",
+          "paths": [
+            "Buildingway/Buildingway.csproj"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [],
+          "versions": []
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "project-reference",
+        "dependency_name": "..\\Anyder\\Anyder\\Anyder.csproj",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud service IGameInteropProvider is referenced.",
+            "Dalamud service ISigScanner is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 13,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.execute",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.execute",
+          "reasons": [
+            "Diagnostics/process namespaces are imported; execution is not yet proven."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "process.execute",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 14,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "caution",
+        "variant_id": 13792
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:process.inspect",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "process.inspect",
+          "reasons": [
+            "Diagnostics/process namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 4204,
+        "dependency_kind": "permission",
+        "dependency_name": "process.inspect",
+        "detected_at_utc": "2026-09-18T19:42:21Z",
+        "drift_id": 15,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 8,
+        "severity": "informational",
+        "variant_id": 13792
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b",
       "current_assembly_version": "1.0.1.6",
-      "current_scan_id": 8,
+      "current_scan_id": 4204,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-18T18:49:20Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "5f4ca39621224be3c504a689c2c763aad4fb3963",
+      "detected_at_utc": "2026-09-18T19:42:21Z",
+      "previous_artifact_sha256": "a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b",
+      "previous_assembly_version": "1.0.1.6",
+      "previous_scan_id": 8,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 13792
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 45,
-      "artifact_only_count": 45,
+      "artifact_only_count": 44,
       "artifact_only_json": [
         {
           "componentKey": "assembly:abeutils",
@@ -2009,35 +2296,112 @@
             "observed"
           ],
           "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-18T19:42:21Z",
+      "comparison_id": 9,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 1,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 4204,
+      "source_available": 1,
+      "source_dependency_count": 8,
+      "source_only_count": 7,
+      "source_only_json": [
+        {
+          "componentKey": "ipc:lifestream.executecommand",
+          "componentKind": "ipc",
+          "kinds": [
+            "ipc"
+          ],
+          "name": "Lifestream.ExecuteCommand",
+          "requirements": [
+            "soft"
+          ],
+          "versions": []
         },
         {
-          "componentKey": "nuget:ecommons",
+          "componentKey": "nuget:abeutils",
           "componentKind": "nuget",
           "kinds": [
-            "nuget-resolved"
+            "nuget-lock"
           ],
-          "name": "ECommons",
+          "name": "abeutils",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:anyder",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "anyder",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
           "requirements": [
             "required"
           ],
           "versions": [
-            "3.2.0.19"
+            "15.0.0"
           ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.2"
+          ]
+        },
+        {
+          "componentKey": "project:abeutils",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\AbeUtils\\AbeUtils\\AbeUtils.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "project:anyder",
+          "componentKind": "project",
+          "kinds": [
+            "project-reference"
+          ],
+          "name": "..\\Anyder\\Anyder\\Anyder.csproj",
+          "requirements": [
+            "required"
+          ],
+          "versions": []
         }
       ],
-      "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-18T18:49:20Z",
-      "comparison_id": 6,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
-      "requirement_mismatch_count": 0,
-      "requirement_mismatches_json": [],
-      "scan_id": 8,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "source_project_sha256": "fa28f14bf6510b660ca6607b270aa24136a10a79e5202bdf54c6abdb62dae149",
       "variant_id": 13792,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -2075,36 +2439,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 69094,
+          "bytes": 79306,
           "encoding": "json",
           "path": "derived/variants/0013/13792/dependency-resolutions.json",
-          "recordDigest": "2e8d411bbfce82855302c13d1613014504acf098139ecb9f0cee61200de657ce",
-          "records": 73,
-          "sha256": "7356b97bf690e718c0389ea5e83397819d584f790f1b463c58b7ecc75bf4f0db"
+          "recordDigest": "849aec0118c51a369fe968e052f58e3e31aae6f9f122267940dc2c2bbbd50ba4",
+          "records": 84,
+          "sha256": "43f7698553c82f8507e41272d03d21320ecf7838d764bdede1d4ebbed01f009b"
         }
       ],
-      "recordDigest": "2e8d411bbfce82855302c13d1613014504acf098139ecb9f0cee61200de657ce",
-      "records": 73
+      "recordDigest": "849aec0118c51a369fe968e052f58e3e31aae6f9f122267940dc2c2bbbd50ba4",
+      "records": 84
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 154883,
           "encoding": "json",
           "path": "derived/variants/0013/13792/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "1d031ddaec8eec3e4ed51255ad2985d360443ee98ee0373a4c0d21869d49c357",
+          "records": 1,
+          "sha256": "5b5efa64d43ab4f7c116c174fae0ab0cd5c6ad95565cca8d80cd21e24d24c584"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "1d031ddaec8eec3e4ed51255ad2985d360443ee98ee0373a4c0d21869d49c357",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "ff9bd60c59a3f9cd42399c6ef87154bb72dac04ea590ca67c6dd712b0132f6b3",
+    "identityFingerprint": "09b9955c6592ff64d25ca400a1d9a69b2ce4f57441a1317f00b3eb36d80a845c",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -2114,37 +2478,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "4d11169c896233b1ca771c9dd08822816b67df9a545cd8c304c6894648b42a67",
+        "recordDigest": "bd6451000896178194a53015948daafe3e530b4e582dff7750ebb6ff1c508dc8",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "6eb6b0341ec4e7ae480aed22393a464ef790717b27e873bcbe53ae615501526d",
-        "records": 4,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "dfabb43d085a590bd1b1c5f7764277f1013a7b241672562f4da1ade2c0108320",
-        "records": 73,
+        "recordDigest": "d93b0aeb971bee2229949fe59b47bdbf3e0236c799a166b15b19e3af22005ff2",
+        "records": 84,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -2154,8 +2508,8 @@
         "backingDataset": "ipc",
         "collectionSchema": "omega.sigmascope.observation.ipc.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "ea9c472c65fd8ec598c255e597e436d8f746f5bf6c66dac9db2ae2f5d1b9fa09",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2174,8 +2528,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "3a1d88ac4ebcc8395d1485b66fa4c32c9d85de99bc2f2a0816d4b2f62b6c0879",
-        "records": 20000,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2184,8 +2538,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "9059aa3b61e209861f78c8896948c94f479290cd935f3bba22c842cdb4e76121",
-        "records": 270,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2194,8 +2548,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "65d4086477cd82f5f1429675163f00f2e85c7bda908dda69da57f499eec61a48",
-        "records": 3604,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2214,18 +2568,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
-        "srlEligible": true
-      },
-      "nativeImports": {
-        "backingDataset": "nativeImports",
-        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
-        "completeness": "retained",
-        "recordDigest": "8bd4ad8b99d5bbbdac12055dbb2437f96b60c712a59f4635d128b63e49262096",
-        "records": 7,
+        "recordDigest": "3f1d35bd8448cba1d67948f661bdd59fbcd423e62608083a433c5dbe82220fce",
+        "records": 104,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2234,8 +2578,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "8c6698cf3818ca3f136e919d279070d5943acdb8c10f38ac48db7fdc49c9d623",
-        "records": 11,
+        "recordDigest": "52e2008449d35f995a095422ddd0dd198f18dbfa619ca18192039f3fbc712e2d",
+        "records": 4,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2254,28 +2598,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "f995118b069200509cfdb14791180bd8633c76d2e730210bbf14ad60613cc01e",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "7e75b46e8dbadae4176f57a007f84794cf5c933bb883856e178124a4db0b013b",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "193ce0392ea9fd7ac527c8b6a99ace04a3f97b6b32c45b3d4a63afdc266ad191",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "c6a017a54252872ac6f4a043af2ffa90d6afef1e63711c1d82ff9285a8fa0b3d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "6d16b9028c5ae76a91a6416e7bffd602d7a2bb8b183f7851c40f820cb0fd1910",
+        "records": 134,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "3d1e9dc716925b0e99bc7220043574ff3d4ff2493573fb76c794a9c38c14e96a",
+        "records": 10,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "987db2a538480350f4c5f6a4274e9ede0c5960b99a123eeb604c3f2e0a04d09b",
-        "records": 2,
+        "recordDigest": "56739a623b758cec9b786cc75316bde9847f61cabaa60a0ea2a85535754decdc",
+        "records": 20,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "4d3a94c13836b0c05b43f94d08bbc2d3c3dea08c8a5dac0d7d409b482a1f5a09",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "a7fc659d15113da58520093420a04a5668de4827d8ccb9a61824213e0105e888",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "667fd0d0b6dd9fe3c5aafd20a6ca5a7bab027072fe7d2a4ba844c92b016305fb",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "06cb3e35707e95f328cba4011e0084fcc71d5a8a23a2c5fb581ffc697e3baf09",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "a603d103a7f7f2c968aa7779ec7beec54af89718debaa7207451efc081b27bee",
-        "records": 159,
+        "recordDigest": "fbf634e064350f2a5e4769db8edbdf4f0e3e2ef7fdeea645c95d52c0a0388012",
+        "records": 2,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -2284,20 +2748,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-1b54d98d032cc5c02affdcf75a6b9e46347cd0cbfdf088d12c3265dbfd7255a7",
+    "observationDigest": "obs-38390292b32f7be59d988c94c9818908842f30373a53972921642a21d94c9644",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -2369,21 +2823,21 @@
     "contractRevision": "projection-contract-v1-f507480528a1e6af",
     "outputs": {
       "automation": {
-        "recordDigest": "d56d01d1574df18ba080500dadbce318c9cae3ae13c4e0485dea8006cc2b6deb",
-        "records": 3
+        "recordDigest": "62b5cfbc17d02d56baf986020e77ec45666435a1a7d0ff1a57ae01c62e9d50c0",
+        "records": 2
       },
       "behaviorConsistency": {
-        "recordDigest": "54e1387cd79cc9488f72f83447831c352d12a2a4de6f361bda17a6db11f36d47",
+        "recordDigest": "efa2e33a5eba0aa6b7417fb2d9c4d0d4778e2f1d2aa689e7979bd3763cadb194",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "1a3f3a39cf954e35c209baa368b107125745b82a6c162a6f84b1a18b777bb975",
-        "records": 16
+        "recordDigest": "c7d5786ec5a4616de4ca51d035bab24d003233298dcab4cdf764f26b14e8b554",
+        "records": 19
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "e5614b103e257d93a0a9259211f4aea5f3bf1007b58de2da8d565504dfa1d864",
-        "records": 24
+        "recordDigest": "bc07e40c1e4daf35da7b3151e71f1a641dc4ebd82622a2da8bc9c7298b6506d1",
+        "records": 30
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -2418,22 +2872,24 @@
       "Game memory/hooks",
       "Game UI callback/control",
       "Hard-coded external file access",
+      "Indirect automation via IPC",
       "Native/PInvoke",
       "Network access",
       "Process execution",
       "Process memory access",
+      "Teleport/travel control via IPC",
       "World/NPC interaction control"
     ],
-    "caution_count": 15,
+    "caution_count": 20,
     "critical_count": 0,
     "error": "",
     "high_count": 2,
     "highest_severity": "high",
-    "informational_count": 7,
+    "informational_count": 8,
     "plugin_id": 676,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 8,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "artifactBytes": 398196,
       "artifactIdentity": {
@@ -2441,10 +2897,10 @@
         "artifactBytes": 398196,
         "artifactSha256": "a0e46fb3cc33a5f6adc2cc97fba2eb1c20fc6f460b91056c4f0856d7dbab9d1b",
         "catalogAssemblyVersion": "1.0.1.6",
-        "manifestInternalName": "Buildingway",
+        "manifestInternalName": "",
         "manifestPath": "Buildingway.json",
         "manifestRepositoryUrl": "",
-        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/120/versions/1.0.1.6.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20260918%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260918T184916Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=455e81e45bc815fed113d94d4040c383cdbae558593033d93f9d0d9a36598d44",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -2453,26 +2909,18 @@
         "capabilities": [
           {
             "automationLevel": "character-automation",
-            "capabilityId": "game.character.interact",
-            "confidence": "high",
-            "indirect": false,
-            "label": "World/NPC interaction control",
+            "capabilityId": "automation.via_ipc",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Indirect automation via IPC",
             "reachable": false
           },
           {
             "automationLevel": "character-automation",
-            "capabilityId": "game.character.target",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Character target control",
-            "reachable": false
-          },
-          {
-            "automationLevel": "ui-automation",
-            "capabilityId": "game.ui.callback",
-            "confidence": "high",
-            "indirect": false,
-            "label": "Game UI callback/control",
+            "capabilityId": "game.character.teleport",
+            "confidence": "medium",
+            "indirect": true,
+            "label": "Teleport/travel control via IPC",
             "reachable": false
           }
         ],
@@ -2480,6 +2928,18 @@
       },
       "behaviorConsistency": {
         "capabilities": [
+          {
+            "category": "automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "automation.via_ipc",
+            "label": "Indirect automation via IPC",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
           {
             "category": "process",
             "declared": false,
@@ -2565,6 +3025,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -2577,6 +3049,18 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-automation",
             "declared": false,
             "declaredDestinations": [],
@@ -2584,6 +3068,18 @@
             "expected": null,
             "id": "game.ui.callback",
             "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -2620,18 +3116,6 @@
             "expected": null,
             "id": "network.http",
             "label": "HTTP/network client access",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
-          {
-            "category": "network",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "network.outbound",
-            "label": "Outbound network access",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -2681,164 +3165,44 @@
           "observed": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "puni.sh",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
           "observedWithoutProfile": [
             {
               "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
                 "recognised-platform"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "puni.sh",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
@@ -2859,11 +3223,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 16,
-          "observedConcreteDestinationCount": 8,
-          "observedDestinationWithoutProfileCount": 8,
+          "observedCapabilityCount": 19,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 16,
+          "observedWithoutProfileCount": 19,
           "unexplainedDestinationCount": 0
         }
       },
@@ -2884,13 +3248,16 @@
         "Game memory/hooks",
         "Game UI callback/control",
         "Hard-coded external file access",
+        "Indirect automation via IPC",
         "Native/PInvoke",
         "Network access",
         "Process execution",
         "Process memory access",
+        "Teleport/travel control via IPC",
         "World/NPC interaction control"
       ],
       "capabilityIds": [
+        "automation.via_ipc",
         "behavior.download-execute",
         "dynamic.code",
         "filesystem.external-path",
@@ -2898,209 +3265,95 @@
         "filesystem.write",
         "game.character.interact",
         "game.character.target",
+        "game.character.teleport",
         "game.memory.read",
+        "game.state.read",
         "game.ui.callback",
+        "game.ui.read",
         "memory.process",
         "native.interop",
         "network.http",
-        "network.outbound",
         "privacy.clipboard",
         "process.execute",
         "process.inspect"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 15,
+        "caution": 20,
         "critical": 0,
         "high": 2,
-        "informational": 7
+        "informational": 8
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "high",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 73,
-          "exactVersionObservedCount": 71,
+          "dependencyCount": 11,
+          "exactVersionObservedCount": 6,
           "families": {
-            "managed-assembly": 70,
-            "native": 2,
-            "nuget": 1
+            "ipc": 1,
+            "nuget": 8,
+            "project": 2
           },
-          "fingerprint": "90e40ddbd6a96d1ef4440c36823508a935061b3d1138d7b55ef77cfd6b438e76",
+          "fingerprint": "f63605d441474c7f449d5ac1ea8b16d2d0b362da71477c2bb21ea60175e644fa",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
-            "externalOrRuntimeResolved": 7,
+            "externalOrRuntimeResolved": 0,
             "platformLibrary": 0
           },
-          "nativeRelationships": [
+          "nativeRelationships": [],
+          "pluginRelationships": [
             {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayBack",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayBack",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igBringWindowToDisplayFront",
-              "library": "cimgui",
-              "managedName": "igBringWindowToDisplayFront",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igClosePopupToLevel",
-              "library": "cimgui",
-              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igFindWindowDisplayIndex",
-              "library": "cimgui",
-              "managedName": "igFindWindowDisplayIndex",
-              "targetPath": ""
-            },
-            {
-              "confidence": "Medium",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 0,
-              "directManagedCallObserved": false,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "igGetCurrentWindow",
-              "library": "cimgui",
-              "managedName": "igGetCurrentWindow",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetOpenFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetOpenFileName",
-              "targetPath": ""
-            },
-            {
-              "confidence": "VeryHigh",
-              "consumerPath": "ECommons.dll",
-              "directManagedCallCount": 1,
-              "directManagedCallObserved": true,
-              "disposition": "external-or-runtime-resolved",
-              "entryPoint": "GetSaveFileName",
-              "library": "Comdlg32.dll",
-              "managedName": "GetSaveFileName",
-              "targetPath": ""
+              "confidence": "Low",
+              "kind": "ipc",
+              "name": "Lifestream.ExecuteCommand",
+              "origin": "source",
+              "relationship": "unknown",
+              "requirement": "soft",
+              "versionRequirement": ""
             }
           ],
-          "pluginRelationships": [],
           "requirements": {
-            "bundled": 4,
-            "observed": 68,
-            "required": 1
+            "required": 10,
+            "soft": 1
           },
           "schema": "omega.sigmascope.component-summary.v1",
-          "versionUnknownCount": 0
+          "versionUnknownCount": 2
         },
         "coverage": {
-          "analyzed": 72,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
-          "externalPlugin": 0,
-          "known": 1,
+          "externalPlugin": 1,
+          "known": 10,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 4,
-            "observed": 68,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 1,
-            "soft": 0,
+            "required": 10,
+            "soft": 1,
             "unknown": 0
           },
-          "total": 73
+          "total": 11
         },
         "endpointSummary": {
-          "concreteDestinationCount": 11,
+          "concreteDestinationCount": 2,
           "destinationsUndetermined": false,
-          "hostCount": 8,
+          "hostCount": 2,
           "hosts": [
             {
               "classifications": [
-                "unrecognised-host"
+                "recognised-platform",
+                "source-reference"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
-              "host": "crypto.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "discord.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "donate.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "explore.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 4,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "github.com",
-              "literalCount": 4,
+              "literalCount": 3,
               "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             },
             {
@@ -3108,158 +3361,62 @@
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "puni.sh",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "subscribe.nightmarexiv.org",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "unrecognised-host"
-              ],
-              "concreteCount": 1,
-              "confidence": "Low",
-              "host": "www.patreon.com",
-              "literalCount": 1,
-              "originTypes": [
-                "artifact-binary-string"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 11,
+          "literalCount": 4,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
         "limits": {
-          "droppedByCollection": {
-            "managedCallSites": 520
-          },
-          "truncated": true
+          "droppedByCollection": {},
+          "truncated": false
         },
         "networkEndpoints": [
           {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "crypto.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://crypto.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "discord.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://discord.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "donate.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://donate.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "explore.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://explore.nightmarexiv.org/"
-          },
-          {
             "classification": "recognised-platform",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "source hosting",
-            "url": "https://github.com/Abyeon/AbeUtils"
+            "url": "https://github.com/Abyeon/Buildingway"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Abyeon/Anyder"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Etheirys/Brio/blob/<redacted>/Brio/Core/MathHelpers.cs"
           },
           {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "High",
             "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/Abyeon/Buildingway.git"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/NightmareXIV/ECommons"
+            "origin": "source",
+            "originType": "source-code",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Infiziert90/ChatTwo/blob/<redacted>/ChatTwo/Util/ImGuiUtil.cs"
           },
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "puni.sh",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://puni.sh/api/repository/kawaii"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "subscribe.nightmarexiv.org",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://subscribe.nightmarexiv.org/"
-          },
-          {
-            "classification": "unrecognised-host",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "www.patreon.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "unrecognised public host",
-            "url": "https://www.patreon.com/NightmareXIV"
           }
         ]
       },
@@ -3285,7 +3442,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
-        "attemptId": "attempt-v2-7b6c4d622a6f645d",
+        "attemptId": "attempt-v2-eb75937b4c6d9245",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -3294,11 +3451,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-13792",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13792",
         "queueSeedRevision": "queue-seed-v2-e0394d7f11fa62ac28b9",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
@@ -3306,11 +3463,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
-        "targetFingerprint": "artifact-target-v2-655a7537b00bd9d1f6b1",
+        "targetFingerprint": "source-target-v2-c843b959342bd137edd2",
         "variantId": 13792,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-18T18:49:16Z",
+      "scannedAtUtc": "2026-09-18T19:42:12Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -3352,20 +3509,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "version_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 70,
+          "coverageLabel": "Version-correlated source",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "master",
         "candidates": [
           "https://github.com/Abyeon/Buildingway"
         ],
-        "commit": "",
+        "commit": "5f4ca39621224be3c504a689c2c763aad4fb3963",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "e90e4473add07f63bc37cad2bd8d7dc1c95b39853f0590c78cd9056cf73cc68e"
           }
         },
         "developerProfile": {
@@ -3373,28 +3535,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "1.0.1.6",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "master",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": true
+        },
         "repository": "https://github.com/Abyeon/Buildingway",
-        "treeSha256": ""
+        "treeSha256": "72d201d81ec7624bc3dc6c769aea8943b8a5836a"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 8,
-    "scanned_at_utc": "2026-09-18T18:49:16Z",
+    "scan_id": 4204,
+    "scanned_at_utc": "2026-09-18T19:42:12Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "5f4ca39621224be3c504a689c2c763aad4fb3963",
     "source_id": 594,
     "source_repository": "https://github.com/Abyeon/Buildingway",
     "source_to_binary_verified": 0,

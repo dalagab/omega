@@ -1,0 +1,655 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: ProtectedData.Unprotect",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Crypto.KeyVault.Unprotect+0x5: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.TryProtectOrUnprotect+0x95: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x29: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://localhost/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.ac0c95776fce",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: s://github.com/Kodie0/AlphaChannelKodie.git",
+      "artifact:AlphaChannel.Plugin.dll: s://alphachannel.duckdns.org",
+      "artifact:AlphaChannel.Plugin.dll: p://",
+      "artifact:AlphaChannel.Plugin.dll: s://",
+      "artifact:AlphaChannel.Plugin.dll: s://www.patreon.com/alphachannel",
+      "artifact:AlphaChannel.Plugin.dll: s://ko-fi.com/alphachannel",
+      "artifact:AlphaChannel.Plugin.dll: s://www.youtube.com",
+      "artifact:AlphaChannel.Plugin.dll: p://194.113.211.29:5001"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: Dalamud.Hooking",
+      "metadata:AlphaChannel.Plugin.dll: HookFromAddress",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Video.DxHandler.HookPresent+0x43: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:AlphaChannel.Plugin.dll: Dalamud.Hooking",
+      "artifact:AlphaChannel.Plugin.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:AlphaChannel.Plugin.dll: DllImportAttribute",
+      "metadata:AlphaChannel.Plugin.dll: GetProcAddress",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Video.WineEnvironment.Detect+0x1a: call AlphaChannel.Plugin.Video.WineEnvironment.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "il:AlphaChannel.Plugin.dll:NativeLoader.Register+0x38: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport",
+      "artifact:AlphaChannel.Plugin.dll: GetProcAddress",
+      "metadata:SharpDX.D3DCompiler.dll: DllImportAttribute",
+      "metadata:SharpDX.Direct3D11.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.21f5fd2fb162",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/XML/1998/namespace"
+    ],
+    "rule_id": "network.endpoint.insecure-http.2a69784840b2",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl05"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3b7a15fc0c83",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/1998/Math/MathML"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3b7db106ca09",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.54ff7167f15f",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.sectigo.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.635e7622e035",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.sectigo.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/1999/xhtml"
+    ],
+    "rule_id": "network.endpoint.insecure-http.68e643305864",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicTimeStampingRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6b75d89ae9ba",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/2000/svg"
+    ],
+    "rule_id": "network.endpoint.insecure-http.75aa47264e79",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.comodoca.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7af642f7bbc6",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.comodoca.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.ProtectedData.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/TR/REC-html40/strict.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8be69791eb70",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/TR/html4/strict.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9b4717f29e9d",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/1999/xlink"
+    ],
+    "rule_id": "network.endpoint.insecure-http.adb18f0f3741",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://ocsp.usertrust.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e7b69f6dd1e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.usertrust.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f7943996d835",
+    "severity": "caution",
+    "title": "Endpoint: www.ibm.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f9f8662c9e9e",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public IP endpoint; no host purpose or reputation can be inferred from a static scan. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: http://194.113.211.29:5001/"
+    ],
+    "rule_id": "network.endpoint.public-ip-literal.4be1349d798b",
+    "severity": "caution",
+    "title": "Endpoint: 194.113.211.29"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://img.youtube.com/vi/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.03c6222da101",
+    "severity": "caution",
+    "title": "Endpoint: img.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://www.gstatic.com/youtube/img/tvfilm/clapperboard_profile.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.20f21b23d65d",
+    "severity": "caution",
+    "title": "Endpoint: www.gstatic.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://www.youtube.com/iframe_api"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.36c9f4084a7e",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://ko-fi.com/alphachannel"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.37721e0aa0b9",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://www.twitch.tv/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3e7dbbde1f1d",
+    "severity": "caution",
+    "title": "Endpoint: www.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://alphachannel.duckdns.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.75c16eed5fc7",
+    "severity": "caution",
+    "title": "Endpoint: alphachannel.duckdns.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://www.patreon.com/alphachannel"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7a5c5d6f69fa",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://www.youtube.com/channel/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7cfd9b057909",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://www.youtube.com/s/player/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.85955c9f2f1c",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://sectigo.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9c9763950252",
+    "severity": "caution",
+    "title": "Endpoint: sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://api.dailymotion.com/videos"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c736a2dd0189",
+    "severity": "caution",
+    "title": "Endpoint: api.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://www.youtube.com/playlist"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c87f6ea6b295",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://www.dailymotion.com/video/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc5ec2c99ac1",
+    "severity": "caution",
+    "title": "Endpoint: www.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://buildbot.libretro.com/nightly/windows/x86_64/latest/snes9x_libretro.dll.zip"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f0b2b4a65597",
+    "severity": "caution",
+    "title": "Endpoint: buildbot.libretro.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://www.youtube.com/",
+      "artifact:YoutubeExplode.dll: https://www.youtube.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f98c903e8640",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: System.Net.Sockets",
+      "metadata:AlphaChannel.Plugin.dll: Socket.Connect",
+      "il:AlphaChannel.Plugin.dll:<RunAsync>d__67.MoveNext+0x15f: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:AlphaChannel.Plugin.dll:<GetNtpUtcAsync>d__30.MoveNext+0xd4: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:AlphaChannel.Plugin.dll:<GetNtpUtcAsync>d__30.MoveNext+0x10c: callvirt System.Net.Sockets.Socket.set_ReceiveTimeout: System.Net.Sockets",
+      "il:AlphaChannel.Plugin.dll:<GetNtpUtcAsync>d__30.MoveNext+0x11e: callvirt System.Net.Sockets.Socket.ConnectAsync: System.Net.Sockets",
+      "il:AlphaChannel.Plugin.dll:<GetNtpUtcAsync>d__30.MoveNext+0x11e: callvirt System.Net.Sockets.Socket.ConnectAsync: Socket.Connect",
+      "il:AlphaChannel.Plugin.dll:<GetNtpUtcAsync>d__30.MoveNext+0x191: callvirt System.Net.Sockets.Socket.SendAsync: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: System.Diagnostics.Process",
+      "metadata:AlphaChannel.Plugin.dll: ProcessStartInfo",
+      "metadata:AlphaChannel.Plugin.dll: ShellExecute",
+      "metadata:AlphaChannel.Plugin.dll: Process.Start",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.MainWindow.DrawSupportLink+0x70: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.MainWindow.DrawSupportLink+0x70: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.MainWindow.DrawSupportLink+0x77: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.MainWindow.DrawSupportLink+0x77: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:YoutubeExplode.dll: Microsoft.Win32.Registry",
+      "metadata:YoutubeExplode.dll: RegistryKey",
+      "metadata:YoutubeExplode.dll: RegOpenKey",
+      "il:YoutubeExplode.dll:Deorcify.Initializer.GetCurrentUserRegistryValue+0xf: call Deorcify.<Initializer_Utils>F354D9AEA281B755678A0FEC7CDE4C1AE3B7168E929D0A01E4825FFECD03163BD__NativeMethods.RegOpenKeyEx -> advapi32.dll!RegOpenKeyEx: RegOpenKey",
+      "il:YoutubeExplode.dll:PowerKit.Extensions.RegistryExtensions.ContainsSubKey+0x3: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:YoutubeExplode.dll:PowerKit.Extensions.RegistryExtensions.ContainsSubKey+0x3: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "artifact:YoutubeExplode.dll: Microsoft.Win32.Registry",
+      "artifact:YoutubeExplode.dll: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: FileStream",
+      "metadata:AlphaChannel.Plugin.dll: Directory.CreateDirectory",
+      "metadata:AlphaChannel.Plugin.dll: WriteAllText",
+      "metadata:AlphaChannel.Plugin.dll: File.Move",
+      "metadata:AlphaChannel.Plugin.dll: File.Delete",
+      "metadata:AlphaChannel.Plugin.dll: Directory.Delete",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.MainWindow.TryApplyCustomHomeHeroFromPath+0xd5: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.MainWindow.TryApplyCustomBackgroundFromPath+0xd5: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+    "evidence_json": [],
+    "rule_id": "network.endpoint.dynamic-or-undetermined",
+    "severity": "informational",
+    "title": "Network destination undetermined"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2db713bce90d",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:YoutubeExplode.dll: https://github.com/Tyrrrz/YoutubeExplode"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e96a4aeb2e4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.53664bac3bec",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: https://github.com/AngleSharp/AngleSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6b451201cf63",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SharpCompress.dll: https://github.com/dotnet/runtime/issues/24271"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8ccb035b194a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.Drawing.dll: https://github.com/SixLabors/ImageSharp.Drawing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9234edb5ef5f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.Fonts.dll: https://github.com/SixLabors/Fonts"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9263e244362c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JsonExtensions.dll: https://github.com/Tyrrrz/JsonExtensions"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a83aad59cc15",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.ProtectedData.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AlphaChannel.Plugin.dll: https://github.com/Kodie0/AlphaChannelKodie.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e1265ff745a6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BouncyCastle.Cryptography.dll: https://github.com/bcgit/bc-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fe92c1786ba7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:AlphaChannel.Plugin.dll: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Video.Resources..ctor+0x41: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Video.Resources..ctor+0x51: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Video.ThumbnailCache..ctor+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Auth.AuthClient.get_Http+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Auth.AuthClient.get_Http+0x16: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Auth.DmClient.Http+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AlphaChannel.Plugin.dll:AlphaChannel.Plugin.Auth.DmClient.Http+0x17: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
