@@ -1,0 +1,208 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:PmpShare.Plugin.dll: s://github.com/papou/pmpshare",
+      "artifact:PmpShare.Plugin.dll: s://pmpshare-api.contact-theankh.workers.dev",
+      "artifact:PmpShare.Plugin.dll: C:\\path\\to\\mod.pmp",
+      "artifact:PmpShare.Plugin.dll: C:\\Users\\you\\Desktop\\PmpShare"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: s://pmpshare-api.contact-theankh.workers.dev",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: C:\\path\\to\\mod.pmp",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: C:\\Users\\you\\Desktop\\PmpShare"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:NSec.Cryptography.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\android-arm\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes\\android-arm64\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes\\android-x64\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes\\android-x86\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0575a452af0c",
+    "severity": "caution",
+    "title": "Endpoint: android.googlesource.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:client/PmpShare.Plugin/Configuration.cs: https://pmpshare-api.contact-theankh.workers.dev/",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: https://pmpshare-api.contact-theankh.workers.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.962a9f08f74d",
+    "severity": "caution",
+    "title": "Endpoint: pmpshare-api.contact-theankh.workers.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NSec.Cryptography.dll: https://nsec.rocks/docs/install"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b001354788ad",
+    "severity": "caution",
+    "title": "Endpoint: nsec.rocks"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PmpShare.Plugin.dll: https://pmpshare-api.contact-theankh.workers.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cd6f7b87da5d",
+    "severity": "caution",
+    "title": "Endpoint: pmpshare-api.contact-theankh.workers.dev"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:PmpShare.Plugin.dll: System.Diagnostics.Process",
+      "metadata:PmpShare.Plugin.dll: ProcessStartInfo",
+      "metadata:PmpShare.Plugin.dll: ShellExecute",
+      "metadata:PmpShare.Plugin.dll: Process.Start",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x2c: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x2c: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x33: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x33: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: Process.Start",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: ProcessStartInfo",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: ShellExecute"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:PmpShare.Plugin.dll: FileStream",
+      "metadata:PmpShare.Plugin.dll: File.Delete",
+      "metadata:PmpShare.Plugin.dll: Directory.Delete",
+      "metadata:PmpShare.Plugin.dll: Directory.CreateDirectory",
+      "metadata:PmpShare.Plugin.dll: File.Move",
+      "metadata:PmpShare.Plugin.dll: WriteAllBytes",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.CreatePmpFromDirectory+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.TryDelete+0x9: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "source:client/PmpShare.Plugin/Services/TransferCrypto.cs: WriteAllBytes",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: FileStream",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: FileMode.Create",
+      "source:client/PmpShare.Plugin/Windows/MainWindow.cs: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "source:client/PmpShare.Plugin/PmpShare.Plugin.csproj: https://github.com/papou/pmpshare"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5791e169aa0d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PmpShare.Plugin.dll: https://github.com/papou/pmpshare"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.98959edbe0a0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NSec.Cryptography.dll: https://github.com/ektrah/nsec.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.de48d37f13f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:PmpShare.Plugin.dll: System.Net.Http.HttpClient",
+      "il:PmpShare.Plugin.dll:PmpShare.Plugin.Plugin..ctor+0x11: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:PmpShare.Plugin.dll:<DownloadBlobAsync>d__6.MoveNext+0x47: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:PmpShare.Plugin.dll:<GetMetadataAsync>d__5.MoveNext+0x44: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\android-arm\\native\\libsodium.so",
+      "runtimes\\android-arm64\\native\\libsodium.so",
+      "runtimes\\android-x64\\native\\libsodium.so",
+      "runtimes\\android-x86\\native\\libsodium.so",
+      "runtimes\\linux-arm\\native\\libsodium.so",
+      "runtimes\\linux-arm64\\native\\libsodium.so",
+      "runtimes\\linux-musl-arm\\native\\libsodium.so",
+      "runtimes\\linux-musl-arm64\\native\\libsodium.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
