@@ -1,0 +1,93 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x35: call Ghost.Company.CompanyClicks.Fire",
+      "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x6f: call Ghost.Company.CompanyClicks.Fire",
+      "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0xfb: call Ghost.Company.CompanyClicks.Fire",
+      "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x115: call Ghost.Company.CompanyClicks.Fire"
+    ],
+    "rule_id": "automation.game.ui.synthetic_click",
+    "severity": "caution",
+    "title": "Synthetic game UI interaction"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Ghost.Core.dll: C:\\Users\\adam\\source\\repos\\Ghost\\src\\Ghost.Core\\obj\\Release\\net10.0-windows\\Ghost.Core.pdb",
+      "artifact:Ghost.Gather.dll: s://youtu.be/5KKdB9TGjPk",
+      "artifact:Ghost.Gather.dll: s://youtu.be/z96iwqnepV4",
+      "artifact:Ghost.Gather.dll: s://youtu.be/d8AM8-vkLOc",
+      "artifact:Ghost.Gather.dll: s://youtu.be/IqjYBT_iHRs",
+      "artifact:Ghost.Gather.dll: s://youtu.be/W2kr4UxIGUw",
+      "artifact:Ghost.Gather.dll: s://youtu.be/iX3oSCX1FsI",
+      "artifact:Ghost.Gather.dll: s://youtu.be/I66f6D_VYYo"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Ghost.dll: SigScanner",
+      "metadata:Ghost.dll: Dalamud.Hooking",
+      "metadata:Ghost.dll: HookFromAddress",
+      "il:Ghost.dll:Ghost.Services.DutyHost.ArmConvenience+0x76: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:Ghost.dll:Ghost.Services.DutyHost.TryQueueNovice+0x1d: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:Ghost.dll:Ghost.Services.GatherHost.ArmBiteHook+0x4d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:Ghost.dll: Dalamud.Hooking",
+      "artifact:Ghost.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Ghost.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Ghost.dll: System.Diagnostics.Process",
+      "metadata:Ghost.dll: ProcessStartInfo",
+      "metadata:Ghost.dll: ShellExecute",
+      "metadata:Ghost.dll: Process.Start",
+      "il:Ghost.dll:Ghost.Services.GameWindowKeys.TryFindGameWindow+0x4: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:Ghost.dll:Ghost.Services.GameWindowKeys.TryFindGameWindow+0x9: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "artifact:Ghost.dll: System.Diagnostics.Process",
+      "artifact:Ghost.dll: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Ghost.Core.dll: FileStream",
+      "metadata:Ghost.Core.dll: Directory.CreateDirectory",
+      "metadata:Ghost.Core.dll: WriteAllText",
+      "il:Ghost.Core.dll:Ghost.Core.Tracing.TraceWriter.OpenFile+0x11: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Ghost.Core.dll:Ghost.Core.Tracing.TraceWriter.OpenFile+0xcd: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Ghost.Core.dll:Ghost.Core.Config.GhostConfigStore.Save+0x1b: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Ghost.Core.dll:Ghost.Core.Config.GhostConfigStore.Save+0x62: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:Ghost.Core.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
