@@ -1,9 +1,9 @@
 {
   "analysis": {
-    "analysisId": "12d4fc502c42df9f93fa6f3e82a00ee7f6c146dc5acf2d48b21669b58b04073e",
+    "analysisId": "1f3149498b89324168deba8690393e76386e7886fe765a903b315e5677685524",
     "artifactSha256": "d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912",
-    "path": "artifacts/d3/d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912/analyses/12d4fc502c42df9f93fa6f3e82a00ee7f6c146dc5acf2d48b21669b58b04073e",
-    "recordCount": 9709
+    "path": "artifacts/d3/d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912/analyses/1f3149498b89324168deba8690393e76386e7886fe765a903b315e5677685524",
+    "recordCount": 338
   },
   "current": {
     "artifact_channel": "stable",
@@ -20,19 +20,29 @@
       "Hard-coded external file access",
       "Network access"
     ],
-    "caution_count": 3,
+    "caution_count": 6,
     "critical_count": 0,
     "error": "",
     "findings_json": [
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:DamageInfoPlugin.dll: https://docs.google.com/spreadsheets/d/<redacted>/gviz/tq"
         ],
         "ruleId": "network.endpoint.unrecognised-host.b1db178e0a9b",
+        "severity": "caution",
+        "title": "Endpoint: docs.google.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: source-code; evidence confidence: High. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "source-code",
+        "evidence": [
+          "source:DamageInfoPlugin/Positionals/PositionalManager.cs: https://docs.google.com/spreadsheets/d/<redacted>/gviz/tq"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.7a63b469d7ff",
         "severity": "caution",
         "title": "Endpoint: docs.google.com"
       },
@@ -54,11 +64,34 @@
         "title": "Game memory/signature hooking"
       },
       {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "source:DamageInfoPlugin/DalamudApi.cs: SigScanner",
+          "source:DamageInfoPlugin/DamageInfoPlugin.cs: Dalamud.Hooking",
+          "source:DamageInfoPlugin/DamageInfoPlugin.cs: SigScanner",
+          "source:DamageInfoPlugin/DamageInfoPlugin.cs: Hook<"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
         "category": "filesystem",
         "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
         "evidence": [
           "artifact:DamageInfoPlugin.dll: s://github.com/perchbirdd/DamageInfoPlugin.git",
           "artifact:DamageInfoPlugin.dll: s://docs.google.com/spreadsheets/d/1z2skn_jokyj02Qv2GPEs6HSmAZVLiw2LbwQxkXPjiEs/gviz/tq?tqx=out:csv&sheet=main1"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "source:DamageInfoPlugin/Positionals/PositionalManager.cs: s://docs.google.com/spreadsheets/d/1z2skn_jokyj02Qv2GPEs6HSmAZVLiw2LbwQxkXPjiEs/gviz/tq?tqx=out:csv&sheet=main1"
         ],
         "ruleId": "filesystem.external-path",
         "severity": "caution",
@@ -78,9 +111,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:CsvHelper.dll: https://github.com/JoshClose/CsvHelper"
         ],
@@ -90,9 +121,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "Low",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-binary-string",
         "evidence": [
           "artifact:DamageInfoPlugin.dll: https://github.com/perchbirdd/DamageInfoPlugin.git"
         ],
@@ -102,9 +131,7 @@
       },
       {
         "category": "network-endpoint",
-        "confidence": "VeryHigh",
         "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
-        "endpointOrigin": "artifact-config",
         "evidence": [
           "artifact:DamageInfoPlugin.json: https://github.com/perchbirdd/DamageInfoPlugin"
         ],
@@ -123,14 +150,24 @@
         "ruleId": "filesystem.write",
         "severity": "informational",
         "title": "Filesystem write access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "source:DamageInfoPlugin/Positionals/PositionalManager.cs: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
       }
     ],
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 5,
+    "informational_count": 6,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "artifactBytes": 136637,
       "artifactIdentity": {
@@ -138,10 +175,10 @@
         "artifactBytes": 136637,
         "artifactSha256": "d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912",
         "catalogAssemblyVersion": "2.4.1.7",
-        "manifestInternalName": "DamageInfoPlugin",
+        "manifestInternalName": "",
         "manifestPath": "DamageInfoPlugin.json",
-        "manifestRepositoryUrl": "https://github.com/perchbirdd/DamageInfoPlugin",
-        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/edf2e6ff596ecaff0e7620061f1121bc59897526/stable/DamageInfoPlugin/latest.zip",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -152,18 +189,6 @@
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -201,6 +226,30 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.input.read",
+            "label": "Game input/key state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -208,6 +257,42 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -247,21 +332,10 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "docs.google.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "VeryHigh",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -270,21 +344,10 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "docs.google.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "VeryHigh",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -305,11 +368,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 7,
-          "observedConcreteDestinationCount": 2,
-          "observedDestinationWithoutProfileCount": 2,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 1,
+          "observedDestinationWithoutProfileCount": 1,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 7,
+          "observedWithoutProfileCount": 11,
           "unexplainedDestinationCount": 0
         }
       },
@@ -322,33 +385,36 @@
         "Network access"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.chat.read",
+        "game.input.read",
         "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
+        "native.interop",
         "network.http",
         "network.outbound"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 6,
         "critical": 0,
         "high": 0,
-        "informational": 5
+        "informational": 6
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 25,
-          "exactVersionObservedCount": 25,
+          "dependencyCount": 4,
+          "exactVersionObservedCount": 4,
           "families": {
-            "managed-assembly": 24,
-            "nuget": 1
+            "nuget": 4
           },
-          "fingerprint": "5be669f618ecd23a6bda77e03c387c6fd4d76377c46a7aa2b0929aa6b11e72c4",
+          "fingerprint": "7df858e1bfed66624a9d5bb90d010096ae012d052c061e0d08913b0492fafe45",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -357,62 +423,47 @@
           "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 2,
-            "observed": 22,
-            "required": 1
+            "required": 4
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 24,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 1,
+          "known": 4,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 2,
-            "observed": 22,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 1,
+            "required": 4,
             "soft": 0,
             "unknown": 0
           },
-          "total": 25
+          "total": 4
         },
         "endpointSummary": {
-          "concreteDestinationCount": 4,
+          "concreteDestinationCount": 1,
           "destinationsUndetermined": false,
-          "hostCount": 2,
+          "hostCount": 1,
           "hosts": [
             {
               "classifications": [
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "docs.google.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 3,
-              "confidence": "VeryHigh",
-              "host": "github.com",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 1,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -424,42 +475,12 @@
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "docs.google.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://docs.google.com/spreadsheets/d/<redacted>/gviz/tq"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/JoshClose/CsvHelper"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "source hosting",
-            "url": "https://github.com/perchbirdd/DamageInfoPlugin"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/perchbirdd/DamageInfoPlugin.git"
           }
         ]
       },
@@ -485,7 +506,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
-        "attemptId": "attempt-v2-2862ceb69cfae4fd",
+        "attemptId": "attempt-v2-a85f11a9459f7e7f",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -494,11 +515,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-13887",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13887",
         "queueSeedRevision": "queue-seed-v2-e0394d7f11fa62ac28b9",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
@@ -506,11 +527,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
-        "targetFingerprint": "artifact-target-v2-0e8f761025277c4648ac",
+        "targetFingerprint": "source-target-v2-5d067b4916e481a06788",
         "variantId": 13887,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-19T00:13:46Z",
+      "scannedAtUtc": "2026-09-19T00:59:33Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -552,22 +573,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "main",
         "candidates": [
           "https://github.com/perchbirdd/DamageInfoPlugin",
-          "https://github.com/goatcorp/PluginDistD17",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "4c7ed96796e9e6991d2b4a6c5c5e342ad1893bd3",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "56276aae121b53e9a341183ce44ba3df153aa0aa92fcb431423fa19c40102db2"
           }
         },
         "developerProfile": {
@@ -575,57 +599,484 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "2.4.1.7",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://github.com/perchbirdd/DamageInfoPlugin",
-        "treeSha256": ""
+        "treeSha256": "972932a00c447c5f22b6d6b36e07d62bac0721f2"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 6,
-    "scanned_at_utc": "2026-09-19T00:13:46Z",
+    "scan_id": 11,
+    "scanned_at_utc": "2026-09-19T00:59:33Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "4c7ed96796e9e6991d2b4a6c5c5e342ad1893bd3",
     "source_repository": "https://github.com/perchbirdd/DamageInfoPlugin",
     "source_to_binary_verified": 0,
     "status": "complete",
     "variant_id": 13887
   },
   "derived": {
-    "dependencyDrift": [],
+    "dependencyDrift": [
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:csvhelper",
+        "current_json": {
+          "componentKey": "nuget:csvhelper",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget",
+            "nuget-lock"
+          ],
+          "name": "CsvHelper",
+          "normalizedName": "csvhelper",
+          "origin": "source",
+          "paths": [
+            "DamageInfoPlugin/DamageInfoPlugin.csproj",
+            "DamageInfoPlugin/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "33.0.1"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "33.0.1",
+            "[33.0.1, )"
+          ],
+          "versions": [
+            "33.0.1"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget",
+        "dependency_name": "CsvHelper",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 1,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dalamudpackager",
+        "current_json": {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DalamudPackager",
+          "normalizedName": "dalamudpackager",
+          "origin": "source",
+          "paths": [
+            "DamageInfoPlugin/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "15.0.0"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[15.0.0, )"
+          ],
+          "versions": [
+            "15.0.0"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DalamudPackager",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 2,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "dependency",
+        "change_type": "dependency-added",
+        "component_key": "nuget:dotnet.reproduciblebuilds",
+        "current_json": {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "normalizedName": "dotnet.reproduciblebuilds",
+          "origin": "source",
+          "paths": [
+            "DamageInfoPlugin/packages.lock.json"
+          ],
+          "requirements": [
+            "required"
+          ],
+          "resolvedVersions": [
+            "1.2.39"
+          ],
+          "statuses": [
+            "known"
+          ],
+          "versionRequirements": [
+            "[1.2.39, )"
+          ],
+          "versions": [
+            "1.2.39"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "nuget-lock",
+        "dependency_name": "DotNet.ReproducibleBuilds",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 3,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.read",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.read",
+          "reasons": [
+            "Filesystem namespaces are imported."
+          ],
+          "risks": [
+            "Low"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.read",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 4,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:filesystem.write",
+        "current_json": {
+          "confidences": [
+            "Low"
+          ],
+          "origin": "source",
+          "permissionId": "filesystem.write",
+          "reasons": [
+            "Filesystem namespaces are imported; write use is not yet proven."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "filesystem.write",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 5,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.chat.read",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.chat.read",
+          "reasons": [
+            "Dalamud service IChatGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.chat.read",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 6,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.input.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.input.read",
+          "reasons": [
+            "Dalamud service IKeyState is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.input.read",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 7,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.memory.read",
+        "current_json": {
+          "confidences": [
+            "High",
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "game.memory.read",
+          "reasons": [
+            "Dalamud hooking APIs are imported.",
+            "Dalamud service IGameInteropProvider is referenced.",
+            "Dalamud service ISigScanner is referenced.",
+            "FFXIVClientStructs is imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.memory.read",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 8,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.state.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.state.read",
+          "reasons": [
+            "Dalamud service IBuddyList is referenced.",
+            "Dalamud service IClientState is referenced.",
+            "Dalamud service ICondition is referenced.",
+            "Dalamud service IDataManager is referenced.",
+            "Dalamud service IObjectTable is referenced.",
+            "Dalamud service IPartyList is referenced.",
+            "Dalamud service ITargetManager is referenced."
+          ],
+          "risks": [
+            "Low",
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.state.read",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 9,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:game.ui.read",
+        "current_json": {
+          "confidences": [
+            "High"
+          ],
+          "origin": "source",
+          "permissionId": "game.ui.read",
+          "reasons": [
+            "Dalamud service IGameGui is referenced."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "game.ui.read",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 10,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:native.interop",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "native.interop",
+          "reasons": [
+            "Interop namespaces are imported."
+          ],
+          "risks": [
+            "High"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "native.interop",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 11,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "caution",
+        "variant_id": 13887
+      },
+      {
+        "change_basis": "source-changed",
+        "change_scope": "permission",
+        "change_type": "permission-added",
+        "component_key": "permission:network.outbound",
+        "current_json": {
+          "confidences": [
+            "Medium"
+          ],
+          "origin": "source",
+          "permissionId": "network.outbound",
+          "reasons": [
+            "Network namespaces are imported."
+          ],
+          "risks": [
+            "Medium"
+          ]
+        },
+        "current_scan_id": 11,
+        "dependency_kind": "permission",
+        "dependency_name": "network.outbound",
+        "detected_at_utc": "2026-09-19T00:59:38Z",
+        "drift_id": 12,
+        "origin": "source",
+        "previous_json": {},
+        "previous_scan_id": 9,
+        "severity": "informational",
+        "variant_id": 13887
+      }
+    ],
     "scanLineage": {
       "artifact_changed": 0,
       "assembly_version_changed": 0,
-      "change_basis": "baseline",
+      "change_basis": "source-changed",
       "current_artifact_sha256": "d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912",
       "current_assembly_version": "2.4.1.7",
-      "current_scan_id": 6,
+      "current_scan_id": 11,
       "current_scanner_version": "2.15.0",
-      "current_source_commit": "",
-      "detected_at_utc": "2026-09-19T00:13:48Z",
-      "previous_artifact_sha256": "",
-      "previous_assembly_version": "",
-      "previous_scan_id": null,
-      "previous_scanner_version": "",
+      "current_source_commit": "4c7ed96796e9e6991d2b4a6c5c5e342ad1893bd3",
+      "detected_at_utc": "2026-09-19T00:59:38Z",
+      "previous_artifact_sha256": "d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912",
+      "previous_assembly_version": "2.4.1.7",
+      "previous_scan_id": 9,
+      "previous_scanner_version": "2.15.0",
       "previous_source_commit": "",
       "scanner_changed": 0,
-      "source_changed": 0,
+      "source_changed": 1,
       "variant_id": 13887
     },
     "sourceArtifactComparison": {
       "artifact_dependency_count": 21,
-      "artifact_only_count": 21,
+      "artifact_only_count": 20,
       "artifact_only_json": [
         {
           "componentKey": "assembly:csvhelper",
@@ -911,35 +1362,50 @@
           "versions": [
             "8.0.0.0"
           ]
-        },
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-19T00:59:38Z",
+      "comparison_id": 9,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 1,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 11,
+      "source_available": 1,
+      "source_dependency_count": 3,
+      "source_only_count": 2,
+      "source_only_json": [
         {
-          "componentKey": "nuget:csvhelper",
+          "componentKey": "nuget:dalamudpackager",
           "componentKind": "nuget",
           "kinds": [
-            "nuget-resolved"
+            "nuget-lock"
           ],
-          "name": "CsvHelper",
+          "name": "DalamudPackager",
           "requirements": [
             "required"
           ],
           "versions": [
-            "33.0.1"
+            "15.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dotnet.reproduciblebuilds",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-lock"
+          ],
+          "name": "DotNet.ReproducibleBuilds",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.39"
           ]
         }
       ],
-      "artifact_project_sha256": "",
-      "compared_at_utc": "2026-09-19T00:13:48Z",
-      "comparison_id": 5,
-      "comparison_status": "source-unavailable",
-      "matched_component_count": 0,
-      "requirement_mismatch_count": 0,
-      "requirement_mismatches_json": [],
-      "scan_id": 6,
-      "source_available": 0,
-      "source_dependency_count": 0,
-      "source_only_count": 0,
-      "source_only_json": [],
-      "source_project_sha256": "",
+      "source_project_sha256": "61d9703508d04f8a1b6173a97e93fdc5946b889b98afdb2690a4381e5f607fd6",
       "variant_id": 13887,
       "version_mismatch_count": 0,
       "version_mismatches_json": []
@@ -977,36 +1443,36 @@
     "dependencyResolutions": {
       "files": [
         {
-          "bytes": 23479,
+          "bytes": 27179,
           "encoding": "json",
           "path": "derived/variants/0013/13887/dependency-resolutions.json",
-          "recordDigest": "e1c86d6ebd18042669c4d61c8ef4d7b9bac8903f7d665d1dbc874227f9cc11cc",
-          "records": 25,
-          "sha256": "cc3724d854ee5ff6de3f7d0f16748c4ee10937d1c43280aa00fb34cc17f39f8d"
+          "recordDigest": "a1e25c90f91b10afdfa3dd4047297a9d8b523cf3ed1096cd0c12429dbe0c4f88",
+          "records": 29,
+          "sha256": "e53df7bacfdcee280096efc8e3da0dcb04c9d3db012cf93b4f619e4d6038c1ca"
         }
       ],
-      "recordDigest": "e1c86d6ebd18042669c4d61c8ef4d7b9bac8903f7d665d1dbc874227f9cc11cc",
-      "records": 25
+      "recordDigest": "a1e25c90f91b10afdfa3dd4047297a9d8b523cf3ed1096cd0c12429dbe0c4f88",
+      "records": 29
     },
     "sourceAnalysisCache": {
       "files": [
         {
-          "bytes": 3,
+          "bytes": 155232,
           "encoding": "json",
           "path": "derived/variants/0013/13887/source-analysis-cache.json",
-          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "records": 0,
-          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+          "recordDigest": "8a9cfa5f216bc84bcf6a66b0eb391fe0741136e3d0810d6b769d034ed4dbedde",
+          "records": 1,
+          "sha256": "80129cfe8ebfd593ffa106324dce9a5e175604d1c7e580cdbcbfc7cb66e88388"
         }
       ],
-      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "records": 0
+      "recordDigest": "8a9cfa5f216bc84bcf6a66b0eb391fe0741136e3d0810d6b769d034ed4dbedde",
+      "records": 1
     }
   },
   "formatVersion": 2,
   "lifecycle": {
     "catalogRevision": "",
-    "identityFingerprint": "fc3af66f451d8754c1891da8c15082797001dd987f30eb556878cf95414ac302",
+    "identityFingerprint": "5c1b948cc0631a346dd0f6c97a592397fe99f4232e8a871cca3d226cc0f37610",
     "schema": "omega.security-evidence.variant-lifecycle.v1",
     "state": "active"
   },
@@ -1016,37 +1482,27 @@
         "backingDataset": "artifactIdentity",
         "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
         "completeness": "retained",
-        "recordDigest": "585d3140a842e1ac5f8febd21975d62acfa5ce791aaaf646f5e6772b35bc4610",
+        "recordDigest": "56dbc845701c5a58f59d708702e8692902fad5b3f6a44d612116925209556f4a",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
-        "srlEligible": true
-      },
-      "binaryClassifications": {
-        "backingDataset": "binaryClassifications",
-        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
-        "completeness": "retained",
-        "recordDigest": "d331498b449ece7c2c5b6df86b85417fc9745742412ef0eec5673b6f8503ca94",
-        "records": 2,
-        "schema": "omega.sigmascope.observation-collection.v1",
-        "semanticClass": "observation",
         "srlEligible": true
       },
       "dependencies": {
         "backingDataset": "dependencies",
         "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
         "completeness": "retained",
-        "recordDigest": "465aa67240613f90ed856dda7b4eeae15a3075211cbf6dc51b59db2870f1ea97",
-        "records": 25,
+        "recordDigest": "475063f0022e0a60fcde6bc0ce9da2dc032659eab1810f48878ee2098d2e0982",
+        "records": 29,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
       },
       "developerProfile": {
-        "backingDataset": "compact-report",
+        "backingDataset": "developerProfile",
         "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
-        "completeness": "retained-summary",
-        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "developer-claim",
@@ -1076,8 +1532,8 @@
         "backingDataset": "calls",
         "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
         "completeness": "retained",
-        "recordDigest": "735b05b8413ec73967712fb574a7d4a20c461c80179fb02dbf0032dfe2f2b751",
-        "records": 8029,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1086,8 +1542,8 @@
         "backingDataset": "reachability",
         "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
         "completeness": "retained",
-        "recordDigest": "2b605bb7ca98c4012a2011ba412c6c858d85f7a29ba3304b8d8b4c88e0c7da29",
-        "records": 487,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1096,8 +1552,8 @@
         "backingDataset": "symbols",
         "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
         "completeness": "retained",
-        "recordDigest": "411b7e3bea3258b62c9304916954a2920fad7c04156ab73cac1f6e8f67a1fc77",
-        "records": 1109,
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1116,8 +1572,8 @@
         "backingDataset": "imports",
         "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
         "completeness": "retained",
-        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "records": 0,
+        "recordDigest": "ba88a255ae58a48dc269b1227456b7472c9bf69458b5e8ffcf88f94138dfe850",
+        "records": 58,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1126,8 +1582,8 @@
         "backingDataset": "networkEndpoints",
         "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
         "completeness": "retained",
-        "recordDigest": "346081feee27d58e8a92baa5522783e794f44ce8639548f8c7f622d858619f1a",
-        "records": 4,
+        "recordDigest": "140185f74126788c9a198a794371e02fb98cd246dc6f2e45ec743c5aec69eafa",
+        "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1146,28 +1602,148 @@
         "backingDataset": "sourceAttribution",
         "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
         "completeness": "retained",
-        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "recordDigest": "a22bdd7d3dbb6918af67534eb3e8e0f316ccd852ef3481ca408531cb30f8b525",
         "records": 1,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceBuildEdges": {
+        "backingDataset": "sourceBuildEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-build-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceBuildEnvironment": {
+        "backingDataset": "sourceBuildEnvironment",
+        "collectionSchema": "omega.sigmascope.observation.source-build-environment.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceBuildInputs": {
+        "backingDataset": "sourceBuildInputs",
+        "collectionSchema": "omega.sigmascope.observation.source-build-input.v1",
+        "completeness": "retained",
+        "recordDigest": "256d7bbec2ebab1a0a3274f2c8c8063728011098997d7f7beea93ae2977f6ac4",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-provenance",
+        "srlEligible": true
+      },
+      "sourceBuildProjects": {
+        "backingDataset": "sourceBuildProjects",
+        "collectionSchema": "omega.sigmascope.observation.source-build-project.v1",
+        "completeness": "retained",
+        "recordDigest": "d5f18aea37cc321619af04cb765e84551cd09988045c8161697ed5eeb3c20911",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-observation",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "126cc5364986a750988d836da491db8cc93a1a9af41a5979d6928438a3cf4971",
+        "records": 163,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDependencyDeclarations": {
+        "backingDataset": "sourceDependencyDeclarations",
+        "collectionSchema": "omega.sigmascope.observation.source-dependency-declaration.v1",
+        "completeness": "retained",
+        "recordDigest": "55b86dc1007b205b47403398560fbf6d1348759937b8845a869f894884cfb1ce",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-dependency-observation",
         "srlEligible": true
       },
       "sourceFiles": {
         "backingDataset": "sourceFiles",
         "collectionSchema": "omega.sigmascope.observation.source-files.v1",
         "completeness": "retained",
-        "recordDigest": "a9398b8dd739e22e20baec8724563e209eee663e8227787615ed78f660733998",
-        "records": 2,
+        "recordDigest": "d07238e1ea58d6b05cb4dab2ad8ded6e9f6ace983132eb2507ae42d6ea8b4376",
+        "records": 15,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "635247186329e2e09f8da46c2e510c870e8c2dd75b96b877b5390a182267cd99",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "f184b28e7bf2460bcc13ef524c71b3c6bb33bf84f72536fcdf6286af62c5ea67",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceReleaseWorkflows": {
+        "backingDataset": "sourceReleaseWorkflows",
+        "collectionSchema": "omega.sigmascope.observation.source-release-workflow.v1",
+        "completeness": "retained",
+        "recordDigest": "54f43ec93e964488751fda1380fecb819d08cd1abcf324da339fd144c96fce9d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-build-context",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "fbc67defbf6aa94310c7de33a53843e6ef27b525f6f3c859b62984ee51128f56",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
         "srlEligible": true
       },
       "staticPatternMatches": {
         "backingDataset": "staticPatternMatches",
         "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
         "completeness": "retained",
-        "recordDigest": "3f7be72d65837ab243c9a95d72b14f6f4a5a8c65f5e00a4c5d668007ac1076b3",
-        "records": 24,
+        "recordDigest": "9e734c1042b94b051a08e5017c4d4e108313cc4405193211c387707edc9faeb0",
+        "records": 5,
         "schema": "omega.sigmascope.observation-collection.v1",
         "semanticClass": "observation",
         "srlEligible": true
@@ -1176,21 +1752,10 @@
     "contractRevision": "observations-v1-1e78d17eb03ed5c4",
     "legacyCompatibility": false,
     "missingCollections": [
-      "nativeImports",
-      "sourceBuildEdges",
-      "sourceBuildEnvironment",
-      "sourceBuildInputs",
-      "sourceBuildProjects",
-      "sourceConditions",
-      "sourceDataFlow",
-      "sourceDependencyDeclarations",
-      "sourceFlowEdges",
-      "sourceOperations",
-      "sourceProvenance",
-      "sourceReleaseWorkflows",
-      "sourceTriggers"
+      "binaryClassifications",
+      "nativeImports"
     ],
-    "observationDigest": "obs-6c887f25519c2b69b90ca4fe8a4974b2b12c923b76fab4b12fc14cf79956bf4d",
+    "observationDigest": "obs-a4792a2ca00c9fcae2e266ce3484f57e2389275a787b1c98cf38f40011219e31",
     "providerRevisions": {
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
@@ -1246,17 +1811,17 @@
         "records": 0
       },
       "behaviorConsistency": {
-        "recordDigest": "f4e9ea0ed537c1de691828d3308d51cd26d68872f51664e0b9397b07cde50c12",
+        "recordDigest": "3d783e1ba9b12d4619fe3773298e7728cf694deeaaa677d75aa909b7c5ac005a",
         "records": 1
       },
       "capabilityIds": {
-        "recordDigest": "8a433b6dfeefbc3f885f6258e2249d7230afdc6b064780ba1370f0d7873089a9",
-        "records": 7
+        "recordDigest": "b1ad4f49741f86ada22f537dbfe03d8d2258744b5f36a3fd61c8814136f02f51",
+        "records": 11
       },
       "findings": {
         "backingDataset": "findings",
-        "recordDigest": "b6238282fd5967902d0375e46fd5cf1052a38c0efc274f88b62f251c5a83a378",
-        "records": 8
+        "recordDigest": "4036e299997a3935154508c4828eb47d217fb2b155761995c5150a1a6a80173a",
+        "records": 12
       }
     },
     "projectionRevision": "projection-v1-4a2803be4a38d234",
@@ -1282,16 +1847,16 @@
       "Hard-coded external file access",
       "Network access"
     ],
-    "caution_count": 3,
+    "caution_count": 6,
     "critical_count": 0,
     "error": "",
     "high_count": 0,
     "highest_severity": "caution",
-    "informational_count": 5,
+    "informational_count": 6,
     "plugin_id": 246,
     "report_json": {
-      "artifactAnalysisRepresentativeScanId": 0,
-      "artifactAnalysisReused": false,
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
       "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
       "artifactBytes": 136637,
       "artifactIdentity": {
@@ -1299,10 +1864,10 @@
         "artifactBytes": 136637,
         "artifactSha256": "d38b2f67f900e4746da2fa2a0449bcb54b0caa3f322f5e260ea0ab9777d65912",
         "catalogAssemblyVersion": "2.4.1.7",
-        "manifestInternalName": "DamageInfoPlugin",
+        "manifestInternalName": "",
         "manifestPath": "DamageInfoPlugin.json",
-        "manifestRepositoryUrl": "https://github.com/perchbirdd/DamageInfoPlugin",
-        "resolvedArtifactUrl": "https://raw.githubusercontent.com/goatcorp/PluginDistD17/edf2e6ff596ecaff0e7620061f1121bc59897526/stable/DamageInfoPlugin/latest.zip",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
         "schema": "omega.sigmascope.artifact-identity.v1",
         "versionMatchesCatalog": true
       },
@@ -1313,18 +1878,6 @@
       },
       "behaviorConsistency": {
         "capabilities": [
-          {
-            "category": "dynamic-code",
-            "declared": false,
-            "declaredDestinations": [],
-            "developerReason": "",
-            "expected": null,
-            "id": "dynamic.code",
-            "label": "Dynamic code or assembly loading",
-            "observed": true,
-            "required": false,
-            "state": "observed-no-profile"
-          },
           {
             "category": "filesystem",
             "declared": false,
@@ -1362,6 +1915,30 @@
             "state": "observed-no-profile"
           },
           {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.chat.read",
+            "label": "Game chat read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.input.read",
+            "label": "Game input/key state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
             "category": "game-memory",
             "declared": false,
             "declaredDestinations": [],
@@ -1369,6 +1946,42 @@
             "expected": null,
             "id": "game.memory.read",
             "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-state",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.state.read",
+            "label": "Game state read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-ui",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.read",
+            "label": "Game UI read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
             "observed": true,
             "required": false,
             "state": "observed-no-profile"
@@ -1408,21 +2021,10 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "docs.google.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "VeryHigh",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -1431,21 +2033,10 @@
               "classifications": [
                 "unrecognised-host"
               ],
-              "confidence": "Low",
+              "confidence": "High",
               "host": "docs.google.com",
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "confidence": "VeryHigh",
-              "host": "github.com",
-              "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
@@ -1466,11 +2057,11 @@
           "explainedDestinationCount": 0,
           "notExpectedNotObservedCount": 0,
           "notExpectedObservedCount": 0,
-          "observedCapabilityCount": 7,
-          "observedConcreteDestinationCount": 2,
-          "observedDestinationWithoutProfileCount": 2,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 1,
+          "observedDestinationWithoutProfileCount": 1,
           "observedUndeclaredCount": 0,
-          "observedWithoutProfileCount": 7,
+          "observedWithoutProfileCount": 11,
           "unexplainedDestinationCount": 0
         }
       },
@@ -1483,33 +2074,36 @@
         "Network access"
       ],
       "capabilityIds": [
-        "dynamic.code",
         "filesystem.external-path",
         "filesystem.read",
         "filesystem.write",
+        "game.chat.read",
+        "game.input.read",
         "game.memory.read",
+        "game.state.read",
+        "game.ui.read",
+        "native.interop",
         "network.http",
         "network.outbound"
       ],
       "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
       "counts": {
-        "caution": 3,
+        "caution": 6,
         "critical": 0,
         "high": 0,
-        "informational": 5
+        "informational": 6
       },
       "engineVersion": "2.15.0",
       "error": "",
       "highestSeverity": "caution",
       "intelligence": {
         "componentSummary": {
-          "dependencyCount": 25,
-          "exactVersionObservedCount": 25,
+          "dependencyCount": 4,
+          "exactVersionObservedCount": 4,
           "families": {
-            "managed-assembly": 24,
-            "nuget": 1
+            "nuget": 4
           },
-          "fingerprint": "5be669f618ecd23a6bda77e03c387c6fd4d76377c46a7aa2b0929aa6b11e72c4",
+          "fingerprint": "7df858e1bfed66624a9d5bb90d010096ae012d052c061e0d08913b0492fafe45",
           "nativeRelationshipCounts": {
             "bundledComponent": 0,
             "externalOrRuntimeResolved": 0,
@@ -1518,62 +2112,47 @@
           "nativeRelationships": [],
           "pluginRelationships": [],
           "requirements": {
-            "bundled": 2,
-            "observed": 22,
-            "required": 1
+            "required": 4
           },
           "schema": "omega.sigmascope.component-summary.v1",
           "versionUnknownCount": 0
         },
         "coverage": {
-          "analyzed": 24,
+          "analyzed": 0,
           "binaryOnly": 0,
           "dynamicallyDownloaded": 0,
           "externalPlugin": 0,
-          "known": 1,
+          "known": 4,
           "notAnalyzed": 0,
           "requirements": {
-            "bundled": 2,
-            "observed": 22,
+            "bundled": 0,
+            "observed": 0,
             "optional": 0,
-            "required": 1,
+            "required": 4,
             "soft": 0,
             "unknown": 0
           },
-          "total": 25
+          "total": 4
         },
         "endpointSummary": {
-          "concreteDestinationCount": 4,
+          "concreteDestinationCount": 1,
           "destinationsUndetermined": false,
-          "hostCount": 2,
+          "hostCount": 1,
           "hosts": [
             {
               "classifications": [
                 "unrecognised-host"
               ],
               "concreteCount": 1,
-              "confidence": "Low",
+              "confidence": "High",
               "host": "docs.google.com",
               "literalCount": 1,
               "originTypes": [
-                "artifact-binary-string"
-              ]
-            },
-            {
-              "classifications": [
-                "recognised-platform"
-              ],
-              "concreteCount": 3,
-              "confidence": "VeryHigh",
-              "host": "github.com",
-              "literalCount": 3,
-              "originTypes": [
-                "artifact-binary-string",
-                "artifact-config"
+                "source-code"
               ]
             }
           ],
-          "literalCount": 4,
+          "literalCount": 1,
           "networkCapabilityObserved": true,
           "schema": "omega.sigmascope.endpoint-summary.v1"
         },
@@ -1585,42 +2164,12 @@
           {
             "classification": "unrecognised-host",
             "concreteDestinationEvidence": true,
-            "confidence": "Low",
+            "confidence": "High",
             "host": "docs.google.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
+            "origin": "source",
+            "originType": "source-code",
             "purpose": "unrecognised public host",
             "url": "https://docs.google.com/spreadsheets/d/<redacted>/gviz/tq"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/JoshClose/CsvHelper"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "VeryHigh",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-config",
-            "purpose": "source hosting",
-            "url": "https://github.com/perchbirdd/DamageInfoPlugin"
-          },
-          {
-            "classification": "recognised-platform",
-            "concreteDestinationEvidence": true,
-            "confidence": "Low",
-            "host": "github.com",
-            "origin": "artifact",
-            "originType": "artifact-binary-string",
-            "purpose": "source hosting",
-            "url": "https://github.com/perchbirdd/DamageInfoPlugin.git"
           }
         ]
       },
@@ -1646,7 +2195,7 @@
       },
       "scanProvenance": {
         "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
-        "attemptId": "attempt-v2-2862ceb69cfae4fd",
+        "attemptId": "attempt-v2-a85f11a9459f7e7f",
         "attemptNumber": 1,
         "baselineSecurityRebuild": false,
         "catalogIdentityEpoch": "omega-catalog-identity-v1",
@@ -1655,11 +2204,11 @@
         "observedSourceCommit": "",
         "observedSourceRef": "",
         "observedSourceRepository": "",
-        "primaryReason": "new_variant",
-        "queueKey": "variant-13887",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13887",
         "queueSeedRevision": "queue-seed-v2-e0394d7f11fa62ac28b9",
         "reasons": [
-          "new_variant"
+          "source_followup"
         ],
         "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
         "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
@@ -1667,11 +2216,11 @@
         "schema": "omega.sigmascope.scan-provenance.v1",
         "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
         "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
-        "targetFingerprint": "artifact-target-v2-0e8f761025277c4648ac",
+        "targetFingerprint": "source-target-v2-5d067b4916e481a06788",
         "variantId": 13887,
-        "workType": "artifact"
+        "workType": "source"
       },
-      "scannedAtUtc": "2026-09-19T00:13:46Z",
+      "scannedAtUtc": "2026-09-19T00:59:33Z",
       "scannerVersion": "2.15.0",
       "schema": "omega.security-evidence.scan-summary.v2",
       "secondarySecurity": {
@@ -1713,22 +2262,25 @@
       "secondarySecurityContractVersion": 3,
       "source": {
         "attribution": {
-          "basis": [],
-          "confidence": 0,
-          "coverageLabel": "Unresolved",
+          "basis": [
+            "identity_match",
+            "manifest_repository",
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
           "schema": "omega.artifact-source-attribution.v1"
         },
-        "available": false,
-        "branch": "",
+        "available": true,
+        "branch": "main",
         "candidates": [
           "https://github.com/perchbirdd/DamageInfoPlugin",
-          "https://github.com/goatcorp/PluginDistD17",
           "https://github.com/goatcorp/DalamudPlugins"
         ],
-        "commit": "",
+        "commit": "4c7ed96796e9e6991d2b4a6c5c5e342ad1893bd3",
         "dependencyIntelligence": {
           "fingerprints": {
-            "relevantSourceSha256": ""
+            "relevantSourceSha256": "56276aae121b53e9a341183ce44ba3df153aa0aa92fcb431423fa19c40102db2"
           }
         },
         "developerProfile": {
@@ -1736,28 +2288,47 @@
           "diagnostics": [],
           "path": "",
           "profile": {},
-          "schema": "",
+          "schema": "omega.plugin-profile-observation.v1",
           "sha256": "",
-          "status": "",
+          "status": "absent",
           "valid": false
         },
         "error": "",
-        "provenance": {},
+        "provenance": {
+          "artifactOriginMatched": false,
+          "artifactPinnedCommit": "",
+          "confidence": "high",
+          "identityMatched": true,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "originMatched": true,
+          "repoUrlMatched": true,
+          "reproducibleSourceToArtifact": false,
+          "requestedAssemblyVersion": "2.4.1.7",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "default-branch",
+          "sourceToBinaryVerified": false,
+          "versionMatched": false
+        },
         "repository": "https://github.com/perchbirdd/DamageInfoPlugin",
-        "treeSha256": ""
+        "treeSha256": "972932a00c447c5f22b6d6b36e07d62bac0721f2"
       },
       "sourceAnalysisRepresentativeScanId": 0,
       "sourceAnalysisReused": false,
-      "sourceAnalysisRevision": "",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
       "sourceAttributionContractVersion": 1,
       "status": "complete",
-      "workType": "artifact"
+      "workType": "source"
     },
-    "scan_id": 6,
-    "scanned_at_utc": "2026-09-19T00:13:46Z",
+    "scan_id": 11,
+    "scanned_at_utc": "2026-09-19T00:59:33Z",
     "scanner_version": "2.15.0",
-    "source_available": 0,
-    "source_commit": "",
+    "source_available": 1,
+    "source_commit": "4c7ed96796e9e6991d2b4a6c5c5e342ad1893bd3",
     "source_id": 594,
     "source_repository": "https://github.com/perchbirdd/DamageInfoPlugin",
     "source_to_binary_verified": 0,
