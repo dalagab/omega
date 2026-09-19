@@ -1,0 +1,297 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GatherBuddy.dll: http://localhost:14500/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.1a3624ae870f",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.Teleporter.Teleport+0xf: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.Teleporter.TeleportUnchecked+0x7: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport",
+      "il:GatherBuddy.dll:GatherBuddy.Plugin.Executor.TeleportToAetheryte+0xf: call GatherBuddy.SeFunctions.Teleporter.Teleport"
+    ],
+    "rule_id": "automation.game.character.teleport",
+    "severity": "caution",
+    "title": "Teleport/travel control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:GatherBuddy.GameData.dll: s://github.com/Ottermandias/GatherBuddy.git",
+      "artifact:OtterGui.dll: s://github.com/Ottermandias/OtterGui.git",
+      "artifact:OtterGui.dll: s://www.patreon.com/Ottermandias in your browser.",
+      "artifact:OtterGui.dll: s://ko-fi.com/ottermandias in your browser.",
+      "artifact:OtterGui.dll: s://discord.gg/kVva7DHV4r",
+      "artifact:OtterGui.dll: s://reniguide.info/",
+      "artifact:OtterGui.dll: s://ko-fi.com/ottermandias",
+      "artifact:OtterGui.dll: s://ko-fi.com/ottermandias in external browser"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:GatherBuddy.dll: SigScanner",
+      "metadata:GatherBuddy.dll: Dalamud.Hooking",
+      "metadata:GatherBuddy.dll: HookFromAddress",
+      "il:GatherBuddy.dll:GatherBuddy.GatherBuddy..ctor+0xed: call GatherBuddy.Dalamud.get_SigScanner: SigScanner",
+      "il:GatherBuddy.dll:GatherBuddy.GatherBuddy..ctor+0x115: call GatherBuddy.Dalamud.get_SigScanner: SigScanner",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.SeAddressBase..ctor+0xa: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.SeAddressBase..ctor+0x3c: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.SeFunctionBase`1..ctor+0x8: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:GatherBuddy.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:OtterGui.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: http://www.jetbrains.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8888d82751c9",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://reniguide.info/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.06407015b781",
+    "severity": "caution",
+    "title": "Endpoint: reniguide.info"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GatherBuddy.dll: https://ffxivteamcraft.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1f1bcb0368f6",
+    "severity": "caution",
+    "title": "Endpoint: ffxivteamcraft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GatherBuddy.dll: https://www.garlandtools.org/db/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.258275959e64",
+    "severity": "caution",
+    "title": "Endpoint: www.garlandtools.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://ko-fi.com/ottermandias"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.86e7fa25c3d3",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Navigation_and_Search__Structural_Search_and_Replace.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a5ec6e611d65",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://www.jetbrains.com/help/resharper/Code_Analysis__Find_and_Update_Obsolete_APIs.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7d3c5975c34",
+    "severity": "caution",
+    "title": "Endpoint: www.jetbrains.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://www.patreon.com/Ottermandias"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dc6a464f5733",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:GatherBuddy.dll: System.Diagnostics.Process",
+      "metadata:GatherBuddy.dll: ProcessStartInfo",
+      "metadata:GatherBuddy.dll: ShellExecute",
+      "metadata:GatherBuddy.dll: Process.Start",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.SeAddressBase..ctor+0x41: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.SeFunctionBase`1..ctor+0xd: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:GatherBuddy.dll:GatherBuddy.SeFunctions.SeFunctionBase`1..ctor+0x40: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:GatherBuddy.dll:GatherBuddy.Gui.Interface.DrawOpenInGarlandTools+0x28: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:GatherBuddy.GameData.dll: FileStream",
+      "artifact:GatherBuddy.GameData.dll: FileStream",
+      "metadata:GatherBuddy.dll: WriteAllText",
+      "metadata:GatherBuddy.dll: File.Move",
+      "metadata:GatherBuddy.dll: Directory.CreateDirectory",
+      "metadata:GatherBuddy.dll: WriteAllBytes",
+      "il:GatherBuddy.dll:GatherBuddy.Gui.Interface.DrawRecordTab+0x406: call System.IO.File.WriteAllText: WriteAllText",
+      "il:GatherBuddy.dll:GatherBuddy.Gui.Interface.DrawStatusLine+0x200: call System.IO.File.Move: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://discord.gg/kVva7DHV4r"
+    ],
+    "rule_id": "network.endpoint.community-invite.d54730561467",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:JetBrains.Annotations.dll: https://github.com/JetBrains/JetBrains.Annotations/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.081de96440b7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GatherBuddy.json: https://github.com/Ottermandias/GatherBuddy"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5b2b0ea2fd30",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: https://github.com/Ottermandias/OtterGui.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7830136213a1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GatherBuddy.Levenshtein.dll: https://github.com/Ottermandias/GatherBuddy.git",
+      "artifact:GatherBuddy.GameData.dll: https://github.com/Ottermandias/GatherBuddy.git",
+      "artifact:GatherBuddy.dll: https://github.com/Ottermandias/GatherBuddy.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9c6f25d703d3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:GatherBuddy.dll: System.Net.Http.HttpClient",
+      "il:GatherBuddy.dll:GatherBuddy.GatherBuddy..cctor+0x2e: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:GatherBuddy.dll:GatherBuddy.GatherBuddy..cctor+0x3f: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:GatherBuddy.dll:<>c__DisplayClass24_0.<OpenInTeamCraftLocal>b__0+0x21: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
