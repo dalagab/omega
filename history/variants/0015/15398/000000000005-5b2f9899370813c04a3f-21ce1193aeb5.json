@@ -1,0 +1,3144 @@
+{
+  "analysis": {
+    "analysisId": "4f879eb88799ba346c912b446f8b4a4807c767458acb771e48f6ca1cce0946fc",
+    "artifactSha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+    "path": "artifacts/5b/5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2/analyses/4f879eb88799ba346c912b446f8b4a4807c767458acb771e48f6ca1cce0946fc",
+    "recordCount": 38834
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+    "artifact_url": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+    "assembly_version": "0.4.0.844",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.synthetic_click",
+        "confidence": "very-high",
+        "evidence": [
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x35: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x6f: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0xfb: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x115: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Recruit+0x5e: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Recruit+0x8c: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Mission+0x79: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Mission+0xa9: call Ghost.Company.CompanyClicks.Fire"
+        ],
+        "indirect": false,
+        "label": "Synthetic game UI interaction",
+        "reachable": true,
+        "reason": "Invokes code associated with synthetic clicks or selection dialogs."
+      }
+    ],
+    "automation_level": "ui-automation",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Synthetic game UI interaction"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Ghost.dll: System.Diagnostics.Process",
+          "metadata:Ghost.dll: ProcessStartInfo",
+          "metadata:Ghost.dll: ShellExecute",
+          "metadata:Ghost.dll: Process.Start",
+          "il:Ghost.dll:Ghost.Services.GameWindowKeys.TryFindGameWindow+0x4: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:Ghost.dll:Ghost.Services.GameWindowKeys.TryFindGameWindow+0x9: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+          "artifact:Ghost.dll: System.Diagnostics.Process",
+          "artifact:Ghost.dll: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Ghost.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Ghost.dll: SigScanner",
+          "metadata:Ghost.dll: Dalamud.Hooking",
+          "metadata:Ghost.dll: HookFromAddress",
+          "il:Ghost.dll:Ghost.Services.DutyHost.ArmConvenience+0x76: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:Ghost.dll:Ghost.Services.DutyHost.TryQueueNovice+0x1d: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:Ghost.dll:Ghost.Services.GatherHost.ArmBiteHook+0x4d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:Ghost.dll: Dalamud.Hooking",
+          "artifact:Ghost.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Ghost.Core.dll: C:\\Users\\adam\\source\\repos\\Ghost\\src\\Ghost.Core\\obj\\Release\\net10.0-windows\\Ghost.Core.pdb",
+          "artifact:Ghost.Gather.dll: s://youtu.be/5KKdB9TGjPk",
+          "artifact:Ghost.Gather.dll: s://youtu.be/z96iwqnepV4",
+          "artifact:Ghost.Gather.dll: s://youtu.be/d8AM8-vkLOc",
+          "artifact:Ghost.Gather.dll: s://youtu.be/IqjYBT_iHRs",
+          "artifact:Ghost.Gather.dll: s://youtu.be/W2kr4UxIGUw",
+          "artifact:Ghost.Gather.dll: s://youtu.be/iX3oSCX1FsI",
+          "artifact:Ghost.Gather.dll: s://youtu.be/I66f6D_VYYo"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x35: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x6f: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0xfb: call Ghost.Company.CompanyClicks.Fire",
+          "il:Ghost.Company.dll:Ghost.Company.CompanyClicks.Train+0x115: call Ghost.Company.CompanyClicks.Fire"
+        ],
+        "ruleId": "automation.game.ui.synthetic_click",
+        "severity": "caution",
+        "title": "Synthetic game UI interaction"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Ghost.Core.dll: FileStream",
+          "metadata:Ghost.Core.dll: Directory.CreateDirectory",
+          "metadata:Ghost.Core.dll: WriteAllText",
+          "il:Ghost.Core.dll:Ghost.Core.Tracing.TraceWriter.OpenFile+0x11: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Ghost.Core.dll:Ghost.Core.Tracing.TraceWriter.OpenFile+0xcd: newobj System.IO.FileStream..ctor: FileStream",
+          "il:Ghost.Core.dll:Ghost.Core.Config.GhostConfigStore.Save+0x1b: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Ghost.Core.dll:Ghost.Core.Config.GhostConfigStore.Save+0x62: call System.IO.File.WriteAllText: WriteAllText",
+          "artifact:Ghost.Core.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "artifactBytes": 3327770,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.4.0.844",
+        "artifactBytes": 3327770,
+        "artifactSha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+        "catalogAssemblyVersion": "0.4.0.844",
+        "manifestInternalName": "Ghost",
+        "manifestPath": "Ghost.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1373179709/66fa20d2-5238-46f4-b9e2-2371793168ff?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-19T22%3A39%3A03Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-19T21%3A38%3A18Z&ske=2026-09-19T22%3A39%3A03Z&sks=b&skv=2018-11-09&sig=WRcxLJfNI33CzfiqZztoEg0ps248Sozirkoa82UZZ0M%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4OTg1NDQ1MCwibmJmIjoxNzg5ODU0MTUwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.b-B8wAa7UtnKrWi6wxacIHMmNB84MqSwCMb5rSQEB2M&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": true
+          }
+        ],
+        "level": "ui-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Synthetic game UI interaction"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.synthetic_click",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 149,
+          "exactVersionObservedCount": 148,
+          "families": {
+            "managed-assembly": 148,
+            "native": 1
+          },
+          "fingerprint": "93ec1cad705f5dc3c663a9c7f4a096891b0d1df6ef032709df052c0ae61c73e6",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 3
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Ghost.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindowEx",
+              "library": "user32.dll",
+              "managedName": "FindWindowEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Ghost.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Ghost.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SendMessage",
+              "library": "user32.dll",
+              "managedName": "SendMessage",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 16,
+            "observed": 133
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 149,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 16,
+            "observed": 133,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 149
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 175,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 173,
+              "confidence": "Low",
+              "host": "youtu.be",
+              "literalCount": 173,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 175,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 44063
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ghost-Enterprises/Ghost.git"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/watch"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/-9IHyAaI3Yk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/-FPDr-CMMMM"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/08ajs0JE-cE"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/0fhLgkPTtcQ"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/1k0znkpkC5Y"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/2S1OHYIcZrk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/3AmTu3FKo9E"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/425GuV3rLG4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4DflDXXZeP0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4T4cMD6e-rA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4THUzV5A0eY"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4YRmPygmD3o"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4_LOm8VzKBI"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4gSGeh2KVo0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/5KKdB9TGjPk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/5O_uhVte9jU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/5cUqOOVc3-Q"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/69i5_Z1_Vgs"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/6BpB8Mu9HC0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/6Dih5jNWcaY"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/6eAAveK-lv8"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/7zPs8Vlrzo8"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8Smzp2u2m44"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8WvNH-MnRUc"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8nu5_lvuSiA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8oLcTi53xbU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/91kA82wd2O4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/9CqeUsfMqHA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/9GJivD1fsl4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/9bqf7Qd_a-4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AGL8XN87a5U"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AYwVLaOln58"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AiLZkB6TyDU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/Ajg7o_gBxgQ"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/BJxPEPAIR2A"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/C15qECLEaT0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/CKESUzQydfo"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/COrTexMOscU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/CgHNy8Z6LeU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/DGKwbWEdO3s"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/DtOuhNDpzqE"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/EHNDRne7434"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/Exd9ch9an2Y"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/EyneCL9gcvM"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/FwMD-e44idk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/G7hHN5NnN0s"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+        "internalName": "Ghost",
+        "manifestVersion": "0.4.0.844",
+        "observationId": 25398,
+        "observationKey": "manifest-9467b2a8ee4e26fef57c6d07aded",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 15398
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 16,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 17,
+        "uncompressedBytes": 16956464
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+        "attemptId": "attempt-v2-90f37fcf1cf502e4",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-99a0fc5ebdc17330",
+        "definitionsRevision": "defs-v1-7a06aaba86c6c5ba",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-15398",
+        "queueSeedRevision": "queue-seed-v2-b0c275f4820fd0f92958",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
+        "targetFingerprint": "artifact-target-v2-5958fbf633a2e563f95c",
+        "variantId": 15398,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-19T21:42:30Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 5,
+    "scanned_at_utc": "2026-09-19T21:42:30Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 15398
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+      "current_assembly_version": "0.4.0.844",
+      "current_scan_id": 5,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-19T21:42:37Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 15398
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 38,
+      "artifact_only_count": 38,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.5"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.56.2.9089"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Ghost",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.combat",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Combat",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.company",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Company",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.contracts",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Contracts",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.craft",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Craft",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.dialog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Dialog",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.duty",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Duty",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.fate",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Fate",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.gather",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Gather",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.gear",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Gear",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.hunt",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Hunt",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.leveling",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Leveling",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.nav",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Nav",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.quest",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Quest",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:ghost.retainer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Ghost.Retainer",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.4.0.844"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-19T21:42:37Z",
+      "comparison_id": 3,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 5,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 15398,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "identityFingerprint": "21ce1193aeb5b8a3948767a475d897378ed4b23edc3a6f6f45aa73ca2d1ed1ac",
+    "observedAtUtc": "2026-09-19T22:38:34Z",
+    "reason": "current_analysis_replaced",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "superseded",
+    "supersededBy": {
+      "artifactSha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+      "identityFingerprint": "d46d90aa4f5ff57f7c8fd4b2616779d546d68bd9de2f24d339acecfaae4b92dd",
+      "scanId": 129830
+    },
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "876aeac9242783c050d90aed1897c50b3db7eba95e914337a722061f3e4ccfd3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "d8ac5dbe173c493b4ba5b69e3a3fcf2bfd9b8fbc802d6fccae73b52d0b91799d",
+        "records": 16,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "6d519305f0dfbf120c04377511e4478e39fc6f3bd963fd3eb8b8e356bd68a054",
+        "records": 149,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "73db6e2e07cac4b863eeeefead8bc517afbe5d68deec8264f3f8303891b83c4a",
+        "records": 16,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "8b8b558386d950761d61d2413da7f1c65171406f266b8bef1e30acb6f00424d8",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "8f23c6a06f02ab83961e0e44fba823267c061728bd08b41c7279af9d267f7ecc",
+        "records": 6549,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "60f974f43f0686b02d656118a70ad76e76c88b59e2358997c4359de933b6d048",
+        "records": 11865,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "7eacf2781f925c436ff29073e7205c8b2ba2e107d474e1905c7587702df966e6",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "107cdaef6c7ed86d1d9940533b3df3d1c6a97872383dbd82e8e383aa68538282",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "c44534e0cd3c1a1664c45840c13a27baa63cd5ddf14b0abeb195e8b03d2e790e",
+        "records": 175,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "682ca99254d56001c0915bd69f8342073759b1d848a9f4176f3e779a4d7df460",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "dcbf1336f1722daf8289486a219b2536ad1d095d3ec5fee2cd9a1d27a7e79c5b",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "1ce1e3ad57fec03cd15de7c4ec1cebfd47733fc6e2c60defa5d64bc4bb9ca685",
+        "records": 31,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-e819bdbe3dd096e549e8a4f92afe90201986b91750c6f007a1d0a9a17580e908",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Ghost",
+    "first_seen_utc": "2026-09-19T08:58:17Z",
+    "internal_name": "Ghost",
+    "last_seen_utc": "2026-09-19T19:02:10Z",
+    "plugin_id": 1550
+  },
+  "pluginId": 1550,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Assist clicks quest dialogs by type and fires job priority trees when you have a target. Later modes share the same services.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 161,
+      "summary": "One plugin. Pick a mode, then Start.",
+      "webEnriched": false
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "959f9aa3cd23bcb9adf514fa01c31116c554a5ce54b488b6834026a194ed945f",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "12f0b73881484195f5d0aecd91f4e03e9338aff8f30f896dba6875327f60e0f9",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "7f689562f0c71a568d45974a4ce897e0a5507273515d7c36b300246028f57821",
+        "records": 9
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "8e4c85ca09a08812621542f41e5383777041b814efa8942976530240a23d964c",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+    "artifact_url": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+    "assembly_version": "0.4.0.844",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Synthetic game UI interaction"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 1550,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "artifactBytes": 3327770,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.4.0.844",
+        "artifactBytes": 3327770,
+        "artifactSha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+        "catalogAssemblyVersion": "0.4.0.844",
+        "manifestInternalName": "Ghost",
+        "manifestPath": "Ghost.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1373179709/66fa20d2-5238-46f4-b9e2-2371793168ff?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-19T22%3A39%3A03Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-19T21%3A38%3A18Z&ske=2026-09-19T22%3A39%3A03Z&sks=b&skv=2018-11-09&sig=WRcxLJfNI33CzfiqZztoEg0ps248Sozirkoa82UZZ0M%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4OTg1NDQ1MCwibmJmIjoxNzg5ODU0MTUwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.b-B8wAa7UtnKrWi6wxacIHMmNB84MqSwCMb5rSQEB2M&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": true
+          }
+        ],
+        "level": "ui-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Synthetic game UI interaction"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.synthetic_click",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 149,
+          "exactVersionObservedCount": 148,
+          "families": {
+            "managed-assembly": 148,
+            "native": 1
+          },
+          "fingerprint": "93ec1cad705f5dc3c663a9c7f4a096891b0d1df6ef032709df052c0ae61c73e6",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 3
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Ghost.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindowEx",
+              "library": "user32.dll",
+              "managedName": "FindWindowEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Ghost.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Ghost.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SendMessage",
+              "library": "user32.dll",
+              "managedName": "SendMessage",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 16,
+            "observed": 133
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 149,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 16,
+            "observed": 133,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 149
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 175,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 173,
+              "confidence": "Low",
+              "host": "youtu.be",
+              "literalCount": 173,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 175,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 44063
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ghost-Enterprises/Ghost.git"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/watch"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/-9IHyAaI3Yk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/-FPDr-CMMMM"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/08ajs0JE-cE"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/0fhLgkPTtcQ"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/1k0znkpkC5Y"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/2S1OHYIcZrk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/3AmTu3FKo9E"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/425GuV3rLG4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4DflDXXZeP0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4T4cMD6e-rA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4THUzV5A0eY"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4YRmPygmD3o"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4_LOm8VzKBI"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/4gSGeh2KVo0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/5KKdB9TGjPk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/5O_uhVte9jU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/5cUqOOVc3-Q"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/69i5_Z1_Vgs"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/6BpB8Mu9HC0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/6Dih5jNWcaY"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/6eAAveK-lv8"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/7zPs8Vlrzo8"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8Smzp2u2m44"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8WvNH-MnRUc"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8nu5_lvuSiA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8oLcTi53xbU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/91kA82wd2O4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/9CqeUsfMqHA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/9GJivD1fsl4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/9bqf7Qd_a-4"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AGL8XN87a5U"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AYwVLaOln58"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AiLZkB6TyDU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/Ajg7o_gBxgQ"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/BJxPEPAIR2A"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/C15qECLEaT0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/CKESUzQydfo"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/COrTexMOscU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/CgHNy8Z6LeU"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/DGKwbWEdO3s"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/DtOuhNDpzqE"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/EHNDRne7434"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/Exd9ch9an2Y"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/EyneCL9gcvM"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/FwMD-e44idk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/G7hHN5NnN0s"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+        "internalName": "Ghost",
+        "manifestVersion": "0.4.0.844",
+        "observationId": 25398,
+        "observationKey": "manifest-9467b2a8ee4e26fef57c6d07aded",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 15398
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 16,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 17,
+        "uncompressedBytes": 16956464
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+        "attemptId": "attempt-v2-90f37fcf1cf502e4",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-99a0fc5ebdc17330",
+        "definitionsRevision": "defs-v1-7a06aaba86c6c5ba",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-15398",
+        "queueSeedRevision": "queue-seed-v2-b0c275f4820fd0f92958",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
+        "targetFingerprint": "artifact-target-v2-5958fbf633a2e563f95c",
+        "variantId": 15398,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-19T21:42:30Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5b2f9899370813c04a3f4d9045dad0d77f5fdf8ea2ba55ca7e3f0ab1dfceb0f2",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 5,
+    "scanned_at_utc": "2026-09-19T21:42:30Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1232,
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 15398
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "21e0a1a98edb255f83e741294d1a2fe25966733b16005b978c6a7177da3f2404",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-discovery",
+    "enabled_by_default": 1,
+    "etag": "\"850992d8f8426bfd6ff1f525dc2bfb9cf1e457b9964f2e2d6dea0a5462545b7f\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "discovered",
+    "last_checked_utc": "2026-09-19T19:02:10Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-19T19:02:10Z",
+    "name": "Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6",
+    "plugin_count": 1,
+    "provider": "Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6",
+    "source_id": 1232,
+    "source_repo_url": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6",
+    "url": "https://raw.githubusercontent.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/main/pluginmaster.json"
+  },
+  "sourceId": 1232,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.4.0.844",
+    "author": "Ghost",
+    "authors_json": [
+      "Ghost"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Assist clicks quest dialogs by type and fires job priority trees when you have a target. Later modes share the same services.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+    "download_link_testing": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+    "download_link_update": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+    "first_seen_utc": "2026-09-19T19:02:10Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-19T19:02:10Z",
+    "last_update": 1789778607,
+    "minimum_dalamud_version": null,
+    "name": "Ghost",
+    "plugin_id": 1550,
+    "punchline": "One plugin. Pick a mode, then Start.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.4.0.844",
+      "Author": "Ghost",
+      "DalamudApiLevel": 15,
+      "Description": "Assist clicks quest dialogs by type and fires job priority trees when you have a target. Later modes share the same services.",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Ghost-Enterprises/67852802dcc14bf5b0332249e5bf10c6/releases/download/0.4.0.844/latest.zip",
+      "InternalName": "Ghost",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1789778607,
+      "Name": "Ghost",
+      "Punchline": "One plugin. Pick a mode, then Start."
+    },
+    "repo_url": "",
+    "source_entry_key": "ghost|0.4.0.844|15|0|0",
+    "source_id": 1232,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 15398
+  },
+  "variantId": 15398
+}
