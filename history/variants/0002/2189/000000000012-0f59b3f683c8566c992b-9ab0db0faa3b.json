@@ -1,0 +1,1486 @@
+{
+  "analysis": {
+    "analysisId": "58b412eac1b12c7cec6ec8b3511cdbd75cf3f69673dea72be810ed13c3519067",
+    "artifactSha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+    "path": "artifacts/0f/0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89/analyses/58b412eac1b12c7cec6ec8b3511cdbd75cf3f69673dea72be810ed13c3519067",
+    "recordCount": 43
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+    "artifact_url": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+    "assembly_version": "1.5.0.0",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Endpoint: github.com",
+      "Endpoint: universalis.app",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:BlackBox.dll: System.Diagnostics.Process",
+          "metadata:BlackBox.dll: ProcessStartInfo",
+          "metadata:BlackBox.dll: ShellExecute",
+          "metadata:BlackBox.dll: Process.Start",
+          "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x15: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+          "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x1b: callvirt System.Diagnostics.Process.get_StartInfo: System.Diagnostics.Process",
+          "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x25: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:BlackBox.dll:BlackBox.BlackBox.SendNotificationIfUnfocused+0x25: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References APIs that can listen for inbound local/network connections.",
+        "evidence": [
+          "metadata:BlackBox.dll: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.RunServer+0xc: call System.Net.HttpListener.Start: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.RunServer+0x21: call System.Net.HttpListener.GetContext: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x1: callvirt System.Net.HttpListenerContext.get_Request: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x6: callvirt System.Net.HttpListenerRequest.get_HttpMethod: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x18: callvirt System.Net.HttpListenerContext.get_Request: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x1d: callvirt System.Net.HttpListenerRequest.get_Url: HttpListener",
+          "il:BlackBox.dll:BlackBox.BlackBox.ProcessRequest+0x84: callvirt System.Net.HttpListenerContext.get_Response: HttpListener"
+        ],
+        "ruleId": "local.listener",
+        "severity": "caution",
+        "title": "Local server/listener"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:BlackBox.dll: Dalamud.Hooking",
+          "metadata:BlackBox.dll: HookFromAddress",
+          "il:BlackBox.dll:BlackBox.BlackBox..ctor+0x137: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:BlackBox.dll: Dalamud.Hooking",
+          "artifact:BlackBox.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:BlackBox.dll: System.Net.Http.HttpClient",
+          "il:BlackBox.dll:<GetTaxRates>d__58.MoveNext+0x27: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:BlackBox.dll:<GetTaxRates>d__58.MoveNext+0x2d: call System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:BlackBox.dll: https://universalis.app/api/v2/tax-rates"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.82ebfb3d072f",
+        "severity": "informational",
+        "title": "Endpoint: universalis.app"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:BlackBox.dll: https://github.com/bees-xiv/bees-build"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.44196c298216",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 4,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 7,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 42662,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.5.0.0",
+        "artifactBytes": 42662,
+        "artifactSha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+        "catalogAssemblyVersion": "1.5.0.0",
+        "manifestInternalName": "",
+        "manifestPath": "BlackBox.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 6,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 6,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Endpoint: github.com",
+        "Endpoint: universalis.app",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "filesystem.external-path",
+        "game.memory.read",
+        "network.http",
+        "network.listener",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 1,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+        "internalName": "BlackBox",
+        "manifestVersion": "1.5.0.0",
+        "observationId": 3510,
+        "observationKey": "manifest-32ca22cf0a280d55f77fa74f5268",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 2189
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 6,
+        "uncompressedBytes": 51877
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-1e5bae3170a8589f",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-593bfeaaed5ed9e2",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-2189",
+        "queueSeedRevision": "queue-seed-v2-66cbab0abcf46925f472",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-3efe351e7bb5a1304c7f",
+        "variantId": 2189,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-15T22:48:33Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": true,
+        "branch": "main",
+        "candidates": [
+          "https://github.com/bees-xiv/bees-repo"
+        ],
+        "commit": "b83c6829e77b9b208664e42bb5664d70a3a1497e",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "omega.plugin-profile-observation.v1",
+          "sha256": "",
+          "status": "absent",
+          "valid": false
+        },
+        "error": "https://github.com/bees-xiv/bees-repo: repository inspected but plugin identity did not match",
+        "provenance": {
+          "identityMatched": false,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "requestedAssemblyVersion": "1.5.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "default-branch",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/bees-xiv/bees-repo",
+        "treeSha256": "c612bfb0394e4202810427394a7e661045f5aed1"
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-15T22:48:33Z",
+    "scanner_version": "2.15.0",
+    "source_available": 1,
+    "source_commit": "b83c6829e77b9b208664e42bb5664d70a3a1497e",
+    "source_repository": "https://github.com/bees-xiv/bees-repo",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 2189
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "source-changed",
+      "current_artifact_sha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+      "current_assembly_version": "1.5.0.0",
+      "current_scan_id": 12,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "b83c6829e77b9b208664e42bb5664d70a3a1497e",
+      "detected_at_utc": "2026-09-15T22:48:36Z",
+      "previous_artifact_sha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+      "previous_assembly_version": "1.5.0.0",
+      "previous_scan_id": 7,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 1,
+      "variant_id": 2189
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 13,
+      "artifact_only_count": 13,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:blackbox",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "BlackBox",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.5.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.7966"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.httplistener",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.HttpListener",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-15T22:48:36Z",
+      "comparison_id": 10,
+      "comparison_status": "compared-not-verified",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 12,
+      "source_available": 1,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 2189,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "identityFingerprint": "9ab0db0faa3bf17ac4a3a7fd1631054becb1e14d09eb9e15868efd218e7630c7",
+    "observedAtUtc": "2026-09-19T05:04:06Z",
+    "reason": "terminal_snapshot_replaced",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "superseded",
+    "supersededBy": {
+      "artifactSha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+      "identityFingerprint": "6b5313d340acd699bb955e1a3bde77ba8ac75885c778163d569c50021eec136c",
+      "scanId": 12
+    },
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "12e8796b62964c46c34bb7dc41535faa50f03a52a2af6c687a69e5815b7ca040",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "2872cc03eb3babbe6b3a93d45e27c3ea2661c560bc09d99d076bd94b541a74a9",
+        "records": 13,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "developerProfile",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained",
+        "recordDigest": "ecffbbf3b97cd2516f00397fc81e1aaf93d43abe24d6a7ecc25846321b45d008",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "46e264483e9d5c3604f5cb5142ad0a2a13dd4493d727b2b023d408cb33fc3df0",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "ac555dbae6c043896618a6374576d593b7b6c1394a92d627bb2249db6cae0768",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "300149f8b56e2fd1183785791b24d940ed65b17a7a166766cdb137e1d3f00c54",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "fdb2c49a304512c6d570b5c45111b3b5725e60df1e61a035e1b906b748dedf80",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceConditions": {
+        "backingDataset": "sourceConditions",
+        "collectionSchema": "omega.sigmascope.observation.source-condition.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceDataFlow": {
+        "backingDataset": "sourceDataFlow",
+        "collectionSchema": "omega.sigmascope.observation.source-data-flow.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceFlowEdges": {
+        "backingDataset": "sourceFlowEdges",
+        "collectionSchema": "omega.sigmascope.observation.source-flow-edge.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceOperations": {
+        "backingDataset": "sourceOperations",
+        "collectionSchema": "omega.sigmascope.observation.source-operation.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "23727c5a53711d3b15d766c9080a76df708cac02960754f5995bcb88eb5e76c3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceTriggers": {
+        "backingDataset": "sourceTriggers",
+        "collectionSchema": "omega.sigmascope.observation.source-trigger.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "source-behavior-observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceReleaseWorkflows"
+    ],
+    "observationDigest": "obs-3758d40a25cfac651f3fe9c2f7e091017754d66800c3732220678f9b5c0c783d",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "BlackBox [Bees]",
+    "first_seen_utc": "2026-08-21T08:24:10Z",
+    "internal_name": "BlackBox",
+    "last_seen_utc": "2026-09-16T18:35:03Z",
+    "plugin_id": 1053
+  },
+  "pluginId": 1053,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 0,
+      "summary": "",
+      "webEnriched": false
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "834e59b839c9103f76bc9e614730626f3da27ee9bab943e1dd871af7ec8a5bba",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "003611ebfd4b2d2a4b1c0bc0800ab411930df6356c26e773384095f5217b20f3",
+        "records": 6
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "222ae7f896ec8533fd54687de1f1fce8b28fa45645e309add03f685e43c45904",
+        "records": 9
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+    "artifact_url": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+    "assembly_version": "1.5.0.0",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Endpoint: github.com",
+      "Endpoint: universalis.app",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 4,
+    "plugin_id": 1053,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 7,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 42662,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.5.0.0",
+        "artifactBytes": 42662,
+        "artifactSha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+        "catalogAssemblyVersion": "1.5.0.0",
+        "manifestInternalName": "",
+        "manifestPath": "BlackBox.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 6,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 6,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Endpoint: github.com",
+        "Endpoint: universalis.app",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "filesystem.external-path",
+        "game.memory.read",
+        "network.http",
+        "network.listener",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 1,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+        "internalName": "BlackBox",
+        "manifestVersion": "1.5.0.0",
+        "observationId": 3510,
+        "observationKey": "manifest-32ca22cf0a280d55f77fa74f5268",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 2189
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 6,
+        "uncompressedBytes": 51877
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-1e5bae3170a8589f",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-593bfeaaed5ed9e2",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-2189",
+        "queueSeedRevision": "queue-seed-v2-66cbab0abcf46925f472",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-3efe351e7bb5a1304c7f",
+        "variantId": 2189,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-15T22:48:33Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0f59b3f683c8566c992beae4e4d73d71e5082b195cc63e7ceddc5c2a7585fa89",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [
+            "default_branch"
+          ],
+          "confidence": 40,
+          "coverageLabel": "Current source found",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": true,
+        "branch": "main",
+        "candidates": [
+          "https://github.com/bees-xiv/bees-repo"
+        ],
+        "commit": "b83c6829e77b9b208664e42bb5664d70a3a1497e",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "omega.plugin-profile-observation.v1",
+          "sha256": "",
+          "status": "absent",
+          "valid": false
+        },
+        "error": "https://github.com/bees-xiv/bees-repo: repository inspected but plugin identity did not match",
+        "provenance": {
+          "identityMatched": false,
+          "manifestAssemblyVersion": "",
+          "manifestInternalName": "",
+          "manifestPath": "",
+          "manifestRepoUrl": "",
+          "manifestRepositoryMatched": false,
+          "requestedAssemblyVersion": "1.5.0.0",
+          "schema": "omega.plugin-source-provenance.v1",
+          "selectedRef": "main",
+          "selectedRefKind": "default-branch",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/bees-xiv/bees-repo",
+        "treeSha256": "c612bfb0394e4202810427394a7e661045f5aed1"
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-15T22:48:33Z",
+    "scanner_version": "2.15.0",
+    "source_available": 1,
+    "source_commit": "b83c6829e77b9b208664e42bb5664d70a3a1497e",
+    "source_id": 578,
+    "source_repository": "https://github.com/bees-xiv/bees-repo",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 2189
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "22bbe9d37fafa87b2344760f2589208c589f02c0400253a426971e901a4281dd",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"cc9b795a4ff814f3e4da323fbd5e09fcda312320ab406ba44f10168a6757f32c\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-16T18:35:03Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-16T18:35:03Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 14,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 578,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/repos/misc.json"
+  },
+  "sourceId": 578,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.5.0.0",
+    "author": "bees-xiv",
+    "authors_json": [
+      "bees-xiv"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "",
+    "dip17_channel": "",
+    "download_count": 69696969,
+    "download_link_install": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+    "first_seen_utc": "2026-08-21T08:24:10Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-16T18:35:03Z",
+    "last_update": 1737410950,
+    "minimum_dalamud_version": null,
+    "name": "BlackBox [Bees]",
+    "plugin_id": 1053,
+    "punchline": "",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.5.0.0",
+      "Author": "bees-xiv",
+      "DalamudApiLevel": 15,
+      "Description": "",
+      "DownloadCount": 69696969,
+      "DownloadLinkInstall": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+      "DownloadLinkUpdate": "https://github.com/bees-xiv/bees-repo/releases/latest/download/BlackBox.zip",
+      "IconUrl": "",
+      "InternalName": "BlackBox",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1737410950,
+      "Name": "BlackBox [Bees]",
+      "Punchline": "",
+      "RepoUrl": "",
+      "Tags": [],
+      "TestingDalamudApiLevel": 15,
+      "_Category": "misc",
+      "_SourceId": "bees-xiv-bees-repo",
+      "_SourceName": "bees-repo",
+      "_SourceUrl": "https://raw.githubusercontent.com/bees-xiv/bees-repo/main/repo.json"
+    },
+    "repo_url": "",
+    "source_entry_key": "blackbox|1.5.0.0|15|15|1",
+    "source_id": 578,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": 15,
+    "variant_id": 2189
+  },
+  "variantId": 2189
+}
