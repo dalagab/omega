@@ -1,0 +1,2551 @@
+{
+  "analysis": {
+    "analysisId": "677c3772eea1743804fed3c9f30f10c308d1c7539b1d1590fcb06f22304e070c",
+    "artifactSha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+    "path": "artifacts/9a/9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab/analyses/677c3772eea1743804fed3c9f30f10c308d1c7539b1d1590fcb06f22304e070c",
+    "recordCount": 227
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+    "artifact_url": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+    "assembly_version": "1.7.15",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Credential/protected-data access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: git.anna.lgbt",
+      "Endpoint: github.com",
+      "Endpoint: www.microsoft.com0",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets"
+    ],
+    "caution_count": 10,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "privacy",
+        "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+        "evidence": [
+          "metadata:XIVChat.Relay.Transport.dll: CryptUnprotectData",
+          "il:XIVChat.Relay.Transport.dll:XIVChat.Relay.Transport.WindowsSecret.Transform+0x69: call XIVChat.Relay.Transport.WindowsSecret.CryptUnprotectData -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+          "artifact:XIVChat.Relay.Transport.dll: CryptUnprotectData"
+        ],
+        "ruleId": "credential.api",
+        "severity": "high",
+        "title": "Credential or protected-data access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+        "evidence": [],
+        "ruleId": "compound.credential-network",
+        "severity": "high",
+        "title": "Credential APIs plus network access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "artifact:MessagePack.dll: System.Diagnostics.Process",
+          "artifact:MessagePack.dll: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:websocket-sharp.dll: System.Net.Sockets",
+          "metadata:websocket-sharp.dll: TcpClient",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.IsLocal+0x23: call System.Net.Sockets.Socket.get_OSSupportsIPv6: System.Net.Sockets",
+          "il:websocket-sharp.dll:WebSocketSharp.WebSocket.releaseClientResources+0x28: callvirt System.Net.Sockets.TcpClient.Close: System.Net.Sockets",
+          "il:websocket-sharp.dll:WebSocketSharp.WebSocket.releaseClientResources+0x28: callvirt System.Net.Sockets.TcpClient.Close: TcpClient",
+          "il:websocket-sharp.dll:WebSocketSharp.WebSocket.sendProxyConnectRequest+0xa2: newobj System.Net.Sockets.TcpClient..ctor: System.Net.Sockets",
+          "il:websocket-sharp.dll:WebSocketSharp.WebSocket.sendProxyConnectRequest+0xa2: newobj System.Net.Sockets.TcpClient..ctor: TcpClient",
+          "il:websocket-sharp.dll:WebSocketSharp.WebSocket.sendProxyConnectRequest+0xb3: callvirt System.Net.Sockets.TcpClient.GetStream: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Peeping Tom.Ipc.dll: https://git.anna.lgbt/anna/PeepingTom"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.e2e90e61032c",
+        "severity": "caution",
+        "title": "Endpoint: git.anna.lgbt"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.NET.StringTools.dll: http://www.microsoft.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.7b602439ebe0",
+        "severity": "caution",
+        "title": "Endpoint: www.microsoft.com0"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:Sodium.Core.dll: DllImportAttribute",
+          "metadata:XIVChat.Relay.Transport.dll: DllImportAttribute",
+          "metadata:XIVChatNext.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:XIVChatNext.dll: DllImportAttribute",
+          "il:XIVChatNext.dll:XIVChatPlugin.Plugin..ctor+0x18a: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport",
+          "native-pe:xivchat_native_tools.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "network",
+        "description": "References APIs that can listen for inbound local/network connections.",
+        "evidence": [
+          "metadata:websocket-sharp.dll: TcpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.Close+0x2: callvirt WebSocketSharp.Net.HttpListenerResponse.set_StatusCode: HttpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.Close+0x8: callvirt WebSocketSharp.Net.HttpListenerResponse.get_OutputStream: HttpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.CloseWithAuthChallenge+0x1: callvirt WebSocketSharp.Net.HttpListenerResponse.get_Headers: HttpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.IsUpgradeTo+0x35: callvirt WebSocketSharp.Net.HttpListenerRequest.get_Headers: HttpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.IsUpgradeTo+0x48: callvirt WebSocketSharp.Net.HttpListenerRequest.get_Headers: HttpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.WriteContent+0x24: callvirt WebSocketSharp.Net.HttpListenerResponse.Close: HttpListener",
+          "il:websocket-sharp.dll:WebSocketSharp.Ext.WriteContent+0x2c: callvirt WebSocketSharp.Net.HttpListenerResponse.set_ContentLength64: HttpListener"
+        ],
+        "ruleId": "local.listener",
+        "severity": "caution",
+        "title": "Local server/listener"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:XIVChatNext.dll: Dalamud.Hooking",
+          "metadata:XIVChatNext.dll: SigScanner",
+          "metadata:XIVChatNext.dll: HookFromAddress",
+          "il:XIVChatNext.dll:XIVChatPlugin.GameFriendListReader.BeginRefresh+0xe5: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:XIVChatNext.dll:XIVChatPlugin.GameFriendPresenceReader.Begin+0x1ee: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:XIVChatNext.dll:XIVChatPlugin.Plugin.ScanText+0x1: call XIVChatPlugin.Plugin.get_SigScanner: SigScanner",
+          "il:XIVChatNext.dll:XIVChatPlugin.Plugin.ScanText+0x7: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:XIVChatNext.dll:XIVChatPlugin.Plugin.GetStaticAddressFromSig+0x1: call XIVChatPlugin.Plugin.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+          "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb",
+          "artifact:websocket-sharp.dll: C:\\projects\\websocket-sharp\\websocket-sharp\\obj\\Release\\netstandard2.0\\websocket-sharp.pdb",
+          "artifact:websocket-sharp.dll: p://",
+          "artifact:websocket-sharp.dll: s://"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:MessagePack.dll: Reflection.Emit",
+          "metadata:MessagePack.dll: AssemblyLoadContext",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+          "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:websocket-sharp.dll:<>c__DisplayClass25_0.<complete>b__0+0xc: callvirt System.AsyncCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "libsodium.dll",
+          "xivchat_native_tools.dll",
+          "runtimes\\win-x64\\native\\libsodium.dll"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:XIVChat.Relay.Transport.dll: System.Net.Http.HttpClient",
+          "il:XIVChat.Relay.Transport.dll:XIVChat.Relay.Transport.RelayEndpoint..cctor+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+          "il:XIVChat.Relay.Transport.dll:XIVChat.Relay.Transport.RelayEndpoint..cctor+0x7: callvirt System.Net.Http.HttpClientHandler.set_AllowAutoRedirect: System.Net.Http.HttpClient",
+          "il:XIVChat.Relay.Transport.dll:XIVChat.Relay.Transport.RelayEndpoint..cctor+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:XIVChat.Relay.Transport.dll:XIVChat.Relay.Transport.RelayEndpoint..cctor+0x1a: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:XIVChat.Relay.Transport.dll:<InviteAsync>d__3.MoveNext+0x69: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+          "il:XIVChat.Relay.Transport.dll:<PairAsync>d__4.MoveNext+0x95: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+          "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f2dfd1030921",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Sodium.Core.dll: https://github.com/ektrah/libsodium-core.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.89d00ad54d56",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.3b676f6154bf",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:XIVChatNext.dll: https://github.com/AinaSnow/XIVChatNext"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.2167497a7f33",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:XIVChatNext.json: https://github.com/AinaSnow/XIVChatNext"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.16295b575aa6",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:websocket-sharp.dll: FileStream",
+          "artifact:websocket-sharp.dll: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 9,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 1,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 953156,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.7.15",
+        "artifactBytes": 953156,
+        "artifactSha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+        "catalogAssemblyVersion": "1.7.15",
+        "manifestInternalName": "",
+        "manifestPath": "XIVChatNext.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.credentials",
+            "label": "Credential or protected-data access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Credential/protected-data access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: git.anna.lgbt",
+        "Endpoint: github.com",
+        "Endpoint: www.microsoft.com0",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.http",
+        "network.listener",
+        "network.socket",
+        "privacy.credentials",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 10,
+        "critical": 0,
+        "high": 3,
+        "informational": 9
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+        "internalName": "XIVChatNext",
+        "manifestVersion": "1.7.15",
+        "observationId": 18518,
+        "observationKey": "manifest-3c0eebb1eb491faa2458588bbc16",
+        "repositoryUrl": "https://github.com/AinaSnow/XIVChatNext",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 11347
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 10,
+        "bundledNativeLibraryCount": 3,
+        "fileCount": 15,
+        "uncompressedBytes": 2091846
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-142ae68206059cbc",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-e71ae3268e7f94c6",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-11347",
+        "queueSeedRevision": "queue-seed-v2-3fed76310cb564fe7188",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-d28baf8aeb4216b3654a",
+        "variantId": 11347,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-15T07:48:52Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/AinaSnow/XIVChatNext"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/AinaSnow/XIVChatNext: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/AinaSnow/XIVChatNext",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-15T07:48:52Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/AinaSnow/XIVChatNext",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 11347
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+      "current_assembly_version": "1.7.15",
+      "current_scan_id": 12,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-15T07:48:52Z",
+      "previous_artifact_sha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+      "previous_assembly_version": "1.7.15",
+      "previous_scan_id": 1,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 11347
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 66,
+      "artifact_only_count": 66,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "15.0.3.4"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.9047"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:messagepack",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MessagePack",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.1.7.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:messagepack.annotations",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "MessagePack.Annotations",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.1.7.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.net.stringtools",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.NET.StringTools",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0",
+            "2.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:peeping tom.ipc",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Peeping Tom.Ipc",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sodium.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Sodium.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.3.5.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.security",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Security",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.sockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets.client",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets.Client",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.channels",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Channels",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:websocket-sharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "websocket-sharp",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:xivchat.relay.protocol",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "XIVChat.Relay.Protocol",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:xivchat.relay.transport",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "XIVChat.Relay.Transport",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:xivchatcommon",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "XIVChatCommon",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:xivchatnext",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "XIVChatNext",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.7.15.0"
+          ]
+        },
+        {
+          "componentKey": "native:advapi32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ADVAPI32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-heap-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-heap-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-runtime-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-runtime-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-string-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-string-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-time-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-time-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:crypt32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "crypt32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "KERNEL32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libsodium",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "libsodium.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:vcruntime140",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "VCRUNTIME140.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:xivchat_native_tools",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "xivchat_native_tools.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:libsodium",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "libsodium",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.19"
+          ]
+        },
+        {
+          "componentKey": "nuget:messagepack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MessagePack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.7"
+          ]
+        },
+        {
+          "componentKey": "nuget:messagepack.annotations",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "MessagePack.Annotations",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.7"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.net.stringtools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NET.StringTools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "17.11.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:peepingtom.ipc",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "PeepingTom.Ipc",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sodium.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Sodium.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.3.5"
+          ]
+        },
+        {
+          "componentKey": "nuget:websocketsharp-netstandard",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "WebSocketSharp-netstandard",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.1"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-15T07:48:52Z",
+      "comparison_id": 11,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 12,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 11347,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "227993b87cfd9c75116e32e4ac17f6b9cbcaeb7ad027294c1a986ff33081aae2",
+    "observedAtUtc": "2026-09-19T09:26:08Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "7a70f6f6c666adb4ff811408f8f970408420d62d75c0128639d0087772b3f706",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "f21fcab1dc66321f9945d08b1b97c5e11173e78a31f74a13604dd2790ed9caed",
+        "records": 134,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "9ce6183f288a84d8fec0cfc9106bd597759119e8e09a4759e7e2e82a0c679941",
+        "records": 10,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "a0866cf7d002be995ddd99dd5f77efe8c0de46bbbea2e17731c87f44a7e6cfb1",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "c390fd367cedb4edc1cefe0105d5fc4604aa392904ec23397333fb81e010e287",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-f1328fcfc2fdc711e8e18c4e29ef780efb8da239e7bf472c8d8cb10da52fc75b",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "XIVChatNext Server",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "XIVChatNext",
+    "last_seen_utc": "2026-09-19T04:26:25Z",
+    "plugin_id": 754
+  },
+  "pluginId": 754,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Connect FFXIV to the XIVChat Next Windows client. Chat, friends, item/map cards and game screenshots, with optional self-hosted relay. English UI by default; Chinese is available in settings.\n\n将 FFXIV 连接到 XIVChat Next 桌面客户端，支持聊天、好友、物品/地图卡片、游戏截图及可选自建中继。默认英文，可在设置中切换中文。",
+      "images": [
+        "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/logo.svg"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 11247,
+      "summary": "Use chat away from the game.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/AinaSnow/XIVChatNext",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": ":)",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/logo.svg"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/AinaSnow/XIVChatNext"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# XIVChat Next\n\n<p align=\"center\">\n  <img src=\"logo.svg\" width=\"100\" alt=\"XIVChat Logo\" />\n</p>\n\n基于原版 [XIVChat](https://xiv.chat/) 改进\n\n---\n\n## ✨ 新增与优化功能\n\n相比于原版，**XIVChat Next** 新增物品地图超链接展示部分功能优化\n---\n\n## 📖 使用方法\n\n### 1. 安装游戏端插件\n在《最终幻想14》卫月框架 (Dalamud / XIVLauncher) 中，打开 **设置 -> 实验性功能 -> 自定义插件仓库**，添加以下链接：\n```text\nhttps://raw.githubusercontent.com/AinaSnow/XIVChatNext/refs/heads/main/repo.json\n```\n保存后，在插件安装器中搜索 **`XIVChatNext Server`** 并安装即可。\n\n### 2. 连接桌面客户端\n下载并解压客户端正式发布包 (`XIVChat-Desktop-v1.3.5-win-x64.zip`)，运行 **`XIVChat Desktop.exe`**：\n- 新增服务器，填入游戏内提示的连接地址与端口。\n- 首次连接时在弹出的“密钥验证”窗口中点击 **“是”**",
+      "title": "XIVChatNext",
+      "url": "https://github.com/AinaSnow/XIVChatNext"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "13b43195577410c77980558d330d0419b30e394d4aa2ddb4e2ab2411c7c35535",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "ca173a72156ccdf02d78574d76a9138747ddf14b763cd216a79d18d442a0733f",
+        "records": 12
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "6f9ea9fed964cbf7d592a703712e1612e9dfafcdcedb3209dad30a0007f021d4",
+        "records": 22
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+    "artifact_url": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+    "assembly_version": "1.7.15",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Credential/protected-data access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: git.anna.lgbt",
+      "Endpoint: github.com",
+      "Endpoint: www.microsoft.com0",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets"
+    ],
+    "caution_count": 10,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 9,
+    "plugin_id": 754,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 1,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+      "artifactBytes": 953156,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.7.15",
+        "artifactBytes": 953156,
+        "artifactSha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+        "catalogAssemblyVersion": "1.7.15",
+        "manifestInternalName": "",
+        "manifestPath": "XIVChatNext.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.credentials",
+            "label": "Credential or protected-data access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Credential/protected-data access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: git.anna.lgbt",
+        "Endpoint: github.com",
+        "Endpoint: www.microsoft.com0",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.http",
+        "network.listener",
+        "network.socket",
+        "privacy.credentials",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 10,
+        "critical": 0,
+        "high": 3,
+        "informational": 9
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+        "internalName": "XIVChatNext",
+        "manifestVersion": "1.7.15",
+        "observationId": 18518,
+        "observationKey": "manifest-3c0eebb1eb491faa2458588bbc16",
+        "repositoryUrl": "https://github.com/AinaSnow/XIVChatNext",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 11347
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 10,
+        "bundledNativeLibraryCount": 3,
+        "fileCount": 15,
+        "uncompressedBytes": 2091846
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-162dea3cdd05417e",
+        "attemptId": "attempt-v2-142ae68206059cbc",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-e71ae3268e7f94c6",
+        "definitionsRevision": "defs-v1-9422463c2f2b7a54",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-11347",
+        "queueSeedRevision": "queue-seed-v2-3fed76310cb564fe7188",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-daccd21f7aa2e41c",
+        "targetFingerprint": "source-target-v2-d28baf8aeb4216b3654a",
+        "variantId": 11347,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-15T07:48:52Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "9ae0681140f4a71757693b64050b3fc9266cd477fd0033f441afaf94ce8159ab",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/AinaSnow/XIVChatNext"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/AinaSnow/XIVChatNext: HTTP Error 403: rate limit exceeded",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/AinaSnow/XIVChatNext",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-09-15T07:48:52Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 991,
+    "source_repository": "https://github.com/AinaSnow/XIVChatNext",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 11347
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "25167c55b705f616723a8451ea7d522b3f77da96a1b2d33dd79b2713b1d1f5d7",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"43757f4e851620769a5c7becacd59cd92d3a1e834492c16fe1ac5fb7ed9b0109\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-19T04:26:25Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-19T04:26:25Z",
+    "name": "AinaSnow/XIVChatNext",
+    "plugin_count": 1,
+    "provider": "AinaSnow/XIVChatNext",
+    "source_id": 991,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/repo.json"
+  },
+  "sourceId": 991,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.7.15",
+    "author": "AinaSnow",
+    "authors_json": [
+      "AinaSnow"
+    ],
+    "category_tags_json": [],
+    "changelog": "New desktop workspace, history, friends, cards, screenshots, popouts and self-hosted relay. Plugin 1.7.15 / Desktop 1.3.6. English by default; Chinese available.\n\n新增桌面工作台、历史、好友、卡片、截图、小窗与自建中继。插件 1.7.15 / 客户端 1.3.6，默认英文，可切中文。",
+    "dalamud_api_level": 15,
+    "description": "Connect FFXIV to the XIVChat Next Windows client. Chat, friends, item/map cards and game screenshots, with optional self-hosted relay. English UI by default; Chinese is available in settings.\n\n将 FFXIV 连接到 XIVChat Next 桌面客户端，支持聊天、好友、物品/地图卡片、游戏截图及可选自建中继。默认英文，可在设置中切换中文。",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+    "download_link_testing": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+    "download_link_update": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+    "first_seen_utc": "2026-09-15T01:29:41Z",
+    "icon_url": "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/XIVChatPlugin/Resources/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-15T01:29:41Z",
+    "last_update": 1789395650,
+    "minimum_dalamud_version": null,
+    "name": "XIVChatNext Server",
+    "plugin_id": 754,
+    "punchline": "Use chat away from the game.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.7.15",
+      "Author": "AinaSnow",
+      "CanUnloadAsync": false,
+      "Changelog": "New desktop workspace, history, friends, cards, screenshots, popouts and self-hosted relay. Plugin 1.7.15 / Desktop 1.3.6. English by default; Chinese available.\n\n新增桌面工作台、历史、好友、卡片、截图、小窗与自建中继。插件 1.7.15 / 客户端 1.3.6，默认英文，可切中文。",
+      "DalamudApiLevel": 15,
+      "Description": "Connect FFXIV to the XIVChat Next Windows client. Chat, friends, item/map cards and game screenshots, with optional self-hosted relay. English UI by default; Chinese is available in settings.\n\n将 FFXIV 连接到 XIVChat Next 桌面客户端，支持聊天、好友、物品/地图卡片、游戏截图及可选自建中继。默认英文，可在设置中切换中文。",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+      "DownloadLinkTesting": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/AinaSnow/XIVChatNext/releases/download/1.7.15/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/AinaSnow/XIVChatNext/main/XIVChatPlugin/Resources/icon.png",
+      "InternalName": "XIVChatNext",
+      "IsTestingExclusive": false,
+      "LastUpdate": 1789395650,
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "XIVChatNext Server",
+      "Punchline": "Use chat away from the game.",
+      "RepoUrl": "https://github.com/AinaSnow/XIVChatNext",
+      "Tags": [
+        "chat",
+        "friends",
+        "desktop",
+        "relay"
+      ],
+      "TestingAssemblyVersion": "1.7.15",
+      "TestingDalamudApiLevel": 15
+    },
+    "repo_url": "https://github.com/AinaSnow/XIVChatNext",
+    "source_entry_key": "xivchatnext|1.7.15|15|15|0",
+    "source_id": 991,
+    "tags_json": [
+      "chat",
+      "friends",
+      "desktop",
+      "relay"
+    ],
+    "testing_assembly_version": "1.7.15",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 11347
+  },
+  "variantId": 11347
+}
