@@ -170,10 +170,20 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
 
     def test_customer_projection_is_periodic_and_terminal(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")
+        customer = text[text.index("\n  publish-client:"): text.index("\n  verify-client-publication:")]
+        guard = text[text.index("\n  verify-client-publication:"): text.index("\n  continue:")]
+        continuation = text[text.index("\n  continue:"): text.index("\n  idle-or-serial-fallback:")]
         self.assertIn("publish_client_every", text)
         self.assertIn('if [ "$next_mode" != "parallel" ] ||', text)
         self.assertIn("WAVE % cadence", text)
-        self.assertIn("needs.publish.outputs.publish_client == 'true'", text)
+        self.assertIn("needs: [merge, publish]", customer)
+        self.assertIn("needs.merge.outputs.publish_client == 'true'", customer)
+        self.assertNotIn("needs.publish.outputs.publish_client == 'true'", customer)
+        self.assertIn("Require due customer DB publication", guard)
+        self.assertIn("CUSTOMER_PUBLICATION_RESULT", guard)
+        self.assertIn('if [ "$CUSTOMER_PUBLICATION_RESULT" != "success" ]', guard)
+        self.assertIn("verify-client-publication", continuation)
+        self.assertIn("needs.verify-client-publication.result == 'success'", continuation)
 
     def test_continuation_converges_to_canonical_production_capacity(self) -> None:
         text = (common.ROOT / ".github" / "workflows" / "sigmascope-parallel-drain.yml").read_text(encoding="utf-8")

@@ -1076,22 +1076,53 @@ jobs:
 
   publish-client:
     name: Periodic customer DB projection
-    needs: publish
-    if: needs.publish.outputs.publish_client == 'true'
+    needs: [merge, publish]
+    if: >-
+      always() &&
+      needs.merge.result == 'success' &&
+      needs.publish.result == 'success' &&
+      needs.merge.outputs.publish_client == 'true'
     uses: ./.github/workflows/catalog-client-publish.yml
     with:
-      # The publish job releases its job-scoped authority lock before this
-      # reusable workflow starts, so customer projection must reacquire it.
+      # Gate customer publication from the merge cadence directly. The customer
+      # projection consumes the latest authoritative branches and must not depend
+      # on a relayed publish-job output to decide whether a cadence boundary is due.
+      # The publish job releases its job-scoped authority lock before this reusable
+      # workflow starts, so customer projection must reacquire it.
       authority_lock_held: false
     secrets: inherit
 
+  verify-client-publication:
+    name: Require due customer DB publication
+    needs: [merge, publish, publish-client]
+    if: >-
+      always() &&
+      needs.merge.result == 'success' &&
+      needs.publish.result == 'success' &&
+      needs.merge.outputs.publish_client == 'true'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail closed on skipped or failed customer publication
+        env:
+          CUSTOMER_PUBLICATION_RESULT: ${{ needs.publish-client.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CUSTOMER_PUBLICATION_RESULT" != "success" ]; then
+            echo "::error::Customer DB publication was due but ended as '$CUSTOMER_PUBLICATION_RESULT'. catalog-latest may be stale; stopping the drain chain."
+            exit 1
+          fi
+          echo "Customer DB publication completed at this cadence boundary."
+
   continue:
     name: Continue until no immediately eligible primary work remains
-    needs: [plan, publish, publish-client]
+    needs: [plan, publish, publish-client, verify-client-publication]
     if: >-
       always() &&
       needs.publish.result == 'success' &&
-      (needs.publish-client.result == 'success' || needs.publish-client.result == 'skipped')
+      (needs.publish-client.result == 'success' || needs.publish-client.result == 'skipped') &&
+      (needs.verify-client-publication.result == 'success' || needs.verify-client-publication.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       actions: write
