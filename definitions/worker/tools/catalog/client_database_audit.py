@@ -26,6 +26,23 @@ PROHIBITED_TABLES = {
 # sole material change.
 SECURITY_REFILL_GROWTH_TABLES = {"runtime_plugin_variants", "catalog_meta"}
 
+# A stale customer release can legitimately catch up on both catalog membership and
+# Security Evidence at once. Keep that path bounded to the explicit client allow-list
+# and reject density spikes that materially outpace the runtime-row increase.
+CLIENT_CATCHUP_TABLES = {
+    "catalog_meta",
+    "sources",
+    "plugins",
+    "plugin_variants",
+    "runtime_plugin_variants",
+    "plugin_search",
+    "catalog_changelog",
+    "plugin_dependencies",
+    "plugin_dependency_providers",
+}
+CLIENT_CATCHUP_SECURITY_DENSITY_MULTIPLIER = 1.25
+CLIENT_CATCHUP_CATALOG_DENSITY_MULTIPLIER = 1.10
+
 
 def _rows(db: sqlite3.Connection, table: str) -> int:
     try:
@@ -147,6 +164,7 @@ def audit(path: Path) -> dict[str, Any]:
         "integrity": integrity,
         "projectionMode": meta.get("client_projection_mode", "legacy/unknown"),
         "marketplaceProjectorVersion": meta.get("marketplace_projector_version", ""),
+        "catalogRevision": meta.get("catalog_revision", ""),
         "evidenceRevision": meta.get("evidence_revision", ""),
         "runtimeNonSecurityDigest": runtime_digest,
         "securityCoverage": security_coverage,
@@ -225,6 +243,7 @@ def audit_with_previous(path: Path, bundle: Path | None = None) -> dict[str, Any
     result["previousSecurityCoverage"] = (
         previous or {}
     ).get("securityCoverage", {"marker": "", "coveredVariants": 0})
+    result["previousCatalogRevision"] = (previous or {}).get("catalogRevision", "")
     result["previousEvidenceRevision"] = (previous or {}).get("evidenceRevision", "")
     result["previousProjectionMode"] = (previous or {}).get("projectionMode", "")
     result["previousMarketplaceProjectorVersion"] = (
@@ -307,16 +326,104 @@ def security_refill_growth_allowance(
     return not reasons, reasons
 
 
+def catalog_catchup_growth_allowance(
+    result: dict[str, Any],
+    max_growth_ratio: float,
+) -> tuple[bool, list[str]]:
+    """Allow bounded growth when a stale client release catches up to authoritative state."""
+    reasons: list[str] = []
+
+    if result.get("projectionMode") != result.get("previousProjectionMode"):
+        reasons.append("projection mode changed")
+    if result.get("marketplaceProjectorVersion") != result.get(
+        "previousMarketplaceProjectorVersion"
+    ):
+        reasons.append("marketplace projector version changed")
+
+    current_catalog = str(result.get("catalogRevision") or "")
+    previous_catalog = str(result.get("previousCatalogRevision") or "")
+    if not current_catalog or current_catalog == previous_catalog:
+        reasons.append("authoritative catalog revision did not advance")
+
+    if result.get("prohibitedTables"):
+        reasons.append("prohibited server-side tables are present")
+
+    table_deltas = result.get("tableDeltas") or []
+    changed_tables = {
+        str(row.get("name") or "")
+        for row in table_deltas
+        if int(row.get("rowDelta") or 0) != 0
+        or int(row.get("byteDelta") or 0) != 0
+    }
+    unexpected_tables = sorted(changed_tables - CLIENT_CATCHUP_TABLES)
+    if unexpected_tables:
+        reasons.append(
+            "unexpected client tables changed: " + ", ".join(unexpected_tables)
+        )
+
+    current_coverage = result.get("securityCoverage") or {}
+    previous_coverage = result.get("previousSecurityCoverage") or {}
+    current_marker = str(current_coverage.get("marker") or "")
+    previous_marker = str(previous_coverage.get("marker") or "")
+    current_covered = int(current_coverage.get("coveredVariants") or 0)
+    previous_covered = int(previous_coverage.get("coveredVariants") or 0)
+    if current_marker != previous_marker:
+        reasons.append("security coverage marker changed")
+    if current_covered < previous_covered:
+        reasons.append("security coverage regressed")
+
+    runtime_delta = next(
+        (
+            row
+            for row in table_deltas
+            if row.get("name") == "runtime_plugin_variants"
+        ),
+        None,
+    )
+    if runtime_delta is None:
+        reasons.append("runtime_plugin_variants delta unavailable")
+    else:
+        current_rows = int(runtime_delta.get("rows") or 0)
+        previous_rows = int(runtime_delta.get("previousRows") or 0)
+        if current_rows <= 0 or previous_rows <= 0:
+            reasons.append("runtime_plugin_variants row baseline unavailable")
+        else:
+            runtime_row_growth = current_rows / previous_rows
+            coverage_delta = current_covered - previous_covered
+            density_multiplier = (
+                CLIENT_CATCHUP_SECURITY_DENSITY_MULTIPLIER
+                if coverage_delta > 0
+                else CLIENT_CATCHUP_CATALOG_DENSITY_MULTIPLIER
+            )
+            allowed_growth = max(
+                float(max_growth_ratio or 0.0),
+                runtime_row_growth * density_multiplier,
+            )
+            actual_growth = float(result.get("growthRatio") or 0.0)
+            if actual_growth > allowed_growth:
+                reasons.append(
+                    "database growth outpaced bounded catalog catch-up "
+                    f"({actual_growth:.3f}x > {allowed_growth:.3f}x)"
+                )
+
+    return not reasons, reasons
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--database", required=True, type=Path)
     ap.add_argument("--previous-bundle", type=Path)
+    ap.add_argument("--bundle", type=Path)
     ap.add_argument("--report", type=Path)
     ap.add_argument("--max-bytes", type=int, default=0)
+    ap.add_argument("--max-bundle-bytes", type=int, default=0)
     ap.add_argument("--max-growth-ratio", type=float, default=0.0)
     args = ap.parse_args()
 
     result = audit_with_previous(args.database, args.previous_bundle)
+    result["bundleBytes"] = (
+        args.bundle.stat().st_size if args.bundle and args.bundle.exists() else None
+    )
     prev = result["previousDatabaseBytes"]
     growth_exceeded = bool(
         args.max_growth_ratio
@@ -325,14 +432,22 @@ def main() -> int:
     )
     refill_allowed = False
     refill_reasons: list[str] = []
+    catchup_allowed = False
+    catchup_reasons: list[str] = []
     if growth_exceeded:
         refill_allowed, refill_reasons = security_refill_growth_allowance(result)
+        if not refill_allowed:
+            catchup_allowed, catchup_reasons = catalog_catchup_growth_allowance(
+                result, args.max_growth_ratio
+            )
 
     result["growthGate"] = {
         "maxGrowthRatio": args.max_growth_ratio or None,
         "exceeded": growth_exceeded,
         "securityRefillAllowed": refill_allowed,
         "securityRefillRejectionReasons": refill_reasons,
+        "catalogCatchupAllowed": catchup_allowed,
+        "catalogCatchupRejectionReasons": catchup_reasons,
         "securityCoverageDelta": (
             int((result.get("securityCoverage") or {}).get("coveredVariants") or 0)
             - int(
@@ -351,7 +466,14 @@ def main() -> int:
         failures.append("prohibited server-side tables are present")
     if args.max_bytes and result["databaseBytes"] > args.max_bytes:
         failures.append(f"database exceeds {args.max_bytes} bytes")
-    if growth_exceeded and not refill_allowed:
+    if args.max_bundle_bytes and result["bundleBytes"] is None:
+        failures.append("bundle size unavailable")
+    elif (
+        args.max_bundle_bytes
+        and int(result["bundleBytes"]) > args.max_bundle_bytes
+    ):
+        failures.append(f"bundle exceeds {args.max_bundle_bytes} bytes")
+    if growth_exceeded and not refill_allowed and not catchup_allowed:
         failures.append(
             f"database grew by more than {args.max_growth_ratio:.2f}x"
         )
