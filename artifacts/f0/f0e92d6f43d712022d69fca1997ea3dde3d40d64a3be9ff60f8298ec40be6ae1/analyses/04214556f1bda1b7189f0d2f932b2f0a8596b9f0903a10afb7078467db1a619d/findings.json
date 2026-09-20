@@ -1,0 +1,107 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnDeserializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnDeserialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.DefaultSerializationBinder.GetTypeFromTypeNameKey+0x15: call System.Reflection.Assembly.LoadWithPartialName: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "native-pe:Resources\\binaries\\WineRPCBridge.exe: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:Resources\\binaries\\WineRPCBridge.exe: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "artifact:Resources\\binaries\\WineRPCBridge.exe: LoadLibrary",
+      "artifact:Resources\\binaries\\WineRPCBridge.exe: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "Resources\\binaries\\WineRPCBridge.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:DiscordRPC.dll: System.Diagnostics.Process",
+      "metadata:DiscordRPC.dll: Process.Start",
+      "il:DiscordRPC.dll:DiscordRPC.DiscordRpcClient..ctor+0x3f: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:DiscordRPC.dll:DiscordRPC.DiscordRpcClient..ctor+0x44: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.UnixUriSchemeCreator.RegisterMime+0x12: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.UnixUriSchemeCreator.RegisterMime+0x12: call System.Diagnostics.Process.Start: Process.Start",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.UnixUriSchemeCreator.RegisterMime+0x18: callvirt System.Diagnostics.Process.WaitForExit: System.Diagnostics.Process",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.UnixUriSchemeCreator.RegisterMime+0x1d: callvirt System.Diagnostics.Process.get_ExitCode: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:DiscordRPC.dll: Microsoft.Win32.Registry",
+      "metadata:DiscordRPC.dll: RegistryKey",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.WindowsUriSchemeCreator.CreateUriScheme+0x10: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: Microsoft.Win32.Registry",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.WindowsUriSchemeCreator.CreateUriScheme+0x10: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: RegistryKey",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.WindowsUriSchemeCreator.CreateUriScheme+0x27: callvirt Microsoft.Win32.RegistryKey.SetValue: Microsoft.Win32.Registry",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.WindowsUriSchemeCreator.CreateUriScheme+0x27: callvirt Microsoft.Win32.RegistryKey.SetValue: RegistryKey",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.WindowsUriSchemeCreator.CreateUriScheme+0x37: callvirt Microsoft.Win32.RegistryKey.SetValue: Microsoft.Win32.Registry",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.WindowsUriSchemeCreator.CreateUriScheme+0x37: callvirt Microsoft.Win32.RegistryKey.SetValue: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:DiscordRPC.dll: Directory.CreateDirectory",
+      "metadata:DiscordRPC.dll: WriteAllText",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.MacUriSchemeCreator.RegisterUriScheme+0x74: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.MacUriSchemeCreator.RegisterUriScheme+0xc4: call System.IO.File.WriteAllText: WriteAllText",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.UnixUriSchemeCreator.RegisterUriScheme+0xad: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:DiscordRPC.dll:DiscordRPC.Registry.UnixUriSchemeCreator.RegisterUriScheme+0xe0: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:DiscordRPC.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
