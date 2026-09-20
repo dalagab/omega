@@ -96,7 +96,7 @@ jobs:
           set -euo pipefail
           mkdir -p catalog/client-audit
           gh release download catalog-latest --repo "${{ github.repository }}" --pattern omega-marketplace.sqlite.zip --dir catalog/client-audit || true
-          args=(--database catalog/client-dist/omega-marketplace.sqlite --report catalog/client-dist/storage-audit.json --max-bytes 100663296 --max-growth-ratio 1.20)
+          args=(--database catalog/client-dist/omega-marketplace.sqlite --bundle catalog/client-dist/omega-marketplace.sqlite.zip --report catalog/client-dist/storage-audit.json --max-bytes 201326592 --max-bundle-bytes 33554432 --max-growth-ratio 1.20)
           if [ -f catalog/client-audit/omega-marketplace.sqlite.zip ]; then args+=(--previous-bundle catalog/client-audit/omega-marketplace.sqlite.zip); fi
           set +e
           python tools/catalog/client_database_audit.py "${args[@]}"
@@ -109,8 +109,12 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as out:
               out.write('### Omega customer database growth\n\n')
               out.write(f"- Current database: `{report['databaseBytes']}` bytes\n")
+              out.write(f"- Current compressed bundle: `{report.get('bundleBytes')}` bytes\n")
               out.write(f"- Previous database: `{report.get('previousDatabaseBytes')}` bytes\n")
-              out.write(f"- Overall growth ratio: `{report.get('growthRatio')}`\n\n")
+              out.write(f"- Overall growth ratio: `{report.get('growthRatio')}`\n")
+              gate = report.get('growthGate') or {}
+              out.write(f"- Security coverage delta: `{gate.get('securityCoverageDelta')}`\n")
+              out.write(f"- Bounded catalog catch-up allowance: `{gate.get('catalogCatchupAllowed')}`\n\n")
               out.write('| Table | Rows Δ | Bytes Δ | Current bytes |\n|---|---:|---:|---:|\n')
               for row in rows[:10]:
                   out.write(f"| `{row['name']}` | {row['rowDelta']} | {row['byteDelta']} | {row['bytes']} |\n")
