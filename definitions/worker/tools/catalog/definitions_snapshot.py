@@ -883,14 +883,9 @@ def build_snapshot(
                 queried_pairs.append({"name": name, "version": version})
         document["queriedPackageVersionPairs"] = queried_pairs
     elif not isinstance(document.get("queriedPackageVersionPairs"), list):
-        # Backward compatibility for pre-orchestration callers/tests. Production OSV lane
-        # results always carry the exact query set, so the freezer never rebinds a live
-        # independent result to a newer Evidence-v2 dependency inventory.
-        queried_pairs = []
-        if nuget_path.is_file():
-            for name, version in collect_public_advisories.observed_nuget_index(nuget_path, max_packages):
-                queried_pairs.append({"name": name, "version": version})
-        document["queriedPackageVersionPairs"] = queried_pairs
+        raise RuntimeError(
+            "supplied OSV advisory input is missing queriedPackageVersionPairs"
+        )
     osv_path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     source_observations_path = output / "source-revisions.json"
