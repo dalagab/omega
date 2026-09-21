@@ -1,0 +1,808 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.dll: ProtectedData.Unprotect",
+      "il:DalamudActCompat.dll:Raynording.Accounts.SharedAccountStore.ReadCore+0x5f: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "artifact:DalamudActCompat.dll: OpenProcess",
+      "artifact:DalamudActCompat.dll: ReadProcessMemory",
+      "artifact:DalamudActCompat.dll: WriteProcessMemory",
+      "metadata:FFXIV_ACT_Plugin.Memory.dll: ReadProcessMemory",
+      "metadata:FFXIV_ACT_Plugin.Memory.dll: OpenProcess",
+      "il:FFXIV_ACT_Plugin.Memory.dll:FFXIV_ACT_Plugin.Memory.ProcessManager.LoadCurrentProcessFromId+0x19: call FFXIV_ACT_Plugin.Memory.NativeMethods.OpenProcess -> kernel32.dll!OpenProcess: OpenProcess",
+      "il:FFXIV_ACT_Plugin.Memory.dll:FFXIV_ACT_Plugin.Memory.MemoryReader.ReadMemory.ReadInt32+0x45: call FFXIV_ACT_Plugin.Memory.NativeMethods.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:FFXIV_ACT_Plugin.Memory.dll:FFXIV_ACT_Plugin.Memory.MemoryReader.ReadMemory.ReadBuffer+0x5c: call FFXIV_ACT_Plugin.Memory.NativeMethods.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs commonly used to start execution in another process.",
+    "evidence_json": [
+      "metadata:Machina.FFXIV.dll: CreateRemoteThread",
+      "il:Machina.FFXIV.dll:Machina.FFXIV.Deucalion.DeucalionInjector.InjectLibrary+0x1ce: call Machina.FFXIV.Deucalion.DeucalionInjector.CreateRemoteThread -> kernel32.dll!CreateRemoteThread: CreateRemoteThread",
+      "artifact:Machina.FFXIV.dll: CreateRemoteThread"
+    ],
+    "rule_id": "memory.remote-thread",
+    "severity": "high",
+    "title": "Remote thread creation"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudActCompat.ActRuntime.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Advanced Combat Tracker.dll: http://127.0.0.1:80/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.7e83c1a434f7",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:DalamudActCompat.dll: System.Management.Automation"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.AttackType.get_ColCollection+0x36: callvirt StringDataCallback.Invoke",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.AttackType.GetColumnByName+0x1c: callvirt StringDataCallback.Invoke",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.CombatantData.get_ColCollection+0x36: callvirt StringDataCallback.Invoke",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.CombatantData.GetColumnByName+0x1c: callvirt StringDataCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: AssemblyLoadContext",
+      "metadata:DalamudActCompat.ActRuntime.dll: Reflection.Emit",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.PreloadTriggernometryScriptingAssemblies+0x9a: callvirt System.Runtime.Loader.AssemblyLoadContext.get_Assemblies: AssemblyLoadContext",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.PreloadTriggernometryScriptingAssemblies+0xc0: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromStream: AssemblyLoadContext",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.LoadPostNamazuWithClipboardCompatibility+0x53a: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromStream: AssemblyLoadContext",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.LoadPatchedTriggernometryImplementation+0xea: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath: AssemblyLoadContext",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LoadedActPlugin.Dispose+0xb1: callvirt System.Runtime.Loader.AssemblyLoadContext.remove_Resolving: AssemblyLoadContext",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.NativePostNamazuBridge.GetNativeCall+0x86: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Advanced Combat Tracker.dll: p://connectionstrings.com/ can help you make a connection string for your specific SQL datasource.",
+      "artifact:Advanced Combat Tracker.dll: p://127.0.0.1:80/",
+      "artifact:DalamudActCompat.ActRuntime.dll: p://localhost/",
+      "artifact:DalamudActCompat.ActRuntime.dll: s://127.0.0.1:10501/ws",
+      "artifact:DalamudActCompat.ActRuntime.dll: p://*:",
+      "artifact:DalamudActCompat.ActRuntime.dll: p://+:",
+      "artifact:DalamudActCompat.ActRuntime.dll: p://127.0.0.1:",
+      "artifact:DalamudActCompat.dll: s://discord.gg/mZHFwXe7Gk"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: SigScanner",
+      "artifact:DalamudActCompat.ActRuntime.dll: SigScanner",
+      "metadata:DalamudActCompat.dll: SigScanner",
+      "metadata:DalamudActCompat.dll: Dalamud.Hooking",
+      "metadata:DalamudActCompat.dll: HookFromAddress",
+      "il:DalamudActCompat.dll:DalamudActCompat.Overlay.PictoActNativeVfxBackend..ctor+0x5e: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:DalamudActCompat.dll:DalamudActCompat.Overlay.PictoActNativeVfxBackend..ctor+0x8c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:DalamudActCompat.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.StartPostNamazuHttpListener+0x17: callvirt System.Net.HttpListener.get_Prefixes: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.StartPostNamazuHttpListener+0x3b: callvirt System.Net.HttpListener.Start: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.StartPostNamazuHttpListener+0x92: callvirt System.Net.HttpListener.get_Prefixes: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.ShouldUsePostNamazuLoopbackFallback+0x30: newobj System.Net.HttpListener..ctor: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.ShouldUsePostNamazuLoopbackFallback+0x47: callvirt System.Net.HttpListener.get_Prefixes: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.ShouldUsePostNamazuLoopbackFallback+0x4d: callvirt System.Net.HttpListenerPrefixCollection.Add: HttpListener",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.LegacyResourceCompatibility.ShouldUsePostNamazuLoopbackFallback+0x68: callvirt System.Net.HttpListener.Start: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: NativeLibrary.Load",
+      "metadata:DalamudActCompat.ActRuntime.dll: DllImportAttribute",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.HtmlOverlayForm.AcquireLoader+0x32: call System.Runtime.InteropServices.NativeLibrary.Load: NativeLibrary.Load",
+      "metadata:DalamudActCompat.dll: DllImportAttribute",
+      "native-pe:DalamudActCompat.Host.exe: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:DalamudActCompat.Host.exe: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "native-pe:DalamudActCompat.Host.exe: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "artifact:DalamudActCompat.Host.exe: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Advanced Combat Tracker.dll: http://connectionstrings.com/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.1df4c6ca2c18",
+    "severity": "caution",
+    "title": "Endpoint: connectionstrings.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/run.css"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3a90592e71a8",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/grill.png"
+    ],
+    "rule_id": "network.endpoint.insecure-http.74f99e101181",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/wv2.png"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8a16bd11de07",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/winrt_test.txt"
+    ],
+    "rule_id": "network.endpoint.insecure-http.ea134e5b7e64",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/runtime/id"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0ba96d60921a",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/silent"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.202c7df73c1c",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/ServiceWorkerContainer/getRegistrations"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.245a5932e797",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/File_System_Access_API"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.29e5b826a1bf",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/<redacted>/unregister"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.31927aa3fce3",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/ServiceWorker"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3b4d96f3f7ca",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/File"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.416d61a65dd7",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://contoso.com/path/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.46b1e6ffc96d",
+    "severity": "caution",
+    "title": "Endpoint: contoso.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/FileSystemHandle/kind"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.502395534ab8",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.54e530049554",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/manifest.json/name"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.57b4dd2c3d34",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Glossary/Origin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5c70a745bded",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/lang"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5e36ae38d272",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://contoso.com/example"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6947b6372254",
+    "severity": "caution",
+    "title": "Endpoint: contoso.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OverlayPlugin.Core.dll: https://bsides.github.io/horizoverlay/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.695b4db99f17",
+    "severity": "caution",
+    "title": "Endpoint: bsides.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle/getFile"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6a13c70eb0ec",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://datatracker.ietf.org/doc/html/rfc5646"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6c5d0dd2e188",
+    "severity": "caution",
+    "title": "Endpoint: datatracker.ietf.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/close_event"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.711659adeebd",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://contoso.com/a/b/c"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.753211642151",
+    "severity": "caution",
+    "title": "Endpoint: contoso.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/<redacted>"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7e87df42a13a",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.microsoft.com/fluentui"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.83048e7dcdc5",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/tag"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.86b8ee32afa0",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/vibrate"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8cc3fe456542",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/click_event"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.933dd235226a",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/requireInteraction"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9a5cbd972c8b",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://dev.w3.org/html5/spec-LC/urls.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9bf76d77a940",
+    "severity": "caution",
+    "title": "Endpoint: dev.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/FileSystemFileHandle/createWritable"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9e415ec036bf",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a2654cf37c31",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/FileSystemHandle/requestPermission"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a9dc56b7e9e2",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://appassets.example/index.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ab1138f3ac1b",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b1e34b0c49e0",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/<redacted>/active"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c01aa8354f38",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://chromedevtools.github.io/devtools-protocol/tot/Target"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c67ec7c4d8f0",
+    "severity": "caution",
+    "title": "Endpoint: chromedevtools.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://appassets.example/my-local-file.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c74af439dc72",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/FileSystemHandle"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ca43b076fae8",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudActCompat.dll: https://admin.localhost2019.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cef33223e4a9",
+    "severity": "caution",
+    "title": "Endpoint: admin.localhost2019.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/PermissionStatus/state"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d0d6ac43f97a",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/renotify"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d304593023a3",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudActCompat.dll: https://1824544011.v.123pan.cn/1824544011/<redacted>/zh-CN.triglations.xml"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f23b468c55da",
+    "severity": "caution",
+    "title": "Endpoint: 1824544011.v.123pan.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/<redacted>/scope"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f3660ce76b55",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/PermissionStatus"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fb31c4828843",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/dir"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fc23465c6627",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Web/API/Notification/show_event"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ffd637718121",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:IINACT.dll: System.Net.Sockets",
+      "artifact:IINACT.dll: System.Net.Sockets",
+      "metadata:Machina.dll: System.Net.Sockets",
+      "metadata:Machina.dll: Socket.Connect",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StartCapture+0x5e: callvirt System.Net.Sockets.Socket.BeginReceive: System.Net.Sockets",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x20: callvirt System.Net.Sockets.Socket.Shutdown: System.Net.Sockets",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x2b: callvirt System.Net.Sockets.Socket.Close: System.Net.Sockets",
+      "il:Machina.dll:Machina.Sockets.RawCaptureSocket.StopCapture+0x36: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "DalamudActCompat.Host.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.HtmlOverlayForm.WaitForBrowserProcessesExit+0x62: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.HtmlOverlayForm.WaitForBrowserProcessesExit+0x6b: callvirt System.Diagnostics.Process.get_HasExited: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.HtmlOverlayForm.WaitForBrowserProcessesExit+0x8a: callvirt System.Diagnostics.Process.WaitForExit: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.HtmlOverlayForm.IsProcessRunning+0x1: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.HtmlOverlayForm.IsProcessRunning+0x8: callvirt System.Diagnostics.Process.get_HasExited: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.NativePostNamazuBridge.Start+0x1e7: callvirt System.Diagnostics.Process.get_ProcessName: System.Diagnostics.Process",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.NativePostNamazuBridge.Start+0x201: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.dll: Microsoft.Win32.Registry",
+      "metadata:DalamudActCompat.dll: RegistryKey",
+      "artifact:DalamudActCompat.dll: Microsoft.Win32.Registry",
+      "artifact:DalamudActCompat.dll: RegistryKey",
+      "native-pe:DalamudActCompat.Host.exe: import ADVAPI32.dll!RegOpenKeyExW: RegOpenKey",
+      "artifact:DalamudActCompat.Host.exe: RegOpenKey",
+      "metadata:FFXIV_ACT_Plugin.Memory.dll: Microsoft.Win32.Registry",
+      "metadata:FFXIV_ACT_Plugin.Memory.dll: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: System.Windows.Forms.Clipboard",
+      "il:DalamudActCompat.ActRuntime.dll:<>c__DisplayClass11_0.<Run>b__0+0xb: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:DalamudActCompat.ActRuntime.dll:<>c__DisplayClass11_1.<Run>b__1+0x1: call System.Windows.Forms.Clipboard.GetText: System.Windows.Forms.Clipboard",
+      "artifact:DalamudActCompat.dll: System.Windows.Forms.Clipboard",
+      "metadata:FFXIV_ACT_Plugin.dll: System.Windows.Forms.Clipboard",
+      "il:FFXIV_ACT_Plugin.dll:FFXIV_ACT_Plugin.BenchmarkPropertyPage.btnCopyToClipboard_Click+0xe4: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+      "il:FFXIV_ACT_Plugin.dll:FFXIV_ACT_Plugin.SettingsPropertyPage.cmdCopyProblematic_Click+0x60: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Advanced Combat Tracker.dll: FileStream",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.FormActMain.LogWriter+0x2f: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Advanced Combat Tracker.dll:Advanced_Combat_Tracker.FormActMain.LogWriter+0x3c: callvirt System.IO.FileStream.get_Name: FileStream",
+      "artifact:Advanced Combat Tracker.dll: FileStream",
+      "metadata:DalamudActCompat.ActRuntime.dll: FileStream",
+      "metadata:DalamudActCompat.ActRuntime.dll: Directory.CreateDirectory",
+      "metadata:DalamudActCompat.ActRuntime.dll: WriteAllBytes",
+      "metadata:DalamudActCompat.ActRuntime.dll: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudActCompat.dll: https://api.github.com/repos/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.227f351377c0",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FetchDependencies.dll: https://api.github.com/repos/ravahn/FFXIV_ACT_Plugin/releases/latest"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fdc98ab34ab3",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DalamudActCompat.ActRuntime.dll: System.Net.Http.HttpClient",
+      "il:DalamudActCompat.ActRuntime.dll:DalamudActCompat.ActRuntime.SelfHostedActRuntime.StartOverlay+0x50: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "metadata:DalamudActCompat.dll: System.Net.Http.HttpClient",
+      "artifact:DalamudActCompat.dll: DownloadFile",
+      "metadata:FetchDependencies.dll: System.Net.Http.HttpClient",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.NeedsUpdate+0x71: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.DownloadPlugin+0x7: call FetchDependencies.FetchDependencies.DownloadFile: DownloadFile",
+      "il:FetchDependencies.dll:FetchDependencies.FetchDependencies.DownloadPlugin+0x3e: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "SafeMemoryReader.dll",
+      "WebView2Loader.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
