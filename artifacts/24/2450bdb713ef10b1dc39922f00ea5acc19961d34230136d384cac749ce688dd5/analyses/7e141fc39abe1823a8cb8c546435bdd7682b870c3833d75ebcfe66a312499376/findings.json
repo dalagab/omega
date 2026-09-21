@@ -1,0 +1,206 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.EnumChildWindowsNativeCallback+0x19: callvirt EnumChildWindowsCallback.Invoke",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.EnumDisplayMonitorsNativeCallback+0x1a: callvirt EnumDisplayMonitorsCallback.Invoke",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.HandleEnumThreadWindowsNativeCallback+0x19: callvirt EnumThreadWindowsCallback.Invoke",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.PInvokeCore.EnumWindowsNativeCallback+0x19: callvirt EnumWindowsCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Assemblies.get_MscorlibAssembly+0xe: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x6f: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x88: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x13: call System.Reflection.Assembly.Load: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:System.Drawing.Common.dll: s://github.com/dotnet/dotnet",
+      "artifact:System.Drawing.Common.dll: s://aka.ms/dotnet-warnings/{0}",
+      "artifact:System.Drawing.Common.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m",
+      "artifact:System.Drawing.Common.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0",
+      "artifact:System.Drawing.Common.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:System.Drawing.Common.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:System.Drawing.Common.dll: p://www.microsoft.com0",
+      "artifact:System.Drawing.Common.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Win32.SystemEvents.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Drawing.Common.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Drawing.Common.dll: DllImportAttribute",
+      "metadata:System.Private.Windows.Core.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.Core.dll: DllImportAttribute",
+      "metadata:System.Private.Windows.GdiPlus.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.GdiPlus.dll: DllImportAttribute",
+      "il:System.Private.Windows.GdiPlus.dll:Windows.Win32.PInvokeGdiPlus..cctor+0x17: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: http://www.microsoft.com0/",
+      "artifact:System.Drawing.Common.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.Core.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.GdiPlus.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:xivAMP.dll: https://skins.webamp.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1a7b5f4ae667",
+    "severity": "caution",
+    "title": "Endpoint: skins.webamp.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:xivAMP.dll: https://ko-fi.com/carpenukem"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a8024b51f8c8",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:System.Private.Windows.Core.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:System.Drawing.Common.dll: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Icon..ctor+0xa: newobj System.IO.FileStream..ctor: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Imaging.Metafile..ctor+0x49: call Windows.Win32.PInvokeGdiPlus.GdipRecordMetafileStream: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Imaging.Metafile..ctor+0x54: call Windows.Win32.PInvokeGdiPlus.GdipRecordMetafileStream: FileStream",
+      "il:System.Drawing.Common.dll:System.Drawing.Imaging.Metafile..ctor+0x66: call Windows.Win32.PInvokeGdiPlus.GdipRecordMetafileStream: FileStream",
+      "artifact:System.Drawing.Common.dll: FileStream",
+      "metadata:System.Private.Windows.Core.dll: FileStream",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.System.Com.ComManagedStream.Windows.Win32.System.Com.IStream.Interface.Stat+0x7d: callvirt System.IO.FileStream.get_Name: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:xivAMP.dll: https://discord.gg/kxZMbP3C5B"
+    ],
+    "rule_id": "network.endpoint.community-invite.c370b407e47c",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:xivAMP.json: https://github.com/CarpeNukem/xivamp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.166851daaaeb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Drawing.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.Core.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.GdiPlus.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:xivAMP.dll: https://github.com/CarpeNukem/xivamp.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f3c7d189d874",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:xivAMP.json: https://raw.githubusercontent.com/CarpeNukem/xivamp/main/xivAMP/xivamp.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fc6b0aa34565",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:runtimes\\win\\lib\\net10.0\\Microsoft.Win32.SystemEvents.dll: WebRequest",
+      "artifact:runtimes\\win\\lib\\net10.0\\Microsoft.Win32.SystemEvents.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

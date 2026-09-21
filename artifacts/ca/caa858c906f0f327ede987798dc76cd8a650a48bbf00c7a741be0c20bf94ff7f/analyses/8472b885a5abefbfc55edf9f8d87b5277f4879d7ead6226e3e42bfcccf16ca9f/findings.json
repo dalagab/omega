@@ -1,0 +1,54 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:WhereIsMyHead.dll: SigScanner",
+      "metadata:WhereIsMyHead.dll: Dalamud.Hooking",
+      "metadata:WhereIsMyHead.dll: HookFromAddress",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Plugin..ctor+0x25: call WhereIsMyHead.Plugin.get_SigScanner: SigScanner",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.PluginServices.Initialize+0x1a: call WhereIsMyHead.PluginServices.set_SigScanner: SigScanner",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.Game2DUiCandidateResolver.Resolve+0x18: callvirt Dalamud.Plugin.Services.ISigScanner.ScanAllText: SigScanner",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.Game2DUiHookController.InstallIfNeeded+0x33: call WhereIsMyHead.PluginServices.get_SigScanner: SigScanner",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.Game2DUiHookController.InstallIfNeeded+0xe6: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:WhereIsMyHead.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:WhereIsMyHead.dll: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.InternalHookSupport.GetAddressContext+0x12: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.InternalHookSupport.GetAddressContext+0x33: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.InternalHookSupport.PrefixDiagnostics+0x75: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.World3DCandidateResolver.Resolve+0x5a: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.World3DCandidateResolver.Resolve+0xa1: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:WhereIsMyHead.Hooking.World3DCandidateResolver.Resolve+0x15e: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:WhereIsMyHead.dll:<>c__DisplayClass2_0.<Resolve>b__0+0x17: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  }
+]
