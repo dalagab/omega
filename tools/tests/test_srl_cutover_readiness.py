@@ -125,7 +125,8 @@ class SrlCutoverReadinessTests(unittest.TestCase):
         advisories.write_text(
             json.dumps({
                 "schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet",
-                "queriedPackages": 0, "matchedPackages": 0, "advisories": [],
+                "queriedPackages": 0, "matchedPackages": 0,
+                "queriedPackageVersionPairs": [], "advisories": [],
             }), encoding="utf-8"
         )
         secondary = root / "secondary"

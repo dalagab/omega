@@ -435,12 +435,13 @@ class DiscordNoticeTests(unittest.TestCase):
         self.assertIn("needs.publish.outputs.published == 'true'", parallel)
         self.assertIn("DISCORD_EVIDENCE_WEBHOOK_URL", parallel)
 
-    def test_catalog_notification_merge_preserves_migration_and_v2_guards(self) -> None:
+    def test_catalog_notification_merge_preserves_current_v2_guards(self) -> None:
         freeze = (common.ROOT / ".github" / "workflows" / "catalog-builder.yml").read_text(encoding="utf-8")
         customer = (common.ROOT / ".github" / "workflows" / "catalog-client-publish.yml").read_text(encoding="utf-8")
-        self.assertIn("id: previous_catalog", freeze)
-        self.assertIn('steps.previous_catalog.outputs.current', freeze)
-        self.assertIn('args+=(--previous-catalog-root catalog/previous-state/catalog)', freeze)
+        self.assertNotIn("id: previous_catalog", freeze)
+        self.assertNotIn('steps.previous_catalog.outputs.current', freeze)
+        self.assertNotIn("catalog_json_v1_seed.py", freeze)
+        self.assertIn("--previous-catalog-root catalog/previous-state/catalog", freeze)
         self.assertNotIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", freeze)
         self.assertIn("validate_marketplace_catalog.py --root catalog/client-dist --require-v2", customer)
 

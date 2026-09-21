@@ -90,6 +90,7 @@ class SrlMigrationParityTests(unittest.TestCase):
                     "ecosystem": "NuGet",
                     "queriedPackages": 0,
                     "matchedPackages": 0,
+                    "queriedPackageVersionPairs": [],
                     "advisories": [],
                 }),
                 encoding="utf-8",

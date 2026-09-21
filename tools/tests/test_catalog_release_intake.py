@@ -61,7 +61,8 @@ class CatalogReleaseIntakeTests(unittest.TestCase):
         })
         advisories = self.root / "advisories.json"
         intake.write(advisories, {"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet",
-                                  "queriedPackages": 0, "matchedPackages": 0, "advisories": []})
+                                  "queriedPackages": 0, "matchedPackages": 0,
+                                  "queriedPackageVersionPairs": [], "advisories": []})
         empty = self.root / "empty-secondary"
         empty.mkdir()
         definitions_snapshot.build_snapshot(repo_root=common.ROOT, evidence_root=self.evidence,

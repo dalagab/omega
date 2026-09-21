@@ -46,7 +46,6 @@ class WorkflowContractTests(unittest.TestCase):
             "catalog_json_store.py export",
             'schema == "omega.catalog-json.v2"',
             'identityEpoch == "omega-catalog-identity-v1"',
-            "catalog_json_v1_seed.py",
             "test_identity_rows_over_16_mib_are_sharded_and_round_trip",
             "source_inventory_guard.py",
             "--aliases sources/source-url-aliases.json",
@@ -65,6 +64,7 @@ class WorkflowContractTests(unittest.TestCase):
             "publish_catalog_state.py",
             "--branch catalog-data",
         )
+        self.assertNotIn("catalog_json_v1_seed.py", text)
         self.assertNotIn("  schedule:", text, "freeze is an explicit release boundary")
         for forbidden in (
             "collect_sources.py", "enrich_metadata.py", "scrape_websites_incremental.py",

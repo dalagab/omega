@@ -540,6 +540,7 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
                 "ecosystem": "NuGet",
                 "queriedPackages": 1,
                 "matchedPackages": 1,
+                "queriedPackageVersionPairs": [{"name": "Example.Package", "version": "1.2.3"}],
                 "advisories": [{
                     "id": "OSV-TODAY",
                     "componentKind": "nuget",

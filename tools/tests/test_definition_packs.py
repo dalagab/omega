@@ -218,7 +218,7 @@ class DefinitionPackTests(unittest.TestCase):
             (evidence / "indexes" / "nuget.json").write_text(json.dumps({"schema": "omega.security-evidence.nuget-index.v2", "packages": []}), encoding="utf-8")
             (evidence / "index.json").write_text(json.dumps({"revisions": {"evidenceRevision": "fixture"}, "indexes": {"nuget": {"path": "indexes/nuget.json"}}}), encoding="utf-8")
             advisories = root / "advisories.json"
-            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "advisories": []}), encoding="utf-8")
+            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "queriedPackageVersionPairs": [], "advisories": []}), encoding="utf-8")
             secondary = root / "secondary"
             (secondary / "yara").mkdir(parents=True)
             (secondary / "clamav").mkdir(parents=True)
