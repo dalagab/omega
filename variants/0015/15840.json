@@ -1,0 +1,3177 @@
+{
+  "analysis": {
+    "analysisId": "55c427e5776ebd96f60b1b22f7f8d3d897f482e09ce6233414d9453a4307d496",
+    "artifactSha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+    "path": "artifacts/8e/8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e/analyses/55c427e5776ebd96f60b1b22f7f8d3d897f482e09ce6233414d9453a4307d496",
+    "recordCount": 17114
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+    "artifact_url": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+    "assembly_version": "6.3.2.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "very-high",
+        "evidence": [
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.CraftDataRecorder.SendAction+0x33: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.Crafting.LiveCraftAdvisor.StepAuto+0xbb: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": true,
+        "reason": "Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "evidence": [
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.CraftDataRecorder.ClickButton+0x65: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Character action execution",
+      "Download/execute potential",
+      "Endpoint: data.xivgear.app",
+      "Endpoint: ffxiv.consolegameswiki.com",
+      "Endpoint: generativelanguage.googleapis.com",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: wtfdig.info",
+      "Endpoint: www.youtube.com",
+      "Endpoint: youtu.be",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "Process execution",
+      "Raw sockets"
+    ],
+    "caution_count": 23,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.CraftDataRecorder.SendAction+0x33: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.Crafting.LiveCraftAdvisor.StepAuto+0xbb: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:RedMoonCappuccino.dll: System.Diagnostics.Process",
+          "metadata:RedMoonCappuccino.dll: ProcessStartInfo",
+          "metadata:RedMoonCappuccino.dll: ShellExecute",
+          "metadata:RedMoonCappuccino.dll: Process.Start",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Windows.MainWindow.OpenExternalLink+0x25: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Windows.MainWindow.OpenExternalLink+0x25: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Windows.MainWindow.OpenExternalLink+0x31: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Windows.MainWindow.OpenExternalLink+0x31: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:RedMoonCappuccino.dll: Socket.Connect",
+          "il:RedMoonCappuccino.dll:<RunSession>d__53.MoveNext+0x9e: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+          "il:RedMoonCappuccino.dll:<ConnectAndReceive>d__34.MoveNext+0xa5: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/planner/math/math.json: https://data.xivgear.app/Jobs"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.fc7a774068ac",
+        "severity": "caution",
+        "title": "Endpoint: data.xivgear.app"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/gWk1p8-Zohk"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f085c6b0d4fd",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/2kXwfM9vVTA"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b3b982e2f5fd",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/8HV2dk3jvNo"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.aa61f19687a3",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:RedMoonCappuccino.dll: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9981441f458a",
+        "severity": "caution",
+        "title": "Endpoint: generativelanguage.googleapis.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/g6Y2SKxF8as"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.98ec1593028b",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/cA_WHJyXzyE"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.8d89868dde18",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:RedMoonCappuccino.dll: https://wtfdig.info/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.729e8f235287",
+        "severity": "caution",
+        "title": "Endpoint: wtfdig.info"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/Du3QNaUkIt0"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.675d172dff78",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:RedMoonCappuccino.dll: https://ffxiv.consolegameswiki.com/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.6019ad9674b9",
+        "severity": "caution",
+        "title": "Endpoint: ffxiv.consolegameswiki.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/patch-calendar.json: https://ffxiv.consolegameswiki.com/wiki/Patches"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.4b671f227fcc",
+        "severity": "caution",
+        "title": "Endpoint: ffxiv.consolegameswiki.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/zxtYTfWw5K0"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.460b123a3544",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/yfvfhuEEMCY"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.45d79635fe40",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/AFaiOZK78tM"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.43fd1ba0577e",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/tO3jau5upVg"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.32568962472f",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/DD6yi5qC7ws"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.2598f3db7d2a",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://www.youtube.com/watch"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.1626783d355e",
+        "severity": "caution",
+        "title": "Endpoint: www.youtube.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/links.json: https://youtu.be/mQjFrW4ekfA"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.0720c9086efe",
+        "severity": "caution",
+        "title": "Endpoint: youtu.be"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:RedMoonCappuccino.dll: Dalamud.Hooking",
+          "metadata:RedMoonCappuccino.dll: HookFromAddress",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.RotationRecorder.ActionRecorder..ctor+0x4e: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.CraftDataRecorder..ctor+0xd5: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.Crafting.LiveCraftAdvisor..ctor+0x92: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:RedMoonCappuccino.dll: Dalamud.Hooking",
+          "artifact:RedMoonCappuccino.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:RedMoonCappuccino.dll: V:\\6",
+          "artifact:RedMoonCappuccino.dll: s://github.com/Tihlyn/RedMoon-Cappuccino.git",
+          "artifact:RedMoonCappuccino.dll: s://51.75.117.220:3100",
+          "artifact:RedMoonCappuccino.dll: s://51.75.117.220:3200",
+          "artifact:RedMoonCappuccino.dll: s://78.116.140.30:3100",
+          "artifact:RedMoonCappuccino.dll: s://wtfdig.info",
+          "artifact:RedMoonCappuccino.dll: s://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=",
+          "artifact:RedMoonCappuccino.dll: s://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.CraftDataRecorder.ClickButton+0x65: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:RedMoonCappuccino.dll: System.Net.Http.HttpClient",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.RotationRecorder.GeminiAnalyzer..cctor+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.RotationRecorder.GeminiAnalyzer..cctor+0xe: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:Resources/planner/math/math.json: https://github.com/xiv-gear-planner/gear-planner"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e34605a500b2",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:RedMoonCappuccino.json: https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/Data/icon.png",
+          "artifact:RedMoonCappuccino/RedMoonCappuccino.json: https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/Data/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.c17aaa2edd6f",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:RedMoonCappuccino.dll: https://github.com/Tihlyn/RedMoon-Cappuccino.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a9cd8b23b610",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:RedMoonCappuccino.json: https://github.com/Tihlyn/RedMoon-Cappuccino",
+          "artifact:RedMoonCappuccino/RedMoonCappuccino.json: https://github.com/Tihlyn/RedMoon-Cappuccino"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.696b84e69c9f",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:RedMoonCappuccino.dll: FileStream",
+          "metadata:RedMoonCappuccino.dll: Directory.CreateDirectory",
+          "metadata:RedMoonCappuccino.dll: File.Delete",
+          "metadata:RedMoonCappuccino.dll: WriteAllBytes",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.CraftDataRecorder.Start+0x90: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.DataService..ctor+0x70: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.DataService.UpdateSnapshot+0x103: call System.IO.File.Delete: File.Delete",
+          "il:RedMoonCappuccino.dll:RedMoonCappuccino.Services.DataService.UpdateImage+0xbc: call System.IO.File.WriteAllBytes: WriteAllBytes"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 6,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-912b1b263dcbfe96",
+      "artifactBytes": 641756,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "6.3.2.0",
+        "artifactBytes": 641756,
+        "artifactSha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+        "catalogAssemblyVersion": "6.3.2.0",
+        "manifestInternalName": "RedMoonCappuccino",
+        "manifestPath": "RedMoonCappuccino.json",
+        "manifestRepositoryUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1234633407/c3d228f3-212a-45b9-9cfc-227b2ecdc067?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-21T12%3A16%3A28Z&rscd=attachment%3B+filename%3DRedMoonCappuccino.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-21T11%3A15%3A41Z&ske=2026-09-21T12%3A16%3A28Z&sks=b&skv=2018-11-09&sig=e5ulQg3GeWGhXn0E96xi6RQv8BLWo7WPJvQraRbrLns%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4OTk4OTk4MSwibmJmIjoxNzg5OTg5NjgxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.4-BJ5M5EkMXnwG0Hh4j3RsxQsH2RzLYPPhHvA38uap0&response-content-disposition=attachment%3B%20filename%3DRedMoonCappuccino.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "data.xivgear.app",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "ffxiv.consolegameswiki.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "generativelanguage.googleapis.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "wtfdig.info",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "data.xivgear.app",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "ffxiv.consolegameswiki.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "generativelanguage.googleapis.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "wtfdig.info",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 13,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Download/execute potential",
+        "Endpoint: data.xivgear.app",
+        "Endpoint: ffxiv.consolegameswiki.com",
+        "Endpoint: generativelanguage.googleapis.com",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: wtfdig.info",
+        "Endpoint: www.youtube.com",
+        "Endpoint: youtu.be",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "Process execution",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "network.outbound",
+        "network.socket",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 23,
+        "critical": 0,
+        "high": 2,
+        "informational": 6
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 23,
+          "exactVersionObservedCount": 23,
+          "families": {
+            "managed-assembly": 23
+          },
+          "fingerprint": "4aa724715adb1d5b8bffbc3bf7ea40e43671617b30358588a770d6db5eda5a88",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 22
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 23,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 22,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 23
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 22,
+          "destinationsUndetermined": false,
+          "hostCount": 8,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "data.xivgear.app",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "ffxiv.consolegameswiki.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "generativelanguage.googleapis.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "wtfdig.info",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "www.youtube.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 12,
+              "confidence": "VeryHigh",
+              "host": "youtu.be",
+              "literalCount": 12,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 22,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "data.xivgear.app",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://data.xivgear.app/Jobs"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ffxiv.consolegameswiki.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ffxiv.consolegameswiki.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "ffxiv.consolegameswiki.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://ffxiv.consolegameswiki.com/wiki/Patches"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "generativelanguage.googleapis.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Tihlyn/RedMoon-Cappuccino"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Tihlyn/RedMoon-Cappuccino.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/xiv-gear-planner/gear-planner"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/Data/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "wtfdig.info",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://wtfdig.info/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/watch"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/2kXwfM9vVTA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8HV2dk3jvNo"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AFaiOZK78tM"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/DD6yi5qC7ws"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/Du3QNaUkIt0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/cA_WHJyXzyE"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/g6Y2SKxF8as"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/gWk1p8-Zohk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/mQjFrW4ekfA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/tO3jau5upVg"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/yfvfhuEEMCY"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/zxtYTfWw5K0"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+        "internalName": "RedMoonCappuccino",
+        "manifestVersion": "6.3.2.0",
+        "observationId": 26146,
+        "observationKey": "manifest-95c11bc16a09533dfce23d5fb6e9",
+        "repositoryUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 15840
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 37,
+        "uncompressedBytes": 1448196
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-912b1b263dcbfe96",
+        "attemptId": "attempt-v2-18f26798635f4743",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-4b2cf0cc1aab20ad",
+        "definitionsRevision": "defs-v1-1bf337a832683d84",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-15840",
+        "queueSeedRevision": "queue-seed-v2-4b6266c0fe75952c",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "82cc424c6624ba7bea3ee49ec3c5013cb8c42a3670a77288761b823a220803c5",
+        "scannerRevision": "scanner-v1-b43e865f4257eb85",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-53945136db1b6b41",
+        "targetFingerprint": "artifact-target-v2-8a8760edc59a95683d8e",
+        "variantId": 15840,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-21T11:21:21Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Tihlyn/RedMoon-Cappuccino"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 4,
+    "scanned_at_utc": "2026-09-21T11:21:21Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 15840
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+      "current_assembly_version": "6.3.2.0",
+      "current_scan_id": 4,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-21T11:21:24Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 15840
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 23,
+      "artifact_only_count": 23,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.4"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.9047"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:redmooncappuccino",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "RedMoonCappuccino",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "6.3.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.websockets.client",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebSockets.Client",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-21T11:21:24Z",
+      "comparison_id": 1,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 4,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 15840,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0015/15840/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0015/15840/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 22071,
+          "encoding": "json",
+          "path": "derived/variants/0015/15840/dependency-resolutions.json",
+          "recordDigest": "df41c51942efd763c6c967bdb2686266e35dce7569e5f852796b35ce797d6d9d",
+          "records": 23,
+          "sha256": "c7e981cffe9ffcc19a56d1b767ca0af3fa6f980d2a7e16db41b2689a9a18b641"
+        }
+      ],
+      "recordDigest": "df41c51942efd763c6c967bdb2686266e35dce7569e5f852796b35ce797d6d9d",
+      "records": 23
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0015/15840/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "9f57ef0dbae11f7e31b2936cd8bf1d4ce318cdaeea45c01dc6c07c79e12dfefb",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "fcd6a34511000608997e985da22d96c750dcdeb27937e14976aa711ea5914576",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "9b015cfe74a60d4969410f146797cb83a163fa69fc2cff3174478b1b47c17ba7",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "b42b2644f003b66876d3274dc9392577fb1a1ea42b809518421b4cebe2ef8bbf",
+        "records": 23,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "f548348483c70bc8a10afdec3045a4bd98f913cfcc062353bb7665306a1e7a78",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "bb97e638b7cd2e4f64090035bcf711413c90be67abf57b93949cc1eb7f65d278",
+        "records": 13322,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "5adaaeba8b93d5035c3fcaa611abb68409837558ccbc5fe46f25cfbbc32899d0",
+        "records": 2421,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "c571c1a5b108784cc8700aedb41e7a640caff088d4e031e99bdcfb41a47f6a43",
+        "records": 1196,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "106a6d5a21208e6744df982537312d74006c2287b6d2a3290455d6d53d2134a9",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "0708f0dbefbb653f6c091c98db62af93a4f5458f56326b26eaed724beda6ca3e",
+        "records": 22,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "52f0c6fa1d06afbd7ef6d924f0b5bde02e015907dba341f257103b8f4e8215d9",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "3cbfabd409a9ec5411d362a266e522ce89547c389f416ce9017050f1635d2c5c",
+        "records": 28,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "67a276998c6bbabb86cb98c4bd67fe36933087379c515d4847e8d43043238b24",
+        "records": 41,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-c5684de2ec68b361b936f775bc92298007b37ae75c06495b324aa28a68d6c9cb",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-912b1b263dcbfe96",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "RedMoonCappuccino",
+    "first_seen_utc": "2026-09-15T01:29:41Z",
+    "internal_name": "RedMoonCappuccino",
+    "last_seen_utc": "2026-09-21T08:26:17Z",
+    "plugin_id": 1408
+  },
+  "pluginId": 1408,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Displays market tax info, FC events, and more in a convenient UI.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1072,
+      "summary": "Cappuccino now in game too!",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Dalamud plugin for cappuccino.",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Tihlyn/RedMoon-Cappuccino"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# RedMoonCappuccino\n\nA Dalamud plugin for Final Fantasy XIV via [XIVLauncher](https://github.com/goatcorp/FFXIVQuickLauncher).\n\n> **This is third-party software.** I am not affiliated with Square Enix.\n> Please do not discuss this plugin in-game.\n\n## What it does\n\nConnects to a WebSocket server at `ws://IP:3100` and displays:\n\n- **Overview tab** — lowest market tax rate and the city offering it, plus upcoming patch highlights for 7.4–8.0.\n- **gear planner tab** — manually triggered progression solver (`solve`) that loads offline JSON gear/math/BiS data and recommends deterministic next upgrades with explanations and alternate paths.\n- **PvP tab** — Series Malmstone tracker read straight from the client: current series level and EXP, Wolf Marks and Trophy Crystals, and how many Crystalline Conflict, Frontline (with or without the daily roulette bonus) and Rival Wings matches, by placing, would reach the next reward milestone (rank 5/10/15/20/25, selectable). The level curve comes from the game's `PvPSeriesLevel` sheet. It is read once when the window opens (plus a refresh button) — nothing is polled.\n- **Useful Links tab** — mount guide links in a table layout, plus a Visual Plans link section.\n- **Events tab** — upcoming FC events with expandable details and event images.\n- **Past Events tab** — FC events that ended within the last 24 hours, with their cached images.\n\nEvent images are downloaded from the server and stored locally for up to 24 hours, after which they are deleted automatically.\n\nIt also ships a **submersible route planner** (`/route`): pick a material and it\nranks every sector that drops it for your build, orders the best five-sector\nvoyage, and checks it against your range and voyage time. Builds are picked by\nhand from the part lists, so the planner works anywhere; submarines seen in a\nfree company workshop are cached and can be loaded with one click. Ranks go to\n145 and sectors your rank cannot reach are marked and kept out of routes.\n\nIts dataset is generated, not edited by hand:\n\n```sh\nnode subs/build_dataset.mjs\n```\n\nThat merges the loot tables in `subs/FFXIV Submersible Route Planner.html` with\nthe rank table, breakpoints and Northern Empty loot in\n`resources/subs_data/stats_breakpoints.xlsx` into\n`RedMoonCappuccino/Resources/submarine_routes.json`. Re-run it after changing\neither source. Sectors with no recorded voyages yet carry placeholder yields\n(one unit at a 50% drop rate) and the planner labels them as incomplete.\n\n## Commands\n\n- `/rmcap` — Toggle the main window.\n- `/route` — Toggle the submersible route planner.\n\n## Installing via Dalamud (custom repository)\n\n1. In-game, open `/xlsettings` → **Experimental**.\n2. Under **Custom Plugin Repositories**, paste:\n   ```\n   https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/pluginmaster.json\n   ```\n3. Click **Save and Close**, then install **RedMoonCappuccino** from `/xlplugins`.\n\n## Publishing a new release\n\n1. **Bump the version** in `RedMoonCappuccino/RedMoonCappuccino.csproj`:\n   ```xml\n   <Version>1.2.3.0</Version>\n   ```\n2. Commit and push the version bump to `main`.\n3. **Tag the commit** using the `v<major>.<minor>.<patch>` format and push the tag:\n   ```sh\n   git tag v1.2.3\n   git push origin v1.2.3\n   ```\n4. GitHub Actions (`.github/workflows/build.yml`) will automatically:\n   - Build the plugin in Release mode.\n   - Package it as `RedMoonCappuccino.zip`.\n   - Create a GitHub Release with the ZIP attached.\n   - Update `AssemblyVersion` and `LastUpdate` in `pluginmaster.json` and commit the change to `main`.\n\nUsers who have the custom repository URL already added will see the update in `/xlplugins` after Dalamud refreshes.\n\n## Building locally\n\n```sh\ndotnet build\n```\n\nThis produces `bin/x64/Debug/RedMoonCappuccino/`. To load in-game:\n\n1. `/xlsettings` → Experimental → \"Dev Plugin Locations\" → add the path to `RedMoonCappuccino.dll`.\n2. `/xlplugins` → Dev Tools → Installed Dev Plugins → enable.\n3. Hot-reload: `/xlreload RedMoonCappuccino`.\n\n## Contributing\n\nIf you submit a PR that includes AI-generated code, please disclose it in the PR description.\nThe official [DalamudPluginsD17](https://github.com/goatcorp/DalamudPluginsD17) repository does not accept undisclosed AI-generated submissions.\n\n## License\n\nAGPL-3.0-or-later.",
+      "title": "RedMoon-Cappuccino",
+      "url": "https://github.com/Tihlyn/RedMoon-Cappuccino"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "3b38bc59ff85e9a7fdb55f97ea50109c2d77480a4d7396e82eae5dad960b1ce0",
+        "records": 2
+      },
+      "behaviorConsistency": {
+        "recordDigest": "3bc40ea960b1e40c8f7464a12cf46b1eea871e2b2dda4f9560cb6e0be4eb7895",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "9e516dc609b29f741c55f97a62777b0d3fbe823d27ae3e183a843c406cb917b6",
+        "records": 13
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "bd5809a9e653f37ceb83507cc9cb51ff3526727e4939df1338e3eef2864ed242",
+        "records": 31
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+    "artifact_url": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+    "assembly_version": "6.3.2.0",
+    "capabilities_json": [
+      "Character action execution",
+      "Download/execute potential",
+      "Endpoint: data.xivgear.app",
+      "Endpoint: ffxiv.consolegameswiki.com",
+      "Endpoint: generativelanguage.googleapis.com",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: wtfdig.info",
+      "Endpoint: www.youtube.com",
+      "Endpoint: youtu.be",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "Process execution",
+      "Raw sockets"
+    ],
+    "caution_count": 23,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 6,
+    "plugin_id": 1408,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-912b1b263dcbfe96",
+      "artifactBytes": 641756,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "6.3.2.0",
+        "artifactBytes": 641756,
+        "artifactSha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+        "catalogAssemblyVersion": "6.3.2.0",
+        "manifestInternalName": "RedMoonCappuccino",
+        "manifestPath": "RedMoonCappuccino.json",
+        "manifestRepositoryUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1234633407/c3d228f3-212a-45b9-9cfc-227b2ecdc067?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-21T12%3A16%3A28Z&rscd=attachment%3B+filename%3DRedMoonCappuccino.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-21T11%3A15%3A41Z&ske=2026-09-21T12%3A16%3A28Z&sks=b&skv=2018-11-09&sig=e5ulQg3GeWGhXn0E96xi6RQv8BLWo7WPJvQraRbrLns%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4OTk4OTk4MSwibmJmIjoxNzg5OTg5NjgxLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.4-BJ5M5EkMXnwG0Hh4j3RsxQsH2RzLYPPhHvA38uap0&response-content-disposition=attachment%3B%20filename%3DRedMoonCappuccino.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "data.xivgear.app",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "ffxiv.consolegameswiki.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "generativelanguage.googleapis.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "wtfdig.info",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "data.xivgear.app",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "ffxiv.consolegameswiki.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "generativelanguage.googleapis.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "wtfdig.info",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "youtu.be",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 13,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Download/execute potential",
+        "Endpoint: data.xivgear.app",
+        "Endpoint: ffxiv.consolegameswiki.com",
+        "Endpoint: generativelanguage.googleapis.com",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: wtfdig.info",
+        "Endpoint: www.youtube.com",
+        "Endpoint: youtu.be",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "Process execution",
+        "Raw sockets"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "network.outbound",
+        "network.socket",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 23,
+        "critical": 0,
+        "high": 2,
+        "informational": 6
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 23,
+          "exactVersionObservedCount": 23,
+          "families": {
+            "managed-assembly": 23
+          },
+          "fingerprint": "4aa724715adb1d5b8bffbc3bf7ea40e43671617b30358588a770d6db5eda5a88",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 22
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 23,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 22,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 23
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 22,
+          "destinationsUndetermined": false,
+          "hostCount": 8,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "data.xivgear.app",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "ffxiv.consolegameswiki.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "generativelanguage.googleapis.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "wtfdig.info",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "www.youtube.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 12,
+              "confidence": "VeryHigh",
+              "host": "youtu.be",
+              "literalCount": 12,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 22,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "data.xivgear.app",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://data.xivgear.app/Jobs"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ffxiv.consolegameswiki.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ffxiv.consolegameswiki.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "ffxiv.consolegameswiki.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://ffxiv.consolegameswiki.com/wiki/Patches"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "generativelanguage.googleapis.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Tihlyn/RedMoon-Cappuccino"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Tihlyn/RedMoon-Cappuccino.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/xiv-gear-planner/gear-planner"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/Data/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "wtfdig.info",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://wtfdig.info/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/watch"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/2kXwfM9vVTA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/8HV2dk3jvNo"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/AFaiOZK78tM"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/DD6yi5qC7ws"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/Du3QNaUkIt0"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/cA_WHJyXzyE"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/g6Y2SKxF8as"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/gWk1p8-Zohk"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/mQjFrW4ekfA"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/tO3jau5upVg"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/yfvfhuEEMCY"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "youtu.be",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://youtu.be/zxtYTfWw5K0"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+        "internalName": "RedMoonCappuccino",
+        "manifestVersion": "6.3.2.0",
+        "observationId": 26146,
+        "observationKey": "manifest-95c11bc16a09533dfce23d5fb6e9",
+        "repositoryUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 15840
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 37,
+        "uncompressedBytes": 1448196
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-912b1b263dcbfe96",
+        "attemptId": "attempt-v2-18f26798635f4743",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-4b2cf0cc1aab20ad",
+        "definitionsRevision": "defs-v1-1bf337a832683d84",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-15840",
+        "queueSeedRevision": "queue-seed-v2-4b6266c0fe75952c",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "82cc424c6624ba7bea3ee49ec3c5013cb8c42a3670a77288761b823a220803c5",
+        "scannerRevision": "scanner-v1-b43e865f4257eb85",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-53945136db1b6b41",
+        "targetFingerprint": "artifact-target-v2-8a8760edc59a95683d8e",
+        "variantId": 15840,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-21T11:21:21Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "8ee5f87190c8f4006b65429530b54e4859e924bf0047a8c2fca77da0b164919e",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Tihlyn/RedMoon-Cappuccino"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 4,
+    "scanned_at_utc": "2026-09-21T11:21:21Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1265,
+    "source_repository": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 15840
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "4e755b888fb522e0834d9ad6ea776c04bf3f3fdf1d2f2075f2ef62dfac457713",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-discovery",
+    "enabled_by_default": 1,
+    "etag": "\"863114f5fad56eb308473c4ee77ca1b49fec99ad4858c41f1c3769bc5a4ec0c0\"",
+    "highest_api": 0,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "discovered",
+    "last_checked_utc": "2026-09-21T07:20:26Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-21T07:20:26Z",
+    "name": "Tihlyn/RedMoon-Cappuccino",
+    "plugin_count": 1,
+    "provider": "Tihlyn/RedMoon-Cappuccino",
+    "source_id": 1265,
+    "source_repo_url": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+    "url": "https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/pluginmaster.json"
+  },
+  "sourceId": 1265,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "6.3.2.0",
+    "author": "Tihlyn",
+    "authors_json": [
+      "Tihlyn"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "",
+    "dalamud_api_level": 0,
+    "description": "Displays market tax info, FC events, and more in a convenient UI.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+    "download_link_testing": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+    "download_link_update": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+    "first_seen_utc": "2026-09-21T07:20:26Z",
+    "icon_url": "https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/Data/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-21T07:20:26Z",
+    "last_update": 1789232980,
+    "minimum_dalamud_version": null,
+    "name": "RedMoonCappuccino",
+    "plugin_id": 1408,
+    "punchline": "Cappuccino now in game too!",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "6.3.2.0",
+      "Author": "Tihlyn",
+      "CategoryTags": [
+        "utility"
+      ],
+      "Description": "Displays market tax info, FC events, and more in a convenient UI.",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+      "DownloadLinkTesting": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+      "DownloadLinkUpdate": "https://github.com/Tihlyn/RedMoon-Cappuccino/releases/latest/download/RedMoonCappuccino.zip",
+      "FeedbackMessage": "Open an issue on GitHub.",
+      "IconUrl": "https://raw.githubusercontent.com/Tihlyn/RedMoon-Cappuccino/main/Data/icon.png",
+      "InternalName": "RedMoonCappuccino",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1789232980,
+      "Name": "RedMoonCappuccino",
+      "Punchline": "Cappuccino now in game too!",
+      "RepoUrl": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+      "Tags": [
+        "fc",
+        "market",
+        "tax",
+        "events",
+        "utility"
+      ]
+    },
+    "repo_url": "https://github.com/Tihlyn/RedMoon-Cappuccino",
+    "source_entry_key": "redmooncappuccino|6.3.2.0|0|0|0",
+    "source_id": 1265,
+    "tags_json": [
+      "fc",
+      "market",
+      "tax",
+      "events",
+      "utility"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 15840
+  },
+  "variantId": 15840
+}
