@@ -1,0 +1,455 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:System.Configuration.ConfigurationManager.dll: ProtectedData.Unprotect",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.DpapiProtectedConfigurationProvider.DecryptText+0x2f: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "artifact:System.Configuration.ConfigurationManager.dll: CryptUnprotectData",
+      "metadata:runtimes/win/lib/netstandard2.0/System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:runtimes/win/lib/netstandard2.0/System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x9a: call Crypt32.CryptUnprotectData -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:runtimes/win/lib/netstandard2.0/System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://169.254.169.254/metadata/instance/compute"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.27f24ea92e9a",
+    "severity": "high",
+    "title": "Endpoint: 169.254.169.254"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/unix/lib/netcoreapp3.1/Microsoft.Data.SqlClient.dll: http://169.254.169.254/metadata/identity/oauth2/token",
+      "artifact:runtimes/win/lib/netcoreapp3.1/Microsoft.Data.SqlClient.dll: http://169.254.169.254/metadata/identity/oauth2/token"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.8c8c1261a40c",
+    "severity": "high",
+    "title": "Endpoint: 169.254.169.254"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Microsoft.IdentityModel.Tokens.dll:Microsoft.IdentityModel.Json.Serialization.JsonContract.InvokeOnSerializing+0x1e: callvirt Microsoft.IdentityModel.Json.Serialization.SerializationCallback.Invoke",
+      "il:Microsoft.IdentityModel.Tokens.dll:Microsoft.IdentityModel.Json.Serialization.JsonContract.InvokeOnSerialized+0x1e: callvirt Microsoft.IdentityModel.Json.Serialization.SerializationCallback.Invoke",
+      "il:Microsoft.IdentityModel.Tokens.dll:Microsoft.IdentityModel.Json.Serialization.JsonContract.InvokeOnDeserializing+0x1e: callvirt Microsoft.IdentityModel.Json.Serialization.SerializationCallback.Invoke",
+      "il:Microsoft.IdentityModel.Tokens.dll:Microsoft.IdentityModel.Json.Serialization.JsonContract.InvokeOnDeserialized+0x1f: callvirt Microsoft.IdentityModel.Json.Serialization.SerializationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:AutoMapper.dll: Reflection.Emit",
+      "metadata:AutoMapper.dll: Assembly.Load",
+      "il:AutoMapper.dll:AutoMapper.MapperConfigurationExpression.AddMaps+0xc: ldftn System.Reflection.Assembly.Load: Assembly.Load",
+      "il:AutoMapper.dll:AutoMapper.Execution.ProxyGenerator.CreateProxyModule+0x22: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+      "il:AutoMapper.dll:AutoMapper.Execution.ProxyGenerator.CreateProxyModule+0x2d: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+      "il:AutoMapper.dll:AutoMapper.Execution.ProxyGenerator.EmitProxy+0x63: callvirt System.Reflection.Emit.TypeBuilder.CreateTypeInfo: Reflection.Emit",
+      "il:AutoMapper.dll:AutoMapper.Execution.ProxyGenerator.<EmitProxy>g__GenerateType|7_0+0xb7: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:AutoMapper.dll:AutoMapper.Execution.ProxyGenerator.<EmitProxy>g__GeneratePropertyChanged|7_1+0x1c: callvirt System.Reflection.Emit.TypeBuilder.DefineField: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.IdentityModel.Tokens.dll: s://www.newtonsoft.com/jsonschema for more details.",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: s://www.nuget.org/packages/Microsoft.IdentityModel.Json.Bson for more details.",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: D:\\a\\1\\s\\src\\Microsoft.IdentityModel.Tokens\\obj\\Release\\netstandard2.0\\Microsoft.IdentityModel.Tokens.pdb",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:PlayerTrack.dll: Dalamud.Hooking",
+      "metadata:PlayerTrack.dll: HookFromAddress",
+      "il:PlayerTrack.dll:PlayerTrack.Handler.SocialListHandler.SetupFriendList+0x22: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PlayerTrack.dll:PlayerTrack.Handler.SocialListHandler.SetupFreeCompany+0x22: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PlayerTrack.dll:PlayerTrack.Handler.SocialListHandler.SetupLinkShell+0x22: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PlayerTrack.dll:PlayerTrack.Handler.SocialListHandler.SetupCrossWorldLinkShell+0x22: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PlayerTrack.dll:PlayerTrack.Handler.SocialListHandler.SetupBlackList+0x22: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:PlayerTrack.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Microsoft.Identity.Client.dll: HttpListener",
+      "metadata:Microsoft.Identity.Client.dll: TcpListener",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.DefaultOSBrowser.HttpListenerInterceptor.TryStopListening+0x4: call System.Net.HttpListener.Abort: HttpListener",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.DefaultOSBrowser.HttpListenerInterceptor.Respond+0x2: callvirt System.Net.HttpListenerContext.get_Request: HttpListener",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.DefaultOSBrowser.HttpListenerInterceptor.Respond+0x7: callvirt System.Net.HttpListenerRequest.get_Url: HttpListener",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.DefaultOSBrowser.HttpListenerInterceptor.Respond+0x53: callvirt System.Net.HttpListenerContext.get_Response: HttpListener",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.DefaultOSBrowser.HttpListenerInterceptor.Respond+0x5d: callvirt System.Net.HttpListenerResponse.set_StatusCode: HttpListener",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.DefaultOSBrowser.HttpListenerInterceptor.Respond+0x63: callvirt System.Net.HttpListenerContext.get_Response: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:System.Data.SQLite.dll: DllImportAttribute",
+      "metadata:System.Data.SQLite.dll: LoadLibrary",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32+0x1: call System.Data.SQLite.UnsafeNativeMethodsWin32.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32: LoadLibrary",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x7: newobj LoadLibraryCallback..ctor: LoadLibrary",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x15: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryPosix: LoadLibrary",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1b: newobj LoadLibraryCallback..ctor: LoadLibrary",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x23: callvirt LoadLibraryCallback.Invoke: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/ws-sx/ws-trust/200512/Bearer"
+    ],
+    "rule_id": "network.endpoint.insecure-http.44f2ce650ca3",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.737be2c48e59",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7cf4fd56c09a",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b84eb3d39416",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue"
+    ],
+    "rule_id": "network.endpoint.insecure-http.be22ce3e6f19",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/ws-sx/ws-trust/200512"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d42d78ef30e0",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue"
+    ],
+    "rule_id": "network.endpoint.insecure-http.ff27754ce396",
+    "severity": "caution",
+    "title": "Endpoint: docs.oasis-open.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FluentMigrator.Runner.Oracle.dll: https://docs.oracle.com/en/database/oracle/oracle-database/18/sqlrf/CREATE-SEQUENCE.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0719fdd6465d",
+    "severity": "caution",
+    "title": "Endpoint: docs.oracle.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: https://enterpriseregistration.windows.net/{0}/enrollmentserver/contract"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1e3e0433ff0c",
+    "severity": "caution",
+    "title": "Endpoint: enterpriseregistration.windows.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoMapper.dll: https://docs.automapper.org/en/latest/Construction.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4b1f39ea3d18",
+    "severity": "caution",
+    "title": "Endpoint: docs.automapper.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Identity.Client.dll: https://aka.msa/<redacted>"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5676e17a58d8",
+    "severity": "caution",
+    "title": "Endpoint: aka.msa"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NetStone.dll: https://eu.finalfantasyxiv.com/",
+      "artifact:PlayerTrack.dll: https://eu.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.baaecb5fc531",
+    "severity": "caution",
+    "title": "Endpoint: eu.finalfantasyxiv.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Microsoft.Identity.Client.dll: System.Net.Sockets",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.Desktop.OsBrowser.DefaultOsBrowserWebUi.FindFreeLocalhostRedirectUri+0x1b: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.Desktop.OsBrowser.DefaultOsBrowserWebUi.FindFreeLocalhostRedirectUri+0x22: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.Desktop.OsBrowser.DefaultOsBrowserWebUi.FindFreeLocalhostRedirectUri+0x28: callvirt System.Net.Sockets.TcpListener.get_LocalEndpoint: System.Net.Sockets",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.Platforms.Shared.Desktop.OsBrowser.DefaultOsBrowserWebUi.FindFreeLocalhostRedirectUri+0x55: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "artifact:Microsoft.Identity.Client.dll: System.Net.Sockets",
+      "metadata:runtimes/unix/lib/netcoreapp3.1/Microsoft.Data.SqlClient.dll: System.Net.Sockets",
+      "metadata:runtimes/unix/lib/netcoreapp3.1/Microsoft.Data.SqlClient.dll: UdpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Microsoft.IdentityModel.Tokens.dll: CreateProcess",
+      "il:Microsoft.IdentityModel.Tokens.dll:Microsoft.IdentityModel.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Microsoft.IdentityModel.Tokens.dll:Microsoft.IdentityModel.Json.Converters.XmlNodeConverter.CreateInstruction+0xdc: callvirt Microsoft.IdentityModel.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: CreateProcess",
+      "metadata:System.Data.SQLite.dll: System.Diagnostics.Process",
+      "metadata:System.Data.SQLite.dll: Process.Start",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.HelperMethods.GetProcessId+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.HelperMethods.GetProcessId+0xc: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:System.Data.SqlServerCe.dll: Microsoft.Win32.Registry",
+      "metadata:System.Data.SqlServerCe.dll: RegistryKey",
+      "il:System.Data.SqlServerCe.dll:System.Data.SqlServerCe.SqlCeUtil.RegistryOpenSubKey+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:System.Data.SqlServerCe.dll:System.Data.SqlServerCe.SqlCeUtil.RegistryOpenSubKey+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:System.Data.SqlServerCe.dll:System.Data.SqlServerCe.SqlCeUtil.RegistryOpenProductRootSubKey+0x1c: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+      "il:System.Data.SqlServerCe.dll:System.Data.SqlServerCe.SqlCeUtil.RegistryOpenProductRootSubKey+0x1c: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey",
+      "il:System.Data.SqlServerCe.dll:System.Data.SqlServerCe.SqlCeUtil.RegistryCreateProductRootKey+0x6: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: Microsoft.Win32.Registry",
+      "il:System.Data.SqlServerCe.dll:System.Data.SqlServerCe.SqlCeUtil.RegistryCreateProductRootKey+0x6: callvirt Microsoft.Win32.RegistryKey.CreateSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:System.Data.SQLite.dll: FileStream",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.SQLite3.GetLegacyDatabasePageSize+0x15: newobj System.IO.FileStream..ctor: FileStream",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.SQLite3.DecryptLegacyDatabase+0xc9: newobj System.IO.FileStream..ctor: FileStream",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.SQLite3.DecryptLegacyDatabase+0x107: newobj System.IO.FileStream..ctor: FileStream",
+      "il:System.Data.SQLite.dll:System.Data.SQLite.SQLiteExtra.WriteCrashFile+0x17: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:System.Data.SQLite.dll: FileStream",
+      "metadata:System.Configuration.ConfigurationManager.dll: FileStream",
+      "metadata:System.Configuration.ConfigurationManager.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerTrack.json: https://github.com/Infiziert90/PlayerTrack"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.055109bbd750",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Discord (community messaging). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerTrack.dll: https://discord.com/channels/581875019861328007/1019649653454688376"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3ee485a47212",
+    "severity": "informational",
+    "title": "Endpoint: discord.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dapper.dll: https://github.com/DapperLib/Dapper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.46da6f5b36ba",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoMapper.dll: https://github.com/AutoMapper/AutoMapper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.57bce431c1aa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerTrack.dll: https://github.com/Infiziert90/PlayerTrack/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a4c81303b295",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dapper.Contrib.dll: https://github.com/StackExchange/Dapper"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c339a1bc0638",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerTrack.dll: https://github.com/Infiziert90/PlayerTrack.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d91bfc26b4e7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:System.Configuration.ConfigurationManager.dll: DownloadData",
+      "il:System.Configuration.ConfigurationManager.dll:System.Configuration.ClientConfigurationHost.OpenStreamForRead+0x35: callvirt System.Net.WebClient.DownloadData: DownloadData",
+      "artifact:System.Configuration.ConfigurationManager.dll: DownloadData",
+      "metadata:Microsoft.Identity.Client.dll: System.Net.Http.HttpClient",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.PlatformsCommon.Shared.SimpleHttpClientFactory.InitializeClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.PlatformsCommon.Shared.SimpleHttpClientFactory.InitializeClient+0x7: callvirt System.Net.Http.HttpClientHandler.set_UseDefaultCredentials: System.Net.Http.HttpClient",
+      "il:Microsoft.Identity.Client.dll:Microsoft.Identity.Client.PlatformsCommon.Shared.SimpleHttpClientFactory.InitializeClient+0xc: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "artifact:Microsoft.Identity.Client.dll: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/osx-x64/native/SQLite.Interop.dll",
+      "runtimes/win-x86/native/Microsoft.Data.SqlClient.SNI.dll",
+      "runtimes/win-x86/native/SQLite.Interop.dll",
+      "runtimes/win-arm64/native/Microsoft.Data.SqlClient.SNI.dll",
+      "runtimes/win-x64/native/Microsoft.Data.SqlClient.SNI.dll",
+      "runtimes/win-x64/native/SQLite.Interop.dll",
+      "runtimes/linux-x64/native/SQLite.Interop.dll",
+      "runtimes/win-arm/native/Microsoft.Data.SqlClient.SNI.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
