@@ -45,10 +45,10 @@ env:
   PYTHONUNBUFFERED: "1"
 
 concurrency:
-  # A standalone freeze owns the global catalog/Evidence writer mutex itself. During the
-  # automatic Phase-4 migration the outer cutover core already owns that mutex, so the nested
-  # freeze must use a run-local group instead of recursively waiting on its own authority lock.
-  group: ${{ inputs.authority_lock_held && format('omega-catalog-freeze-under-phase4-{0}', github.run_id) || 'omega-catalog-sigmascope-exclusive' }}
+  # A standalone freeze owns the global catalog/Evidence writer mutex itself. When an
+  # authoritative outer workflow already owns that mutex, the nested freeze uses a run-local
+  # group instead of recursively waiting on its own authority lock.
+  group: ${{ inputs.authority_lock_held && format('omega-catalog-freeze-under-authority-{0}', github.run_id) || 'omega-catalog-sigmascope-exclusive' }}
   cancel-in-progress: false
   queue: max
 
@@ -104,7 +104,6 @@ jobs:
             tools.tests.test_catalog_json_snapshots.CatalogJsonSnapshotTests.test_canonical_json_round_trips_base_catalog_exactly \
             tools.tests.test_catalog_json_snapshots.CatalogJsonSnapshotTests.test_catalog_json_has_one_current_internal_format_and_no_legacy_identity_reader \
             tools.tests.test_catalog_json_snapshots.CatalogJsonSnapshotTests.test_identity_rows_over_16_mib_are_sharded_and_round_trip \
-            tools.tests.test_catalog_json_snapshots.CatalogJsonSnapshotTests.test_phase4_v1_seed_converter_preserves_exact_integer_identities \
             -v
           python tools/catalog/test_sqlite_catalog.py
           python tools/catalog/project_marketplace_catalog.py --self-test
@@ -264,35 +263,22 @@ jobs:
           cp catalog/lane-results/catalog-enrichment/raw-sources.json catalog/raw-sources.json
           cp catalog/lane-results/catalog-enrichment/enriched-sources.json catalog/enriched-sources.json
           cp catalog/lane-results/catalog-scrape/website-enrichment.json catalog/website-enrichment.json
-      - name: Materialize exact previous catalog identity as normalization seed
-        id: previous_catalog
+      - name: Materialize exact current catalog identity as normalization seed
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          echo "current=false" >> "$GITHUB_OUTPUT"
-          if jq -e '
+          jq -e '
             .schema == "omega.catalog-json.v2" and
             .formatVersion == 2 and
             .identityEpoch == "omega-catalog-identity-v1"
-          ' catalog/previous-state/catalog/index.json >/dev/null 2>&1; then
-            echo "current=true" >> "$GITHUB_OUTPUT"
-            python tools/catalog/catalog_json_store.py materialize --root catalog/previous-state/catalog --database catalog/seed/omega-catalog.sqlite
-          elif jq -e '
-            .schema == "omega.catalog-json.v1" and
-            .formatVersion == 1 and
-            .identityEpoch == "omega-catalog-identity-v1"
-          ' catalog/previous-state/catalog/index.json >/dev/null 2>&1 \
-            && [ -f catalog/previous-state/catalog/identity/model.json ]; then
-            # Phase-4-only conversion of our one authoritative GitHub state. This is not
-            # a supported compatibility format and should be removed after cutover.
-            python tools/catalog/catalog_json_v1_seed.py \
-              --root catalog/previous-state/catalog \
-              --database catalog/seed/omega-catalog.sqlite
-          else
-            echo "::error::The authoritative previous catalog is neither the current internal format nor the exact Phase-4 predecessor."
+          ' catalog/previous-state/catalog/index.json >/dev/null 2>&1 || {
+            echo "::error::Authoritative catalog-data must use the current omega.catalog-json.v2 format."
             exit 6
-          fi
+          }
+          python tools/catalog/catalog_json_store.py materialize \
+            --root catalog/previous-state/catalog \
+            --database catalog/seed/omega-catalog.sqlite
       - name: Normalize settled discovery/enrichment into canonical working catalog
         shell: bash
         run: |
@@ -327,8 +313,8 @@ jobs:
             --community sources/community-sources.json
             --aliases sources/source-url-aliases.json
             --report catalog/source-inventory.json
+            --previous-catalog-root catalog/previous-state/catalog
           )
-          if [ "${{ steps.previous_catalog.outputs.current }}" = "true" ]; then args+=(--previous-catalog-root catalog/previous-state/catalog); fi
           if [ "${{ inputs.allow_source_removal || false }}" = "true" ]; then args+=(--allow-source-removal); fi
           python tools/catalog/source_inventory_guard.py "${args[@]}"
       - name: Freeze Definitions only from settled collector outputs

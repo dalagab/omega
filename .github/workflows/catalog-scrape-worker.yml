@@ -66,34 +66,22 @@ jobs:
               raise SystemExit('website scraper refuses an unsettled enrichment result')
           Path('catalog/enrichment-result-revision.txt').write_text(result['resultRevision'])
           PY
-      - name: Materialize previous catalog website cache
+      - name: Materialize current catalog website cache
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p catalog/seed
-          if jq -e '
+          jq -e '
             .schema == "omega.catalog-json.v2" and
             .formatVersion == 2 and
             .identityEpoch == "omega-catalog-identity-v1"
-          ' catalog/current-state/catalog/index.json >/dev/null 2>&1; then
-            python tools/catalog/catalog_json_store.py materialize \
-              --root catalog/current-state/catalog \
-              --database catalog/seed/omega-catalog.sqlite
-          elif jq -e '
-            .schema == "omega.catalog-json.v1" and
-            .formatVersion == 1 and
-            .identityEpoch == "omega-catalog-identity-v1"
-          ' catalog/current-state/catalog/index.json >/dev/null 2>&1 \
-            && [ -f catalog/current-state/catalog/identity/model.json ]; then
-            # Phase-4-only bridge for our one authoritative pre-cutover catalog-data state.
-            # Delete this branch together with catalog_json_v1_seed.py after the migration receipt.
-            python tools/catalog/catalog_json_v1_seed.py \
-              --root catalog/current-state/catalog \
-              --database catalog/seed/omega-catalog.sqlite
-          else
-            echo "::error::Authoritative catalog-data is neither current v2 nor the exact Phase-4 v1 predecessor."
+          ' catalog/current-state/catalog/index.json >/dev/null 2>&1 || {
+            echo "::error::Authoritative catalog-data must use the current omega.catalog-json.v2 format."
             exit 6
-          fi
+          }
+          python tools/catalog/catalog_json_store.py materialize \
+            --root catalog/current-state/catalog \
+            --database catalog/seed/omega-catalog.sqlite
       - name: Scrape only new or stale public project pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -43,39 +43,16 @@ deterministic shards:
 
 ## Compatibility-debt audit
 
-### Remove immediately after the Phase-4 cutover receipt
+### Removed from active execution after the Phase-4 cutover receipt
 
-1. **Phase-4 v1 catalog seed converter**
-   - `tools/catalog/catalog_json_v1_seed.py`
-   - the exact v1 predecessor branch in `.github/workflows/catalog-builder.yml`
-   - Reason: after `catalog-data` is v2 there is no second deployment that can need it.
+The authoritative catalog is now `omega.catalog-json.v2`, `catalog-latest` publishes the
+`fresh-allowlist-v1` client projection, and frozen OSV lane results carry their exact
+`queriedPackageVersionPairs`. The v1 catalog seed, retained builder-artifact bootstrap,
+legacy marketplace summary-table validation, legacy SQLite compactor, and pre-orchestration
+OSV query reconstruction are no longer active execution paths.
 
-2. **Retained catalog-builder artifact bootstrap fallback**
-   - `tools/catalog/stage_catalog_bootstrap.py`
-   - related fallback test in `tools/tests/test_pipeline_handoff.py`
-   - The code explicitly says the retained builder artifact exists only for the migration
-     window. `catalog-latest` is already the real Omega-client distribution boundary.
-   - Replace it with: download current `catalog-latest`, validate, or fail closed.
-
-3. **Old marketplace summary-table validation path**
-   - `tools/catalog/validate_marketplace_catalog.py`
-   - Remove the `marketplace_security_current` branch after confirming the newly
-     published `catalog-latest` uses the current `fresh-allowlist-v1` projection.
-   - The validator should then validate exactly the database Omega is actually shipped.
-
-4. **Manual legacy SQLite compaction lane**
-   - `.github/workflows/catalog-compaction.yml`
-   - `tools/catalog/compact_sqlite_catalog.py` and its migration-only tests if no longer
-     required by an operator workflow.
-   - Current production authority is Git-backed catalog state plus Evidence-v2; the
-     compactor is already manual/non-publishing and is primarily retained migration
-     machinery.
-
-5. **Pre-orchestration OSV query-set reconstruction**
-   - `tools/catalog/definitions_snapshot.py`
-   - Production OSV lane results already carry the exact queried package/version set.
-     Once Phase 4 is complete, a supplied OSV result missing that set should fail closed
-     instead of reconstructing a historical caller shape.
+Migration-only Python utilities may remain in the tree for historical inspection, but they
+are no longer imported or referenced by production workflows or the normal regression suite.
 
 ### Remove once authoritative security data proves it no longer contains old forms
 

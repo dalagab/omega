@@ -396,6 +396,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("builtFromDevCommit", definitions)
         self.assertNotIn('"sourceCommit": source_commit', definitions)
         self.assertIn("queriedPackageVersionPairs", definitions)
+        self.assertIn("supplied OSV advisory input is missing queriedPackageVersionPairs", definitions)
         self.assertIn("definitionsRevision", definitions)
         self.assertIn("SECONDARY_SECURITY_SCHEMA", definitions)
         self.assertIn("YARA_POLICY_SCHEMA", definitions)
@@ -475,16 +476,17 @@ class WorkflowContractTests(unittest.TestCase):
         scraper = self.read("catalog-scrape-worker.yml")
         freeze = self.read("catalog-builder.yml")
         customer = self.read("catalog-client-publish.yml")
-        self.assertIn("Materialize previous catalog cache", enrichment)
+        self.assertIn("Materialize current catalog cache", enrichment)
         self.assertIn("catalog_json_store.py materialize", enrichment)
-        self.assertIn("catalog_json_v1_seed.py", enrichment)
+        self.assertNotIn("catalog_json_v1_seed.py", enrichment)
         self.assertIn('schema == "omega.catalog-json.v2"', enrichment)
-        self.assertIn('schema == "omega.catalog-json.v1"', enrichment)
-        self.assertIn("Materialize previous catalog website cache", scraper)
+        self.assertNotIn('schema == "omega.catalog-json.v1"', enrichment)
+        self.assertIn("Materialize current catalog website cache", scraper)
         self.assertIn("catalog_json_store.py materialize", scraper)
-        self.assertIn("catalog_json_v1_seed.py", scraper)
+        self.assertNotIn("catalog_json_v1_seed.py", scraper)
         self.assertIn('schema == "omega.catalog-json.v2"', scraper)
-        self.assertIn('schema == "omega.catalog-json.v1"', scraper)
+        self.assertNotIn('schema == "omega.catalog-json.v1"', scraper)
+        self.assertNotIn("catalog_json_v1_seed.py", freeze)
         self.assertNotIn("Download previous published marketplace DB for conditional request hints", enrichment + scraper + freeze)
         self.assertNotIn("Download previous published marketplace DB for website cache hints", enrichment + scraper + freeze)
         self.assertNotIn("client_database_audit.py", freeze)
@@ -497,14 +499,16 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("--community sources/community-sources.json", text)
         self.assertGreaterEqual(text.count("--community sources/community-sources.json"), 2)
 
-    def test_legacy_compactor_is_retired_from_actions(self) -> None:
-        active = common.ROOT / ".github" / "workflows" / "catalog-compaction.yml"
-        retired = common.ROOT / ".github" / "retired-workflows" / "legacy" / "catalog-compaction.yml"
-        self.assertFalse(active.exists())
-        text = retired.read_text(encoding="utf-8")
-        self.assertIn("name: Omega legacy SQLite catalog compactor (disabled)", text)
-        self.assertNotIn("gh release upload", text)
-        self.assertNotIn("contents: write", text)
+    def test_retired_internal_compatibility_tools_are_not_executed(self) -> None:
+        regression = self.read("regression-tests.yml")
+        freeze = self.read("catalog-builder.yml")
+        enrichment = self.read("catalog-enrichment-worker.yml")
+        scraper = self.read("catalog-scrape-worker.yml")
+        active_workflows = regression + freeze + enrichment + scraper
+        self.assertNotIn("compact_sqlite_catalog.py", active_workflows)
+        self.assertNotIn("stage_catalog_bootstrap.py", active_workflows)
+        self.assertNotIn("catalog_json_v1_seed.py", active_workflows)
+        self.assertIn("project_marketplace_catalog.py --self-test", regression)
 
     def test_revision_and_v2_publication_tools_are_separated_by_workflow(self) -> None:
         builder = self.read("catalog-builder.yml")
@@ -546,10 +550,10 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("queue: max", drain_publish)
         self.assertIn("Revalidate planned authority heads", drain_publish)
 
-        # Catalog freeze retains its existing nested-authority escape hatch. The label
-        # still contains the historical Phase-4 name but is only an internal group name.
+        # Catalog freeze retains its nested-authority escape hatch without migration-era naming.
         self.assertIn("inputs.authority_lock_held", catalog)
-        self.assertIn("omega-catalog-freeze-under-phase4-", catalog)
+        self.assertIn("omega-catalog-freeze-under-authority-", catalog)
+        self.assertNotIn("omega-catalog-freeze-under-phase4-", catalog)
         self.assertIn(f"|| '{shared_group}'", catalog)
 
         self.assertIn("cancel-in-progress: false", catalog)

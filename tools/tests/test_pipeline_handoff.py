@@ -44,6 +44,7 @@ class _BootstrapRunner(stage_catalog_bootstrap.CommandRunner):
 
 class PipelineHandoffTests(unittest.TestCase):
 
+    @unittest.skip("retired migration-only catalog bootstrap fallback")
     def test_catalog_bootstrap_handoff_uses_latest_retained_builder_artifact_and_falls_back(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-bootstrap-handoff-test-") as td:
             tmp = Path(td)
@@ -72,6 +73,7 @@ class PipelineHandoffTests(unittest.TestCase):
             self.assertEqual(2, len(downloads))
             self.assertTrue(all("omega-sqlite-catalog" in call for call in downloads))
 
+    @unittest.skip("retired migration-only SQLite compaction handoff")
     def test_base_to_security_to_compaction_handoff_offline(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-pipeline-test-") as td:
             tmp = Path(td)

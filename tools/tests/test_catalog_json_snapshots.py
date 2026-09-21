@@ -12,7 +12,6 @@ from pathlib import Path
 import common
 import test_sqlite_catalog
 import catalog_json_store
-import catalog_json_v1_seed
 import catalog_state
 import definitions_snapshot
 
@@ -130,63 +129,14 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             self.assertEqual("omega.catalog-json.v2", index["schema"])
 
 
-    def test_phase4_v1_seed_converter_preserves_exact_integer_identities(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="omega-catalog-v1-seed-") as td:
-            root = Path(td)
-            curated, raw, enriched, websites = test_sqlite_catalog.fixture_documents(root)
-            built = root / "built"
-            test_sqlite_catalog.run_builder(common.ROOT, built, curated, raw, enriched, websites)
-            source_db = built / "omega-catalog.sqlite"
-            predecessor = root / "predecessor"
-            catalog_json_store.export_snapshot(source_db, predecessor, source_commit="phase4-predecessor")
-
-            # Build the exact retired shape from our own current data. The normal reader
-            # deliberately does not know how to consume this monolith.
-            identity_rows = catalog_json_store._read_identity_store(predecessor)
-            for path in (predecessor / "identity").rglob("*.json"):
-                path.unlink()
-            model_descriptor = catalog_json_store.write_json(predecessor / "identity" / "model.json", {
-                "schema": "omega.catalog-json.identity-model.v1",
-                "manifestObservations": identity_rows["manifest_observations"],
-                "sourceRepositories": identity_rows["source_repositories"],
-                "sourceRepositoryAliases": identity_rows["source_repository_aliases"],
-                "manifestSourceCandidates": identity_rows["manifest_source_candidates"],
-                "pluginIdentityAliases": identity_rows["plugin_identity_aliases"],
-            })
-            model_descriptor["path"] = "identity/model.json"
-            index_path = predecessor / "index.json"
-            old_index = json.loads(index_path.read_text(encoding="utf-8"))
-            old_index["schema"] = "omega.catalog-json.v1"
-            old_index["formatVersion"] = 1
-            old_index["files"] = [
-                row for row in old_index["files"]
-                if not str(row.get("path") or "").startswith("identity/")
-            ] + [model_descriptor]
-            index_path.write_text(json.dumps(old_index, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-
-            converted = root / "converted.sqlite"
-            report = catalog_json_v1_seed.materialize_v1_seed(predecessor, converted)
-            self.assertEqual(catalog_json_store.IDENTITY_EPOCH, report["identityEpoch"])
-            with closing(sqlite3.connect(source_db)) as source, closing(sqlite3.connect(converted)) as target:
-                for table in catalog_json_store.BASE_TABLES:
-                    source_rows = source.execute(f'SELECT * FROM "{table}"').fetchall()
-                    target_rows = target.execute(f'SELECT * FROM "{table}"').fetchall()
-                    self.assertEqual(sorted(source_rows, key=repr), sorted(target_rows, key=repr), table)
-
-            current = root / "current-v2"
-            catalog_json_store.export_snapshot(source_db, current, source_commit="current")
-            with self.assertRaisesRegex(RuntimeError, "unexpected schema"):
-                catalog_json_v1_seed.materialize_v1_seed(current, root / "no.sqlite")
-
     def test_definitions_revision_includes_exact_osv_query_identities(self) -> None:
         def evidence(root: Path, name: str) -> Path:
             target = root / name
             (target / "indexes").mkdir(parents=True)
-            nuget = {
+            (target / "indexes" / "nuget.json").write_text(json.dumps({
                 "schema": "omega.security-evidence.nuget-index.v2",
                 "packages": [{"name": name, "version": "1.0.0", "observations": 1}],
-            }
-            (target / "indexes" / "nuget.json").write_text(json.dumps(nuget), encoding="utf-8")
+            }), encoding="utf-8")
             (target / "index.json").write_text(json.dumps({
                 "schema": "omega.security-evidence.v2",
                 "revisions": {"evidenceRevision": "ev-fixture"},
@@ -194,31 +144,34 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             }), encoding="utf-8")
             return target
 
-        frozen_advisories = {
-            "schema": "omega.public-advisories.v1",
-            "source": "OSV",
-            "ecosystem": "NuGet",
-            "queriedPackages": 1,
-            "matchedPackages": 0,
-            "advisories": [],
-        }
+        def advisories(root: Path, name: str) -> Path:
+            target = root / f"{name}.json"
+            target.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1",
+                "source": "OSV",
+                "ecosystem": "NuGet",
+                "queriedPackages": 1,
+                "matchedPackages": 0,
+                "queriedPackageVersionPairs": [{"name": name, "version": "1.0.0"}],
+                "advisories": [],
+            }), encoding="utf-8")
+            return target
+
         with tempfile.TemporaryDirectory(prefix="omega-definitions-") as td:
             root = Path(td)
-            advisory_file = root / "advisories.json"
-            advisory_file.write_text(json.dumps(frozen_advisories), encoding="utf-8")
             first = definitions_snapshot.build_snapshot(
                 repo_root=common.ROOT,
                 evidence_root=evidence(root, "Package.One"),
                 output=root / "defs-one",
                 source_commit="same-commit",
-                advisories_input=advisory_file,
+                advisories_input=advisories(root, "Package.One"),
             )
             second = definitions_snapshot.build_snapshot(
                 repo_root=common.ROOT,
                 evidence_root=evidence(root, "Package.Two"),
                 output=root / "defs-two",
                 source_commit="same-commit",
-                advisories_input=advisory_file,
+                advisories_input=advisories(root, "Package.Two"),
             )
             self.assertNotEqual(first["definitionsRevision"], second["definitionsRevision"])
             self.assertEqual(first["ruleSetRevision"], second["ruleSetRevision"], "OSV query changes must not force artifact rescans")
@@ -231,6 +184,37 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             self.assertTrue((root / "defs-one" / "worker" / "tools" / "security" / "production_sigmascope_v2_pipeline.py").is_file())
             self.assertTrue((root / "defs-one" / "worker" / "sources" / "source-overrides.json").is_file())
 
+    def test_supplied_osv_advisories_require_exact_query_pairs(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-definitions-osv-contract-") as td:
+            root = Path(td)
+            evidence = root / "evidence"
+            (evidence / "indexes").mkdir(parents=True)
+            (evidence / "indexes" / "nuget.json").write_text(
+                json.dumps({"schema": "omega.security-evidence.nuget-index.v2", "packages": []}),
+                encoding="utf-8",
+            )
+            (evidence / "index.json").write_text(
+                json.dumps({"revisions": {"evidenceRevision": "ev-fixture"}, "indexes": {"nuget": {"path": "indexes/nuget.json"}}}),
+                encoding="utf-8",
+            )
+            advisories = root / "advisories.json"
+            advisories.write_text(json.dumps({
+                "schema": "omega.public-advisories.v1",
+                "source": "OSV",
+                "ecosystem": "NuGet",
+                "queriedPackages": 0,
+                "matchedPackages": 0,
+                "advisories": [],
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "queriedPackageVersionPairs"):
+                definitions_snapshot.build_snapshot(
+                    repo_root=common.ROOT,
+                    evidence_root=evidence,
+                    output=root / "definitions",
+                    source_commit="fixture",
+                    advisories_input=advisories,
+                )
+
     def test_frozen_worker_bundle_detects_tampering_without_dev_checkout(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-worker-bundle-") as td:
             root = Path(td)
@@ -239,7 +223,7 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             (evidence / "indexes" / "nuget.json").write_text(json.dumps({"schema": "omega.security-evidence.nuget-index.v2", "packages": []}), encoding="utf-8")
             (evidence / "index.json").write_text(json.dumps({"revisions": {"evidenceRevision": "ev-fixture"}, "indexes": {"nuget": {"path": "indexes/nuget.json"}}}), encoding="utf-8")
             advisories = root / "advisories.json"
-            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "advisories": []}), encoding="utf-8")
+            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "queriedPackageVersionPairs": [], "advisories": []}), encoding="utf-8")
             definitions = root / "definitions"
             index = definitions_snapshot.build_snapshot(repo_root=common.ROOT, evidence_root=evidence, output=definitions, source_commit="dev-provenance-only", advisories_input=advisories)
             self.assertEqual("dev-provenance-only", index["builtFromDevCommit"])
@@ -266,7 +250,7 @@ class CatalogJsonSnapshotTests(unittest.TestCase):
             (evidence / "indexes" / "nuget.json").write_text(json.dumps({"schema": "omega.security-evidence.nuget-index.v2", "packages": []}), encoding="utf-8")
             (evidence / "index.json").write_text(json.dumps({"revisions": {"evidenceRevision": "ev-fixture"}, "indexes": {"nuget": {"path": "indexes/nuget.json"}}}), encoding="utf-8")
             advisories = root / "advisories.json"
-            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "advisories": []}), encoding="utf-8")
+            advisories.write_text(json.dumps({"schema": "omega.public-advisories.v1", "source": "OSV", "ecosystem": "NuGet", "queriedPackages": 0, "matchedPackages": 0, "queriedPackageVersionPairs": [], "advisories": []}), encoding="utf-8")
             definitions_snapshot.build_snapshot(repo_root=common.ROOT, evidence_root=evidence, output=root / "definitions", source_commit="fixture", advisories_input=advisories)
             catalog_state.assemble(catalog=root / "catalog", definitions=root / "definitions", output=root / "state")
             self.assertTrue(catalog_state.validate(root / "state")["ok"])
