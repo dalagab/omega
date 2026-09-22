@@ -1,0 +1,345 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.UseActionById+0x3d: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character movement control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.TickTrapAvoidance+0x1dc: callvirt AutoPalExplorer.Services.VNavmeshClient.MoveTo",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.Navigator.TryMoveTo+0x6f: callvirt AutoPalExplorer.Services.VNavmeshClient.PathfindAndMoveTo",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.Navigator.Stop+0x2f: callvirt AutoPalExplorer.Services.VNavmeshClient.Stop"
+    ],
+    "rule_id": "automation.game.character.move",
+    "severity": "high",
+    "title": "Character movement control"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:ECommons.dll: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "artifact:ECommons.dll: VirtualProtectEx"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoPalExplorer.dll: http://127.0.0.1:8080/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.b63ccccc687b",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoPalExplorer.dll:YourPlugin.Helpers.ChestOpener.TryInteract+0x1e: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.TryOpenChest+0x1b3: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.TryInteractWithObject+0xd9: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.EngageEnemy+0xff: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.TryConfirmBossQueueAddons+0x3d: call ECommons.Automation.Callback.Fire",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.TryConfirmBossQueueAddons+0xa3: call ECommons.Automation.Callback.Fire",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.TryConfirmBossQueueAddons+0x109: call ECommons.Automation.Callback.Fire",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController.HandleNonLeaderEntry+0x1cb: call ECommons.Automation.Callback.Fire"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:ECommons.dll: AssemblyLoadContext",
+      "metadata:ECommons.dll: Assembly.Load",
+      "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "artifact:ECommons.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:ECommons.dll: s://github.com/NightmareXIV/ECommons",
+      "artifact:ECommons.dll: s://www.patreon.com/NightmareXIV",
+      "artifact:ECommons.dll: s://subscribe.nightmarexiv.org",
+      "artifact:ECommons.dll: s://donate.nightmarexiv.org",
+      "artifact:ECommons.dll: s://crypto.nightmarexiv.org/",
+      "artifact:ECommons.dll: s://discord.nightmarexiv.org",
+      "artifact:ECommons.dll: s://explore.nightmarexiv.org"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner",
+      "metadata:ECommons.dll: HookFromAddress",
+      "il:ECommons.dll:ECommons.ECommonsMain.Init+0x169: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.ECommonsMain.Init+0x174: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x3c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ECommons.dll: DllImportAttribute",
+      "metadata:SQLitePCLRaw.provider.e_sqlite3.dll: DllImportAttribute",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!LoadLibraryW: LoadLibrary",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:runtimes\\win-arm\\native\\e_sqlite3.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:runtimes\\win-arm\\native\\e_sqlite3.dll: LoadLibrary",
+      "artifact:runtimes\\win-arm\\native\\e_sqlite3.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3641efc8bfda",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8785017a999f",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9d3ce8792d14",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ac38247bd18a",
+    "severity": "caution",
+    "title": "Endpoint: subscribe.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b5dad10c192a",
+    "severity": "caution",
+    "title": "Endpoint: donate.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc91d234fb3b",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.org"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Diagnostics.Process",
+      "metadata:ECommons.dll: ProcessStartInfo",
+      "metadata:ECommons.dll: ShellExecute",
+      "metadata:ECommons.dll: Process.Start",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x2: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:ECommons.dll: FileStream",
+      "metadata:ECommons.dll: WriteAllText",
+      "metadata:ECommons.dll: File.Move",
+      "metadata:ECommons.dll: WriteAllBytes",
+      "metadata:ECommons.dll: Directory.CreateDirectory",
+      "il:ECommons.dll:ECommons.LanguageHelpers.Localization.Save+0x39: call System.IO.File.WriteAllText: WriteAllText",
+      "il:ECommons.dll:ECommons.Configuration.DefaultSerializationFactory.WriteFile+0x6f: call System.IO.File.Move: File.Move",
+      "il:ECommons.dll:ECommons.Configuration.DefaultSerializationFactory.WriteFile+0x90: call System.IO.File.WriteAllText: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoPalExplorer.json: https://raw.githubusercontent.com/Codaaaaaa/Pal/main/AutoPalaceExplorer/logo.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3483d2e91241",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoPalExplorer.dll: https://raw.githubusercontent.com/Codaaaaaa/Pal/main/AutoPalaceExplorer/logo.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9cc912c2bec2",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cfabce510df0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AutoPalExplorer.dll: https://github.com/Codaaaaaa/AutoPalExplorer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d9f19e7acdb7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:AutoPalExplorer.dll: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:AutoPalExplorer.Services.AutoPalController..cctor+0x44: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:<LoadLogoAsync>d__19.MoveNext+0x18: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:<LoadLogoAsync>d__19.MoveNext+0x38: callvirt System.Net.Http.HttpClient.GetByteArrayAsync: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:<TestOnlineConnectivityAsync>d__22.MoveNext+0x78: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:<TestOnlineConnectivityAsync>d__22.MoveNext+0xa8: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:<<OnlineClearIgnoredOnServer>b__0>d.MoveNext+0x4c: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient",
+      "il:AutoPalExplorer.dll:<<PushIgnoredKeyToServer>b__0>d.MoveNext+0x4c: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\alpine-arm\\native\\libe_sqlite3.so",
+      "runtimes\\alpine-arm64\\native\\libe_sqlite3.so",
+      "runtimes\\alpine-x64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-arm\\native\\libe_sqlite3.so",
+      "runtimes\\linux-arm64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-armel\\native\\libe_sqlite3.so",
+      "runtimes\\linux-mips64\\native\\libe_sqlite3.so",
+      "runtimes\\linux-musl-arm\\native\\libe_sqlite3.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
