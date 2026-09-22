@@ -1,0 +1,1767 @@
+{
+  "analysis": {
+    "analysisId": "d21c42515a691ca2d43a454c4621ca7df475d3a4b9e0a5ec9abc814b5438f7e7",
+    "artifactSha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+    "path": "artifacts/7b/7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b/analyses/d21c42515a691ca2d43a454c4621ca7df475d3a4b9e0a5ec9abc814b5438f7e7",
+    "recordCount": 78
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+    "artifact_url": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+    "assembly_version": "1.0.6.0",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Character action execution",
+      "Download/execute potential",
+      "Endpoint: discord.gg",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Shell/PowerShell"
+    ],
+    "caution_count": 3,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "Contains indicators for invoking command shells or PowerShell.",
+        "evidence": [
+          "artifact:DancingMadness.dll: powershell.exe"
+        ],
+        "ruleId": "shell.powershell",
+        "severity": "high",
+        "title": "Shell or PowerShell invocation"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:DancingMadness.dll:DancingMadness.Core.FoodSelector.Cycle+0x159: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:DancingMadness.dll:FishForever.Cast+0x6b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:DancingMadness.dll:FishForever.Mooch+0x2d: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:DancingMadness.dll:FishForever.Release+0x2d: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:DancingMadness.dll: System.Diagnostics.Process",
+          "metadata:DancingMadness.dll: ProcessStartInfo",
+          "metadata:DancingMadness.dll: ShellExecute",
+          "metadata:DancingMadness.dll: Process.Start",
+          "il:DancingMadness.dll:DancingMadness.Plugin.TextToSpeech+0x126: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:DancingMadness.dll:DancingMadness.Plugin.TextToSpeech+0x126: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:DancingMadness.dll:DancingMadness.Plugin.TextToSpeech+0x131: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:DancingMadness.dll:DancingMadness.Plugin.TextToSpeech+0x131: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:DancingMadness.dll: Dalamud.Hooking",
+          "metadata:DancingMadness.dll: SigScanner",
+          "metadata:DancingMadness.dll: HookFromAddress",
+          "il:DancingMadness.dll:DancingMadness.Core.GameNetwork..ctor+0x24: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:DancingMadness.dll:DancingMadness.Core.SigLocator..ctor+0x1a: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+          "il:DancingMadness.dll:DancingMadness.Core.SigLocator.ScanText+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:DancingMadness.dll:DancingMadness.Core.SigLocator.ScanData+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanData: SigScanner",
+          "il:DancingMadness.dll:DancingMadness.Core.SigLocator.ScanModule+0xf: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanModule: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:DancingMadness.dll: s://github.com/SneakiestBear/Dancing-Madness.git",
+          "artifact:DancingMadness.dll: s://github.com/notofonts/noto-cjk/raw/main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+          "artifact:DancingMadness.dll: s://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml",
+          "artifact:DancingMadness.dll: s://discord.gg/6f9MY55",
+          "artifact:DancingMadness.dll: s://github.com/SneakiestBear/Dancing-Madness"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:DancingMadness.dll: System.Net.Http.HttpClient",
+          "il:DancingMadness.dll:DancingMadness.Plugin.ProcessDownloadQueue+0x73: call DancingMadness.Plugin.DownloadFileFromUri: DownloadFile",
+          "il:DancingMadness.dll:DancingMadness.Plugin.DownloadFileFromUri+0xca: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:DancingMadness.dll:DancingMadness.Plugin.DownloadFileFromUri+0xf0: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient",
+          "il:DancingMadness.dll:DancingMadness.Core.NetworkDecoder.GetBlueprintFromURI+0x29: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:DancingMadness.dll:DancingMadness.Core.NetworkDecoder.GetBlueprintFromURI+0x4d: callvirt System.Net.Http.HttpClient.Send: System.Net.Http.HttpClient",
+          "artifact:DancingMadness.dll: DownloadFile"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DancingMadness.dll: https://github.com/SneakiestBear/Dancing-Madness"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e977690455de",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DancingMadness.dll: https://raw.githubusercontent.com/paissaheavyindustries/Resources/main/Blueprint/blueprint.xml"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.baa414e5fd31",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DancingMadness.dll: https://github.com/SneakiestBear/Dancing-Madness.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4eaec402fe02",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DancingMadness.json: https://github.com/SneakiestBear/Dancing-Madness"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.07a1e14bfd47",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DancingMadness.dll: https://discord.gg/6f9MY55"
+        ],
+        "ruleId": "network.endpoint.community-invite.31447ccde661",
+        "severity": "informational",
+        "title": "Community invite: Discord"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:DancingMadness.dll: FileStream",
+          "metadata:DancingMadness.dll: WriteAllText",
+          "metadata:DancingMadness.dll: WriteAllBytes",
+          "metadata:DancingMadness.dll: File.Delete",
+          "metadata:DancingMadness.dll: Directory.CreateDirectory",
+          "il:DancingMadness.dll:DancingMadness.Plugin.BackupConfig+0x33: call System.IO.File.WriteAllText: WriteAllText",
+          "il:DancingMadness.dll:DancingMadness.Plugin.DownloadFileFromUri+0x195: call System.IO.File.WriteAllBytes: WriteAllBytes",
+          "il:DancingMadness.dll:DancingMadness.Plugin.<GeneratePackage>b__169_0+0x244: newobj System.IO.FileStream..ctor: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 8,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "artifactBytes": 465359,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.6.0",
+        "artifactBytes": 465359,
+        "artifactSha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+        "catalogAssemblyVersion": "1.0.6.0",
+        "manifestInternalName": "",
+        "manifestPath": "DancingMadness.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Download/execute potential",
+        "Endpoint: discord.gg",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Shell/PowerShell"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "network.http",
+        "process.execute",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 3,
+        "critical": 0,
+        "high": 3,
+        "informational": 8
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+        "internalName": "DancingMadness",
+        "manifestVersion": "1.0.6.0",
+        "observationId": 22863,
+        "observationKey": "manifest-3fa73e75d2902b44609b71f7fd75",
+        "repositoryUrl": "https://github.com/SneakiestBear/Dancing-Madness",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 13888
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 1217202
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+        "attemptId": "attempt-v2-bed3fb91e69fdbba",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-6a4425ab28fad6bd",
+        "definitionsRevision": "defs-v1-7a06aaba86c6c5ba",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13888",
+        "queueSeedRevision": "queue-seed-v2-719c8045b72faface89c",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
+        "targetFingerprint": "source-target-v2-cd941d81ea643434df52",
+        "variantId": 13888,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-18T11:34:24Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/SneakiestBear/Dancing-Madness"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/SneakiestBear/Dancing-Madness: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/SneakiestBear/Dancing-Madness",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 35,
+    "scanned_at_utc": "2026-09-18T11:34:24Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/SneakiestBear/Dancing-Madness",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 13888
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+      "current_assembly_version": "1.0.6.0",
+      "current_scan_id": 35,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-18T11:34:24Z",
+      "previous_artifact_sha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+      "previous_assembly_version": "1.0.6.0",
+      "previous_scan_id": 6,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 13888
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 28,
+      "artifact_only_count": 28,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dancingmadness",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "DancingMadness",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.6.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.8914"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.readerwriter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xmlserializer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XmlSerializer",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-18T11:34:24Z",
+      "comparison_id": 11,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 35,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 13888,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "06f23a5363ac62d1cc011d75913f16e711681b02059ccf5badc17aef43ce2804",
+    "observedAtUtc": "2026-09-22T08:59:20Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "1d98e9112bf76917e19a2112b1d8c49430e04f14464399559d11650302982897",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "f8a4f4fb19b8925db3359332c8341e5f2a3be49af03fb80cd558cc7221b63ede",
+        "records": 28,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "b4ba16fdedff402745dfca9364fbda7538498edd05d8baa3402fd25f4d71228a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "60f6bab3a222ed2a3acaeb674752cf1467e1e20f978289ffdf0c366a66725e18",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "a6ea4637543c0f2290d7de9df7c8d2b2db52fa6ac22258eed1073a1b1b89fc86",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-bbc476218e13695c63a13349a6c3211accdcab1e88325ce97293ccc1fa05e372",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Dancing Madness",
+    "first_seen_utc": "2026-09-17T19:26:53Z",
+    "internal_name": "DancingMadness",
+    "last_seen_utc": "2026-09-22T02:03:20Z",
+    "plugin_id": 1449
+  },
+  "pluginId": 1449,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Adds support for the Dancing Mad (Ultimate) encounter, including an automarker for the Forsaken tower/AoE sequence (configurable tower order, priority, and per-role markers). A fork of Lemegeton by Paissa Heavy Industries.\nhttps://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/repo.json",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1187,
+      "summary": "Dancing Mad (Ultimate) raid markers.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/SneakiestBear/Dancing-Madness",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/SneakiestBear/Dancing-Madness"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "## Dancing Madness\n\nDancing Madness is a Dalamud plugin for Final Fantasy XIV raiding, focused on adding support for the **Dancing Mad (Ultimate)** encounter — most notably an automarker for the **Forsaken** tower/AoE sequence (configurable tower order, priority, and per-role markers).\n\nIt is a fork of [Lemegeton](https://github.com/paissaheavyindustries/Lemegeton) and inherits its broad feature set (automarkers, overlays, and helpers for a wide variety of content), with the Dancing Mad support added on top.\n\n## Dancing Mad (Forsaken) automarker\n\n- Detects the Forsaken cast and follows the tower sequence\n- Configurable tower order (e.g. `AAABBBBA`, `ABBAABBA`, `AAAABBBB`)\n- Marks only the currently-active group; persistent per-player categories (Stack / Cone / AoE)\n- Configurable markers and role priority\n- Built-in debug simulator to drive the whole sequence with fake packets (no boss pull needed)\n\n## Installing\n\nThis plugin runs under [Dalamud](https://github.com/goatcorp/FFXIVQuickLauncher). As a source fork it is built from this repository (Visual Studio / the .NET SDK) and added to Dalamud as a dev plugin; it is not currently published to a Dalamud repository.\n\n## Credits\n\nBased on **Lemegeton** by **Paissa Heavy Industries**, used under the MIT License (see [LICENSE](LICENSE)). All credit for the underlying plugin and its features goes to the original authors:\n\nhttps://github.com/paissaheavyindustries/Lemegeton",
+      "title": "Dancing-Madness",
+      "url": "https://github.com/SneakiestBear/Dancing-Madness"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "e2da5bee7dcd9df3c8bddda12e42af512db66bd9bb8b6665a4b6955af0f33842",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "b57150159d02a3b7a5cae6a292b4d213fa808a1d459110b382a5b61518f002c6",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "db50be310f4aab93db5b09a6b5a5906e5e6507640d9d4e4bd11cbcccc74eb66d",
+        "records": 14
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+    "artifact_url": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+    "assembly_version": "1.0.6.0",
+    "capabilities_json": [
+      "Character action execution",
+      "Download/execute potential",
+      "Endpoint: discord.gg",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Shell/PowerShell"
+    ],
+    "caution_count": 3,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 3,
+    "highest_severity": "high",
+    "informational_count": 8,
+    "plugin_id": 1449,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 6,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "artifactBytes": 465359,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.6.0",
+        "artifactBytes": 465359,
+        "artifactSha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+        "catalogAssemblyVersion": "1.0.6.0",
+        "manifestInternalName": "",
+        "manifestPath": "DancingMadness.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Download/execute potential",
+        "Endpoint: discord.gg",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Shell/PowerShell"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "network.http",
+        "process.execute",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 3,
+        "critical": 0,
+        "high": 3,
+        "informational": 8
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+        "internalName": "DancingMadness",
+        "manifestVersion": "1.0.6.0",
+        "observationId": 22863,
+        "observationKey": "manifest-3fa73e75d2902b44609b71f7fd75",
+        "repositoryUrl": "https://github.com/SneakiestBear/Dancing-Madness",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 13888
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 1217202
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+        "attemptId": "attempt-v2-bed3fb91e69fdbba",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-6a4425ab28fad6bd",
+        "definitionsRevision": "defs-v1-7a06aaba86c6c5ba",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13888",
+        "queueSeedRevision": "queue-seed-v2-719c8045b72faface89c",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
+        "targetFingerprint": "source-target-v2-cd941d81ea643434df52",
+        "variantId": 13888,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-18T11:34:24Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7b1ce528c0730e3e83fadc5f5e700b02d0f669478efcf5bbc69aa4e578b20a0b",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/SneakiestBear/Dancing-Madness"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/SneakiestBear/Dancing-Madness: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/SneakiestBear/Dancing-Madness",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 35,
+    "scanned_at_utc": "2026-09-18T11:34:24Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 594,
+    "source_repository": "https://github.com/SneakiestBear/Dancing-Madness",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 13888
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "92d1a5bdcb1821c6985095a3bd5114a0edef6c729a3e68244fd8ece54c2d1a32",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"41f1d107e527fb7977936d7b4d73b68f34efa95a30a7eb4767a2bfb54c4122dd\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-22T02:03:20Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-22T02:03:20Z",
+    "name": "NexusFFXIV/DalamudRepo",
+    "plugin_count": 1010,
+    "provider": "NexusFFXIV/DalamudRepo",
+    "source_id": 594,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/gen-repo.json"
+  },
+  "sourceId": 594,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.6.0",
+    "author": "Sneakiestbear",
+    "authors_json": [
+      "Sneakiestbear"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Adds support for the Dancing Mad (Ultimate) encounter, including an automarker for the Forsaken tower/AoE sequence (configurable tower order, priority, and per-role markers). A fork of Lemegeton by Paissa Heavy Industries.\nhttps://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/repo.json",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+    "download_link_testing": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+    "download_link_update": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+    "first_seen_utc": "2026-09-18T00:56:54Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-21T08:26:17Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Dancing Madness",
+    "plugin_id": 1449,
+    "punchline": "Dancing Mad (Ultimate) raid markers.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.6.0",
+      "Author": "Sneakiestbear",
+      "DalamudApiLevel": 15,
+      "Description": "Adds support for the Dancing Mad (Ultimate) encounter, including an automarker for the Forsaken tower/AoE sequence (configurable tower order, priority, and per-role markers). A fork of Lemegeton by Paissa Heavy Industries.\nhttps://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/repo.json",
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+      "DownloadLinkTesting": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/SneakiestBear/Dancing-Madness/main/dist/latest.zip",
+      "IconUrl": "",
+      "InternalName": "DancingMadness",
+      "Name": "Dancing Madness",
+      "Punchline": "Dancing Mad (Ultimate) raid markers.",
+      "RepoUrl": "https://github.com/SneakiestBear/Dancing-Madness",
+      "Tags": [
+        "raid",
+        "ultimate",
+        "automarker",
+        "dancing mad",
+        "kefka"
+      ]
+    },
+    "repo_url": "https://github.com/SneakiestBear/Dancing-Madness",
+    "source_entry_key": "dancingmadness|1.0.6.0|15|0|242",
+    "source_id": 594,
+    "tags_json": [
+      "raid",
+      "ultimate",
+      "automarker",
+      "dancing mad",
+      "kefka"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 13888
+  },
+  "variantId": 13888
+}

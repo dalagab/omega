@@ -1,0 +1,2972 @@
+{
+  "analysis": {
+    "analysisId": "86f5b1e384a5bdf4974400ff484179b2ffb98c562fc5188eb1d10d607b6174fb",
+    "artifactSha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+    "path": "artifacts/5a/5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2/analyses/86f5b1e384a5bdf4974400ff484179b2ffb98c562fc5188eb1d10d607b6174fb",
+    "recordCount": 302
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+    "artifact_url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+    "assembly_version": "3.5.0.0",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: github.com",
+      "Endpoint: james.newtonking.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: microsoft.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: paypal.me",
+      "Endpoint: system.data.sqlite.org",
+      "Endpoint: www.castleproject.org",
+      "Endpoint: www.coddicat.com",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Endpoint: www.newtonsoft.com",
+      "Endpoint: www.nuget.org",
+      "Endpoint: www.w3.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 26,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "metadata:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+          "metadata:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: RegistryKey",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x13b: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x13b: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x14a: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x14a: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x1a7: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+          "il:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x1a7: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:FFXIV_Vibe_Plugin.dll: System.Diagnostics.Process",
+          "metadata:FFXIV_Vibe_Plugin.dll: ProcessStartInfo",
+          "metadata:FFXIV_Vibe_Plugin.dll: ShellExecute",
+          "metadata:FFXIV_Vibe_Plugin.dll: Process.Start",
+          "il:FFXIV_Vibe_Plugin.dll:FFXIV_Vibe_Plugin.UI.Components.ButtonLink.Draw+0x8: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:FFXIV_Vibe_Plugin.dll:FFXIV_Vibe_Plugin.UI.Components.ButtonLink.Draw+0x8: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:FFXIV_Vibe_Plugin.dll:FFXIV_Vibe_Plugin.UI.Components.ButtonLink.Draw+0xf: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:FFXIV_Vibe_Plugin.dll:FFXIV_Vibe_Plugin.UI.Components.ButtonLink.Draw+0xf: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:Buttplug.dll: Socket.Connect",
+          "il:Buttplug.dll:<ConnectAsync>d__10.MoveNext+0x79: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+          "metadata:deniszykov.WebSocketListener.dll: System.Net.Sockets",
+          "metadata:deniszykov.WebSocketListener.dll: SocketAsyncEventArgs",
+          "metadata:deniszykov.WebSocketListener.dll: Socket.Connect",
+          "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_Available+0x6: callvirt System.Net.Sockets.Socket.get_Available: System.Net.Sockets",
+          "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_IsConnected+0x6: callvirt System.Net.Sockets.Socket.get_Connected: System.Net.Sockets",
+          "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_LingerState+0x6: callvirt System.Net.Sockets.Socket.get_LingerState: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DebounceThrottle.dll: https://www.coddicat.com/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.fec63c23c811",
+        "severity": "caution",
+        "title": "Endpoint: www.coddicat.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FFXIV_Vibe_Plugin.dll: https://paypal.me/kaciedev"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.d19482819851",
+        "severity": "caution",
+        "title": "Endpoint: paypal.me"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.be2490e7d948",
+        "severity": "caution",
+        "title": "Endpoint: www.newtonsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.a7f45af35c13",
+        "severity": "caution",
+        "title": "Endpoint: www.newtonsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+        "severity": "caution",
+        "title": "Endpoint: www.nuget.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Data.SQLite.dll: https://system.data.sqlite.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.25e9e82fe061",
+        "severity": "caution",
+        "title": "Endpoint: system.data.sqlite.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FFXIV_Vibe_Plugin.dll: https://ko-fi.com/ffxivvibeplugin"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.1c2c420c86bf",
+        "severity": "caution",
+        "title": "Endpoint: ko-fi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.w3.org/2000/xmlns/",
+          "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.d06315e1b027",
+        "severity": "caution",
+        "title": "Endpoint: www.w3.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.c831a6f811e0",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0c"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b80d4039aa50",
+        "severity": "caution",
+        "title": "Endpoint: ocsp.digicert.com0o"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.castleproject.org/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.b3e0afccfea1",
+        "severity": "caution",
+        "title": "Endpoint: www.castleproject.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.w3.org/2001/XMLSchema"
+        ],
+        "ruleId": "network.endpoint.insecure-http.a22e50d71b05",
+        "severity": "caution",
+        "title": "Endpoint: www.w3.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://www.w3.org/2001/XMLSchema-instance"
+        ],
+        "ruleId": "network.endpoint.insecure-http.922e0f6d900f",
+        "severity": "caution",
+        "title": "Endpoint: www.w3.org"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Diagnostics.EventLog.dll: http://www.microsoft.com0/",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: http://www.microsoft.com0/",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.Messages.dll: http://www.microsoft.com0/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.7b602439ebe0",
+        "severity": "caution",
+        "title": "Endpoint: www.microsoft.com0"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+        ],
+        "ruleId": "network.endpoint.insecure-http.49cce80f87f1",
+        "severity": "caution",
+        "title": "Endpoint: james.newtonking.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Castle.Core.dll: http://microsoft.com/wsdl/types/"
+        ],
+        "ruleId": "network.endpoint.insecure-http.1c22b8baeea2",
+        "severity": "caution",
+        "title": "Endpoint: microsoft.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+        ],
+        "ruleId": "network.endpoint.insecure-http.0bda789b1ee3",
+        "severity": "caution",
+        "title": "Endpoint: www.digicert.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:NoireLib.dll: DllImportAttribute",
+          "metadata:System.Data.SQLite.dll: DllImportAttribute",
+          "metadata:System.Data.SQLite.dll: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32+0x1: call System.Data.SQLite.UnsafeNativeMethodsWin32.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryWin32: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x7: newobj LoadLibraryCallback..ctor: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x15: ldftn System.Data.SQLite.NativeLibraryHelper.LoadLibraryPosix: LoadLibrary",
+          "il:System.Data.SQLite.dll:System.Data.SQLite.NativeLibraryHelper.LoadLibrary+0x1b: newobj LoadLibraryCallback..ctor: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "network",
+        "description": "References APIs that can listen for inbound local/network connections.",
+        "evidence": [
+          "il:deniszykov.WebSocketListener.dll:<ListenAsync>d__40.MoveNext+0x1a4: newobj vtortola.WebSockets.Transports.Tcp.TcpListener..ctor: TcpListener",
+          "artifact:deniszykov.WebSocketListener.dll: TcpListener",
+          "metadata:NoireLib.dll: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x10b: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x112: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x124: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x135: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener",
+          "il:NoireLib.dll:NoireLib.NetworkRelay.NoireNetworkRelay.StartTransport+0x146: callvirt System.Net.Sockets.TcpListener.get_Server: TcpListener"
+        ],
+        "ruleId": "local.listener",
+        "severity": "caution",
+        "title": "Local server/listener"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:FFXIV_Vibe_Plugin.dll: Dalamud.Hooking",
+          "metadata:FFXIV_Vibe_Plugin.dll: HookFromAddress",
+          "il:FFXIV_Vibe_Plugin.dll:FFXIV_Vibe_Plugin.Hooks.ActionEffect.<InitHook>b__7_0+0x18: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:FFXIV_Vibe_Plugin.dll: Dalamud.Hooking",
+          "artifact:FFXIV_Vibe_Plugin.dll: HookFromAddress",
+          "metadata:NoireLib.dll: SigScanner",
+          "metadata:NoireLib.dll: Dalamud.Hooking",
+          "metadata:NoireLib.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Castle.Core.dll: p://www.castleproject.org/",
+          "artifact:Castle.Core.dll: s://github.com/castleproject/Core",
+          "artifact:Castle.Core.dll: C:\\projects\\core\\src\\Castle.Core\\obj\\Release\\net6.0\\Castle.Core.pdb",
+          "artifact:Castle.Core.dll: p://www.w3.org/2000/xmlns/",
+          "artifact:Castle.Core.dll: p://www.w3.org/2001/XMLSchema-instance",
+          "artifact:Castle.Core.dll: p://microsoft.com/wsdl/types/",
+          "artifact:Castle.Core.dll: p://www.w3.org/2001/XMLSchema",
+          "artifact:deniszykov.WebSocketListener.dll: s://github.com/deniszykov/WebSocketListener"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Castle.Core.dll: Reflection.Emit",
+          "metadata:Castle.Core.dll: Assembly.Load",
+          "il:Castle.Core.dll:Castle.DynamicProxy.CustomAttributeInfo..ctor+0x10: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.ModuleScope.CreateModule+0x1a: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.ModuleScope.CreateModule+0x20: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.ModuleScope.DefineType+0x13: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.Generators.BaseProxyGenerator.GenerateConstructor+0xcd: callvirt System.Reflection.Emit.ConstructorBuilder.DefineParameter: Reflection.Emit",
+          "il:Castle.Core.dll:Castle.DynamicProxy.Generators.BaseProxyGenerator.GenerateConstructor+0xf8: callvirt System.Reflection.Emit.ParameterBuilder.SetCustomAttribute: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:deniszykov.WebSocketListener.dll:<RunHttpNegotiationHandlerAsync>d__8.MoveNext+0x59: callvirt vtortola.WebSockets.HttpAuthenticationCallback.Invoke",
+          "il:deniszykov.WebSocketListener.dll:<NegotiateRequestAsync>d__16.MoveNext+0x298: callvirt vtortola.WebSockets.HttpAuthenticationCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:NoireLib.dll: System.Net.Http.HttpClient",
+          "il:NoireLib.dll:NoireLib.UpdateTracker.NoireUpdateTracker..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:NoireLib.dll:NoireLib.UpdateTracker.NoireUpdateTracker..ctor+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:deniszykov.WebSocketListener.dll: https://github.com/deniszykov/WebSocketListener"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f8ed077c2fd7",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b68d17bbb7cf",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:NoireLib.dll: https://github.com/Aspher0/NoireLib"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.a4d5206a81ec",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:System.Diagnostics.EventLog.dll: https://github.com/dotnet/runtime",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.dll: https://github.com/dotnet/runtime",
+          "artifact:runtimes\\win\\lib\\net6.0\\System.Diagnostics.EventLog.Messages.dll: https://github.com/dotnet/runtime"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.9f15c9767ba8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:FFXIV_Vibe_Plugin.dll: https://github.com/Aspher0/FFXIV_Vibe_Plugin.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.5891580da0f1",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Castle.Core.dll: https://github.com/castleproject/Core"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.528c88f69e97",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:DebounceThrottle.dll: https://github.com/coddicat/DebounceThrottle"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.4f0e42785874",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:Buttplug.dll: https://github.com/buttplugio/buttplug-csharp"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.1d8556c133bb",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Castle.Core.dll: FileStream",
+          "il:Castle.Core.dll:Castle.Core.Logging.StreamLoggerFactory.Create+0xe: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:Castle.Core.dll: FileStream",
+          "metadata:deniszykov.WebSocketListener.dll: File.Delete",
+          "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketListener.Dispose+0x3a: call System.IO.File.Delete: File.Delete",
+          "il:deniszykov.WebSocketListener.dll:<TryAndRemoveUnixSocketFileAsync>d__43.MoveNext+0x199: call System.IO.File.Delete: File.Delete",
+          "metadata:FFXIV_Vibe_Plugin.dll: File.Delete",
+          "metadata:FFXIV_Vibe_Plugin.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 11,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "artifactBytes": 1259239,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.5.0.0",
+        "artifactBytes": 1259239,
+        "artifactSha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+        "catalogAssemblyVersion": "3.5.0.0",
+        "manifestInternalName": "",
+        "manifestPath": "FFXIV_Vibe_Plugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: github.com",
+        "Endpoint: james.newtonking.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: microsoft.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: paypal.me",
+        "Endpoint: system.data.sqlite.org",
+        "Endpoint: www.castleproject.org",
+        "Endpoint: www.coddicat.com",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Endpoint: www.newtonsoft.com",
+        "Endpoint: www.nuget.org",
+        "Endpoint: www.w3.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.http",
+        "network.listener",
+        "network.socket",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 26,
+        "critical": 0,
+        "high": 1,
+        "informational": 11
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+        "internalName": "FFXIV_Vibe_Plugin",
+        "manifestVersion": "3.5.0.0",
+        "observationId": 23044,
+        "observationKey": "manifest-98c8a7bd74de5b31dd1baf99e8cd",
+        "repositoryUrl": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 13988
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 11,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 14,
+        "uncompressedBytes": 4035850
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+        "attemptId": "attempt-v2-62bc9abe443e1f9f",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-64418496e05f68b2",
+        "definitionsRevision": "defs-v1-7a06aaba86c6c5ba",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13988",
+        "queueSeedRevision": "queue-seed-v2-71c9a694898908a067cf",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
+        "targetFingerprint": "source-target-v2-929182fc77c281b64cf5",
+        "variantId": 13988,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-19T16:14:28Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Aspher0/FFXIV_Vibe_Plugin"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/Aspher0/FFXIV_Vibe_Plugin: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 17,
+    "scanned_at_utc": "2026-09-19T16:14:28Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 13988
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+      "current_assembly_version": "3.5.0.0",
+      "current_scan_id": 17,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-19T16:14:28Z",
+      "previous_artifact_sha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+      "previous_assembly_version": "3.5.0.0",
+      "previous_scan_id": 9,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 13988
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 80,
+      "artifact_only_count": 80,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:buttplug",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Buttplug",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:castle.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Castle.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "5.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0",
+            "15.0.0.7"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:debouncethrottle",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "DebounceThrottle",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.0.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:deniszykov.websocketlistener",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "deniszykov.WebSocketListener",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "4.2.19.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxiv_vibe_plugin",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "FFXIV_Vibe_Plugin",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "3.5.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.8012",
+            "7.50.1.8139"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.registry",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Registry",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:mscorlib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "mscorlib",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:netstandard",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "netstandard",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0",
+            "2.1.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:noirelib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NoireLib",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.8.0.3"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.specialized",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Specialized",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.eventbasedasync",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.EventBasedAsync",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.data.sqlite",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.0.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.eventlog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.EventLog",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.eventlog.messages",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "System.Diagnostics.EventLog.Messages",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.tracesource",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.TraceSource",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.filesystem.watcher",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.FileSystem.Watcher",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.mail",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Mail",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.nameresolution",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.NameResolution",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.sockets",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.lightweight",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.formatters",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Formatters",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.principal.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Principal.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.readerwriter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xdocument",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xmlserializer",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XmlSerializer",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xpath",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XPath",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:advapi32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "advapi32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:e_sqlite3",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "e_sqlite3",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libc",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libdl",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "libdl",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:wevtapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "wevtapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:buttplug",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Buttplug",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:castle.core",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Castle.Core",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "5.2.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:debouncethrottle",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DebounceThrottle",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.0.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:deniszykov.websocketlistener",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "deniszykov.WebSocketListener",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.19"
+          ]
+        },
+        {
+          "componentKey": "nuget:newtonsoft.json",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "13.0.4"
+          ]
+        },
+        {
+          "componentKey": "nuget:noirelib",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NoireLib",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.8.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.data.sqlite",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Data.SQLite",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.0.3"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.eventlog",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.EventLog",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "6.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-19T16:14:28Z",
+      "comparison_id": 15,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 17,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 13988,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "4d456242821e0110dca3c439336dd49b06b86becdb73ddecd5302ec26ff6335d",
+    "observedAtUtc": "2026-09-22T08:59:20Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "fce6046426eb8c964a73ef471310f704b56d2dd1e4d2642495393937a5b874d2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "22834a3fb22fc894948b2e9604f8a7189a8a7a9d2d3bd2a841d70356e2cffc1f",
+        "records": 150,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "077f93c45425c6a7818b4c55398f784bbfd391acf47c6e89599e11e3d43a958b",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "41df435633f9589fb59f41d3bb79e16faad2e9c7dc48bc202659d95de59ccd71",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "00fe5bc967419f1406ce059e86de88b5f23788254486ef550cc018ba56a8ae61",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-ab7b8ab4888fb58b0dd3da5422dc612882aaa997df506f7e68370a0736d4c388",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "FFXIV Vibe Plugin",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "FFXIV_Vibe_Plugin",
+    "last_seen_utc": "2026-09-22T02:03:20Z",
+    "plugin_id": 869
+  },
+  "pluginId": 869,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Plugin that let you vibe your controller or toys.\nhttps://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/repo.json",
+      "images": [
+        "https://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/Docs/screenshot.png",
+        "https://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/images/ko-fi announcement.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 21142,
+      "summary": "Plugin that let you vibe your controller or toys.\nhttps://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/repo.json",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "A plugin for FFXIV that will let you vibe your controller or toys.",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/Docs/screenshot.png",
+        "https://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/images/ko-fi announcement.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin"
+        },
+        {
+          "kind": "docs",
+          "label": "Documentation",
+          "url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/blob/master/Docs/TODO.md"
+        },
+        {
+          "kind": "discord",
+          "label": "Join Discord",
+          "url": "https://discord.gg/JnCGxa3gGa"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# FFXIV Vibe Plugin\n\n<img src=\"https://img.shields.io/discord/914941648859963503\"/> <img src=\"https://img.shields.io/github/last-commit/Aspher0/FFXIV_Vibe_Plugin\" />\n\n<p align=\"center\">\n  <img width=\"200\" height=\"200\" src=\"./images/icon.png\" />\n</p>\n\nA plugin for FFXIV that will let you vibe your controller or toys.\n\n## Disclaimer\n\nI am not the original dev behind this project. Unfortunately, Kaciexx, the creator of FFXIV Vibe Plugin, is no longer.\nThis fork is intended to remove the premium features, make the source code public, and keep the plugin working for ApiX/DT.\n\nFrom [Kaciexx's ko-fi](https://ko-fi.com/ffxivvibeplugin):\n\n<p align=\"center\">\n  <img src=\"./images/ko-fi announcement.png\" />\n</p>\n\n## Features\n- Easy UI interface.\n- Connect your device (manually or automatically).\n- Trigger some pattern from chat message.\n    - Custom chat selection.\n    - Custom allowed characters.\n- Trigger some pattern from spells.\n    - Custom spell name.\n    - Custom spell type (damage, heal...).\n    - Custom spell direction (outgoing, incoming, self).\n    - Min and/or max dmg/heal values.\n    - Custom allowed characters.\n- Multiple devices per custom trigger.\n- UI to search through your triggers.\n- Delay start and stop patterns.\n- Custom device and motors.\n- Using RegExp for chat messages and spell names.\n- Define global threshold or threshold per motor.\n- Displaying battery life of devices.\n- Custom patterns per motor (save, with easy import, export).\n- Vibe or trigger a pattern on HP Changed.\n- HP Changed can have custom min/max values or percentages.\n- Priority system (lower priority number will be stopped).\n- Triggers can be activated only if in or out of combat.\n\n## Tutorials\n- [How to install and set your first trigger](https://www.youtube.com/watch?v=YYFzVQsC_kc)\n\n## Prerequisites\n- [FFXIV QuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher).\n- [Intiface Central](https://intiface.com/central/) **NOT Intiface Desktop**\n\n## Installation\n1. Launch your game, open `/xlplugins`, go to the settings (bottom left) and in the `Experimental` tab.\n2. Under `Custom Plugin Repositories` add the following url `https://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/repo.json` and press the <kbd>+</kbd> icon.\n3. Press the `Save and close` button on the bottom left.\n\nNow you should be able to see `FFXIV Vibe Plugin`. Click install and enjoy.\n\n## How to use\n1. Start `Intiface Central` and click on `Start Server` (top left button). Power on your device, make sure it is connected to Intiface.\n2. In the game. Type: `/fvp`. You should see the configuration panel.\n3. Press the `Connect` button.\n\nWell done !\n\nYou have now FFXIV connected to Intiface. Now you can connect your device to Intiface and you\nshould be able to use them with FFXIV Vibe Plugin.\n\n![ingame](./Docs/screenshot.png)\n\n## Import triggers\n1. Start the game and make sure the plugin is working.\n2. On your computer, go to your `%userprofile%` folder (eg: C:\\\\Users\\\\<yourname>) folder.\n3. The go in the `FFXIV\\_Vibe\\_Plugin` folder (or create if it does not exists)\n4. Add the triggers file you want to import (eg: `MyTrigger.json`)\n5. In the plugin go to the `Triggers` tab and click on `Import Triggers` at the bottom.\n\nThat's it. It should load all of the triggers.\nNote: you can define a custom directory to read/write in the `Options` tab.\n\n## Export triggers\n1. On your computre, go to your `%userprofile%` folder (eg: C:\\\\Users\\\\<yourname>) folder.\n2. Go to the `FFXIV\\_Vibe\\_Plugin` folder (or create if it does not exists)\n3. In the plugin, go to the `Triggers` tab.\n4. Create your triggers (if they does not exist).\n5. Select the trigger you want to export and click on the `Export` button.\n\nThat's it. You should see them in your userprofile directory.\nNote: you can define a custom directory to read/write in the `Options` tab.\n\n## USB Dongle vs Lovense Dongle vs Other\nWe recommend you to use a bluetooth dongle. Here is the one we are using: [TP-Link Nano USB Dongle Bluetooth 5.0](https://www.amazon.fr/gp/product/B09C25VRXD/ref=as_li_tl?ie=UTF8&camp=1642&creative=6746&creativeASIN=B09C25VRXD&linkCode=as2&tag=kaciexx-21&linkId=8b6c8c6e693ab549216c2dacad34e03b)\n\n## Tested devices\n- Microsoft XBox Controller\n- Lovense (*please use bluetooth and not the lovense dongle*):\n    Nora, Hush, Domi, Ferri, Diamo, Edge 2, Gush\n\n## Trigger Packs\nYou can find some unofficial trigger packs here: [Packs](./Packs/README.md)\n\n## Our TODO\nOur current ideas and feedbacks are in: [TODO List](./Docs/TODO.md)\n\n## FAQ\n\n### Troubleshooting\nMake sure you have the [intiface-central](https://intiface.com/central/) and not the old Intiface Desktop.\n1. Make sure your toy is not connected to another device (eg: your phone, your browser...). Disable the bluetooth on your phone.\n2. Make sure the addon is correctly installed (check the installation process again).\n3. Make sure you have the latest version.\n4. Upgrade your Intiface by clicking and installing any updates (`Settings` tab).\n5. Make sure the Intiface is up and running. Go to `Server status` > `Start Server`. You must have one green icon and one red icon on the top right side of the window.\n6. Ingame, make sure the addon is connected to Intiface. Click on `connect` (in the `Connect` tab). Now, go back to Intiface. You should have 2 green icons on the top right side of the window.\n7. Ingame, make sure the IP is either `127.0.0.1` or `0.0.0.0` or your real internal IP (eg: 192.168.1.250)\n8. Ingame and on Intiface: make sure you are using the same `port` **on both sides**. You can try changing it to something\nelse **on both sides**.\n\n### My device is not working correctly\nPlease make sure to test both Bluetooth and the dongle of the device. Choose the one that works best for you.\n\n### My X-Box Controller is not working well\nThis is not related to this plugin. You probably should not use Bluetooth.\n\n### My Lovense Nora is not doing rotations\nPlease stop using Lovense Dongle. Connect using the Lovense Connect or bluetooth. If you don't have bluetooth\nplease buy a bluetooth 5.0 dongle on amazon for 20$.\n\n### The plugin does not connect to Intiface\nPlease make sure you are doing it right.\nMake sure you have the [intiface-central](https://intiface.com/central/) and not the old Intiface Desktop.\n1. Open Intiface and click on the top right side **red** icon.\n2. Uncheck everything but not *WebSocket* and *Bluetooth*. WebSocket should have the following text: \"on [All Interfaces]:12345\"\n3. Click on Start Server (now you should have one *green* icon and one *red* icon on the top right side).\n4. Go to the plugin and click connect (you should have two *green* icons).\nIf this is not working: please try change the IP Address to 127.0.0.1 or your computer IP Address. Also make sure the port\nis 12345 or correspond to the one in Intiface.\n\n### The device disconnect every now and then.\nPlease make sure to follow those steps before asking for help:\n1. Disable all triggers.\n2. Create a new and very simple trigger (eg: vibration on a message). **Make sure it is correctly working**.\n3. Wait twice the amount of time needed to have the issue again. (eg: if it was around 30min, then wait 60min or more).\n\nIf it works, then it's a trigger issue from one you have created. If not:\n1. **Don't stop** the game, **don't stop** Intiface.\n2. Turn **off and on** your controller device.\n3. Let it reconnect to intiface (without restarting intiface app).\n4. Test your trigger again.\nIf it works, then it probably a bluetooth issue. Nothing we can do about.\n\n### How do I share my configuration\nYou can use the import and export feature. It will drop the configuration as a file in the desired folder.\n\n### How does the priority system works ?\nSo regards, the priority system:\n- **Trigger A** with priority 10 is triggered and played.\n- **Trigger B** with priority 20 is being triggered => **Trigger** A is stop because B has a higher priority.\n- **Trigger A** with priority 10 is retriggered => **Trigger A** is ignored because of lower priority, **Trigger B** continues to be played.\n\n### How to stop a pattern\nIn this example, if you have a pattern that runs for 25 sec:\n- Create a new trigger called \"Stop Action\"\n- Define your trigger condition (Spell, chat, ...).\n- Add the device(s) you want to stop.\n- Set to Intensity and the value to zero for each motor you want to stop.\n\nWhen the stop trigger is triggered, it will stop your pattern.\n\n**NOTE**: if the priority is higher, it won't let you play your patterns again.\nUnless the \"Stop Action\" trigger have a \"stop after set\".\n\n### Is it possible to vibe at the level of the HP\nAs of today, it's not possible. However, you can create multiple triggers such\nas:\n- Trigger 1: HPChange 10-20%, Strength 20\n- Trigger 2: HPChange 21-30%, Strength 30\n- Trigger 3: HPChange 31-40%, Strength 40\n\n### Gathering trigger\nYou can create gathering triggers. \n- Create a trigger using the type: Chat\n    - Use the text: \"You obtain a XXX\" (replace XXX with the item)\n    - Use the regex: \"You obtain a (.+?)\\.\"\n\nFeel free to adapt it on your needs.\n\n### Steam Deck users\nIf you are encountering network issues related to your plugins, you can set the\nwinver back to Windows 7 from XIVLauncher's Wine settings tab by clicking the\nWine Configuration box. This should fix your network and/or crash issue.\n\n# Terms of service\n\n[Terms of service](./TERMS.md)\n\n# Discord\n- [This plugin's old discord](https://discord.gg/JnCGxa3gGa)\n- [Ms. Tress #discussion](https://discord.gg/fx5pABsE)\n\n# Donors\n\nThanks to:\n- Hooper (36$)\n- Victor (20.70$)\n- Maple (20$)\n- May B (20$)\n- Iris K (20$)\n- Morris (9.50$)\n- PM (1.90$)",
+      "title": "FFXIV_Vibe_Plugin",
+      "url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "2be6c97905ea72a3ca1728d2b3bd4ce58ae85fb73565c48633b6a9417b64f05c",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "5e95d1cfa094e5fa9cc59dffbd20bbed07e3c2d0a2ffbec1fd15e758f6f800a7",
+        "records": 12
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "d25689c3eff8d6f725376bce427d97ae0910197882884d9968b10923852cdfb5",
+        "records": 38
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+    "artifact_url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+    "assembly_version": "3.5.0.0",
+    "capabilities_json": [
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: github.com",
+      "Endpoint: james.newtonking.com",
+      "Endpoint: ko-fi.com",
+      "Endpoint: microsoft.com",
+      "Endpoint: ocsp.digicert.com0c",
+      "Endpoint: ocsp.digicert.com0o",
+      "Endpoint: paypal.me",
+      "Endpoint: system.data.sqlite.org",
+      "Endpoint: www.castleproject.org",
+      "Endpoint: www.coddicat.com",
+      "Endpoint: www.digicert.com",
+      "Endpoint: www.microsoft.com0",
+      "Endpoint: www.newtonsoft.com",
+      "Endpoint: www.nuget.org",
+      "Endpoint: www.w3.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Local server/listener",
+      "Native/PInvoke",
+      "Network access",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets",
+      "Registry access"
+    ],
+    "caution_count": 26,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 11,
+    "plugin_id": 869,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 9,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+      "artifactBytes": 1259239,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.5.0.0",
+        "artifactBytes": 1259239,
+        "artifactSha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+        "catalogAssemblyVersion": "3.5.0.0",
+        "manifestInternalName": "",
+        "manifestPath": "FFXIV_Vibe_Plugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.listener",
+            "label": "Local/network listener",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 12,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 12,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: github.com",
+        "Endpoint: james.newtonking.com",
+        "Endpoint: ko-fi.com",
+        "Endpoint: microsoft.com",
+        "Endpoint: ocsp.digicert.com0c",
+        "Endpoint: ocsp.digicert.com0o",
+        "Endpoint: paypal.me",
+        "Endpoint: system.data.sqlite.org",
+        "Endpoint: www.castleproject.org",
+        "Endpoint: www.coddicat.com",
+        "Endpoint: www.digicert.com",
+        "Endpoint: www.microsoft.com0",
+        "Endpoint: www.newtonsoft.com",
+        "Endpoint: www.nuget.org",
+        "Endpoint: www.w3.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Local server/listener",
+        "Native/PInvoke",
+        "Network access",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.http",
+        "network.listener",
+        "network.socket",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 26,
+        "critical": 0,
+        "high": 1,
+        "informational": 11
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+        "internalName": "FFXIV_Vibe_Plugin",
+        "manifestVersion": "3.5.0.0",
+        "observationId": 23044,
+        "observationKey": "manifest-98c8a7bd74de5b31dd1baf99e8cd",
+        "repositoryUrl": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 13988
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 11,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 14,
+        "uncompressedBytes": 4035850
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-c19320882c22a701",
+        "attemptId": "attempt-v2-62bc9abe443e1f9f",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-64418496e05f68b2",
+        "definitionsRevision": "defs-v1-7a06aaba86c6c5ba",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-13988",
+        "queueSeedRevision": "queue-seed-v2-71c9a694898908a067cf",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "396e2f601ebe35b49dd81dad4c93b799ff7a1618505bad131d29bd917eb0c633",
+        "scannerRevision": "scanner-v1-2f8e6a1d14a8b037",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5b1091590bae7e2a",
+        "targetFingerprint": "source-target-v2-929182fc77c281b64cf5",
+        "variantId": 13988,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-19T16:14:28Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "5a4ad67b8f97ac815ba58467c5a1ac0c5c84ba56f8039dcde64c68aaec0a14d2",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Aspher0/FFXIV_Vibe_Plugin"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/Aspher0/FFXIV_Vibe_Plugin: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 17,
+    "scanned_at_utc": "2026-09-19T16:14:28Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 594,
+    "source_repository": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 13988
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "92d1a5bdcb1821c6985095a3bd5114a0edef6c729a3e68244fd8ece54c2d1a32",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"41f1d107e527fb7977936d7b4d73b68f34efa95a30a7eb4767a2bfb54c4122dd\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-22T02:03:20Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-22T02:03:20Z",
+    "name": "NexusFFXIV/DalamudRepo",
+    "plugin_count": 1010,
+    "provider": "NexusFFXIV/DalamudRepo",
+    "source_id": 594,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/gen-repo.json"
+  },
+  "sourceId": 594,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "3.5.0.0",
+    "author": "Kaciexx, Aspher0",
+    "authors_json": [
+      "Kaciexx",
+      "Aspher0"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Plugin that let you vibe your controller or toys.\nhttps://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/repo.json",
+    "dip17_channel": "",
+    "download_count": 10900,
+    "download_link_install": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+    "download_link_testing": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+    "download_link_update": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+    "first_seen_utc": "2026-09-18T00:56:54Z",
+    "icon_url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/raw/master/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-21T08:26:17Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "FFXIV Vibe Plugin",
+    "plugin_id": 869,
+    "punchline": "",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "3.5.0.0",
+      "Author": "Kaciexx, Aspher0",
+      "DalamudApiLevel": 15,
+      "Description": "Plugin that let you vibe your controller or toys.\nhttps://raw.githubusercontent.com/Aspher0/FFXIV_Vibe_Plugin/master/repo.json",
+      "DownloadCount": 10900,
+      "DownloadLinkInstall": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/releases/download/v3.5.0.0/latest.zip",
+      "IconUrl": "https://github.com/Aspher0/FFXIV_Vibe_Plugin/raw/master/images/icon.png",
+      "InternalName": "FFXIV_Vibe_Plugin",
+      "IsHide": "False",
+      "IsTestingExclusive": "False",
+      "Name": "FFXIV Vibe Plugin",
+      "RepoUrl": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+      "Tags": [
+        "vibe",
+        "vibration",
+        "wave"
+      ]
+    },
+    "repo_url": "https://github.com/Aspher0/FFXIV_Vibe_Plugin",
+    "source_entry_key": "ffxiv_vibe_plugin|3.5.0.0|15|0|342",
+    "source_id": 594,
+    "tags_json": [
+      "vibe",
+      "vibration",
+      "wave"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 13988
+  },
+  "variantId": 13988
+}
