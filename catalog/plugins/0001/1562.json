@@ -4,7 +4,7 @@
     "canonical_name": "Sentinel Relay",
     "first_seen_utc": "2026-09-21T20:01:16Z",
     "internal_name": "SentinelRelay",
-    "last_seen_utc": "2026-09-22T07:51:16Z",
+    "last_seen_utc": "2026-09-22T08:28:47Z",
     "plugin_id": 1562
   },
   "presentation": {
@@ -13,12 +13,12 @@
     "nsfw": 0,
     "official": 0,
     "plugin_id": 1562,
-    "preferred_variant_id": 16612,
-    "presentation_variant_id": 16612,
+    "preferred_variant_id": 16843,
+    "presentation_variant_id": 16843,
     "rich_card": 0,
-    "richness_score": 385,
+    "richness_score": 1185,
     "summary": "Private per-character FFXIV and Discord chat relay.",
-    "web_enriched": 0
+    "web_enriched": 1
   },
   "schema": "omega.catalog-json.plugin.v1",
   "search": {
@@ -29,7 +29,7 @@
     "plugin_id": 1562,
     "punchline": "Private per-character FFXIV and Discord chat relay.",
     "tags": "chat discord relay sentinel utility",
-    "website_text": " "
+    "website_text": " # Sentinel Relay\n\nSentinel Relay is a privacy-first **FFXIV ↔ Discord** chat relay for Dalamud. It sends only the chat types a player explicitly enables to that character's private Discord webhook. Its optional reply reader accepts only individually allowed chat destinations from one authorized Discord user.\n\nSentinel Relay sends directly to Discord and does not require a separately hosted relay service.\n\nThe live `0.3.0.1` release expands the proven `/fc` reply path to explicit commands for public, group, linkshell, cross-world linkshell, Novice Network, and recent Tell replies, including familiar short chat aliases. It does not register Discord slash commands and does not change the webhook relay's independent operation.\n\n> Enabling a chat type causes its sender and text to leave the local PC and be delivered to Discord. Other people represented in that chat may not expect off-platform forwarding. Every filter starts off; enable only what you need and keep relay channels private.\n\n## How it works\n\n```text\nDalamud structured chat event\n  → local per-character filter\n  → safe text conversion and mention neutralization\n  → bounded background queue\n  → character's Discord webhook\n  → private relay channel\n```\n\nDalamud identifies the active character by content ID. Each character profile independently retains its protected webhook, filters, formatting, keywords, and pause state.\n\nWhen Discord replies are enabled, the same profile also owns its protected bot credential, exact Discord channel ID, exact authorized Discord user ID, persistent message checkpoint, and outbound allowlist. Those values never route across character profiles.\n\n## Supported chat types\n\n- Say, Yell, Shout, Free Company\n- Party and Cross-world Party\n- Alliance and PvP Team\n- Linkshell 1–8 and Cross-world Linkshell 1–8\n- Incoming Tell and Outgoing Tell as separate choices\n- Novice Network\n- Standard Emotes and Custom Emotes\n\nIncoming chat comes from Dalamud's structured `IChatGui.ChatMessage` event and `XivChatType`; Sentinel Relay does not scrape the visible chat window. `SeString` content is converted into safe, readable text.\n\n## Safety and privacy\n\n- All chat filters—including Free Company—default off.\n- Disabled chat is discarded locally before any network request.\n- Discord webhook URLs are stored per character and protected with Windows DPAPI.\n- The UI never reveals a saved URL, and status/debug output never prints it.\n- Only HTTPS Discord webhook URLs are accepted.\n- Networking runs on a background worker; the FFXIV framework/chat thread never waits on Discord.\n- The ordered queue is capped at 100 deliveries and discards messages older than two minutes.\n- Discord `429` rate limits and transient server failures are retried in order with bounded delays.\n- Arbitrary FFXIV text cannot ping `@everyone`, `@here`, users, roles, or channels.\n- There is no HTTP listener, WebSocket server, Discord Gateway client, or generic remote command executor.\n- Discord replies are off by default. Every outbound destination has a separate opt-in permission and fixed FFXIV chat mapping.\n- `/r` is accepted only for 30 minutes after the active character receives a Tell during the current session; Sentinel Relay never accepts an arbitrary `/tell` target.\n- Bot-authored, webhook-authored, wrong-channel, wrong-user, stale, duplicate, and cross-character messages are rejected locally.\n\nSee [SECURITY.md](SECURITY.md) for the complete review.\n\n## Setup\n\nVersion `0.3.0.1` is distributed through the live Sentinel catalog. Dalamud downloads and updates the plugin; there is no ZIP to extract, standalone program to launch, or hosted relay service to operate. The optional reply reader remains off until configured per character.\n\n1. Add `https://raw.githubusercontent.com/MarshalTitan/Sentinel/main/repo.json` under **Dalamud Settings → Experimental → Custom Plugin Repositories** and save.\n2. Open `/xlplugins`, find **Sentinel Relay** under available plugins, and choose **Install**.\n3. Create one private Discord relay channel per FFXIV character.\n4. Create a separate incoming webhook in each channel by following [DISCORD_SETUP.md](DISCORD_SETUP.md).\n5. Log in as the intended character and run `/srelay`.\n6. Open **Discord Webhook**, paste that character's webhook URL, select **Save Webhook**, and then **Test Webhook**.\n7. Open **Chat Filters** and enable only the desired chat types.\n8. Repeat on the other character/client with its own webhook.\n\nThe successful test message is:\n\n```text\nSentinel Relay connected successfully for Example Character.\n```\n\n## Keyword alerts\n\nKeyword matching remains entirely local. Rules support case-insensitive contains matching, optional whole-word matching, and per-rule chat-channel selection.\n\nA match can be highlighted in the relay channel and optionally ping one explicitly configured Discord user ID. Normal relayed text cannot create mentions. Incoming webhooks cannot send Discord DMs, so DM alerts are not part of this no-backend design.\n\n## Commands\n\n| Command | Action |\n|---|---|\n| `/srelay` | Open or close the settings window |\n| `/srelay status` | Show character, webhook/configuration state, enabled chats, and queue length |\n| `/srelay pause` | Stop webhook delivery and Discord replies, and clear both pending queues |\n| `/srelay resume` | Resume enabled webhook delivery and restart enabled reply polling at a fresh checkpoint |\n| `/srelay debug` | Show non-secret queue and delivery diagnostics |\n\nThere are no registered Discord application commands. `/fc hello`, `/party hello`, and the other supported prefixes are ordinary text messages read through Discord's authenticated REST API. Each client polls only its configured channel, and all routing, author, freshness, and destination-permission checks must pass before a fixed chat mapping can run. The FFXIV → Discord webhook relay does not depend on the bot reader.\n\n## Discord replies\n\nDo not enable this until the channel-specific bot permissions and IDs are configured as described in [DISCORD_SETUP.md](DISCORD_SETUP.md).\n\n1. Run `/srelay` and open **Discord Replies**.\n2. Paste the bot token, Relay Channel ID, and one Authorized Discord User ID.\n3. Enable only the desired reply destinations. These are deliberately separate from the inbound **Chat Filters**.\n4. Check **Enable Discord → FFXIV Replies**, save, and run **Test Discord Reader**.\n5. Post the ordinary Discord message `/fc hi` in that exact channel from that exact user.\n6. Verify on a second FFXIV client that the active character really sent `hi` in Free Company chat.\n\nSupported ordinary-message prefixes:\n\n- `/say` or `/s`, `/yell` or `/y`, `/shout` or `/sh`, and `/fc`\n- `/party` or `/p`, `/alliance` or `/a`, `/pvpteam`, and `/novice` or `/n`\n- `/ls1` through `/ls8`\n- `/cwls1` through `/cwls8`\n- `/r` to reply to the latest incoming Tell seen during the current session\n\n`/party` uses the game's Party channel and therefore also reaches a cross-world party when that is the active party type. Tell targeting is intentionally limited to `/r`; arbitrary `/tell name message` input is not accepted.\n\nStarting, resuming, reconnecting, or switching characters first advances to Discord's newest current message. Commands written while the game/reader was offline are never executed later. The processing checkpoint is persisted before a game send is queued, favoring a dropped command over an accidental replay.\n\n## Building\n\nSentinel Relay targets Dalamud API 15 and .NET 10. Outbound chat uses the current FFXIVClientStructs chat-shell interface and therefore still requires an in-game proof on every relevant game/API update.\n\n```powershell\n$env:DALAMUD_HOME = \"C:\\path\\to\\Dalamud\\dev\"\ndotnet restore SentinelRelay.csproj --locked-mode\ndotnet run --project tests/SentinelRelay.Core.Tests/SentinelRelay.Core.Tests.csproj -c Release\ndotnet build SentinelRelay.csproj -c Release --no-restore\n```\n\nThe installable package is written to `bin/Release/SentinelRelay/latest.zip`. GitHub Actions builds, tests, validates, and uploads the same package.\n\n## Documentation\n\n- [Discord webhook setup](DISCORD_SETUP.md)\n- [No-backend deployment explanation](BACKEND_DEPLOYMENT.md)\n- [Architecture](ARCHITECTURE.md)\n- [Security and privacy](SECURITY.md)\n- [Troubleshooting](TROUBLESHOOTING.md)\n- [Live-test checklist](LIVE_TEST_CHECKLIST.md)\n\nSentinel Relay is intended for the private/custom `MarshalTitan/Sentinel` Dalamud catalog. It is not affiliated with or endorsed by Square Enix, Discord, Dalamud, or XIVLauncher."
   },
   "variants": [
     {
@@ -192,7 +192,7 @@
         }
       ],
       "variant": {
-        "active": 1,
+        "active": 0,
         "applicable_version": "any",
         "assembly_version": "0.3.0.0",
         "author": "MTitan",
@@ -225,6 +225,71 @@
         "testing_assembly_version": "0.3.0.0",
         "testing_dalamud_api_level": 15,
         "variant_id": 16612
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "chat",
+          "variant_id": 16843
+        },
+        {
+          "kind": "tag",
+          "tag": "discord",
+          "variant_id": 16843
+        },
+        {
+          "kind": "tag",
+          "tag": "relay",
+          "variant_id": 16843
+        },
+        {
+          "kind": "tag",
+          "tag": "sentinel",
+          "variant_id": 16843
+        },
+        {
+          "kind": "tag",
+          "tag": "utility",
+          "variant_id": 16843
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.3.0.1",
+        "author": "MTitan",
+        "authors_json": "[\"MTitan\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Sends explicitly selected FFXIV chats directly to a per-character Discord webhook and accepts only locally allowed, authorized chat replies. Filters and reply destinations default off.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/MarshalTitan/SentinelRelay/releases/download/v0.3.0.1/SentinelRelay.zip",
+        "download_link_testing": "https://github.com/MarshalTitan/SentinelRelay/releases/download/v0.3.0.1/SentinelRelay.zip",
+        "download_link_update": "https://github.com/MarshalTitan/SentinelRelay/releases/download/v0.3.0.1/SentinelRelay.zip",
+        "first_seen_utc": "2026-09-22T08:28:47Z",
+        "icon_url": "https://raw.githubusercontent.com/MarshalTitan/SentinelRelay/main/assets/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-09-22T08:28:47Z",
+        "last_update": 1790043760,
+        "minimum_dalamud_version": null,
+        "name": "Sentinel Relay",
+        "plugin_id": 1562,
+        "punchline": "Private per-character FFXIV and Discord chat relay.",
+        "raw_manifest_json": "{\"Author\":\"MTitan\",\"Name\":\"Sentinel Relay\",\"Punchline\":\"Private per-character FFXIV and Discord chat relay.\",\"Description\":\"Sends explicitly selected FFXIV chats directly to a per-character Discord webhook and accepts only locally allowed, authorized chat replies. Filters and reply destinations default off.\",\"InternalName\":\"SentinelRelay\",\"AssemblyVersion\":\"0.3.0.1\",\"TestingAssemblyVersion\":\"0.3.0.1\",\"RepoUrl\":\"https://github.com/MarshalTitan/SentinelRelay\",\"IconUrl\":\"https://raw.githubusercontent.com/MarshalTitan/SentinelRelay/main/assets/icon.png\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"IsHide\":false,\"IsTestingExclusive\":false,\"DownloadCount\":0,\"LastUpdate\":1790043760,\"LoadPriority\":0,\"DownloadLinkInstall\":\"https://github.com/MarshalTitan/SentinelRelay/releases/download/v0.3.0.1/SentinelRelay.zip\",\"DownloadLinkUpdate\":\"https://github.com/MarshalTitan/SentinelRelay/releases/download/v0.3.0.1/SentinelRelay.zip\",\"DownloadLinkTesting\":\"https://github.com/MarshalTitan/SentinelRelay/releases/download/v0.3.0.1/SentinelRelay.zip\",\"Tags\":[\"chat\",\"discord\",\"relay\",\"utility\",\"sentinel\"]}",
+        "repo_url": "https://github.com/MarshalTitan/SentinelRelay",
+        "source_entry_key": "sentinelrelay|0.3.0.1|15|15|5",
+        "source_id": 1128,
+        "tags_json": "[\"chat\",\"discord\",\"relay\",\"utility\",\"sentinel\"]",
+        "testing_assembly_version": "0.3.0.1",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 16843
       }
     }
   ]
