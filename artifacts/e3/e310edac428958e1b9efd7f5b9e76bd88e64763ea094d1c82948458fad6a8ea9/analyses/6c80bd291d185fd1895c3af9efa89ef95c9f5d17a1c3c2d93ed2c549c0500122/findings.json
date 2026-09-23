@@ -1,0 +1,381 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:deniszykov.WebSocketListener.dll:<RunHttpNegotiationHandlerAsync>d__8.MoveNext+0x59: callvirt vtortola.WebSockets.HttpAuthenticationCallback.Invoke",
+      "il:deniszykov.WebSocketListener.dll:<NegotiateRequestAsync>d__16.MoveNext+0x298: callvirt vtortola.WebSockets.HttpAuthenticationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerializing+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Serialization.JsonContract.InvokeOnSerialized+0x1f: callvirt Newtonsoft.Json.Serialization.SerializationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:deniszykov.WebSocketListener.dll: Assembly.Load",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketTransport..cctor+0x23: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateParameterizedConstructor+0x2f: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateMethodCall+0x3c: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Buttplug.Client.Connectors.WebsocketConnector.dll: s://github.com/buttplugio/buttplug-csharp",
+      "artifact:Buttplug.Client.Connectors.WebsocketConnector.dll: D:\\a\\buttplug-csharp\\buttplug-csharp\\Buttplug.Client.Connectors.WebsocketConnector\\obj\\Release\\netstandard2.1\\Buttplug.Client.Connectors.WebsocketConnector.pdb",
+      "artifact:deniszykov.WebSocketListener.dll: s://github.com/deniszykov/WebSocketListener",
+      "artifact:deniszykov.WebSocketListener.dll: p://",
+      "artifact:deniszykov.WebSocketListener.dll: D:\\dev\\projects\\vtortola.WebSocketListener\\vtortola.WebSockets\\WebSocketListener.cs",
+      "artifact:deniszykov.WebSocketListener.dll: D:\\dev\\projects\\vtortola.WebSocketListener\\vtortola.WebSockets\\Http\\HttpNegotiationQueue.cs",
+      "artifact:WoLightning.dll: s://github.com/TheHeadPatCat/WoLightning.git",
+      "artifact:WoLightning.dll: T:/`G"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:WoLightning.dll: Dalamud.Hooking",
+      "metadata:WoLightning.dll: HookFromAddress",
+      "il:WoLightning.dll:WoLightning.WoL_Plugin.Game.ActionReaderHooks..ctor+0x2a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:WoLightning.dll: Dalamud.Hooking",
+      "artifact:WoLightning.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "il:deniszykov.WebSocketListener.dll:<ListenAsync>d__40.MoveNext+0x163: newobj vtortola.WebSockets.Transports.Tcp.TcpListener..ctor: TcpListener",
+      "artifact:deniszykov.WebSocketListener.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://ps.pishock.com/PiShock/GetShareCodesByOwner"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.152402aed533",
+    "severity": "caution",
+    "title": "Endpoint: ps.pishock.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://theheadpatcat.ddns.net/post/WoLightning"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2b31dad442df",
+    "severity": "caution",
+    "title": "Endpoint: theheadpatcat.ddns.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://ps.pishock.com/PiShock/GetUserDevices"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3fab2d909c81",
+    "severity": "caution",
+    "title": "Endpoint: ps.pishock.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://api.openshock.app/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a00352929831",
+    "severity": "caution",
+    "title": "Endpoint: api.openshock.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://ps.pishock.com/PiShock/GetShockersByShareIds"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a8219dde984d",
+    "severity": "caution",
+    "title": "Endpoint: ps.pishock.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://theheadpatcat.ddns.net/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b9f38c0a72d1",
+    "severity": "caution",
+    "title": "Endpoint: theheadpatcat.ddns.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://api.pishock.com/Account"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dc8c222c8fb6",
+    "severity": "caution",
+    "title": "Endpoint: api.pishock.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Buttplug.dll: Socket.Connect",
+      "il:Buttplug.dll:<ConnectAsync>d__10.MoveNext+0x79: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "metadata:deniszykov.WebSocketListener.dll: System.Net.Sockets",
+      "metadata:deniszykov.WebSocketListener.dll: SocketAsyncEventArgs",
+      "metadata:deniszykov.WebSocketListener.dll: Socket.Connect",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_Available+0x6: callvirt System.Net.Sockets.Socket.get_Available: System.Net.Sockets",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_IsConnected+0x6: callvirt System.Net.Sockets.Socket.get_Connected: System.Net.Sockets",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketConnection.get_LingerState+0x6: callvirt System.Net.Sockets.Socket.get_LingerState: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Newtonsoft.Json.dll: CreateProcess",
+      "metadata:WoLightning.dll: System.Diagnostics.Process",
+      "metadata:WoLightning.dll: ProcessStartInfo",
+      "metadata:WoLightning.dll: Process.Start",
+      "metadata:WoLightning.dll: ShellExecute"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:deniszykov.WebSocketListener.dll: File.Delete",
+      "il:deniszykov.WebSocketListener.dll:vtortola.WebSockets.Transports.UnixSockets.UnixSocketListener.Dispose+0x3a: call System.IO.File.Delete: File.Delete",
+      "il:deniszykov.WebSocketListener.dll:<TryAndRemoveUnixSocketFileAsync>d__43.MoveNext+0x199: call System.IO.File.Delete: File.Delete",
+      "metadata:WoLightning.dll: FileStream",
+      "metadata:WoLightning.dll: Directory.Delete",
+      "metadata:WoLightning.dll: WriteAllText",
+      "metadata:WoLightning.dll: Directory.CreateDirectory",
+      "metadata:WoLightning.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://discord.gg/hMyWcZyhRa"
+    ],
+    "rule_id": "network.endpoint.community-invite.9f8840090b39",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Buttplug.Client.Connectors.WebsocketConnector.dll: https://github.com/buttplugio/buttplug-csharp",
+      "artifact:Buttplug.dll: https://github.com/buttplugio/buttplug-csharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1d8556c133bb",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.dll: https://github.com/TheHeadPatCat/WoLightning.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f09e3ce91d53",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WoLightning.json: https://raw.githubusercontent.com/TheHeadPatCat/WoLightning/master/etc/iconSmall.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f87d6376197c",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:deniszykov.WebSocketListener.dll: https://github.com/deniszykov/WebSocketListener"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f8ed077c2fd7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:WoLightning.dll: System.Net.Http.HttpClient",
+      "metadata:WoLightning.dll: WebRequest",
+      "metadata:WoLightning.dll: HttpWebRequest",
+      "il:WoLightning.dll:WoLightning.Configurations.Authentification.getCertificate+0x34: call System.Net.WebRequest.Create: WebRequest",
+      "il:WoLightning.dll:WoLightning.Configurations.Authentification.getCertificate+0x4b: callvirt System.Net.HttpWebRequest.set_ServerCertificateValidationCallback: WebRequest",
+      "il:WoLightning.dll:WoLightning.Configurations.Authentification.getCertificate+0x4b: callvirt System.Net.HttpWebRequest.set_ServerCertificateValidationCallback: HttpWebRequest",
+      "il:WoLightning.dll:WoLightning.Configurations.Authentification.getCertificate+0x50: callvirt System.Net.WebRequest.GetResponse: WebRequest",
+      "il:WoLightning.dll:WoLightning.Clients.Pishock.ClientPishock..ctor+0x19: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
