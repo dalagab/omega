@@ -1,0 +1,42 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:AkuXIVCollect.dll: SigScanner",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.UnsafeTriadReader..ctor+0x6: call AkuXIVCollect.Plugin.get_SigScanner: SigScanner",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.UnsafeTriadReader..ctor+0x10: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.UnsafeTriadReader..ctor+0x17: call AkuXIVCollect.Plugin.get_SigScanner: SigScanner",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.UnsafeTriadReader..ctor+0x22: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "artifact:AkuXIVCollect.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:AkuXIVCollect.dll: System.Diagnostics.Process",
+      "metadata:AkuXIVCollect.dll: ProcessStartInfo",
+      "metadata:AkuXIVCollect.dll: ShellExecute",
+      "metadata:AkuXIVCollect.dll: Process.Start",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.Windows.MainWindow.Draw+0xf7: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.Windows.MainWindow.Draw+0xf7: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.Windows.MainWindow.Draw+0xfe: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:AkuXIVCollect.dll:AkuXIVCollect.Windows.MainWindow.Draw+0xfe: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  }
+]
