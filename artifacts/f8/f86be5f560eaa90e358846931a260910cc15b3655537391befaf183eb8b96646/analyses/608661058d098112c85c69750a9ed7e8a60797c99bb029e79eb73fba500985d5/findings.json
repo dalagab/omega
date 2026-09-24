@@ -1,0 +1,87 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:AethertekPluginManager.dll: s://github.com/xa-io/Aethertek-Plugin-Manager.git"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:AethertekPluginManager.dll: System.Net.Sockets",
+      "metadata:AethertekPluginManager.dll: Socket.Connect",
+      "il:AethertekPluginManager.dll:z.MoveNext+0xe0: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:AethertekPluginManager.dll:z.MoveNext+0x10d: callvirt System.Net.Sockets.Socket.ConnectAsync: System.Net.Sockets",
+      "il:AethertekPluginManager.dll:z.MoveNext+0x10d: callvirt System.Net.Sockets.Socket.ConnectAsync: Socket.Connect",
+      "il:AethertekPluginManager.dll:z.MoveNext+0x175: newobj System.Net.Sockets.NetworkStream..ctor: System.Net.Sockets",
+      "il:AethertekPluginManager.dll:z.MoveNext+0x184: callvirt System.Net.Sockets.Socket.Dispose: System.Net.Sockets",
+      "artifact:AethertekPluginManager.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:AethertekPluginManager.dll: FileStream",
+      "metadata:AethertekPluginManager.dll: File.Delete",
+      "metadata:AethertekPluginManager.dll: Directory.Delete",
+      "metadata:AethertekPluginManager.dll: Directory.CreateDirectory",
+      "metadata:AethertekPluginManager.dll: WriteAllBytes",
+      "metadata:AethertekPluginManager.dll: File.Move",
+      "il:AethertekPluginManager.dll:XA.Access.PrivateManifest.ReadFile+0x47: newobj System.IO.FileStream..ctor: FileStream",
+      "il:AethertekPluginManager.dll:AethertekPluginManager.Core.FileTransaction.z+0x79: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+    "evidence_json": [],
+    "rule_id": "network.endpoint.dynamic-or-undetermined",
+    "severity": "informational",
+    "title": "Network destination undetermined"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AethertekPluginManager.json: https://github.com/xa-io/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.aac8c28761ad",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AethertekPluginManager.dll: https://github.com/xa-io/Aethertek-Plugin-Manager.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c95e28d6b517",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:AethertekPluginManager.dll: System.Net.Http.HttpClient",
+      "il:AethertekPluginManager.dll:B.MoveNext+0x9b: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:AethertekPluginManager.dll:B.MoveNext+0xbb: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "il:AethertekPluginManager.dll:B.MoveNext+0xf3: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
