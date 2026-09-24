@@ -28,7 +28,7 @@ import scan_queue  # noqa: E402
 SCHEMA = "omega.sigmascope-parallel-drain-plan.v1"
 MAX_WORKERS = 8
 MAX_ITEMS_PER_WORKER = 16
-MAX_ASSIGNMENTS = 64
+MAX_ASSIGNMENTS = 128
 MAX_LARGE_ASSIGNMENTS = 1
 PARALLEL_WORK_TYPES = {"artifact", "source"}
 SOURCE_SEMANTIC_LANE = "source-semantic"
@@ -70,7 +70,7 @@ def build(
     evidence_root: Path,
     *,
     workers: int = 8,
-    items_per_worker: int = 8,
+    items_per_worker: int = 16,
     wave: int = 1,
     output: Path,
     now: dt.datetime | None = None,
@@ -185,8 +185,11 @@ def build(
             "primaryReason": str(item.get("primaryReason") or ""),
             "reasonCodes": [str(value) for value in item.get("reasons") or item.get("reasonCodes") or [] if str(value)],
             "selectionLane": int(scan_queue._selection_lane(item)),
-            "workerLane": preference,
+            "workerLane": "hot-cohort" if bool(item.get("hotCohort")) else preference,
             "workerSlotLane": slot_lane,
+            "pluginCohortKey": str(item.get("pluginCohortKey") or ""),
+            "hotCohort": bool(item.get("hotCohort")),
+            "hotCohortTrigger": bool(item.get("hotCohortTrigger")),
             "resourceClass": scan_queue.STANDARD_ARTIFACT_RESOURCE_CLASS,
             "releaseUpdate": scan_queue.plugin_coverage.is_release_update(item),
         })
@@ -273,7 +276,7 @@ def build(
         "evidenceCatalogIdentityEpoch": evidence_epoch,
         "baselineSecurityRebuild": bool(seed.get("baselineSecurityRebuild")),
         "selectionPolicy": str(seed.get("selectionPolicy") or ""),
-        "workerAllocationPolicy": "release-baseline-source-semantic-and-large-artifact-resources-v3",
+        "workerAllocationPolicy": "hot-cohort-release-baseline-source-semantic-and-large-artifact-resources-v4",
         "wave": max(1, wave),
         "workers": workers,
         "itemsPerWorker": items_per_worker,
@@ -312,7 +315,7 @@ def main() -> int:
     parser.add_argument("--queue-seed", required=True, type=Path)
     parser.add_argument("--evidence-root", required=True, type=Path)
     parser.add_argument("--workers", type=int, default=8)
-    parser.add_argument("--items-per-worker", type=int, default=8)
+    parser.add_argument("--items-per-worker", type=int, default=16)
     parser.add_argument("--wave", type=int, default=1)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()

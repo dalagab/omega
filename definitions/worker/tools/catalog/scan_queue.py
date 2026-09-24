@@ -134,7 +134,28 @@ RETRY_DELAYS_MINUTES = (60, 240, 720, 1440, 2880, 5760)
 # Plugin-first coverage keeps at least one representative artifact scan in front of
 # secondary variants and enrichment work. The helper remains separate from evidence
 # authority: source provenance only schedules work and never becomes a trust verdict.
-SELECTION_POLICY = plugin_coverage.SELECTION_POLICY
+SELECTION_POLICY = "plugin-coverage-first-v3"
+HOT_COHORT_TRIGGER_REASONS = frozenset({
+    "new_variant",
+    "artifact_url_changed",
+    "artifact_version_changed",
+})
+
+
+def _plugin_cohort_key(item_or_name: dict[str, Any] | str) -> str:
+    if isinstance(item_or_name, dict):
+        value = item_or_name.get("pluginCohortKey") or item_or_name.get("internalName") or ""
+    else:
+        value = item_or_name
+    return str(value or "").strip().casefold()
+
+
+def _hot_cohort_rank(item: dict[str, Any]) -> int:
+    if not bool(item.get("hotCohort")):
+        return 3
+    if str(item.get("workType") or "") == "artifact":
+        return 0 if bool(item.get("hotCohortTrigger")) else 1
+    return 2
 
 
 def _selection_lane(item: dict[str, Any], covered_plugin_ids: set[int] | None = None) -> int:
@@ -142,7 +163,13 @@ def _selection_lane(item: dict[str, Any], covered_plugin_ids: set[int] | None = 
 
 
 def _selection_sort_key(item: dict[str, Any], covered_plugin_ids: set[int] | None = None) -> tuple[Any, ...]:
-    return plugin_coverage.selection_sort_key(item, covered_plugin_ids)
+    hot_rank = _hot_cohort_rank(item)
+    current_api_rank = 0 if bool(item.get("currentDalamudApi", True)) else 1
+    return (
+        hot_rank,
+        current_api_rank if hot_rank < 3 else 0,
+        *plugin_coverage.selection_sort_key(item, covered_plugin_ids),
+    )
 
 
 def utc_now(now: dt.datetime | None = None) -> str:
@@ -476,11 +503,17 @@ def _queue_item(
         "pluginId": int(variant.get("pluginId") or 0),
         "sourceId": int(variant.get("sourceId") or 0),
         "internalName": str(variant.get("internalName") or ""),
+        "pluginCohortKey": _plugin_cohort_key(variant),
         "name": str(variant.get("name") or ""),
         "sourceName": str(variant.get("sourceName") or ""),
         "sourcePriorityClass": str(variant.get("sourcePriorityClass") or "discovered"),
         "pluginHasCurrentScan": bool(variant.get("pluginHasCurrentScan")),
-        "releaseUpdate": bool(variant.get("releaseUpdate")),
+        "releaseUpdate": plugin_coverage.is_release_update({
+            "workType": "artifact",
+            "reasons": ordered,
+            "pluginHasCurrentScan": bool(variant.get("pluginHasCurrentScan")),
+            "releaseUpdate": bool(variant.get("releaseUpdate")),
+        }),
         "assemblyVersion": str(variant.get("assemblyVersion") or ""),
         "artifactChannel": str(variant.get("artifactChannel") or ""),
         "dalamudApiLevel": int(variant.get("dalamudApiLevel") or 0),
@@ -549,6 +582,7 @@ def _source_queue_item(
         "pluginId": int(variant.get("pluginId") or 0),
         "sourceId": int(variant.get("sourceId") or 0),
         "internalName": str(variant.get("internalName") or ""),
+        "pluginCohortKey": _plugin_cohort_key(variant),
         "name": str(variant.get("name") or ""),
         "sourceName": str(variant.get("sourceName") or ""),
         "sourcePriorityClass": str(variant.get("sourcePriorityClass") or "discovered"),
@@ -671,6 +705,9 @@ def enqueue_source_followup(
         generated_at=utc_now(now_dt),
         priority_override=int(artifact_item.get("priority") or 0) + 1,
     )
+    if bool(artifact_item.get("hotCohort")):
+        item["hotCohort"] = True
+        item["hotCohortTrigger"] = False
     existing = (state.get("items") or {}).get(item["queueKey"])
     if isinstance(existing, dict) and str(existing.get("targetFingerprint") or "") == item["targetFingerprint"] and str(existing.get("state") or "") != "complete":
         return existing
@@ -800,8 +837,16 @@ def build_seed(
         if int(variant.get("pluginId") or 0) > 0
         and plugin_coverage.current_has_artifact_coverage(current.get(int(variant.get("variantId") or 0)))
     }
+    published_covered_cohort_keys = {
+        _plugin_cohort_key(variant)
+        for variant in variants
+        if _plugin_cohort_key(variant)
+        and plugin_coverage.current_has_artifact_coverage(current.get(int(variant.get("variantId") or 0)))
+    }
     # A newly released variant often retires the scanned version. Coverage must
     # therefore include retained Evidence, not only today's active catalog variants.
+    # InternalName is the cross-source scheduling identity; pluginId remains the
+    # canonical catalog identity and is never rewritten by this scheduler.
     if not baseline_security_rebuild:
         for _entry, payload in iter_variant_entries(evidence_root):
             if plugin_coverage.current_has_artifact_coverage(payload.get("current")):
@@ -810,6 +855,11 @@ def build_seed(
                 plugin_id = int(payload.get("pluginId") or plugin.get("plugin_id") or variant_row.get("plugin_id") or 0)
                 if plugin_id > 0:
                     published_covered_plugin_ids.add(plugin_id)
+                retained_cohort_key = _plugin_cohort_key(
+                    str(plugin.get("internal_name") or variant_row.get("internal_name") or "")
+                )
+                if retained_cohort_key:
+                    published_covered_cohort_keys.add(retained_cohort_key)
     srl_plan = _srl_reprojection_plan(definitions_root, evidence_root, definitions_index) if not baseline_security_rebuild else {
         "schema": rule_reprojection.PLAN_SCHEMA,
         "ruleSetRevision": str(((definitions_index.get("srlDefinitionPacks") or {}) if isinstance(definitions_index.get("srlDefinitionPacks"), dict) else {}).get("ruleSetRevision") or ""),
@@ -821,7 +871,11 @@ def build_seed(
     counts = {reason: 0 for reason in REASON_PRIORITIES}
     for base_variant in variants:
         variant = dict(base_variant)
-        variant["pluginHasCurrentScan"] = int(variant.get("pluginId") or 0) in published_covered_plugin_ids
+        variant["pluginCohortKey"] = _plugin_cohort_key(variant)
+        variant["pluginHasCurrentScan"] = (
+            int(variant.get("pluginId") or 0) in published_covered_plugin_ids
+            or str(variant.get("pluginCohortKey") or "") in published_covered_cohort_keys
+        )
         current_row = current.get(int(variant["variantId"]))
         reasons = ["baseline_scan"] if baseline_security_rebuild else due_reasons(
             variant,
@@ -875,9 +929,13 @@ def build_seed(
     if active_items and stale_items:
         archive_deferred_count = len(stale_items)
         for item in stale_items:
+            # Keep the exact work record in the seed so a newly discovered sibling
+            # with the same InternalName can pull it forward immediately. Ordinary
+            # stale-API work remains invisible to selection until current-API work
+            # drains, preserving the existing archive-defer behavior.
             item["archiveDeferred"] = True
             item["currentDalamudApi"] = False
-        items = active_items
+        items = [*active_items, *stale_items]
     for item in items:
         item["currentDalamudApi"] = int(item.get("dalamudApiLevel") or 0) >= current_api_level if current_api_level else True
 
@@ -924,7 +982,7 @@ def build_seed(
         "items": [
             {
                 key: item[key]
-                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "pluginId", "sourceId", "sourcePriorityClass", "pluginHasCurrentScan", "artifactChannel", "assemblyVersion", "dalamudApiLevel", "currentDalamudApi", "archiveDeferred", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
+                for key in ("queueKey", "workType", "targetFingerprint", "variantId", "pluginId", "sourceId", "pluginCohortKey", "sourcePriorityClass", "pluginHasCurrentScan", "artifactChannel", "assemblyVersion", "dalamudApiLevel", "currentDalamudApi", "archiveDeferred", "artifactUrl", "artifactAnalysisRevision", "sourceAnalysisRevision", "ruleSetRevision", "srlRuleSetRevision", "requiredObservationCollections", "srlReanalysisReasons", "observedSourceCommit", "reasons", "priority")
                 if key in item
             }
             for item in items
@@ -959,7 +1017,12 @@ def build_seed(
         "previousAdvisoryRevision": previous_advisory_revision,
         "reasonContracts": REASON_CONTRACTS,
         "selectionPolicy": SELECTION_POLICY,
-        "counts": {**counts, "queued": len(items), "archiveDeferred": archive_deferred_count, "currentDalamudApiLevel": current_api_level},
+        "counts": {
+            **counts,
+            "queued": sum(1 for item in items if not bool(item.get("archiveDeferred"))),
+            "archiveDeferred": archive_deferred_count,
+            "currentDalamudApiLevel": current_api_level,
+        },
         "items": items,
     }
     write_json(output, seed)
@@ -1005,16 +1068,33 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
             if (same_target or same_artifact_target)
             else artifact_resource_class(seeded)
         )
+        reasons = {str(value) for value in seeded.get("reasons") or [] if str(value)}
+        fresh_catalog_entry = (
+            str(seeded.get("workType") or "") == "artifact"
+            and (not old or not same_target)
+            and bool(reasons.intersection(HOT_COHORT_TRIGGER_REASONS))
+            and (
+                not bool(seeded.get("archiveDeferred"))
+                or plugin_coverage.is_release_update(seeded)
+            )
+        )
         state = {
             **seeded,
             "releaseUpdate": bool(seeded.get("releaseUpdate") or (same_target and old.get("releaseUpdate"))),
             "resourceClass": retained_resource_class,
             "state": "pending",
+            "freshCatalogEntry": fresh_catalog_entry,
+            "hotCohort": bool(same_target and old.get("hotCohort")) or fresh_catalog_entry,
+            "hotCohortTrigger": bool(same_target and old.get("hotCohortTrigger")) or fresh_catalog_entry,
             "attemptCount": int(old.get("attemptCount") or 0) if same_target else 0,
             "nextEligibleAtUtc": str(old.get("nextEligibleAtUtc") or "") if same_target else "",
             "lastAttemptStatus": str(old.get("lastAttemptStatus") or "") if same_target else "",
             "lastError": str(old.get("lastError") or "")[:4096] if same_target else "",
             "recentAttempts": list(old.get("recentAttempts") or [])[-MAX_RECENT_ATTEMPTS:] if same_target else [],
+            "enqueuedAtUtc": (
+                str(old.get("enqueuedAtUtc") or seeded.get("enqueuedAtUtc") or "")
+                if same_target else str(seeded.get("enqueuedAtUtc") or "")
+            ),
         }
         if same_target and str(old.get("state") or "") == "complete":
             state["state"] = "complete"
@@ -1033,6 +1113,21 @@ def sync_state(seed: dict[str, Any], previous: dict[str, Any] | None, *, now: dt
             if str(old.get("definitionsRevision") or "") != str(seed.get("definitionsRevision") or ""):
                 continue
             items[str(key)] = dict(old)
+
+    hot_cohort_keys = {
+        _plugin_cohort_key(item)
+        for item in items.values()
+        if isinstance(item, dict)
+        and bool(item.get("hotCohort"))
+        and _plugin_cohort_key(item)
+    }
+    if hot_cohort_keys:
+        for item in items.values():
+            if not isinstance(item, dict):
+                continue
+            if _plugin_cohort_key(item) in hot_cohort_keys:
+                item["hotCohort"] = True
+                item.setdefault("hotCohortTrigger", False)
     return {
         "schema": STATE_SCHEMA,
         "queueSeedRevision": str(seed.get("queueSeedRevision") or ""),
@@ -1204,6 +1299,8 @@ def select_next(
     for item in (state.get("items") or {}).values():
         if not isinstance(item, dict) or str(item.get("state") or "") == "complete":
             continue
+        if bool(item.get("archiveDeferred")) and not bool(item.get("hotCohort")):
+            continue
         item_resource_class = artifact_resource_class(item)
         if item_resource_class == OVERSIZED_ARTIFACT_RESOURCE_CLASS:
             continue
@@ -1225,7 +1322,12 @@ def select_next(
         eligible.append(item)
     if not eligible:
         return None
-    if preferred_lane:
+    hot = [item for item in eligible if bool(item.get("hotCohort"))]
+    if hot:
+        # Fresh catalog entries and their InternalName siblings preempt normal
+        # update/baseline lane partitioning until that bounded cohort is clear.
+        eligible = hot
+    elif preferred_lane:
         preferred = [item for item in eligible if plugin_coverage.is_release_update(item) == (preferred_lane == "updates")]
         # Idle slots lend capacity, while the other lane retains its own slots.
         if preferred:
@@ -1309,6 +1411,10 @@ def state_summary(state: dict[str, Any], *, now: dt.datetime | None = None) -> d
     uncovered_plugin_ids: set[int] = set()
     uncovered_retry_plugin_ids: set[int] = set()
     covered_work_pending = 0
+    hot_cohort_keys: set[str] = set()
+    hot_cohort_items_pending = 0
+    hot_cohort_stale_api_items_pending = 0
+    archive_deferred = 0
     eligible_now = 0
     retry_deferred = 0
     oldest_eligible: dt.datetime | None = None
@@ -1318,8 +1424,23 @@ def state_summary(state: dict[str, Any], *, now: dt.datetime | None = None) -> d
         if not isinstance(item, dict):
             continue
         status = str(item.get("state") or "pending")
+        is_archive_deferred = (
+            status != "complete"
+            and bool(item.get("archiveDeferred"))
+            and not bool(item.get("hotCohort"))
+        )
+        if is_archive_deferred:
+            archive_deferred += 1
+            continue
         counts[status] = counts.get(status, 0) + 1
         if status != "complete":
+            if bool(item.get("hotCohort")):
+                hot_cohort_items_pending += 1
+                cohort = _plugin_cohort_key(item)
+                if cohort:
+                    hot_cohort_keys.add(cohort)
+                if not bool(item.get("currentDalamudApi", True)):
+                    hot_cohort_stale_api_items_pending += 1
             max_pending_attempt_count = max(max_pending_attempt_count, int(item.get("attemptCount") or 0))
             resource_class = artifact_resource_class(item)
             next_at = parse_utc(str(item.get("nextEligibleAtUtc") or ""))
@@ -1375,6 +1496,10 @@ def state_summary(state: dict[str, Any], *, now: dt.datetime | None = None) -> d
         "unscannedPluginsPending": len(uncovered_plugin_ids),
         "unscannedRetryPlugins": len(uncovered_retry_plugin_ids),
         "coveredWorkPending": covered_work_pending,
+        "hotPluginCohorts": len(hot_cohort_keys),
+        "hotCohortItemsPending": hot_cohort_items_pending,
+        "hotCohortStaleApiItemsPending": hot_cohort_stale_api_items_pending,
+        "archiveDeferred": archive_deferred,
         "total": sum(counts.values()),
     }
 
