@@ -58,8 +58,8 @@ class SigmascopeResultMergerTests(unittest.TestCase):
             sigmascope_parallel_drain_plan.MAX_ASSIGNMENTS
             + sigmascope_parallel_drain_plan.MAX_LARGE_ASSIGNMENTS
         )
-        self.assertEqual(65, expected)
-        self.assertEqual(64, sigmascope_result_merger.MAX_STANDARD_BUNDLES)
+        self.assertEqual(129, expected)
+        self.assertEqual(128, sigmascope_result_merger.MAX_STANDARD_BUNDLES)
         self.assertEqual(1, sigmascope_result_merger.MAX_LARGE_ARTIFACT_BUNDLES)
         self.assertEqual(expected, sigmascope_result_merger.MAX_BUNDLES)
         self.assertEqual(expected, sigmascope_result_merger.MAX_VARIANTS)

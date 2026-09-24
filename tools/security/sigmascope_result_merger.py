@@ -55,11 +55,11 @@ from plugin_index_transport import read_plugin_index, write_plugin_index  # noqa
 from security_evidence_v2 import sha256_file, validate_snapshot  # noqa: E402
 
 SCHEMA = "omega.sigmascope-result-merge.v1"
-# Standard production drain capacity remains bounded to 64 exact persistent queue
+# Standard production drain capacity remains bounded to 128 exact persistent queue
 # items. The planner may add exactly one independently bounded large-artifact
-# assignment, so the serialized authority must accept 64 standard + 1 large bundle
+# assignment, so the serialized authority must accept 128 standard + 1 large bundle
 # without widening normal worker capacity.
-MAX_STANDARD_BUNDLES = 64
+MAX_STANDARD_BUNDLES = 128
 MAX_LARGE_ARTIFACT_BUNDLES = 1
 MAX_BUNDLES = MAX_STANDARD_BUNDLES + MAX_LARGE_ARTIFACT_BUNDLES
 MAX_VARIANTS = MAX_BUNDLES
