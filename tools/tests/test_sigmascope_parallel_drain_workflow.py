@@ -22,6 +22,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
             "gh workflow run sigmascope-parallel-drain.yml",
             "Capacity used:", "Assignments by lane:", "Assignments by resource class:", "Eligible queue items now:",
             "Deferred by retry backoff:", "Oldest eligible enqueue:", "Highest pending attempt count:",
+            "Hot plugin cohorts:", "Hot cohort items pending:", "Archive-deferred items:",
         ):
             self.assertIn(required, text)
         self.assertIn("matrix_assignment_count=", text)
@@ -47,11 +48,11 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("default: 4", text)
         self.assertNotIn("default: 10", text)
         self.assertIn("INPUT_WORKERS: ${{ inputs.workers || 8 }}", text)
-        self.assertIn("INPUT_ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", text)
+        self.assertIn("INPUT_ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 16 }}", text)
         self.assertIn("CAPACITY_MODE: ${{ inputs.capacity_mode || 'production' }}", text)
         self.assertIn("capacity_mode:", text)
         self.assertIn("PRODUCTION_WORKERS: 8", text)
-        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 8", text)
+        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 16", text)
         self.assertIn("omega.sigmascope-drain-execution-context.v1", text)
         workers = text[text.index("\n  workers:"): text.index("\n  merge:")]
         self.assertIn("runs-on: ubuntu-latest", workers)
@@ -72,7 +73,7 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         self.assertNotIn("default: 4", wake)
         self.assertNotIn("default: 10", wake)
         self.assertIn("WORKERS: ${{ inputs.workers || 8 }}", wake)
-        self.assertIn("ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}", wake)
+        self.assertIn("ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 16 }}", wake)
         self.assertIn("sigmascope_evidence_transport.py package", text)
         self.assertIn("candidate.bundle", text)
         self.assertIn("candidate-transport.json", text)
@@ -190,11 +191,11 @@ class SigmaScopeParallelDrainWorkflowTests(unittest.TestCase):
         merge = text[text.index("\n  merge:"): text.index("\n  publish:")]
         cont = text[text.index("\n  continue:"): text.index("\n  idle-or-serial-fallback:")]
         self.assertIn("PRODUCTION_WORKERS: 8", merge)
-        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 8", merge)
+        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 16", merge)
         self.assertIn('--workers "$PRODUCTION_WORKERS"', merge)
         self.assertIn('--items-per-worker "$PRODUCTION_ITEMS_PER_WORKER"', merge)
         self.assertIn("PRODUCTION_WORKERS: 8", cont)
-        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 8", cont)
+        self.assertIn("PRODUCTION_ITEMS_PER_WORKER: 16", cont)
         self.assertIn('-f capacity_mode="production"', cont)
         self.assertIn('-f workers="$PRODUCTION_WORKERS"', cont)
         self.assertIn('-f items_per_worker="$PRODUCTION_ITEMS_PER_WORKER"', cont)

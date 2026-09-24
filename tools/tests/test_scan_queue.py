@@ -95,6 +95,71 @@ class ScanQueueTests(unittest.TestCase):
         state = scan_queue.sync_state({"items": [item]}, previous, now=NOW)
         self.assertTrue(state["items"]["variant-1"]["releaseUpdate"])
 
+    def test_fresh_catalog_entry_promotes_internal_name_cohort_including_archive_sibling(self) -> None:
+        previous = {
+            "items": {
+                "backlog": {
+                    "queueKey": "backlog", "targetFingerprint": "backlog-target", "workType": "artifact",
+                    "variantId": 30, "pluginId": 30, "internalName": "Old.Backlog",
+                    "pluginCohortKey": "old.backlog", "state": "pending", "reasons": ["new_variant"],
+                    "primaryReason": "new_variant", "priority": 900, "currentScanId": 0,
+                    "currentScannedAtUtc": "", "enqueuedAtUtc": "2026-08-18T10:00:00Z",
+                },
+            },
+        }
+        seed = {
+            "schema": scan_queue.SEED_SCHEMA,
+            "queueSeedRevision": "queue-seed-v2-hot",
+            "catalogRevision": "cat-hot",
+            "definitionsRevision": "defs-hot",
+            "selectionPolicy": scan_queue.SELECTION_POLICY,
+            "items": [
+                previous["items"]["backlog"],
+                {
+                    "queueKey": "variant-10", "targetFingerprint": "fresh-target", "workType": "artifact",
+                    "variantId": 10, "pluginId": 10, "internalName": "Shared.Plugin",
+                    "pluginCohortKey": "shared.plugin", "state": "pending", "reasons": ["new_variant"],
+                    "primaryReason": "new_variant", "priority": 900, "currentScanId": 0,
+                    "currentScannedAtUtc": "", "currentDalamudApi": True, "archiveDeferred": False,
+                    "enqueuedAtUtc": "2026-08-19T10:00:00Z",
+                },
+                {
+                    "queueKey": "variant-11", "targetFingerprint": "older-target", "workType": "artifact",
+                    "variantId": 11, "pluginId": 11, "internalName": "shared.plugin",
+                    "pluginCohortKey": "shared.plugin", "state": "pending", "reasons": ["new_variant"],
+                    "primaryReason": "new_variant", "priority": 900, "currentScanId": 0,
+                    "currentScannedAtUtc": "", "currentDalamudApi": False, "archiveDeferred": True,
+                    "enqueuedAtUtc": "2026-08-19T10:00:00Z",
+                },
+                {
+                    "queueKey": "variant-40", "targetFingerprint": "archive-target", "workType": "artifact",
+                    "variantId": 40, "pluginId": 40, "internalName": "Other.Archive",
+                    "pluginCohortKey": "other.archive", "state": "pending", "reasons": ["new_variant"],
+                    "primaryReason": "new_variant", "priority": 900, "currentScanId": 0,
+                    "currentScannedAtUtc": "", "currentDalamudApi": False, "archiveDeferred": True,
+                    "enqueuedAtUtc": "2026-08-19T10:00:00Z",
+                },
+            ],
+        }
+        state = scan_queue.sync_state(seed, previous, now=NOW)
+        self.assertTrue(state["items"]["variant-10"]["freshCatalogEntry"])
+        self.assertTrue(state["items"]["variant-10"]["hotCohortTrigger"])
+        self.assertTrue(state["items"]["variant-11"]["hotCohort"])
+        self.assertFalse(state["items"]["variant-40"]["hotCohort"])
+
+        first = scan_queue.select_next(state, now=NOW, preferred_lane="updates")
+        self.assertEqual(10, first["variantId"])
+        scan_queue.finish_attempt(state, first, status="complete", artifact_sha256="a" * 64, scan_id=10, now=NOW)
+        second = scan_queue.select_next(state, now=NOW + dt.timedelta(seconds=1), preferred_lane="updates")
+        self.assertEqual(11, second["variantId"])
+        self.assertTrue(second["archiveDeferred"])
+
+        summary = scan_queue.state_summary(state, now=NOW)
+        self.assertEqual(1, summary["hotPluginCohorts"])
+        self.assertEqual(1, summary["hotCohortItemsPending"])
+        self.assertEqual(1, summary["hotCohortStaleApiItemsPending"])
+        self.assertEqual(1, summary["archiveDeferred"])
+
     def _catalog(self, root: Path) -> tuple[Path, dict]:
         curated, raw, enriched, websites = test_sqlite_catalog.fixture_documents(root)
         built = root / "built"
@@ -493,6 +558,18 @@ class ScanQueueTests(unittest.TestCase):
                     "state": "retry", "primaryReason": "failed_retry", "attemptCount": 2,
                     "enqueuedAtUtc": "2026-08-28T12:00:00Z", "nextEligibleAtUtc": "2026-08-28T17:00:00Z",
                 },
+                "hot-old": {
+                    "state": "pending", "primaryReason": "new_variant", "attemptCount": 1,
+                    "enqueuedAtUtc": "2026-08-28T14:00:00Z", "nextEligibleAtUtc": "",
+                    "internalName": "Hot.Plugin", "pluginCohortKey": "hot.plugin",
+                    "hotCohort": True, "currentDalamudApi": False, "archiveDeferred": True,
+                },
+                "archive": {
+                    "state": "pending", "primaryReason": "new_variant", "attemptCount": 0,
+                    "enqueuedAtUtc": "2026-08-28T10:00:00Z", "nextEligibleAtUtc": "",
+                    "internalName": "Cold.Archive", "pluginCohortKey": "cold.archive",
+                    "archiveDeferred": True,
+                },
                 "complete": {
                     "state": "complete", "primaryReason": "new_variant", "attemptCount": 5,
                     "enqueuedAtUtc": "2026-08-28T11:00:00Z", "nextEligibleAtUtc": "",
@@ -500,10 +577,14 @@ class ScanQueueTests(unittest.TestCase):
             },
         }
         summary = scan_queue.state_summary(state, now=NOW)
-        self.assertEqual(1, summary["eligibleNow"])
+        self.assertEqual(2, summary["eligibleNow"])
         self.assertEqual(1, summary["retryDeferred"])
         self.assertEqual("2026-08-28T13:00:00Z", summary["oldestEligibleEnqueuedAtUtc"])
         self.assertEqual(3, summary["maxPendingAttemptCount"])
+        self.assertEqual(1, summary["hotPluginCohorts"])
+        self.assertEqual(1, summary["hotCohortItemsPending"])
+        self.assertEqual(1, summary["hotCohortStaleApiItemsPending"])
+        self.assertEqual(1, summary["archiveDeferred"])
 
     def test_failed_attempts_back_off_instead_of_releasing_every_fifteen_minutes(self) -> None:
         seed = {
@@ -619,7 +700,7 @@ class ScanQueueTests(unittest.TestCase):
         self.assertEqual(0, next_state["items"]["variant-1"]["attemptCount"])
 
 
-    def test_stale_api_work_is_deferred_until_current_api_queue_is_empty(self) -> None:
+    def test_stale_api_sibling_is_retained_and_fresh_internal_name_cohort_pulls_it_forward(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-queue-api-") as td:
             root = Path(td)
             catalog, current_variant = self._catalog(root)
@@ -639,9 +720,20 @@ class ScanQueueTests(unittest.TestCase):
             evidence = self._evidence(root)
             seed = scan_queue.build_seed(catalog_root=catalog, definitions_root=definitions, evidence_root=evidence, output=root / "queue.json", now=NOW)
             self.assertTrue(seed["items"])
-            self.assertTrue(all(int(item.get("dalamudApiLevel") or 0) == 15 for item in seed["items"]))
+            stale_item = next(item for item in seed["items"] if int(item.get("dalamudApiLevel") or 0) == 14)
+            self.assertTrue(stale_item["archiveDeferred"])
             self.assertGreaterEqual(seed["counts"]["archiveDeferred"], 1)
             self.assertEqual(15, seed["counts"]["currentDalamudApiLevel"])
+
+            state = scan_queue.sync_state(seed, {}, now=NOW)
+            first = scan_queue.select_next(state, now=NOW)
+            self.assertEqual(15, int(first.get("dalamudApiLevel") or 0))
+            self.assertTrue(first["hotCohortTrigger"])
+            scan_queue.finish_attempt(state, first, status="complete", artifact_sha256="a" * 64, scan_id=9, now=NOW)
+            second = scan_queue.select_next(state, now=NOW + dt.timedelta(seconds=1))
+            self.assertEqual(14, int(second.get("dalamudApiLevel") or 0))
+            self.assertTrue(second["hotCohort"])
+            self.assertTrue(second["archiveDeferred"])
 
             current_complete = {
                 "scan_id": 9, "status": "complete", "scanned_at_utc": "2026-08-19T09:00:00Z",

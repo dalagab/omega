@@ -69,38 +69,38 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
         }), encoding="utf-8")
         return evidence
 
-    def test_baseline_rebuild_defaults_to_eight_by_eight_and_caps_at_sixty_four(self) -> None:
+    def test_baseline_rebuild_defaults_to_eight_by_sixteen_and_caps_at_one_twenty_eight(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-plan-") as td:
             root = Path(td)
             seed_path = root / "seed.json"
-            seed_path.write_text(json.dumps(seed([artifact_item(i) for i in range(1, 71)])), encoding="utf-8")
+            seed_path.write_text(json.dumps(seed([artifact_item(i) for i in range(1, 141)])), encoding="utf-8")
             result = drain_plan.build(seed_path, self.write_evidence(root),
                                       output=root / "plan.json", now=NOW)
             self.assertTrue(result["baselineSecurityRebuild"])
-            self.assertEqual(64, result["assignmentCount"])
+            self.assertEqual(128, result["assignmentCount"])
             self.assertEqual(8, result["activeWorkerCount"])
-            self.assertEqual([8] * 8, [row["assignmentCount"] for row in result["matrix"]["include"]])
-            self.assertEqual(64, len({item["queueKey"] for item in result["assignments"]}))
+            self.assertEqual([16] * 8, [row["assignmentCount"] for row in result["matrix"]["include"]])
+            self.assertEqual(128, len({item["queueKey"] for item in result["assignments"]}))
             self.assertTrue(result["moreParallelEligible"])
             self.assertFalse(result["serialFallbackRequired"])
-            self.assertEqual(70, result["queueSummaryBefore"]["eligibleNow"])
+            self.assertEqual(140, result["queueSummaryBefore"]["eligibleNow"])
             self.assertEqual(0, result["queueSummaryBefore"]["retryDeferred"])
 
     def test_large_artifact_retry_gets_one_dedicated_resource_slot_without_reducing_standard_capacity(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-large-") as td:
             root = Path(td)
-            requests = [artifact_item(i) for i in range(1, 65)]
+            requests = [artifact_item(i) for i in range(1, 129)]
             large = artifact_item(900)
             large["resourceClass"] = scan_queue.LARGE_ARTIFACT_RESOURCE_CLASS
             seed_path = root / "seed.json"
             seed_path.write_text(json.dumps(seed(requests + [large])), encoding="utf-8")
             result = drain_plan.build(seed_path, self.write_evidence(root), output=root / "plan.json", now=NOW)
 
-            self.assertEqual(65, result["assignmentCount"])
+            self.assertEqual(129, result["assignmentCount"])
             self.assertEqual(9, result["activeWorkerCount"])
             standard = [row for row in result["matrix"]["include"] if row["resourceClass"] == "standard"]
             large_slots = [row for row in result["matrix"]["include"] if row["resourceClass"] == "large-artifact"]
-            self.assertEqual([8] * 8, [row["assignmentCount"] for row in standard])
+            self.assertEqual([16] * 8, [row["assignmentCount"] for row in standard])
             self.assertEqual(1, len(large_slots))
             self.assertEqual(1, large_slots[0]["assignmentCount"])
             self.assertEqual(1024 * 1024 * 1024, large_slots[0]["maxArtifactBytes"])
@@ -120,6 +120,38 @@ class SigmaScopeParallelDrainPlanTests(unittest.TestCase):
                                       output=root / "plan.json", now=NOW)
             self.assertEqual(5, result["assignmentCount"])
             self.assertTrue(all(item["workType"] == "artifact" for item in result["assignments"]))
+
+    def test_hot_internal_name_cohort_preempts_lane_backlog(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-drain-hot-cohort-") as td:
+            root = Path(td)
+            trigger = artifact_item(10)
+            trigger.update({
+                "internalName": "Shared.Plugin",
+                "primaryReason": "new_variant",
+                "reasonCodes": ["new_variant"],
+                "reasons": ["new_variant"],
+                "currentDalamudApi": True,
+                "archiveDeferred": False,
+            })
+            sibling = artifact_item(11)
+            sibling.update({
+                "internalName": "shared.plugin",
+                "primaryReason": "new_variant",
+                "reasonCodes": ["new_variant"],
+                "reasons": ["new_variant"],
+                "currentDalamudApi": False,
+                "archiveDeferred": True,
+            })
+            backlog = [{**artifact_item(100 + i), "releaseUpdate": True} for i in range(4)]
+            seed_path = root / "seed.json"
+            seed_path.write_text(json.dumps(seed([*backlog, trigger, sibling], baseline=False)), encoding="utf-8")
+            result = drain_plan.build(
+                seed_path, self.write_evidence(root), workers=1, items_per_worker=2,
+                output=root / "plan.json", now=NOW,
+            )
+            self.assertEqual([10, 11], [item["variantId"] for item in result["assignments"]])
+            self.assertTrue(all(item["hotCohort"] for item in result["assignments"]))
+            self.assertEqual("hot-cohort", result["assignments"][0]["workerLane"])
 
     def test_source_semantic_backfill_gets_one_reserved_standard_worker(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-drain-source-semantic-") as td:

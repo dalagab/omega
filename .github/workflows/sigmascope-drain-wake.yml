@@ -12,7 +12,7 @@ on:
         description: Exact queue keys per worker
         type: number
         required: false
-        default: 8
+        default: 16
       publish_client_every:
         description: Republish Omega customer DB every N successful waves
         type: number
@@ -29,7 +29,7 @@ on:
         description: Exact queue keys per worker (1-16)
         type: number
         required: false
-        default: 8
+        default: 16
       publish_client_every:
         description: Republish Omega customer DB every N successful waves
         type: number
@@ -57,7 +57,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           WORKERS: ${{ inputs.workers || 8 }}
-          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 8 }}
+          ITEMS_PER_WORKER: ${{ inputs.items_per_worker || 16 }}
           PUBLISH_CLIENT_EVERY: ${{ inputs.publish_client_every || 5 }}
         shell: bash
         run: |
@@ -89,7 +89,7 @@ jobs:
 
           # Automatic wake circuit breaker. A failed canonical production drain is
           # deterministic for frozen source/Evidence inputs, so do not spend another
-          # 8x8 worker wave rediscovering the same failure. Either authority head
+          # 8x16 worker wave rediscovering the same failure. Either authority head
           # changing closes the circuit automatically. Direct/manual drain dispatch
           # remains available for deliberate operator retries. Historical inspection
           # is fail-open: if its plan artifact is unavailable, dispatch normally.
@@ -118,7 +118,7 @@ jobs:
               if [ -n "$plan_path" ]; then
                 previous_evidence="$(jq -r '.executionContext.baseEvidenceHead // empty' "$plan_path")"
                 previous_capacity="$(jq -r '.capacity // 0' "$plan_path")"
-                if [ "$previous_evidence" = "$current_evidence" ] && [ "$previous_capacity" -eq 64 ]; then
+                if [ "$previous_evidence" = "$current_evidence" ] && [ "$previous_capacity" -ge 128 ]; then
                   failure_fingerprint="production-drain-failure"
                   breaker_key="$(printf '%s:%s:%s' "$current_source" "$current_evidence" "$failure_fingerprint" | sha256sum | cut -d' ' -f1)"
                   echo "Automatic production drain suppressed: unchanged failed source/Evidence tuple ($breaker_key)."
