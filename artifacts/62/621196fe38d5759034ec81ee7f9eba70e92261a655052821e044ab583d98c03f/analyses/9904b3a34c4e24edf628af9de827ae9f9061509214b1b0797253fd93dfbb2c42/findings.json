@@ -1,0 +1,69 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:Vista.Core.dll:Vista.Core.Tracks.Aiming.AimTracker.Carry+0x75: call Vista.Core.Camera.CameraState.set_Up",
+      "il:Vista.Core.dll:Vista.Core.Camera.FlySpeed.Set+0x14: call Vista.Core.Camera.FlySpeed.set_Index",
+      "il:Vista.dll:Vista.Plugin.Game.CameraController.ClearFault+0x2: call Vista.Plugin.Game.CameraController.set_Faulted",
+      "il:Vista.dll:Vista.Plugin.Game.CameraController.UpdateDetour+0x1d: call Vista.Plugin.Game.CameraController.set_UpdateCount"
+    ],
+    "rule_id": "automation.game.camera.control",
+    "severity": "caution",
+    "title": "Camera control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Vista.dll: s://github.com/psenxiv/vista"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Vista.dll: SigScanner",
+      "metadata:Vista.dll: Dalamud.Hooking",
+      "metadata:Vista.dll: HookFromAddress",
+      "il:Vista.dll:Vista.Plugin.Game.CameraController.TryInstallHook+0x53: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Vista.dll:Vista.Plugin.Game.InputBlocker.HookBySignature+0x0: call Vista.Plugin.Plugin.get_SigScanner: SigScanner",
+      "il:Vista.dll:Vista.Plugin.Game.InputBlocker.HookBySignature+0x6: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:Vista.dll:Vista.Plugin.Game.InputBlocker.HookBySignature+0x5f: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Vista.dll:Vista.Plugin.Game.InputBlocker.Hook+0x28: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Vista.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Vista.Core.dll: Directory.CreateDirectory",
+      "metadata:Vista.Core.dll: File.Move",
+      "metadata:Vista.Core.dll: File.Delete",
+      "metadata:Vista.Core.dll: WriteAllText",
+      "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.Create+0x6: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.Create+0x12: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.RenameScene+0x69: call System.IO.File.Move: File.Move",
+      "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.RenameScene+0x72: call System.IO.File.Move: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
