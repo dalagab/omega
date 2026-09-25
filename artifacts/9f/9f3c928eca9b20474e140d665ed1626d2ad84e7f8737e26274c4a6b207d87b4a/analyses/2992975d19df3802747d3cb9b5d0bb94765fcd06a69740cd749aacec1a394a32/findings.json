@@ -1,0 +1,183 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Core.Services.TargetManagerEx.SetTarget+0x5e: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Core.Services.TargetManagerEx.SetTarget+0x6b: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target",
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Core.Services.TargetManagerEx.SetFocusTarget+0x5e: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_FocusTarget",
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Core.Services.TargetManagerEx.SetFocusTarget+0x6b: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_FocusTarget"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:WhoSaidWhatNow.dll: s://github.com/perappu/WhoSaidWhatNow.git"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Dalamud.ContextMenu.dll: Dalamud.Hooking",
+      "metadata:Dalamud.ContextMenu.dll: SigScanner",
+      "metadata:Dalamud.ContextMenu.dll: HookFromAddress",
+      "il:Dalamud.ContextMenu.dll:Dalamud.ContextMenu.DalamudContextMenu..ctor+0x64: call Dalamud.ContextMenu.SigScannerExt.TryScanText: SigScanner",
+      "il:Dalamud.ContextMenu.dll:Dalamud.ContextMenu.DalamudContextMenu..ctor+0x8b: call Dalamud.ContextMenu.SigScannerExt.TryScanText: SigScanner",
+      "il:Dalamud.ContextMenu.dll:Dalamud.ContextMenu.DalamudContextMenu..ctor+0xb2: call Dalamud.ContextMenu.SigScannerExt.TryScanText: SigScanner",
+      "il:Dalamud.ContextMenu.dll:Dalamud.ContextMenu.DalamudContextMenu..ctor+0xd9: call Dalamud.ContextMenu.SigScannerExt.TryScanText: SigScanner",
+      "il:Dalamud.ContextMenu.dll:Dalamud.ContextMenu.DalamudContextMenu..ctor+0xf4: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Dalamud.DrunkenToad.dll: FileStream",
+      "metadata:Dalamud.DrunkenToad.dll: Directory.CreateDirectory",
+      "metadata:Dalamud.DrunkenToad.dll: File.Move",
+      "metadata:Dalamud.DrunkenToad.dll: File.Delete",
+      "metadata:Dalamud.DrunkenToad.dll: Directory.Delete",
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Helpers.FileHelper.MoveAndCompressFiles+0x9: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Helpers.FileHelper.MoveAndCompressFiles+0x24: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Dalamud.DrunkenToad.dll:Dalamud.DrunkenToad.Helpers.FileHelper.MoveAndCompressFiles+0x5a: call System.IO.File.Move: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WhoSaidWhatNow.json: https://raw.githubusercontent.com/perappu/WhoSaidWhatNow/master/WhoSaidWhatNow/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0ec38193fa70",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WhoSaidWhatNow.dll: https://github.com/perappu/WhoSaidWhatNow.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4f350304c6e6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dalamud.Loc.dll: https://github.com/kalilistic/Dalamud.Loc"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7e5e8fb16a70",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.DependencyInjection.Abstractions.dll: https://github.com/dotnet/runtime",
+      "artifact:Microsoft.Extensions.DependencyInjection.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dalamud.ContextMenu.dll: https://github.com/kalilistic/Dalamud.ContextMenu"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a5f5e425d436",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dalamud.DrunkenToad.dll: https://github.com/kalilistic/Dalamud.DrunkenToad"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bcb97e9b6274",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:WhoSaidWhatNow.json: https://github.com/perappu/WhoSaidWhatNow"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.dc0e04682b62",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Dalamud.Loc.dll: System.Net.Http.HttpClient",
+      "il:Dalamud.Loc.dll:Dalamud.Loc.Localization..ctor+0x55: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:Dalamud.Loc.dll:Dalamud.Loc.Localization.LoadLanguageFromUrl+0x7: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "il:Dalamud.Loc.dll:Dalamud.Loc.Localization.LoadLanguagesFromUrls+0x1c: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "metadata:Dalamud.DrunkenToad.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
