@@ -46,6 +46,20 @@ def _run_git(repo: Path, *args: str, env: dict[str, str] | None = None, input_te
     return completed.stdout.strip()
 
 
+def _changed_object_manifest_bytes(repository: Path, parent: str, candidate: str) -> bytes:
+    completed = subprocess.run(
+        [
+            "git", "-C", str(repository), "diff-tree",
+            "--no-commit-id", "--raw", "--no-abbrev", "--no-renames", "-r",
+            parent, candidate,
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return completed.stdout
+
+
 def _plumbing_git(repo: Path, work_tree: Path, index_file: Path, *args: str, input_text: str | None = None) -> str:
     env = os.environ.copy()
     env.update({
@@ -144,7 +158,7 @@ def create_transport(
     try:
         _run_git(repository, "bundle", "create", str(bundle), BUNDLE_REF, f"^{parent}")
         _run_git(repository, "bundle", "verify", str(bundle))
-        changed_raw = _run_git(repository, "diff-tree", "--no-commit-id", "--name-only", "-r", parent, commit_sha)
+        changed_manifest = _changed_object_manifest_bytes(repository, parent, commit_sha)
     finally:
         subprocess.run(
             ["git", "-C", str(repository), "update-ref", "-d", BUNDLE_REF],
@@ -153,7 +167,16 @@ def create_transport(
             stderr=subprocess.DEVNULL,
         )
 
-    changed_paths = [line for line in changed_raw.splitlines() if line.strip()]
+    changed_manifest_path = metadata_path.parent / "candidate-changed-objects.txt"
+    changed_manifest_path.write_bytes(changed_manifest)
+    changed_paths = [line for line in changed_manifest.splitlines() if line.strip()]
+    changed_manifest_descriptor = {
+        "path": changed_manifest_path.name,
+        "format": "git-diff-tree-raw-v1",
+        "records": len(changed_paths),
+        "bytes": len(changed_manifest),
+        "sha256": hashlib.sha256(changed_manifest).hexdigest(),
+    }
     result = {
         "schema": SCHEMA,
         "authority": "transport-only-no-evidence-publication",
@@ -165,6 +188,7 @@ def create_transport(
         "bundleSha256": sha256_file(bundle),
         "bundleBytes": bundle.stat().st_size,
         "changedPathCount": len(changed_paths),
+        "changedObjectManifest": changed_manifest_descriptor,
     }
     metadata_path.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     return result
@@ -302,6 +326,8 @@ def main() -> int:
     rehydrate.add_argument("--report", type=Path)
     rehydrate.add_argument("--expected-parent-sha", required=True)
     rehydrate.add_argument("--expected-index-sha", default="")
+    rehydrate.add_argument("--materialize-full", action="store_true",
+                           help="Extract the complete candidate tree instead of the fast publication-control view")
 
     args = parser.parse_args()
     if args.command == "package":
@@ -314,14 +340,25 @@ def main() -> int:
             expected_index_sha=args.expected_index_sha,
         )
     else:
-        result = rehydrate_transport(
-            args.repository,
-            args.bundle,
-            args.metadata,
-            args.output,
-            expected_parent_sha=args.expected_parent_sha,
-            expected_index_sha=args.expected_index_sha,
-        )
+        if args.materialize_full:
+            result = rehydrate_transport(
+                args.repository,
+                args.bundle,
+                args.metadata,
+                args.output,
+                expected_parent_sha=args.expected_parent_sha,
+                expected_index_sha=args.expected_index_sha,
+            )
+        else:
+            from sigmascope_direct_transport_publish import verify_transport_for_publication
+            result = verify_transport_for_publication(
+                args.repository,
+                args.bundle,
+                args.metadata,
+                args.output,
+                expected_parent_sha=args.expected_parent_sha,
+                expected_index_sha=args.expected_index_sha,
+            )
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")

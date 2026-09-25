@@ -31,6 +31,11 @@ if str(ORCHESTRATION_DIR) not in sys.path:
     sys.path.insert(0, str(ORCHESTRATION_DIR))
 from git_snapshot_history import HISTORY_FAST_FORWARD, HISTORY_MODES, publish_snapshot_tree  # noqa: E402
 from sigmascope_parallel_publish_gate import read_json as read_parallel_authorization, verify_authorization as verify_parallel_authorization  # noqa: E402
+from sigmascope_direct_transport_publish import (  # noqa: E402
+    TRANSPORT_ONLY_MARKER,
+    publish_verified_transport_tree,
+    verify_transport_for_publication,
+)
 
 EXCLUDED_NAMES = {".omega-security-evidence-v2-migration.json"}
 
@@ -143,7 +148,37 @@ def publish(
     expected_parent_sha: str | None = None,
     parallel_authorization_report: Path | None = None,
 ) -> dict[str, Any]:
-    info = preflight(evidence)
+    evidence = evidence.resolve()
+    direct_transport = (evidence / TRANSPORT_ONLY_MARKER).is_file()
+    if direct_transport:
+        if history_mode != HISTORY_FAST_FORWARD:
+            raise RuntimeError("validated transport publication only supports fast-forward history")
+        if not expected_parent_sha:
+            raise RuntimeError("validated transport publication requires --expected-parent-sha")
+        evidence_repository = repo.resolve() / "catalog" / "security-v2-current"
+        verified = verify_transport_for_publication(
+            evidence_repository,
+            evidence.parent / "candidate.bundle",
+            evidence.parent / "candidate-transport.json",
+            evidence,
+            expected_parent_sha=expected_parent_sha,
+        )
+        index = json.loads((evidence / "index.json").read_text(encoding="utf-8"))
+        if index.get("schema") != SCHEMA:
+            raise RuntimeError(f"unsupported evidence schema: {index.get('schema')!r}")
+        if "sparseEvidenceView" in index:
+            raise RuntimeError("refusing to publish a sparse Evidence worker projection")
+        info = {
+            "schema": index.get("schema"),
+            "evidenceRevision": (index.get("revisions") or {}).get("evidenceRevision", ""),
+            "files": 0,
+            "bytes": int(verified.get("bundleBytes") or 0),
+            "indexSha256": str(verified.get("candidateIndexSha256") or ""),
+            "preflightMode": "validated-git-transport",
+            "changedPaths": int(((verified.get("changedObjectManifest") or {}).get("records") or 0)),
+        }
+    else:
+        info = preflight(evidence)
     if validation_report is not None and snapshot_validation_report is not None:
         raise RuntimeError("choose either --validation-report or --snapshot-validation-report, not both")
     if validation_report is not None:
@@ -176,21 +211,34 @@ def publish(
             publication={"stage": "push", "evidenceRevision": str(info.get("evidenceRevision") or "")},
             message=message,
         )
-    publication = publish_snapshot_tree(
-        evidence.resolve(),
-        repo=repo.resolve(),
-        remote=remote,
-        branch=branch,
-        push=push,
-        author_name="Omega Evidence Publisher",
-        author_email="omega-evidence@users.noreply.github.com",
-        commit_message=message,
-        history_mode=history_mode,
-        excluded_names=EXCLUDED_NAMES,
-        excluded_prefixes=(".staging",),
-        expected_previous_head=expected_parent_sha,
-    )
-    info.update(publication.as_dict())
+    if direct_transport:
+        info.update(
+            publish_verified_transport_tree(
+                repo.resolve() / "catalog" / "security-v2-current",
+                evidence.parent / "candidate-transport.json",
+                remote=remote,
+                branch=branch,
+                expected_parent_sha=str(expected_parent_sha or ""),
+                commit_message=message,
+                push=push,
+            )
+        )
+    else:
+        publication = publish_snapshot_tree(
+            evidence,
+            repo=repo.resolve(),
+            remote=remote,
+            branch=branch,
+            push=push,
+            author_name="Omega Evidence Publisher",
+            author_email="omega-evidence@users.noreply.github.com",
+            commit_message=message,
+            history_mode=history_mode,
+            excluded_names=EXCLUDED_NAMES,
+            excluded_prefixes=(".staging",),
+            expected_previous_head=expected_parent_sha,
+        )
+        info.update(publication.as_dict())
     info.update({"repository": str(repo.resolve()), "remote": remote, "branch": branch})
     if push:
         actions_telemetry.emit_event(
