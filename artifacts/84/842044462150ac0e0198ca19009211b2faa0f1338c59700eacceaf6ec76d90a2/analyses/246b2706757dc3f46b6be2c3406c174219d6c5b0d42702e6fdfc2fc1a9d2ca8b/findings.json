@@ -1,0 +1,100 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriverExt.BufferSwitchCallBack+0x88: callvirt NAudio.Wave.Asio.AsioFillBufferCallback.Invoke",
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindowNative.WndProc+0x59: callvirt WaveCallback.Invoke",
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindowNative.WndProc+0x77: callvirt WaveCallback.Invoke",
+      "il:NAudio.WinForms.dll:NAudio.Wave.WaveWindow.WndProc+0x59: callvirt WaveCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Concentus.dll: s://opus-codec.org/ for more details). This package contains the Opus encoder, decoder, multistream codecs, repacketizer, as well as a port of the libspeexdsp resampler. It does NOT contain code to parse .ogg or .opus container files or to manage RTP packet strea",
+      "artifact:Concentus.dll: s://github.com/lostromb/concentus",
+      "artifact:Concentus.dll: C:\\Code\\concentus\\CSharp\\Concentus\\obj\\Release\\net8.0\\Concentus.pdb",
+      "artifact:MagitekClicker.dll: s://github.com/Yhumi/MagitekClicker.git",
+      "artifact:NAudio.Core.dll: s://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio.Core\\obj\\Release\\netstandard2.0\\NAudio.Core.pdb",
+      "artifact:NAudio.dll: s://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: C:\\Users\\markh\\code\\mygithub\\NAudio\\NAudio\\obj\\Release\\net6.0-windows\\NAudio.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Concentus.dll: DllImportAttribute",
+      "metadata:Concentus.dll: LoadLibrary",
+      "il:Concentus.dll:Concentus.Native.KernelInteropWindows.LoadLibraryExW+0x13: call Concentus.Native.KernelInteropWindows.<LoadLibraryExW>g____PInvoke|8_0 -> kernel32.dll!LoadLibraryExW: LoadLibrary",
+      "il:Concentus.dll:Concentus.Native.NativePlatformUtils.ProbeLibrary+0x3d: call Concentus.Native.KernelInteropWindows.LoadLibraryExW: LoadLibrary",
+      "artifact:Concentus.dll: LoadLibrary",
+      "metadata:NAudio.Asio.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Concentus.dll: System.Diagnostics.Process",
+      "metadata:Concentus.dll: ProcessStartInfo",
+      "metadata:Concentus.dll: ShellExecute",
+      "metadata:Concentus.dll: Process.Start",
+      "il:Concentus.dll:Concentus.Native.KernelInteropLinux.TryGetArchForUnix+0xe: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Concentus.dll:Concentus.Native.KernelInteropLinux.TryGetArchForUnix+0xe: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:Concentus.dll:Concentus.Native.KernelInteropLinux.TryGetArchForUnix+0x19: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:Concentus.dll:Concentus.Native.KernelInteropLinux.TryGetArchForUnix+0x19: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x22: callvirt Microsoft.Win32.RegistryKey.Close: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:MagitekClicker.dll: FileStream",
+      "il:MagitekClicker.dll:MagitekClicker.Classes.OpusWaveStream..ctor+0xb: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:MagitekClicker.dll: FileStream",
+      "metadata:NAudio.Core.dll: FileStream",
+      "il:NAudio.Core.dll:NAudio.SoundFont.SoundFont..ctor+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NAudio.Core.dll:NAudio.Wave.AiffFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+      "il:NAudio.Core.dll:NAudio.Wave.WaveFileWriter..ctor+0x5: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:NAudio.Core.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
