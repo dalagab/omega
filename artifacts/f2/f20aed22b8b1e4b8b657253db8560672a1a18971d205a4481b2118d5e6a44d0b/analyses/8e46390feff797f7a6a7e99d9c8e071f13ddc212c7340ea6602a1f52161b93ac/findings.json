@@ -1,0 +1,67 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:TurboGCD.dll: Dalamud.Hooking",
+      "metadata:TurboGCD.dll: HookFromAddress",
+      "il:TurboGCD.dll:TurboGCD.Turbo_Gamepad.Initialize+0x5d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:TurboGCD.dll:TurboGCD.Turbo_Gamepad.RecheckStuff+0x3a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:TurboGCD.dll:TurboGCD.Turbo_Keyboard.Enable+0x82: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:TurboGCD.dll: Dalamud.Hooking",
+      "artifact:TurboGCD.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:TurboGCD.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:InteropGenerator.Runtime.dll: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0x9: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0xe: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0x24: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.Setup+0x2a: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+      "artifact:InteropGenerator.Runtime.dll: System.Diagnostics.Process",
+      "metadata:TurboGCD.dll: System.Diagnostics.Process",
+      "il:TurboGCD.dll:TurboGCD.Turbo_Keyboard.get_Hwnd+0x7: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:InteropGenerator.Runtime.dll: Directory.CreateDirectory",
+      "metadata:InteropGenerator.Runtime.dll: WriteAllText",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.SaveCache+0x65: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:InteropGenerator.Runtime.dll:InteropGenerator.Runtime.Resolver.SaveCache+0x77: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:InteropGenerator.Runtime.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
