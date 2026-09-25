@@ -1,0 +1,2788 @@
+{
+  "analysis": {
+    "analysisId": "cf63227745ce9f2801f50c2baccb894e7f83322a2b1170c96f66babc5684591d",
+    "artifactSha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+    "path": "artifacts/7f/7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f/analyses/cf63227745ce9f2801f50c2baccb894e7f83322a2b1170c96f66babc5684591d",
+    "recordCount": 6426
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+    "artifact_url": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+    "assembly_version": "0.1.21.0",
+    "automation_capabilities_json": [],
+    "automation_level": "observational",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Download/execute potential",
+      "Endpoint: android.googlesource.com",
+      "Endpoint: github.com",
+      "Endpoint: nsec.rocks",
+      "Endpoint: pmpshare-api.contact-theankh.workers.dev",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution"
+    ],
+    "caution_count": 6,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:PmpShare.Plugin.dll: System.Diagnostics.Process",
+          "metadata:PmpShare.Plugin.dll: ProcessStartInfo",
+          "metadata:PmpShare.Plugin.dll: ShellExecute",
+          "metadata:PmpShare.Plugin.dll: Process.Start",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x2c: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x2c: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x33: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.OpenFolder+0x33: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:PmpShare.Plugin.dll: https://pmpshare-api.contact-theankh.workers.dev/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cd6f7b87da5d",
+        "severity": "caution",
+        "title": "Endpoint: pmpshare-api.contact-theankh.workers.dev"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NSec.Cryptography.dll: https://nsec.rocks/docs/install"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b001354788ad",
+        "severity": "caution",
+        "title": "Endpoint: nsec.rocks"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:runtimes\\android-arm\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project",
+          "artifact:runtimes\\android-arm64\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project",
+          "artifact:runtimes\\android-x64\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project",
+          "artifact:runtimes\\android-x86\\native\\libsodium.so: https://android.googlesource.com/toolchain/llvm-project"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.0575a452af0c",
+        "severity": "caution",
+        "title": "Endpoint: android.googlesource.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:NSec.Cryptography.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:PmpShare.Plugin.dll: s://github.com/papou/pmpshare",
+          "artifact:PmpShare.Plugin.dll: s://pmpshare-api.contact-theankh.workers.dev",
+          "artifact:PmpShare.Plugin.dll: C:\\path\\to\\mod.pmp",
+          "artifact:PmpShare.Plugin.dll: C:\\Users\\you\\Desktop\\PmpShare"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "runtimes\\android-arm\\native\\libsodium.so",
+          "runtimes\\android-arm64\\native\\libsodium.so",
+          "runtimes\\android-x64\\native\\libsodium.so",
+          "runtimes\\android-x86\\native\\libsodium.so",
+          "runtimes\\linux-arm\\native\\libsodium.so",
+          "runtimes\\linux-arm64\\native\\libsodium.so",
+          "runtimes\\linux-musl-arm\\native\\libsodium.so",
+          "runtimes\\linux-musl-arm64\\native\\libsodium.so"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:PmpShare.Plugin.dll: System.Net.Http.HttpClient",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Plugin..ctor+0x11: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:PmpShare.Plugin.dll:<DownloadBlobAsync>d__6.MoveNext+0x47: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:PmpShare.Plugin.dll:<GetMetadataAsync>d__5.MoveNext+0x44: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NSec.Cryptography.dll: https://github.com/ektrah/nsec.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.de48d37f13f7",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:PmpShare.Plugin.dll: https://github.com/papou/pmpshare"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.98959edbe0a0",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:PmpShare.Plugin.dll: FileStream",
+          "metadata:PmpShare.Plugin.dll: File.Delete",
+          "metadata:PmpShare.Plugin.dll: Directory.Delete",
+          "metadata:PmpShare.Plugin.dll: Directory.CreateDirectory",
+          "metadata:PmpShare.Plugin.dll: File.Move",
+          "metadata:PmpShare.Plugin.dll: WriteAllBytes",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.CreatePmpFromDirectory+0x4: newobj System.IO.FileStream..ctor: FileStream",
+          "il:PmpShare.Plugin.dll:PmpShare.Plugin.Windows.MainWindow.TryDelete+0x9: call System.IO.File.Delete: File.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-5d855de4bf285c72",
+      "artifactBytes": 7749251,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.1.21.0",
+        "artifactBytes": 7749251,
+        "artifactSha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+        "catalogAssemblyVersion": "0.1.21.0",
+        "manifestInternalName": "PmpShare.Plugin",
+        "manifestPath": "PmpShare.Plugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1276948985/53525f1b-5287-4b1c-b4d1-ec863753e165?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-24T19%3A24%3A20Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-24T18%3A24%3A13Z&ske=2026-09-24T19%3A24%3A20Z&sks=b&skv=2018-11-09&sig=MIeJ48O5zVTZTERhDcDP7MwH%2B6WoLrVIBFtLMclnngw%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDI3NDY5NywibmJmIjoxNzkwMjc0Mzk3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.k9oiKQb_l9fooaH-Ypwoo4bRAzfASnDbaQ86uSBSFpo&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "android.googlesource.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nsec.rocks",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "pmpshare-api.contact-theankh.workers.dev",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "android.googlesource.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nsec.rocks",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "pmpshare-api.contact-theankh.workers.dev",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 10,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 10,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Download/execute potential",
+        "Endpoint: android.googlesource.com",
+        "Endpoint: github.com",
+        "Endpoint: nsec.rocks",
+        "Endpoint: pmpshare-api.contact-theankh.workers.dev",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 6,
+        "critical": 0,
+        "high": 1,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 64,
+          "exactVersionObservedCount": 27,
+          "families": {
+            "managed-assembly": 25,
+            "native": 37,
+            "nuget": 2
+          },
+          "fingerprint": "ea7b284461d44a2d4a70d6d56890ef94bc341a547c08c0265146a56eae2ca4e8",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 141,
+            "externalOrRuntimeResolved": 24,
+            "platformLibrary": 113
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SystemFunction036",
+              "library": "ADVAPI32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SystemFunction036",
+              "library": "ADVAPI32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SystemFunction036",
+              "library": "ADVAPI32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "calloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "free",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "malloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "calloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "free",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "malloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "calloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "free",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "malloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_cexit",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_configure_narrow_argv",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_errno",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_execute_onexit_table",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initialize_narrow_environment",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initialize_onexit_table",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initterm",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initterm_e",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_seh_filter_dll",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "abort",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_cexit",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_configure_narrow_argv",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 17,
+            "observed": 45,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 47,
+          "binaryOnly": 15,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 17,
+            "observed": 45,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 64
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 4,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "android.googlesource.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "nsec.rocks",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "pmpshare-api.contact-theankh.workers.dev",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "android.googlesource.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://android.googlesource.com/toolchain/llvm-project"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/ektrah/nsec.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/papou/pmpshare"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "nsec.rocks",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://nsec.rocks/docs/install"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "pmpshare-api.contact-theankh.workers.dev",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://pmpshare-api.contact-theankh.workers.dev/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+        "internalName": "PmpShare.Plugin",
+        "manifestVersion": "0.1.21.0",
+        "observationId": 32461,
+        "observationKey": "manifest-f606f1e4af43d4c96181deeadba4",
+        "repositoryUrl": "https://github.com/Ankhito/pmpshare",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 19558
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 15,
+        "fileCount": 23,
+        "uncompressedBytes": 17381772
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-5d855de4bf285c72",
+        "attemptId": "attempt-v2-274cbd8966e99e35",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-d4150812e7974ce4",
+        "definitionsRevision": "defs-v1-5d1e4b31a7269db3",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-19558",
+        "queueSeedRevision": "queue-seed-v2-bfe2e1a77b7ae361f228",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "3c1f62309b31e0378a40e1deaf0075e49383c7f1a4ca82d6d959367fcb7fe423",
+        "scannerRevision": "scanner-v1-3bcd359e4b435111",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-ba2875b3c8799eb4",
+        "targetFingerprint": "artifact-target-v2-8a6d6009d6367ec0d715",
+        "variantId": 19558,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-24T18:26:37Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Ankhito/pmpshare"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Ankhito/pmpshare",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 2,
+    "scanned_at_utc": "2026-09-24T18:26:37Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Ankhito/pmpshare",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 19558
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+      "current_assembly_version": "0.1.21.0",
+      "current_scan_id": 2,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-24T18:26:38Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 19558
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 32,
+      "artifact_only_count": 32,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.2.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:nsec.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NSec.Cryptography",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "26.4.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:pmpshare.plugin",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "PmpShare.Plugin",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.1.21.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression.zipfile",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.numerics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "9.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:advapi32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ADVAPI32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-heap-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-heap-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-runtime-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-runtime-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-string-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-string-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-crt-time-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-crt-time-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "KERNEL32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libsodium",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "runtimes\\win-arm64\\native\\libsodium.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libsodium.dylib",
+          "componentKind": "native",
+          "kinds": [
+            "native-library"
+          ],
+          "name": "runtimes\\osx-arm64\\native\\libsodium.dylib",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:libsodium.so",
+          "componentKind": "native",
+          "kinds": [
+            "native-library"
+          ],
+          "name": "runtimes\\android-arm64\\native\\libsodium.so",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:vcruntime140",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "VCRUNTIME140.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:libsodium",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "libsodium",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.22"
+          ]
+        },
+        {
+          "componentKey": "nuget:nsec.cryptography",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NSec.Cryptography",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "26.4.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-24T18:26:38Z",
+      "comparison_id": 2,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 2,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 19558,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "cb5789adf4584b220194856529b76843aaf3d758d57d361dffc7c84e9cee78f7",
+    "observedAtUtc": "2026-09-25T09:10:22Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "a3686ca42a4612850837db1c1696185596fca35e8a5dbe333bbb38951185d305",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "42208e2e5eb303d62aa34c8d781e63db7ddfa1a75f11357ef6289298d1fa5062",
+        "records": 17,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "69ad57acbfbcf5b278d931b1c4624f126f09f6cfb1a124ab7d2df2c764a27c35",
+        "records": 64,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "6f9bbe5a716b9b060ec5ae7b5ced05e052c096edbd1b9e2743e617ed61fada3b",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "78ea524b5532caf72ece94a9b40b0046ebc5a32c04a8cf5703c52c5c8e6ce21f",
+        "records": 4885,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "ed8f5b5503a58383e4eaf72b68b9a2bd29c55156f41dce65fbe892d96c3ea2d6",
+        "records": 178,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "2ad521d599083c226184fb11cfdfd759100bd1269482d21311000d60b884b841",
+        "records": 922,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "cd5b2123800a7be016928cd4d5ead598bdc64110d48cd1983e0f7b04c2352fcd",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "c3306d66afb8e218e81bb65a7163ae0e8b80976aa270127eb8b70c6ff92cb6d0",
+        "records": 278,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "2badb4f7c4049b84ffeeaeaa273f29e5942929c52ca1718e8054962a83868bdf",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "de6a69dbc103aabb1190ccfb1f014533daa5c215a4f01f48b98792e7f9410663",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "65c6e05f321cb4f9dceac0f1c752eb690e6e998dfdf8e48e0dc5f3cd7dcd8e0f",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "894395cd2c5f06c8f5166f31b5d04d7cbcaecf8cc3baff67277f3a852d37fc66",
+        "records": 34,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-485f4d8e0d182f99e64c2827194a35413d96185804e4bf71d397243f68c6b6ed",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-5d855de4bf285c72",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "PmpShare",
+    "first_seen_utc": "2026-09-17T19:26:53Z",
+    "internal_name": "PmpShare.Plugin",
+    "last_seen_utc": "2026-09-25T02:11:39Z",
+    "plugin_id": 1512
+  },
+  "pluginId": 1512,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Uploads and downloads encrypted .pmp transfers through a private PmpShare Cloudflare Worker API. No plaintext files or decryption keys are sent to the server.\nhttps://raw.githubusercontent.com/Ankhito/AnkhitoPlugins/main/pluginmaster.json",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1129,
+      "summary": "Temporary encrypted .pmp transfer client.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Ankhito/pmpshare",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Ankhito/pmpshare"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# pmpshare",
+      "title": "pmpshare",
+      "url": "https://github.com/Ankhito/pmpshare"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "f0894201aec7421c44b9480604ee4edc1220c1004dca54822fc7b5b3c5906fad",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "1a8fedcc5e9b6a8a8e46a9c75f9590e0c48b2cab299a62385c32456b0740de0a",
+        "records": 10
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "1dcf26da3a24ff00c12ffb85df9f02e6d2a902fd5600a45a78b634dca15db33b",
+        "records": 12
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+    "artifact_url": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+    "assembly_version": "0.1.21.0",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Download/execute potential",
+      "Endpoint: android.googlesource.com",
+      "Endpoint: github.com",
+      "Endpoint: nsec.rocks",
+      "Endpoint: pmpshare-api.contact-theankh.workers.dev",
+      "Filesystem write",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution"
+    ],
+    "caution_count": 6,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "plugin_id": 1512,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-5d855de4bf285c72",
+      "artifactBytes": 7749251,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.1.21.0",
+        "artifactBytes": 7749251,
+        "artifactSha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+        "catalogAssemblyVersion": "0.1.21.0",
+        "manifestInternalName": "PmpShare.Plugin",
+        "manifestPath": "PmpShare.Plugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1276948985/53525f1b-5287-4b1c-b4d1-ec863753e165?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-24T19%3A24%3A20Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-24T18%3A24%3A13Z&ske=2026-09-24T19%3A24%3A20Z&sks=b&skv=2018-11-09&sig=MIeJ48O5zVTZTERhDcDP7MwH%2B6WoLrVIBFtLMclnngw%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDI3NDY5NywibmJmIjoxNzkwMjc0Mzk3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.k9oiKQb_l9fooaH-Ypwoo4bRAzfASnDbaQ86uSBSFpo&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "observational"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "android.googlesource.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nsec.rocks",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "pmpshare-api.contact-theankh.workers.dev",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "android.googlesource.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nsec.rocks",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "pmpshare-api.contact-theankh.workers.dev",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 10,
+          "observedConcreteDestinationCount": 4,
+          "observedDestinationWithoutProfileCount": 4,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 10,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Download/execute potential",
+        "Endpoint: android.googlesource.com",
+        "Endpoint: github.com",
+        "Endpoint: nsec.rocks",
+        "Endpoint: pmpshare-api.contact-theankh.workers.dev",
+        "Filesystem write",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 6,
+        "critical": 0,
+        "high": 1,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 64,
+          "exactVersionObservedCount": 27,
+          "families": {
+            "managed-assembly": 25,
+            "native": 37,
+            "nuget": 2
+          },
+          "fingerprint": "ea7b284461d44a2d4a70d6d56890ef94bc341a547c08c0265146a56eae2ca4e8",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 141,
+            "externalOrRuntimeResolved": 24,
+            "platformLibrary": 113
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SystemFunction036",
+              "library": "ADVAPI32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SystemFunction036",
+              "library": "ADVAPI32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SystemFunction036",
+              "library": "ADVAPI32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "calloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "free",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "malloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "calloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "free",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "malloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "calloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "free",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x86\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "malloc",
+              "library": "api-ms-win-crt-heap-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_cexit",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_configure_narrow_argv",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_errno",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_execute_onexit_table",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initialize_narrow_environment",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initialize_onexit_table",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initterm",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_initterm_e",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_seh_filter_dll",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-arm64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "abort",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_cexit",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "runtimes\\win-x64\\native\\libsodium.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "_configure_narrow_argv",
+              "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+              "managedName": "",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 17,
+            "observed": 45,
+            "required": 2
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 47,
+          "binaryOnly": 15,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 2,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 17,
+            "observed": 45,
+            "optional": 0,
+            "required": 2,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 64
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 4,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "android.googlesource.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "nsec.rocks",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "pmpshare-api.contact-theankh.workers.dev",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "android.googlesource.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://android.googlesource.com/toolchain/llvm-project"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/ektrah/nsec.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/papou/pmpshare"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "nsec.rocks",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://nsec.rocks/docs/install"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "pmpshare-api.contact-theankh.workers.dev",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://pmpshare-api.contact-theankh.workers.dev/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+        "internalName": "PmpShare.Plugin",
+        "manifestVersion": "0.1.21.0",
+        "observationId": 32461,
+        "observationKey": "manifest-f606f1e4af43d4c96181deeadba4",
+        "repositoryUrl": "https://github.com/Ankhito/pmpshare",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 19558
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 15,
+        "fileCount": 23,
+        "uncompressedBytes": 17381772
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-5d855de4bf285c72",
+        "attemptId": "attempt-v2-274cbd8966e99e35",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-d4150812e7974ce4",
+        "definitionsRevision": "defs-v1-5d1e4b31a7269db3",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-19558",
+        "queueSeedRevision": "queue-seed-v2-bfe2e1a77b7ae361f228",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "3c1f62309b31e0378a40e1deaf0075e49383c7f1a4ca82d6d959367fcb7fe423",
+        "scannerRevision": "scanner-v1-3bcd359e4b435111",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-ba2875b3c8799eb4",
+        "targetFingerprint": "artifact-target-v2-8a6d6009d6367ec0d715",
+        "variantId": 19558,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-24T18:26:37Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7fded7d964ed7f4ccd0ff8428c2e0dea191af7e45877dd1f4f93ec55e6d07c4f",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Ankhito/pmpshare"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Ankhito/pmpshare",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 2,
+    "scanned_at_utc": "2026-09-24T18:26:37Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 594,
+    "source_repository": "https://github.com/Ankhito/pmpshare",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 19558
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "40afb3e58bdbc615e0430022e72d250b4c8ea46be21985199181e1e7e67b6042",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"d6e958ed2fb3a5371b9c9893d0b00b42ea22db1dffe532c6d46619a20a899bc0\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-25T02:11:39Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-25T02:11:39Z",
+    "name": "NexusFFXIV/DalamudRepo",
+    "plugin_count": 612,
+    "provider": "NexusFFXIV/DalamudRepo",
+    "source_id": 594,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/gen-repo.json"
+  },
+  "sourceId": 594,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.1.21.0",
+    "author": "Ankhito",
+    "authors_json": [
+      "Ankhito"
+    ],
+    "category_tags_json": [
+      "Utility",
+      "Testing"
+    ],
+    "changelog": "Testing UX cleanup release. Successful receives now acknowledge and remove their inbox request, declined/expired requests are hidden from inbox, and old accepted requests tied to completed/deleted/expired transfers are pruned.",
+    "dalamud_api_level": 15,
+    "description": "Uploads and downloads encrypted .pmp transfers through a private PmpShare Cloudflare Worker API. No plaintext files or decryption keys are sent to the server.\nhttps://raw.githubusercontent.com/Ankhito/AnkhitoPlugins/main/pluginmaster.json",
+    "dip17_channel": "testing-live",
+    "download_count": 1376,
+    "download_link_install": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+    "download_link_testing": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+    "download_link_update": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+    "first_seen_utc": "2026-09-24T08:19:36Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 1,
+    "last_seen_utc": "2026-09-24T08:19:36Z",
+    "last_update": 1782325992,
+    "minimum_dalamud_version": null,
+    "name": "PmpShare",
+    "plugin_id": 1512,
+    "punchline": "Temporary encrypted .pmp transfer client.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.1.21.0",
+      "Author": "Ankhito",
+      "CanUnloadAsync": false,
+      "CategoryTags": [
+        "Utility",
+        "Testing"
+      ],
+      "Changelog": "Testing UX cleanup release. Successful receives now acknowledge and remove their inbox request, declined/expired requests are hidden from inbox, and old accepted requests tied to completed/deleted/expired transfers are pruned.",
+      "DalamudApiLevel": 15,
+      "Description": "Uploads and downloads encrypted .pmp transfers through a private PmpShare Cloudflare Worker API. No plaintext files or decryption keys are sent to the server.\nhttps://raw.githubusercontent.com/Ankhito/AnkhitoPlugins/main/pluginmaster.json",
+      "DownloadCount": 1376,
+      "DownloadLinkInstall": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Ankhito/pmpshare/releases/download/v0.1.21-testing/latest.zip",
+      "InternalName": "PmpShare.Plugin",
+      "IsTestingExclusive": true,
+      "LastUpdate": 1782325992,
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "PmpShare",
+      "Punchline": "Temporary encrypted .pmp transfer client.",
+      "RepoUrl": "https://github.com/Ankhito/pmpshare",
+      "Tags": [
+        "pmp",
+        "transfer",
+        "testing"
+      ],
+      "TestingAssemblyVersion": "0.1.21.0",
+      "TestingDalamudApiLevel": 15,
+      "_Dip17Channel": "testing-live"
+    },
+    "repo_url": "https://github.com/Ankhito/pmpshare",
+    "source_entry_key": "pmpshare.plugin|0.1.21.0|15|15|424",
+    "source_id": 594,
+    "tags_json": [
+      "pmp",
+      "transfer",
+      "testing"
+    ],
+    "testing_assembly_version": "0.1.21.0",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 19558
+  },
+  "variantId": 19558
+}
