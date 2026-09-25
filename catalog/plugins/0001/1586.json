@@ -4,30 +4,30 @@
     "canonical_name": "Sentinel HUD",
     "first_seen_utc": "2026-09-25T08:38:41Z",
     "internal_name": "SentinelHUD",
-    "last_seen_utc": "2026-09-25T13:38:02Z",
+    "last_seen_utc": "2026-09-25T21:40:16Z",
     "plugin_id": 1586
   },
   "presentation": {
-    "description": "Adds independently configurable player, target, focus-target and target-of-target panels, safe native silhouette self highlighting, a true-position ground marker, and optional extended third-person camera zoom without replacing the native HUD.",
+    "description": "Adds independently configurable player, target, focus-target and target-of-target panels, integrated HP/MP/shield/cast bars, Focus Target interactions, health-state colours, conditional awareness markers, native-target exact HP, and optional extended camera zoom.",
     "image_urls_json": "[]",
     "nsfw": 0,
     "official": 0,
     "plugin_id": 1586,
-    "preferred_variant_id": 20446,
-    "presentation_variant_id": 20446,
+    "preferred_variant_id": 21430,
+    "presentation_variant_id": 21430,
     "rich_card": 0,
-    "richness_score": 1357,
-    "summary": "Modular HUD panels, native self awareness, and optional extended camera zoom.",
+    "richness_score": 1368,
+    "summary": "Modular HUD panels, integrated bars, awareness, and camera controls.",
     "web_enriched": 1
   },
   "schema": "omega.catalog-json.plugin.v1",
   "search": {
     "author": "MTitan",
-    "description": "Adds independently configurable player, target, focus-target and target-of-target panels, safe native silhouette self highlighting, a true-position ground marker, and optional extended third-person camera zoom without replacing the native HUD.",
+    "description": "Adds independently configurable player, target, focus-target and target-of-target panels, integrated HP/MP/shield/cast bars, Focus Target interactions, health-state colours, conditional awareness markers, native-target exact HP, and optional extended camera zoom.",
     "internal_name": "SentinelHUD",
     "name": "Sentinel HUD",
     "plugin_id": 1586,
-    "punchline": "Modular HUD panels, native self awareness, and optional extended camera zoom.",
+    "punchline": "Modular HUD panels, integrated bars, awareness, and camera controls.",
     "tags": "accessibility hud overlay sentinel target",
     "website_text": "Modular, configurable Dalamud HUD enhancements for the MarshalTitan Sentinel ecosystem. # Sentinel HUD\n\nSentinel HUD is a modular Dalamud enhancement layer for the normal FFXIV HUD. It provides compact player, target, focus-target and target-of-target panels whose modules and individual fields can be enabled independently. It does not attempt to replace the full native HUD.\n\nCurrent release: **0.2.0.0** · Dalamud API **15** · .NET **10**\n\n## Features\n\n- Player: name, job, role, level, independently selectable HP values, MP, shield and a compact status summary.\n- Target: name, independently selectable HP values, optional distance, job/role, shield, cast name/bar/percentage and statuses.\n- Focus target: name, HP, optional distance, shield and cast information.\n- Target-of-target: an independent small module with name, HP and optional distance.\n- Layout editor: unlock, drag, lock, per-module scale/opacity, one-module reset and complete layout reset.\n- Resolution-safe normalized positions with screen-boundary protection and delayed persistent saves.\n- Native, model-conforming self silhouette with Off, Always, Combat Only and Duty Only modes. It follows the animated model, equipment, weapons, mount and ornament without changing any target state.\n- Independent Player Position Marker: a small terrain-projected world-space dot centred on the local actor's actual origin, with colour, custom colour, radius, opacity and border controls.\n- Optional extended third-person zoom with a configurable 20–100-yalm maximum, automatic restoration, special-camera safeguards and known camera-plugin conflict handling.\n- Compact state diagnostics without frame-by-frame logging.\n\n## Installation\n\nAdd the Sentinel custom repository to Dalamud:\n\n```text\nhttps://raw.githubusercontent.com/MarshalTitan/Sentinel/main/repo.json\n```\n\nInstall **Sentinel HUD** from the plugin installer. No other Sentinel plugin is required.\n\n## Commands\n\n| Command | Result |\n|---|---|\n| `/shud` | Toggle configuration |\n| `/shud lock` | Lock all HUD modules and make them click-through |\n| `/shud unlock` | Show movable editor windows |\n| `/shud reset` | Reset all module positions |\n| `/shud enable` | Enable overlays |\n| `/shud disable` | Remove overlays while keeping configuration available |\n| `/shud status` | Print a compact runtime state |\n| `/shud help` | List commands |\n\n## Configuration\n\nSettings are separated into General, Player, Target, Focus Target, Target-of-Target, Awareness, Camera, Layout and Diagnostics tabs. Each displayed field has its own switch where practical. In particular, target and focus-target distance can be disabled independently.\n\nHP presentation is controlled by independent current, maximum and percentage switches, allowing number-only, percentage-only, current/maximum or combined formats.\n\n## Awareness implementation and safety\n\n### Self Highlight\n\nVersion 0.2.0.0 removes the former projected circle/line/trapezoid prototype from user-facing rendering. `NativeSelfHighlightService` calls the current FFXIVClientStructs `GameObject.Highlight` render function for the local actor. FFXIV applies the outline to the actor's real draw object and propagates it to weapons, mounts and ornaments. The service never reads or writes hard target, soft target, mouseover target, nameplate mouseover, controller target, tab target, interaction target or action target.\n\nThe native renderer exposes a fixed palette. Yellow, Green and Blue are exact. White and Custom remain selectable and persistent, but currently resolve to the closest safe native palette colour; the configuration and diagnostics show the applied colour. Native opacity/intensity is not exposed. Sentinel HUD does not spoof target state or replace the silhouette with primitive geometry to work around these colour limits.\n\n### Player Position Marker\n\nThe marker begins at the local actor's real world origin, casts a short downward collision ray using current FFXIVClientStructs terrain collision, and draws a small world-space disc on the returned surface plane. The projected disc follows camera movement and extended zoom and does not derive its location from the animated model, head, feet, or screen-space bounds. If collision data is temporarily unavailable, it fails safely to the actor origin and reports that fallback in Diagnostics.\n\n### Extended camera zoom\n\nThe camera service was checked against Cammy commit `c9895b2ca7a4d285aa967be46a2963cbaddd7282` (2026-05-04, API 15). Sentinel HUD uses only the narrow current/max-zoom camera fields needed for ordinary third-person zoom; it does not copy Cammy's free-camera, FoV, collision, or camera hooks. The service restores the captured normal maximum when disabled or unloaded, clamps an over-limit current zoom during restoration, and pauses in first person, GPose, cutscenes and territory transitions.\n\nIf Cammy, EasyZoom, EasyZoomReborn, ZoomTilt or PyonCam is loaded, Sentinel HUD does not write camera state. It also detects an unexpected camera-limit writer and pauses instead of continually fighting it.\n\n## Sentinel Core adoption\n\nSentinel HUD is the first substantial Sentinel Core consumer. The repository pins Sentinel Core at commit `bef05184e357474216b26dd2865549d9c8b401a7` as a Git submodule and consumes:\n\n- configuration coordination and delayed/final saves;\n- bounded diagnostics and changed/throttled state gates;\n- safe lifecycle/disposal utilities;\n- dynamic job/role metadata;\n- Dalamud configuration/logging adapters;\n- the shared Sentinel palette and balanced ImGui style scopes;\n- common identity/versioning.\n\nThe selected Core assemblies are packaged inside Sentinel HUD. Users do not install Sentinel Core separately, and Sentinel HUD has no runtime dependency on any other Sentinel plugin.\n\n## Development\n\nRequirements: .NET 10 and current Dalamud API 15 development files.\n\n```powershell\ngit clone --recurse-submodules https://github.com/MarshalTitan/SentinelHUD.git\ncd SentinelHUD\ndotnet restore SentinelHUD.slnx -m:1\ndotnet run --project tests/SentinelHUD.Core.Tests/SentinelHUD.Core.Tests.csproj -c Release\ndotnet build src/SentinelHUD/SentinelHUD.csproj -c Release --no-restore\n```\n\nOn Windows, place the current Dalamud development files under `%AppData%\\XIVLauncher\\addon\\Hooks\\dev`, or set `DALAMUD_HOME` to the directory containing `Dalamud.dll`.\n\n## Architecture\n\nSee [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Live test steps are in [LIVE_TEST_CHECKLIST.md](LIVE_TEST_CHECKLIST.md).\n\n## Screenshots\n\nScreenshots will be added after the first in-game layout and colour pass.\n\n## Known limitations\n\n- FFXIV's native silhouette API has a fixed colour palette. White/Custom use the nearest native colour, and native opacity/intensity is unavailable.\n- Exact arbitrary-colour model silhouettes would require a separate depth/stencil render path that Dalamud does not currently expose as a supported high-level API; this release deliberately does not inject one.\n- The position marker's downward terrain ray can be unavailable during loading or on unusual collision surfaces; the actor origin is used temporarily and Diagnostics reports the fallback.\n- The position disc is world-projected but rendered as a Dalamud overlay without depth-buffer occlusion, so foreground terrain can occasionally cover incorrectly at extreme camera angles.\n- Extended zoom changes an internal camera limit and can require maintenance after FFXIV patches. It defaults off, is isolated behind one service, validates camera state, and restores on disable/disposal.\n- Sentinel HUD intentionally yields camera control when a known camera plugin is loaded; use one zoom controller at a time.\n- Status display is intentionally a compact first-five summary; filtering and prioritization are future work.\n- Some non-character objects do not expose meaningful HP, job, shield, status or cast data; unsupported fields are omitted safely.\n- Live native rendering, terrain collision, camera behavior, controller safety and full restart persistence require in-game testing because automated CI cannot launch FFXIV."
   },
@@ -62,7 +62,7 @@
         }
       ],
       "variant": {
-        "active": 1,
+        "active": 0,
         "applicable_version": "any",
         "assembly_version": "0.2.0.0",
         "author": "MTitan",
@@ -95,6 +95,71 @@
         "testing_assembly_version": "0.2.0.0",
         "testing_dalamud_api_level": 15,
         "variant_id": 20446
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "accessibility",
+          "variant_id": 21430
+        },
+        {
+          "kind": "tag",
+          "tag": "hud",
+          "variant_id": 21430
+        },
+        {
+          "kind": "tag",
+          "tag": "overlay",
+          "variant_id": 21430
+        },
+        {
+          "kind": "tag",
+          "tag": "sentinel",
+          "variant_id": 21430
+        },
+        {
+          "kind": "tag",
+          "tag": "target",
+          "variant_id": 21430
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.5.0.0",
+        "author": "MTitan",
+        "authors_json": "[\"MTitan\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Adds independently configurable player, target, focus-target and target-of-target panels, integrated HP/MP/shield/cast bars, Focus Target interactions, health-state colours, conditional awareness markers, native-target exact HP, and optional extended camera zoom.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/MarshalTitan/SentinelHUD/releases/download/v0.5.0.0/SentinelHUD.zip",
+        "download_link_testing": "https://github.com/MarshalTitan/SentinelHUD/releases/download/v0.5.0.0/SentinelHUD.zip",
+        "download_link_update": "https://github.com/MarshalTitan/SentinelHUD/releases/download/v0.5.0.0/SentinelHUD.zip",
+        "first_seen_utc": "2026-09-25T21:40:16Z",
+        "icon_url": "https://raw.githubusercontent.com/MarshalTitan/SentinelHUD/main/assets/icon.png",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-09-25T21:40:16Z",
+        "last_update": 1790349617,
+        "minimum_dalamud_version": null,
+        "name": "Sentinel HUD",
+        "plugin_id": 1586,
+        "punchline": "Modular HUD panels, integrated bars, awareness, and camera controls.",
+        "raw_manifest_json": "{\"Author\":\"MTitan\",\"Name\":\"Sentinel HUD\",\"Punchline\":\"Modular HUD panels, integrated bars, awareness, and camera controls.\",\"Description\":\"Adds independently configurable player, target, focus-target and target-of-target panels, integrated HP/MP/shield/cast bars, Focus Target interactions, health-state colours, conditional awareness markers, native-target exact HP, and optional extended camera zoom.\",\"InternalName\":\"SentinelHUD\",\"AssemblyVersion\":\"0.5.0.0\",\"TestingAssemblyVersion\":\"0.5.0.0\",\"RepoUrl\":\"https://github.com/MarshalTitan/SentinelHUD\",\"IconUrl\":\"https://raw.githubusercontent.com/MarshalTitan/SentinelHUD/main/assets/icon.png\",\"ApplicableVersion\":\"any\",\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"IsHide\":false,\"IsTestingExclusive\":false,\"DownloadCount\":0,\"LastUpdate\":1790349617,\"LoadPriority\":0,\"DownloadLinkInstall\":\"https://github.com/MarshalTitan/SentinelHUD/releases/download/v0.5.0.0/SentinelHUD.zip\",\"DownloadLinkUpdate\":\"https://github.com/MarshalTitan/SentinelHUD/releases/download/v0.5.0.0/SentinelHUD.zip\",\"DownloadLinkTesting\":\"https://github.com/MarshalTitan/SentinelHUD/releases/download/v0.5.0.0/SentinelHUD.zip\",\"Tags\":[\"hud\",\"overlay\",\"target\",\"accessibility\",\"sentinel\"]}",
+        "repo_url": "https://github.com/MarshalTitan/SentinelHUD",
+        "source_entry_key": "sentinelhud|0.5.0.0|15|15|6",
+        "source_id": 1128,
+        "tags_json": "[\"hud\",\"overlay\",\"target\",\"accessibility\",\"sentinel\"]",
+        "testing_assembly_version": "0.5.0.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 21430
       }
     }
   ]
