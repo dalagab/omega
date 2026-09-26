@@ -181,6 +181,12 @@ class SigmascopeResultMergerTests(unittest.TestCase):
             self.assertEqual("candidate-only-no-evidence-publication", result["authority"])
             self.assertTrue(result["validation"]["ok"])
             self.assertEqual([variant_id], result["successfulVariantIds"])
+            self.assertFalse(result["materializedStateCache"]["authority"])
+            self.assertEqual("github-actions-cache", result["materializedStateCache"]["transport"])
+            self.assertEqual(
+                result["materializedStateCache"],
+                json.loads((merged_candidate / "index.json").read_text(encoding="utf-8"))["materializedStateCache"],
+            )
             merged_variant = json.loads(next((merged_candidate / "variants").rglob(f"{variant_id}.json")).read_text(encoding="utf-8"))
             self.assertEqual(9002, int(merged_variant["current"]["scan_id"]))
             queue = json.loads((merged_candidate / "scanner-queue.json").read_text(encoding="utf-8"))

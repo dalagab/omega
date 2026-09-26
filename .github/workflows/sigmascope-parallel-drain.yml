@@ -550,6 +550,13 @@ jobs:
           path: catalog/security-v2-current
           fetch-depth: 2
           persist-credentials: false
+      - id: parent_materialized_cache
+        name: Restore hash-bound parent materialized state
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: catalog/security-v2-parent-cache.sqlite
+          key: omega-sigmascope-materialized-v1-${{ hashFiles('catalog/security-v2-current/index.json') }}
       - name: Download finalized worker result bundles
         uses: actions/download-artifact@v8
         continue-on-error: true
@@ -630,6 +637,8 @@ jobs:
             --previous-deep-scan-state catalog/deep-scan-current/index.json \
             --deep-scan-output catalog/security-v2-drain-work/deep-scan-state \
             --source-followup-output catalog/security-v2-drain-work/sigmascope-source-followups.json \
+            --parent-work-database catalog/security-v2-parent-cache.sqlite \
+            --materializer-revision "${{ needs.plan.outputs.dev_sha }}" \
             "${bundles[@]}" &
           merge_pid=$!
           (
@@ -666,6 +675,20 @@ jobs:
           python tools/security/evidence_storage_audit.py \
             --root catalog/security-v2-drain-candidate \
             --report catalog/sigmascope-drain-storage-audit.json
+
+      - name: Stage verified materialized state for the next Evidence head
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp catalog/security-v2-drain-work/omega-security-parallel-merge.sqlite \
+            catalog/security-v2-parent-cache.sqlite
+
+      - name: Save candidate materialized state cache
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: catalog/security-v2-parent-cache.sqlite
+          key: omega-sigmascope-materialized-v1-${{ hashFiles('catalog/security-v2-drain-candidate/index.json') }}
 
       - id: next
         name: Plan from merged candidate and decide whether to continue

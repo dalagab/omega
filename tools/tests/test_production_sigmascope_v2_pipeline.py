@@ -38,6 +38,8 @@ from production_sigmascope_v2_pipeline import (
     _restore_last_known_good,
     _semantic_security_revision,
     materialize_current_state,
+    materialize_incremental_state,
+    materialized_state_cache_descriptor,
     run_pipeline,
     synchronize_candidate,
     _write_variant_derived_datasets,
@@ -96,6 +98,138 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual(report, _trusted_parent_validation(root))
             index.write_text('{"schema":"changed"}\n', encoding="utf-8")
             self.assertIsNone(_trusted_parent_validation(root))
+
+    def test_materialized_state_cache_applies_only_changed_variant(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-materialized-cache-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            parent_database = root / "parent-materialized.sqlite"
+            materialize_current_state(database, evidence, parent_database)
+            descriptor = materialized_state_cache_descriptor(
+                parent_database,
+                database,
+                producer_revision="fixture-revision",
+                incremental_depth=0,
+            )
+
+            worker_database = root / "worker.sqlite"
+            shutil.copy2(database, worker_database)
+            with closing(sqlite3.connect(worker_database)) as db:
+                db.row_factory = sqlite3.Row
+                scan = dict(db.execute("SELECT * FROM plugin_security_scans WHERE scan_id=9001").fetchone())
+                scan["scan_id"] = 9002
+                scan["scanned_at_utc"] = "2026-08-26T06:00:00Z"
+                columns = list(scan)
+                db.execute(
+                    f"INSERT INTO plugin_security_scans({','.join(columns)}) VALUES({','.join('?' for _ in columns)})",
+                    tuple(scan[column] for column in columns),
+                )
+                for table in ("plugin_security_findings", "plugin_security_dependencies"):
+                    rows = [dict(row) for row in db.execute(f"SELECT * FROM {table} WHERE scan_id=9001")]
+                    info = db.execute(f'PRAGMA table_info("{table}")').fetchall()
+                    pk = next(str(row[1]) for row in info if int(row[5] or 0) == 1)
+                    for row in rows:
+                        row.pop(pk, None)
+                        row["scan_id"] = 9002
+                        cols = list(row)
+                        db.execute(
+                            f"INSERT INTO {table}({','.join(cols)}) VALUES({','.join('?' for _ in cols)})",
+                            tuple(row[column] for column in cols),
+                        )
+                db.execute(
+                    "UPDATE plugin_security_current SET scan_id=9002,scanned_at_utc='2026-08-26T06:00:00Z' WHERE variant_id=?",
+                    (variant_id,),
+                )
+                db.commit()
+
+            subset = root / "subset"
+            migrate(worker_database, subset, reset=True, variant_ids={variant_id})
+            candidate = root / "candidate"
+            _copy_evidence_tree(evidence, candidate)
+            _merge_successful_subset(candidate, subset)
+
+            incremental = root / "incremental.sqlite"
+            report = materialize_incremental_state(
+                database,
+                candidate,
+                parent_database,
+                incremental,
+                variant_ids={variant_id},
+                parent_descriptor=descriptor,
+                producer_revision="fixture-revision",
+            )
+            self.assertEqual("parent-cache-delta", report["strategy"])
+            self.assertTrue(report["parentCacheAccepted"])
+            self.assertEqual(1, report["incrementalVariantsUpdated"])
+            self.assertEqual(1, report["incrementalDepth"])
+            self.assertEqual("quick_check", report["integrityCheck"])
+
+            fresh = root / "fresh.sqlite"
+            materialize_current_state(database, candidate, fresh)
+            with closing(sqlite3.connect(incremental)) as inc, closing(sqlite3.connect(fresh)) as full:
+                for query in (
+                    "SELECT variant_id,scan_id,status,artifact_sha256,highest_severity FROM plugin_security_current ORDER BY variant_id",
+                    "SELECT rule_id,severity,category,title FROM plugin_security_findings ORDER BY scan_id,finding_id",
+                    "SELECT kind,name,version,resolved_version,requirement FROM plugin_security_dependencies ORDER BY scan_id,dependency_id",
+                ):
+                    self.assertEqual(full.execute(query).fetchall(), inc.execute(query).fetchall())
+
+    def test_materialized_state_cache_mismatch_falls_back_to_full_materialization(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-materialized-cache-fallback-") as td:
+            root = Path(td)
+            database, _variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            parent_database = root / "parent.sqlite"
+            materialize_current_state(database, evidence, parent_database)
+            descriptor = materialized_state_cache_descriptor(
+                parent_database,
+                database,
+                producer_revision="old-revision",
+                incremental_depth=0,
+            )
+            report = materialize_incremental_state(
+                database,
+                evidence,
+                parent_database,
+                root / "work.sqlite",
+                variant_ids=set(),
+                parent_descriptor=descriptor,
+                producer_revision="new-revision",
+            )
+            self.assertEqual("full-evidence", report["strategy"])
+            self.assertFalse(report["parentCacheAccepted"])
+            self.assertEqual("producer-revision-mismatch", report["fallbackReason"])
+            self.assertEqual(0, report["incrementalDepth"])
+
+    def test_materialized_state_cache_forces_periodic_full_integrity_audit(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-materialized-cache-audit-") as td:
+            root = Path(td)
+            database, _variant_id, _ = self.make_catalog_with_security(root)
+            evidence = root / "evidence"
+            migrate(database, evidence, reset=True)
+            parent_database = root / "parent.sqlite"
+            materialize_current_state(database, evidence, parent_database)
+            descriptor = materialized_state_cache_descriptor(
+                parent_database,
+                database,
+                producer_revision="fixture-revision",
+                incremental_depth=8,
+            )
+            report = materialize_incremental_state(
+                database,
+                evidence,
+                parent_database,
+                root / "work.sqlite",
+                variant_ids=set(),
+                parent_descriptor=descriptor,
+                producer_revision="fixture-revision",
+            )
+            self.assertEqual("full-evidence", report["strategy"])
+            self.assertEqual("integrity_check", report["integrityCheck"])
+            self.assertEqual("periodic-full-integrity-audit", report["fallbackReason"])
 
     def test_affected_scope_includes_retired_variant_without_full_tree_sync(self) -> None:
         with tempfile.TemporaryDirectory(prefix="omega-v2-affected-retirement-") as td:

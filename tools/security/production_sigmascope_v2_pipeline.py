@@ -97,6 +97,7 @@ DEFAULT_MAX_BATCH_SECONDS = 4200
 BATCH_PUBLICATION_RESERVE_SECONDS = 300
 MAX_PARENT_BOUND_VALIDATION_DEPTH = 8
 DELTA_MANIFEST_SCHEMA = "omega.security-evidence.delta-manifest.v1"
+MATERIALIZED_STATE_CACHE_SCHEMA = "omega.security-evidence.materialized-state-cache.v1"
 SMALL_ANALYSIS_DATASETS: dict[str, str] = {
     "findings": "plugin_security_findings",
     "dependencies": "plugin_security_dependencies",
@@ -408,6 +409,274 @@ def materialize_current_state(base_database: Path, evidence: Path, work_database
         "databaseBytes": work_database.stat().st_size,
         "artifactSourceContractsRebuilt": identity_contracts,
         "sourceAnalysisCachesRestored": source_analysis_caches_restored,
+        "strategy": "full-evidence",
+        "integrityCheck": "integrity_check",
+    }
+
+
+def _delete_materialized_variant_state(db: sqlite3.Connection, variant_id: int) -> set[int]:
+    """Drop one variant's disposable relational projection before replacing it."""
+    scan_ids = {
+        int(row[0])
+        for row in db.execute(
+            "SELECT scan_id FROM plugin_security_current WHERE variant_id=?",
+            (variant_id,),
+        )
+        if int(row[0] or 0) > 0
+    }
+    tables = [
+        str(row[0])
+        for row in db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'plugin_security_%' ORDER BY name"
+        )
+    ]
+    for table in tables:
+        columns = set(table_columns(db, table))
+        clauses: list[str] = []
+        params: list[Any] = []
+        if "variant_id" in columns:
+            clauses.append('"variant_id"=?')
+            params.append(variant_id)
+        if "source_variant_id" in columns:
+            clauses.append('"source_variant_id"=?')
+            params.append(variant_id)
+        for column in ("scan_id", "current_scan_id", "previous_scan_id"):
+            if column not in columns or not scan_ids:
+                continue
+            placeholders = ",".join("?" for _ in scan_ids)
+            clauses.append(f'"{column}" IN ({placeholders})')
+            params.extend(sorted(scan_ids))
+        if clauses:
+            db.execute(f'DELETE FROM "{table}" WHERE ' + " OR ".join(clauses), tuple(params))
+    return scan_ids
+
+
+def _materialize_changed_variant(
+    db: sqlite3.Connection,
+    evidence: Path,
+    payload: dict[str, Any],
+    variant_id: int,
+    scan_id: int,
+    loaded_datasets: dict[str, int],
+) -> int:
+    scan = transport_security_row(dict(payload.get("scan") or {}))
+    current = transport_security_row(dict(payload.get("current") or {}))
+    if not scan or not current:
+        raise RuntimeError(f"affected Evidence-v2 variant {variant_id} has no scan/current transport")
+    scan["scan_id"] = scan_id
+    scan["variant_id"] = variant_id
+    current["variant_id"] = variant_id
+    current["scan_id"] = scan_id
+    _insert_mapping(db, "plugin_security_scans", scan)
+    _insert_mapping(db, "plugin_security_current", current, replace=True)
+    analysis_path = str((payload.get("analysis") or {}).get("path") or "")
+    if analysis_path and str(current.get("status") or "") == "complete":
+        for dataset, table in SMALL_ANALYSIS_DATASETS.items():
+            rows = read_dataset_rows(evidence, analysis_path, dataset)
+            _insert_child_rows(db, table, scan_id, rows)
+            loaded_datasets[dataset] += len(rows)
+        _repair_materialized_static_conclusion(db, scan_id, variant_id)
+    comparison = (payload.get("derived") or {}).get("sourceArtifactComparison")
+    if isinstance(comparison, dict) and comparison:
+        row = dict(comparison)
+        row["scan_id"] = scan_id
+        row["variant_id"] = variant_id
+        pk = next(
+            (
+                str(info[1])
+                for info in db.execute('PRAGMA table_info("plugin_security_source_artifact_comparisons")')
+                if int(info[5] or 0) == 1
+            ),
+            None,
+        )
+        if pk:
+            row.pop(pk, None)
+        _insert_mapping(db, "plugin_security_source_artifact_comparisons", row)
+    return _restore_source_analysis_cache(db, evidence, payload, scan_id)
+
+
+def _cache_fallback(
+    base_database: Path,
+    evidence: Path,
+    work_database: Path,
+    reason: str,
+) -> dict[str, Any]:
+    report = materialize_current_state(base_database, evidence, work_database, include_evidence=True)
+    report["parentCacheAccepted"] = False
+    report["fallbackReason"] = reason
+    report["incrementalDepth"] = 0
+    return report
+
+
+def materialize_incremental_state(
+    base_database: Path,
+    evidence: Path,
+    parent_database: Path | None,
+    work_database: Path,
+    *,
+    variant_ids: set[int],
+    parent_descriptor: dict[str, Any] | None,
+    producer_revision: str,
+) -> dict[str, Any]:
+    """Reuse a hash-bound parent relational cache and replace only affected variants.
+
+    The cache is never authority. Missing or mismatched cache metadata falls back to a
+    complete Evidence-v2 materialization. Once a cache passes all bindings, failures in
+    applying the delta are fatal rather than silently hiding a regression.
+    """
+    base_database = base_database.resolve()
+    evidence = evidence.resolve()
+    work_database = work_database.resolve()
+    parent_database = parent_database.resolve() if parent_database is not None else None
+    descriptor = dict(parent_descriptor or {})
+    if (
+        str(descriptor.get("schema") or "") != MATERIALIZED_STATE_CACHE_SCHEMA
+        or descriptor.get("authority") is not False
+        or str(descriptor.get("transport") or "") != "github-actions-cache"
+    ):
+        return _cache_fallback(base_database, evidence, work_database, "descriptor-missing-or-unsupported")
+    parent_depth = int(descriptor.get("incrementalDepth") or 0)
+    if parent_depth >= MAX_PARENT_BOUND_VALIDATION_DEPTH:
+        return _cache_fallback(base_database, evidence, work_database, "periodic-full-integrity-audit")
+    if not parent_database or not parent_database.is_file():
+        return _cache_fallback(base_database, evidence, work_database, "cache-file-missing")
+    if str(descriptor.get("producerRevision") or "") != str(producer_revision or ""):
+        return _cache_fallback(base_database, evidence, work_database, "producer-revision-mismatch")
+    if int(descriptor.get("databaseBytes") or -1) != parent_database.stat().st_size:
+        return _cache_fallback(base_database, evidence, work_database, "cache-size-mismatch")
+    if str(descriptor.get("databaseSha256") or "").lower() != sha256_file(parent_database):
+        return _cache_fallback(base_database, evidence, work_database, "cache-sha256-mismatch")
+    if str(descriptor.get("catalogDatabaseSha256") or "").lower() != sha256_file(base_database):
+        return _cache_fallback(base_database, evidence, work_database, "catalog-database-mismatch")
+
+    with closing(sqlite3.connect(parent_database)) as parent_db:
+        quick = parent_db.execute("PRAGMA quick_check").fetchone()
+        if quick is None or str(quick[0]).lower() != "ok":
+            return _cache_fallback(base_database, evidence, work_database, "cache-quick-check-failed")
+        cached_current = int(parent_db.execute("SELECT COUNT(*) FROM plugin_security_current").fetchone()[0])
+    if int(descriptor.get("currentVariants") or -1) != cached_current:
+        return _cache_fallback(base_database, evidence, work_database, "cache-current-count-mismatch")
+
+    work_database.parent.mkdir(parents=True, exist_ok=True)
+    temp = work_database.with_suffix(work_database.suffix + ".tmp")
+    temp.unlink(missing_ok=True)
+    shutil.copy2(parent_database, temp)
+
+    loaded_datasets: dict[str, int] = {name: 0 for name in SMALL_ANALYSIS_DATASETS}
+    source_analysis_caches_restored = 0
+    collisions = 0
+    updated = 0
+    removed = 0
+    affected = sorted({int(value) for value in variant_ids if int(value) > 0})
+    with closing(sqlite3.connect(temp)) as db:
+        db.row_factory = sqlite3.Row
+        sigmascope.ensure_schema(db)
+        active = _active_variant_ids(db)
+        if affected:
+            placeholders = ",".join("?" for _ in affected)
+            used_scan_ids = {
+                int(row[0])
+                for row in db.execute(
+                    f"SELECT scan_id FROM plugin_security_current WHERE variant_id NOT IN ({placeholders})",
+                    tuple(affected),
+                )
+                if int(row[0] or 0) > 0
+            }
+        else:
+            used_scan_ids = {
+                int(row[0])
+                for row in db.execute("SELECT scan_id FROM plugin_security_current")
+                if int(row[0] or 0) > 0
+            }
+        next_scan_id = max(
+            [int(db.execute("SELECT COALESCE(MAX(scan_id),0) FROM plugin_security_scans").fetchone()[0])] + list(used_scan_ids)
+        ) + 1
+
+        for variant_id in affected:
+            _delete_materialized_variant_state(db, variant_id)
+            if variant_id not in active:
+                removed += 1
+                continue
+            variant_path = evidence / "variants" / f"{variant_id // 1000:04d}" / f"{variant_id}.json"
+            if not variant_path.is_file():
+                raise RuntimeError(f"affected Evidence-v2 variant {variant_id} has no candidate descriptor")
+            payload = json.loads(variant_path.read_text(encoding="utf-8"))
+            scan = payload.get("scan") if isinstance(payload.get("scan"), dict) else {}
+            current = payload.get("current") if isinstance(payload.get("current"), dict) else {}
+            transport_scan_id = int(scan.get("scan_id") or current.get("scan_id") or 0)
+            if transport_scan_id <= 0:
+                raise RuntimeError(f"affected Evidence-v2 variant {variant_id} has no transport scan ID")
+            scan_id = transport_scan_id
+            if scan_id in used_scan_ids:
+                while next_scan_id in used_scan_ids:
+                    next_scan_id += 1
+                scan_id = next_scan_id
+                next_scan_id += 1
+                collisions += 1
+            used_scan_ids.add(scan_id)
+            source_analysis_caches_restored += _materialize_changed_variant(
+                db, evidence, payload, variant_id, scan_id, loaded_datasets
+            )
+            updated += 1
+
+        identity_contracts = sigmascope.rebuild_artifact_source_contracts(db)
+        sigmascope.recreate_runtime_view(db)
+        db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_evidence_transport','v2')")
+        db.execute("INSERT OR REPLACE INTO catalog_meta(key,value) VALUES('security_scanner_version',?)", (sigmascope.SCANNER_VERSION,))
+        db.commit()
+        quick = db.execute("PRAGMA quick_check").fetchone()
+        if quick is None or str(quick[0]).lower() != "ok":
+            raise RuntimeError(f"incremental v2 working database failed quick_check: {quick}")
+        current_count = int(db.execute("SELECT COUNT(*) FROM plugin_security_current").fetchone()[0])
+    os.replace(temp, work_database)
+    return {
+        "evidenceInherited": True,
+        "currentVariantsAvailable": current_count,
+        "currentVariantsMaterialized": current_count,
+        "incrementalVariantsUpdated": updated,
+        "incrementalVariantsRemoved": removed,
+        "transportScanIdCollisionsRemapped": collisions,
+        "datasets": loaded_datasets,
+        "databaseBytes": work_database.stat().st_size,
+        "artifactSourceContractsRebuilt": identity_contracts,
+        "sourceAnalysisCachesRestored": source_analysis_caches_restored,
+        "strategy": "parent-cache-delta",
+        "parentCacheAccepted": True,
+        "fallbackReason": "",
+        "integrityCheck": "quick_check",
+        "globalProjectionRefreshDeferred": True,
+        "incrementalDepth": parent_depth + 1,
+    }
+
+
+def materialized_state_cache_descriptor(
+    database: Path,
+    base_database: Path,
+    *,
+    producer_revision: str,
+    incremental_depth: int,
+) -> dict[str, Any]:
+    """Describe an auxiliary Actions cache without making it Evidence authority."""
+    database = database.resolve()
+    base_database = base_database.resolve()
+    with closing(sqlite3.connect(database)) as db:
+        quick = db.execute("PRAGMA quick_check").fetchone()
+        if quick is None or str(quick[0]).lower() != "ok":
+            raise RuntimeError(f"materialized state cache failed quick_check: {quick}")
+        current_variants = int(db.execute("SELECT COUNT(*) FROM plugin_security_current").fetchone()[0])
+        current_scans = int(db.execute("SELECT COUNT(*) FROM plugin_security_current WHERE status='complete'").fetchone()[0])
+    return {
+        "schema": MATERIALIZED_STATE_CACHE_SCHEMA,
+        "authority": False,
+        "transport": "github-actions-cache",
+        "producerRevision": str(producer_revision or ""),
+        "catalogDatabaseSha256": sha256_file(base_database),
+        "databaseSha256": sha256_file(database),
+        "databaseBytes": database.stat().st_size,
+        "currentVariants": current_variants,
+        "currentCompleteScans": current_scans,
+        "incrementalDepth": max(0, int(incremental_depth)),
+        "fullIntegrityAuditEvery": MAX_PARENT_BOUND_VALIDATION_DEPTH,
     }
 
 
