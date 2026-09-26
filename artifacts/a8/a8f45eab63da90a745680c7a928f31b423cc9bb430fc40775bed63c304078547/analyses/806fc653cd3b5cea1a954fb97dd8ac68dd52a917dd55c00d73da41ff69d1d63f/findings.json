@@ -1,0 +1,57 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:RaffleManager.dll: s://github.com/AiriTsukino/RaffleManager.git",
+      "artifact:RaffleManager.dll: s://ko-fi.com/airitsukino"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:RaffleManager.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:RaffleManager.dll: System.Diagnostics.Process",
+      "metadata:RaffleManager.dll: ProcessStartInfo",
+      "metadata:RaffleManager.dll: ShellExecute",
+      "metadata:RaffleManager.dll: Process.Start",
+      "il:RaffleManager.dll:RaffleManager.UI.Components.UiHelpers.OpenSupportLink+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:RaffleManager.dll:RaffleManager.UI.Components.UiHelpers.OpenSupportLink+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:RaffleManager.dll:RaffleManager.UI.Components.UiHelpers.OpenSupportLink+0xb: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:RaffleManager.dll:RaffleManager.UI.Components.UiHelpers.OpenSupportLink+0xb: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:RaffleManager.dll: FileStream",
+      "metadata:RaffleManager.dll: Directory.CreateDirectory",
+      "metadata:RaffleManager.dll: WriteAllText",
+      "il:RaffleManager.dll:RaffleManager.Services.FileDialogService.SafeDirectory+0x2b: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:RaffleManager.dll:RaffleManager.Services.PersistenceService.SaveData+0x68: call System.IO.File.WriteAllText: WriteAllText",
+      "il:RaffleManager.dll:RaffleManager.Services.PersistenceService.ExportProfile+0x26: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:RaffleManager.dll:RaffleManager.Services.PersistenceService.ExportProfile+0x76: call System.IO.File.WriteAllText: WriteAllText",
+      "il:RaffleManager.dll:RaffleManager.Services.PersistenceService.EnsureFolders+0x6: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
