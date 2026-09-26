@@ -550,13 +550,21 @@ jobs:
           path: catalog/security-v2-current
           fetch-depth: 2
           persist-credentials: false
+      - id: parent_materialized_cache_key
+        name: Bind parent materialized-state cache key
+        shell: bash
+        run: |
+          set -euo pipefail
+          index_sha="$(sha256sum catalog/security-v2-current/index.json | awk '{print $1}')"
+          [[ "$index_sha" =~ ^[0-9a-f]{64}$ ]]
+          echo "index_sha=$index_sha" >> "$GITHUB_OUTPUT"
       - id: parent_materialized_cache
         name: Restore hash-bound parent materialized state
         uses: actions/cache/restore@v4
         continue-on-error: true
         with:
           path: catalog/security-v2-parent-cache.sqlite
-          key: omega-sigmascope-materialized-v1-${{ hashFiles('catalog/security-v2-current/index.json') }}
+          key: omega-sigmascope-materialized-v1-${{ steps.parent_materialized_cache_key.outputs.index_sha }}
       - name: Download finalized worker result bundles
         uses: actions/download-artifact@v8
         continue-on-error: true
@@ -683,12 +691,26 @@ jobs:
           cp catalog/security-v2-drain-work/omega-security-parallel-merge.sqlite \
             catalog/security-v2-parent-cache.sqlite
 
+      - id: candidate_materialized_cache_key
+        name: Bind candidate materialized-state cache key
+        shell: bash
+        run: |
+          set -euo pipefail
+          index_sha="$(sha256sum catalog/security-v2-drain-candidate/index.json | awk '{print $1}')"
+          expected_sha="$(jq -er '.candidateIndexSha256' catalog/sigmascope-drain-merge-report.json)"
+          [[ "$index_sha" =~ ^[0-9a-f]{64}$ ]]
+          test "$index_sha" = "$expected_sha" || {
+            echo "::error::Candidate index changed after validated merge: expected=$expected_sha actual=$index_sha"
+            exit 3
+          }
+          echo "index_sha=$index_sha" >> "$GITHUB_OUTPUT"
+
       - name: Save candidate materialized state cache
         uses: actions/cache/save@v4
         continue-on-error: true
         with:
           path: catalog/security-v2-parent-cache.sqlite
-          key: omega-sigmascope-materialized-v1-${{ hashFiles('catalog/security-v2-drain-candidate/index.json') }}
+          key: omega-sigmascope-materialized-v1-${{ steps.candidate_materialized_cache_key.outputs.index_sha }}
 
       - id: next
         name: Plan from merged candidate and decide whether to continue

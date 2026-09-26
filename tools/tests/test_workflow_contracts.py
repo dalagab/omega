@@ -532,6 +532,19 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("publish_catalog_state.py", customer)
         self.assertNotIn("compile_marketplace_snapshot.py", security)
 
+    def test_sigmascope_materialized_cache_keys_are_bound_at_runtime(self) -> None:
+        drain = self.read("sigmascope-parallel-drain.yml")
+        self.assertNotIn("hashFiles('catalog/security-v2-current/index.json')", drain)
+        self.assertNotIn("hashFiles('catalog/security-v2-drain-candidate/index.json')", drain)
+        self.assertIn("id: parent_materialized_cache_key", drain)
+        self.assertIn("sha256sum catalog/security-v2-current/index.json", drain)
+        self.assertIn("steps.parent_materialized_cache_key.outputs.index_sha", drain)
+        self.assertIn("id: candidate_materialized_cache_key", drain)
+        self.assertIn("sha256sum catalog/security-v2-drain-candidate/index.json", drain)
+        self.assertIn("candidateIndexSha256", drain)
+        self.assertIn("steps.candidate_materialized_cache_key.outputs.index_sha", drain)
+        self.assertIn("Candidate index changed after validated merge", drain)
+
     def test_catalog_and_sigmascope_are_mutually_exclusive(self) -> None:
         catalog = self.read("catalog-builder.yml")
         security = self.read("sigmascope.yml")
