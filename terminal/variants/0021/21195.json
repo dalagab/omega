@@ -1,0 +1,1838 @@
+{
+  "analysis": {
+    "analysisId": "7c9365b8ddb72327f616adc75912824a675414e61a9dd24ffe86176ab71b131f",
+    "artifactSha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+    "path": "artifacts/01/01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d/analyses/7c9365b8ddb72327f616adc75912824a675414e61a9dd24ffe86176ab71b131f",
+    "recordCount": 17065
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+    "artifact_url": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+    "assembly_version": "0.10.0.1",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.camera.control",
+        "confidence": "very-high",
+        "evidence": [
+          "il:Vista.Core.dll:Vista.Core.Tracks.Aiming.AimTracker.Carry+0x64: call Vista.Core.Camera.CameraState.set_Up",
+          "il:Vista.Core.dll:Vista.Core.Camera.FlySpeed.Set+0x14: call Vista.Core.Camera.FlySpeed.set_Index",
+          "il:Vista.dll:Vista.Plugin.Game.CameraController.TryInstallHook+0x2b: call Vista.Plugin.Game.CameraController.set_Hooked",
+          "il:Vista.dll:Vista.Plugin.Game.CameraController.TryInstallHook+0x3a: call Vista.Plugin.Game.CameraController.set_Hooked",
+          "il:Vista.dll:Vista.Plugin.Game.CameraController.UpdateDetour+0x1d: call Vista.Plugin.Game.CameraController.set_UpdateCount"
+        ],
+        "indirect": false,
+        "label": "Camera control",
+        "reachable": true,
+        "reason": "References camera-mutating functionality."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Camera control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Vista.dll: System.Diagnostics.Process",
+          "il:Vista.dll:Vista.Plugin.Game.MovementLock..ctor+0x68: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+          "il:Vista.dll:Vista.Plugin.Game.MovementLock..ctor+0x6f: callvirt System.Diagnostics.ProcessModule.get_ModuleMemorySize: System.Diagnostics.Process",
+          "artifact:Vista.dll: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Vista.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Vista.dll: SigScanner",
+          "metadata:Vista.dll: Dalamud.Hooking",
+          "metadata:Vista.dll: HookFromAddress",
+          "il:Vista.dll:Vista.Plugin.Game.CameraController.Install+0x43: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:Vista.dll:Vista.Plugin.Game.InputBlocker.HookBySignature+0x0: call Vista.Plugin.Plugin.get_SigScanner: SigScanner",
+          "il:Vista.dll:Vista.Plugin.Game.InputBlocker.HookBySignature+0x6: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+          "il:Vista.dll:Vista.Plugin.Game.InputBlocker.Install+0x8: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:Vista.dll:Vista.Plugin.Game.MovementLock..ctor+0x6: call Vista.Plugin.Plugin.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Vista.dll: s://github.com/psenxiv/vista"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Vista.Core.dll:Vista.Core.Tracks.Aiming.AimTracker.Carry+0x64: call Vista.Core.Camera.CameraState.set_Up",
+          "il:Vista.Core.dll:Vista.Core.Camera.FlySpeed.Set+0x14: call Vista.Core.Camera.FlySpeed.set_Index",
+          "il:Vista.dll:Vista.Plugin.Game.CameraController.TryInstallHook+0x2b: call Vista.Plugin.Game.CameraController.set_Hooked",
+          "il:Vista.dll:Vista.Plugin.Game.CameraController.TryInstallHook+0x3a: call Vista.Plugin.Game.CameraController.set_Hooked"
+        ],
+        "ruleId": "automation.game.camera.control",
+        "severity": "caution",
+        "title": "Camera control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Vista.Core.dll: Directory.CreateDirectory",
+          "metadata:Vista.Core.dll: File.Move",
+          "metadata:Vista.Core.dll: File.Delete",
+          "metadata:Vista.Core.dll: WriteAllText",
+          "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.Create+0x6: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.Create+0x12: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.RenameScene+0x69: call System.IO.File.Move: File.Move",
+          "il:Vista.Core.dll:Vista.Core.Scenes.SceneFolder.RenameScene+0x72: call System.IO.File.Move: File.Move"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-732003554a27bfd8",
+      "artifactBytes": 289587,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.10.0.1",
+        "artifactBytes": 289587,
+        "artifactSha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+        "catalogAssemblyVersion": "0.10.0.1",
+        "manifestInternalName": "Vista",
+        "manifestPath": "Vista.json",
+        "manifestRepositoryUrl": "https://github.com/psenxiv/vista",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1378383881/09c4642f-a28d-4f94-b045-1b03468848cd?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-25T15%3A05%3A10Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-25T14%3A04%3A20Z&ske=2026-09-25T15%3A05%3A10Z&sks=b&skv=2018-11-09&sig=JZh9umC8ThgscVD58%2BJBwubE3d460THb0y9Xa2gC1k0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDM0NTc3MCwibmJmIjoxNzkwMzQ1NDcwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.5xsVJcYN9A7YbT4v598wcLKheyK3NQtUrGFqDzwTF6A&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.memory.read",
+        "native.interop",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 25,
+          "exactVersionObservedCount": 24,
+          "families": {
+            "managed-assembly": 24,
+            "native": 1
+          },
+          "fingerprint": "4d422aa83349eb4bee827908c162196f840661fd144f4a25654e90342ad59d5d",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 1
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Vista.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetAsyncKeyState",
+              "library": "user32.dll",
+              "managedName": "GetAsyncKeyState",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 23
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 25,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 23,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 25
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/psenxiv/vista"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/psenxiv/vista"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/psenxiv/vista/main/images/icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+        "internalName": "Vista",
+        "manifestVersion": "0.10.0.1",
+        "observationId": 35200,
+        "observationKey": "manifest-865a38f0fd24583d0b0383c4c6c5",
+        "repositoryUrl": "https://github.com/psenxiv/vista",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 21195
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 609472
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-732003554a27bfd8",
+        "attemptId": "attempt-v2-6512c8eb71b83cda",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-bd2eec807a5881c7",
+        "definitionsRevision": "defs-v1-18839d89a6d0b2a4",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-21195",
+        "queueSeedRevision": "queue-seed-v2-3a041feafcd574d01319",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "4f00678c38b93fa1aa039d5ad1ffc0f775eb26f62f934519936ff441add6c68b",
+        "scannerRevision": "scanner-v1-940bc7d7a9b46022",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-7cdd63c9bdb3fb6c",
+        "targetFingerprint": "artifact-target-v2-1add0f966483eb91d7f7",
+        "variantId": 21195,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-25T14:11:10Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/psenxiv/vista"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/psenxiv/vista",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 8,
+    "scanned_at_utc": "2026-09-25T14:11:10Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/psenxiv/vista",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 21195
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+      "current_assembly_version": "0.10.0.1",
+      "current_scan_id": 8,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-25T14:11:12Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 21195
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 20,
+      "artifact_only_count": 20,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.5"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imguizmo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGuizmo",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.56.2.9089"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:vista",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Vista",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.10.0.1"
+          ]
+        },
+        {
+          "componentKey": "assembly:vista.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Vista.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-25T14:11:12Z",
+      "comparison_id": 8,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 8,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 21195,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "5ea4b7c9f797440e16d4b109efe5d127d5531478cf0c7c64d888338d76a8cffa",
+    "observedAtUtc": "2026-09-26T11:14:36Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "a9a1d290af67b683703977919624cc9e444bf05eedbab3950eba5bbc8b72734d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "70813758eff29a60d8f26d2f4419ecc52773e4601309b1416bcda770757c76f3",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "3cc0a19c61d0e5080b8691bdd7e57fc99910155cc908d6d106b6bab467a5f8e7",
+        "records": 25,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "ec8942157101bb8a331adbebbf8c725f986101f2722975be8c8e1ce570c84b6d",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "d44d34f415d0833ad29fe9a39952ab1769a32a350ee1dc2fa97bd9b197f6ccee",
+        "records": 13483,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "50e8b445093dda2bd064fa4cbfe6a30521706804d87ae4bb641a81488134c92e",
+        "records": 1768,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "7214d9d8126c15256f28fd06fa3ee64ac872c2e7900da03b3f1d163fe021b63d",
+        "records": 1720,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "66ca6d8f6b90f0beff32c76fa711ca9cbc27e3634febd6fd7b0ca741071f3bda",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "0c3e72c71ef103dcf1ccda820530ff5cc25babbb45e91bfc6cedb442c766f63c",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "3dfdb7df9ed61bd4b597dd0e442f1e2e5fae31d2cfe29cb2393bba294e621769",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "fa65c8399bdd66d8a02c1f290d1a5f5a1ef41a5180a402511c75d0b6effa6339",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "211ef7eb17639d80ffa4f2493a83df3f7a75ad7610b39ff76a589307e79d4f19",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "ff7b84ccbcb4ccef86461055c801b80fc2cbc942c86a2d257ad1fa70cec24ee9",
+        "records": 34,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-63ad2c35022996eb3fe97ac7b7a8c9e39affd3d937cb5c6bbbab7c504cd8377d",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-732003554a27bfd8",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Vista",
+    "first_seen_utc": "2026-09-23T19:07:46Z",
+    "internal_name": "Vista",
+    "last_seen_utc": "2026-09-26T00:24:13Z",
+    "plugin_id": 1578
+  },
+  "pluginId": 1578,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Create smooth, cinematic camera paths in FFXIV, organise them into scenes, and play them back live.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1083,
+      "summary": "Camera tracks for cinematic shots.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/psenxiv/vista",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/psenxiv/vista"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "<p align=\"center\"><img src=\"images/icon.png\" width=\"96\" alt=\"Vista\"></p>\n\n# Vista\n\nCreate smooth, cinematic camera paths in FFXIV, organise them into scenes, and play them back live.\n\nVista is a [Dalamud](https://github.com/goatcorp/Dalamud) plugin. Open it with `/vista`.\n\n## About this project\n\nVista is a personal project. I had a specific camera tool in mind for myself and a few friends, and I wanted to use it now rather than in a few months. It's open to the community, but it isn't built for the community. If you find it useful, awesome. Just know that there is no long-term roadmap or vision beyond the features I have planned and that friends ask for.\n\nIt's also built with heavy use of AI coding tools. I'm a software engineer, so I've tried to do it sensibly: I design it, review it and test it in game, and every change goes through a written spec and automated tests. If that's not your thing, fair enough, no hard feelings.\n\n## What it does\n\n- **Tracks.** Fly a free camera and drop points to lay out a path. Set each leg's timing, holds and\n  easing, and play the path forwards, in reverse or ping-pong, once or on a loop.\n- **Aim.** A track looks along the aim you recorded, along its path, at a fixed point (Look At), or\n  keeps a character in frame (Watch Target). A one-point track can ride along with a character\n  (Follow Target).\n- **Scenes.** Tracks sit on anchors you can move and turn, so a whole setup can be picked up and\n  placed somewhere else.\n- **Playlist and Live.** Line tracks up in a playlist with repeat counts, then play it live, with the\n  game UI hidden if you want.\n- **Modes.** Off leaves the game alone, View shows your scene over the normal game camera, Edit is\n  where you build it, and Live plays it. Your scene stays put when you change zone.\n\n## Keys\n\nThese work in Edit mode. Space and Ctrl + Space also work in Live, and G in View.\n\n| Key                              | Does                                                              |\n| -------------------------------- | ----------------------------------------------------------------- |\n| W A S D                          | Fly forward, left, back, right                                    |\n| E / Q                            | Fly up / down                                                     |\n| Ctrl + Q / Ctrl + E              | Roll left / right                                                 |\n| Shift                            | Fly faster while held                                             |\n| Space                            | Play / pause                                                      |\n| Ctrl + Space                     | Restart from the beginning                                        |\n| Mouse wheel                      | Change fly speed                                                  |\n| Mouse                            | Look around, as with the game camera                              |\n| Backtick                         | Add a point at the camera, at the end of the track                |\n| Alt + Backtick                   | Add a point after the selected one                                |\n| Ctrl + Backtick                  | Replace the selected point with the camera                        |\n| R                                | Switch the gizmo between move and rotate                          |\n| G                                | Colour the path by how fast the camera turns                      |\n| Alt while dragging an anchor     | Move the anchor alone, leaving its points in place                |\n| Ctrl while dragging a timing key | Move every later key with it, lengthening or shortening the track |\n| Ctrl + click                     | Add to the selection, or remove from it                           |\n| Shift + click                    | Add everything from the last click to this one                    |\n| Delete / Backspace               | Delete the selected points                                        |\n| Ctrl + Z / Ctrl + Y              | Undo / redo                                                       |\n\n## Building\n\nNeeds the .NET 10 SDK and Dalamud's development assemblies.\n\n```sh\nmake build     # Debug build, to load as a dev plugin\nmake test      # Core tests\nmake package   # Release build and latest.zip\n```\n\n## Licence\n\nMIT. See [LICENSE](LICENSE).",
+      "title": "vista",
+      "url": "https://github.com/psenxiv/vista"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "bbb849e1fb22e825cde117e737e235fe239aedbb58c812de476be9211fa68691",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "c31d3d7594a878846c18b8a9d00784c4d5c2438f600c45ce990c75a351a999d9",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "5eda345626d206a1ae16f1363e05f4ab1150d0e13a7b9a97b24cc4127e1bbedf",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "ef3440bf229ff7d8530063853aab7ba6cefe5f695068ca9ef11ca930521c427e",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+    "artifact_url": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+    "assembly_version": "0.10.0.1",
+    "capabilities_json": [
+      "Camera control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 1578,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-732003554a27bfd8",
+      "artifactBytes": 289587,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.10.0.1",
+        "artifactBytes": 289587,
+        "artifactSha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+        "catalogAssemblyVersion": "0.10.0.1",
+        "manifestInternalName": "Vista",
+        "manifestPath": "Vista.json",
+        "manifestRepositoryUrl": "https://github.com/psenxiv/vista",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1378383881/09c4642f-a28d-4f94-b045-1b03468848cd?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-09-25T15%3A05%3A10Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-09-25T14%3A04%3A20Z&ske=2026-09-25T15%3A05%3A10Z&sks=b&skv=2018-11-09&sig=JZh9umC8ThgscVD58%2BJBwubE3d460THb0y9Xa2gC1k0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDM0NTc3MCwibmJmIjoxNzkwMzQ1NDcwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.5xsVJcYN9A7YbT4v598wcLKheyK3NQtUrGFqDzwTF6A&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.memory.read",
+        "native.interop",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 25,
+          "exactVersionObservedCount": 24,
+          "families": {
+            "managed-assembly": 24,
+            "native": 1
+          },
+          "fingerprint": "4d422aa83349eb4bee827908c162196f840661fd144f4a25654e90342ad59d5d",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 1
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Vista.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetAsyncKeyState",
+              "library": "user32.dll",
+              "managedName": "GetAsyncKeyState",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 23
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 25,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 23,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 25
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/psenxiv/vista"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/psenxiv/vista"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/psenxiv/vista/main/images/icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+        "internalName": "Vista",
+        "manifestVersion": "0.10.0.1",
+        "observationId": 35200,
+        "observationKey": "manifest-865a38f0fd24583d0b0383c4c6c5",
+        "repositoryUrl": "https://github.com/psenxiv/vista",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 21195
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 5,
+        "uncompressedBytes": 609472
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-732003554a27bfd8",
+        "attemptId": "attempt-v2-6512c8eb71b83cda",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-bd2eec807a5881c7",
+        "definitionsRevision": "defs-v1-18839d89a6d0b2a4",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-21195",
+        "queueSeedRevision": "queue-seed-v2-3a041feafcd574d01319",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "4f00678c38b93fa1aa039d5ad1ffc0f775eb26f62f934519936ff441add6c68b",
+        "scannerRevision": "scanner-v1-940bc7d7a9b46022",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-7cdd63c9bdb3fb6c",
+        "targetFingerprint": "artifact-target-v2-1add0f966483eb91d7f7",
+        "variantId": 21195,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-09-25T14:11:10Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "01a6ff0213eb9a687b1c413e56865ec2f9a61b5a591f6043e5dccd9f9b427a4d",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/psenxiv/vista"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/psenxiv/vista",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 8,
+    "scanned_at_utc": "2026-09-25T14:11:10Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1310,
+    "source_repository": "https://github.com/psenxiv/vista",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 21195
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "d96a17cf34b467f3d0c57b5389136a2f86e734e29d0c7edb01d4910482cb2852",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"0dde9c4113f30095eefda648e674cd311aa9a073c0591cf1b81174444ab87fc0\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-26T00:24:13Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-26T00:24:13Z",
+    "name": "psenxiv/vista",
+    "plugin_count": 1,
+    "provider": "psenxiv/vista",
+    "source_id": 1310,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/psenxiv/vista/main/repo.json"
+  },
+  "sourceId": 1310,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.10.0.1",
+    "author": "psenxiv",
+    "authors_json": [
+      "psenxiv"
+    ],
+    "category_tags_json": [],
+    "changelog": "- If something goes wrong inside Vista, or a game update breaks part of it, Vista gives the camera back and stops until you reload it, instead of risking a crash.\n- Fixed dragging a key up to the end of its hold sometimes removing the hold.\n- New tracks, copies and tracks placed from a preset no longer share a name with an existing track.\n- Error messages say what failed, such as deleting a scene, instead of always saying it couldn't save.\n- Fixed Direction of travel facing the wrong way for a moment as a shot starts, when its path comes back to where it began within the look ahead.\n- Times show to a hundredth of a second everywhere, and the Follow Target angle to a tenth of a degree, so a number reads the same in every window.\n- When Vista can't do something you asked, it now tells you why.\n- A point recorded with a field of view under 5° or over 120° now plays at 5° or 120°, the range the Point window allows.",
+    "dalamud_api_level": 15,
+    "description": "Create smooth, cinematic camera paths in FFXIV, organise them into scenes, and play them back live.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+    "download_link_testing": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+    "download_link_update": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+    "first_seen_utc": "2026-09-25T08:38:41Z",
+    "icon_url": "https://raw.githubusercontent.com/psenxiv/vista/main/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-25T08:38:41Z",
+    "last_update": 1790316060,
+    "minimum_dalamud_version": null,
+    "name": "Vista",
+    "plugin_id": 1578,
+    "punchline": "Camera tracks for cinematic shots.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": false,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.10.0.1",
+      "Author": "psenxiv",
+      "Changelog": "- If something goes wrong inside Vista, or a game update breaks part of it, Vista gives the camera back and stops until you reload it, instead of risking a crash.\n- Fixed dragging a key up to the end of its hold sometimes removing the hold.\n- New tracks, copies and tracks placed from a preset no longer share a name with an existing track.\n- Error messages say what failed, such as deleting a scene, instead of always saying it couldn't save.\n- Fixed Direction of travel facing the wrong way for a moment as a shot starts, when its path comes back to where it began within the look ahead.\n- Times show to a hundredth of a second everywhere, and the Follow Target angle to a tenth of a degree, so a number reads the same in every window.\n- When Vista can't do something you asked, it now tells you why.\n- A point recorded with a field of view under 5° or over 120° now plays at 5° or 120°, the range the Point window allows.",
+      "DalamudApiLevel": 15,
+      "Description": "Create smooth, cinematic camera paths in FFXIV, organise them into scenes, and play them back live.",
+      "DownloadLinkInstall": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+      "DownloadLinkTesting": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/psenxiv/vista/releases/download/prod-v0.10.0.1/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/psenxiv/vista/main/images/icon.png",
+      "InternalName": "Vista",
+      "IsTestingExclusive": false,
+      "LastUpdate": 1790316060,
+      "Name": "Vista",
+      "Punchline": "Camera tracks for cinematic shots.",
+      "RepoUrl": "https://github.com/psenxiv/vista",
+      "Tags": [
+        "camera",
+        "cinematic",
+        "screenshots",
+        "video",
+        "events"
+      ],
+      "TestingAssemblyVersion": "0.10.0.1",
+      "TestingChangelog": "- If something goes wrong inside Vista, or a game update breaks part of it, Vista gives the camera back and stops until you reload it, instead of risking a crash.\n- Fixed dragging a key up to the end of its hold sometimes removing the hold.\n- New tracks, copies and tracks placed from a preset no longer share a name with an existing track.\n- Error messages say what failed, such as deleting a scene, instead of always saying it couldn't save.\n- Fixed Direction of travel facing the wrong way for a moment as a shot starts, when its path comes back to where it began within the look ahead.\n- Times show to a hundredth of a second everywhere, and the Follow Target angle to a tenth of a degree, so a number reads the same in every window.\n- When Vista can't do something you asked, it now tells you why.\n- A point recorded with a field of view under 5° or over 120° now plays at 5° or 120°, the range the Point window allows.",
+      "TestingDalamudApiLevel": 15
+    },
+    "repo_url": "https://github.com/psenxiv/vista",
+    "source_entry_key": "vista|0.10.0.1|15|15|0",
+    "source_id": 1310,
+    "tags_json": [
+      "camera",
+      "cinematic",
+      "screenshots",
+      "video",
+      "events"
+    ],
+    "testing_assembly_version": "0.10.0.1",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 21195
+  },
+  "variantId": 21195
+}
