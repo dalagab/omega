@@ -47,6 +47,9 @@ from production_sigmascope_v2_pipeline import (
     rebuild_candidate_indexes,
     _copy_evidence_tree,
     _trusted_parent_validation,
+    _affected_candidate_variants,
+    _write_candidate_delta_manifest,
+    _validate_candidate_delta_manifest,
     materialize_srl_reprojection_sidecar,
 )
 from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, verify_file_entry, write_record_dataset
@@ -93,6 +96,65 @@ class ProductionSecurityV2PipelineTests(unittest.TestCase):
             self.assertEqual(report, _trusted_parent_validation(root))
             index.write_text('{"schema":"changed"}\n', encoding="utf-8")
             self.assertIsNone(_trusted_parent_validation(root))
+
+    def test_affected_scope_includes_retired_variant_without_full_tree_sync(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-affected-retirement-") as td:
+            root = Path(td)
+            database, variant_id, _ = self.make_catalog_with_security(root)
+            candidate = root / "candidate"
+            migrate(database, candidate, reset=True)
+            derived = candidate / "derived" / "variants" / f"{variant_id // 1000:04d}" / str(variant_id)
+            self.assertTrue(derived.is_dir())
+            with closing(sqlite3.connect(database)) as db:
+                db.execute("UPDATE plugin_variants SET active=0 WHERE variant_id=?", (variant_id,))
+                db.commit()
+
+            affected, scope = _affected_candidate_variants(candidate, database, set())
+            self.assertIn(variant_id, affected)
+            self.assertEqual(1, scope["retiredVariants"])
+            report = synchronize_candidate(
+                candidate,
+                database,
+                set(),
+                affected_variants=affected,
+            )
+
+            self.assertFalse(report["fullTreeMaintenance"])
+            self.assertTrue(report["garbageCollectionDeferred"])
+            self.assertEqual(1, report["variantsRetired"])
+            self.assertFalse(derived.exists())
+            self.assertTrue(variant_lifecycle.terminal_path(candidate, variant_id).is_file())
+
+    def test_delta_manifest_is_parent_bound_and_detects_tampering(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-delta-manifest-") as td:
+            candidate = Path(td)
+            changed = candidate / "variants" / "0000" / "1.json"
+            changed.parent.mkdir(parents=True)
+            changed.write_text('{"variantId":1}\n', encoding="utf-8")
+            manifest = _write_candidate_delta_manifest(
+                candidate,
+                parent_index_sha256="a" * 64,
+                changed_paths=["variants/0000/1.json"],
+                deleted_paths=["variants/0000/2.json"],
+                generated_paths=["index.json", "validation-report.json"],
+            )
+            self.assertEqual(
+                [],
+                _validate_candidate_delta_manifest(
+                    candidate,
+                    manifest,
+                    parent_index_sha256="a" * 64,
+                ),
+            )
+            self.assertEqual("a" * 64, manifest["parentIndexSha256"])
+            self.assertEqual(1, len(manifest["changed"]))
+            changed.write_text('{"variantId":999}\n', encoding="utf-8")
+            errors = _validate_candidate_delta_manifest(
+                candidate,
+                manifest,
+                parent_index_sha256="a" * 64,
+            )
+            self.assertTrue(any("SHA-256 mismatch" in item for item in errors))
 
     def test_bounded_batch_report_aggregates_multiple_queue_invocations(self) -> None:
         reports = [
