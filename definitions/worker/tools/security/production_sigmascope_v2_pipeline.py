@@ -96,6 +96,7 @@ DEFAULT_RESCAN_HOURS = 168
 DEFAULT_MAX_BATCH_SECONDS = 4200
 BATCH_PUBLICATION_RESERVE_SECONDS = 300
 MAX_PARENT_BOUND_VALIDATION_DEPTH = 8
+DELTA_MANIFEST_SCHEMA = "omega.security-evidence.delta-manifest.v1"
 SMALL_ANALYSIS_DATASETS: dict[str, str] = {
     "findings": "plugin_security_findings",
     "dependencies": "plugin_security_dependencies",
@@ -607,7 +608,266 @@ def _trusted_parent_validation(evidence: Path) -> dict[str, Any] | None:
     return report
 
 
-def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
+def _affected_candidate_variants(
+    candidate: Path,
+    database: Path,
+    successful_variants: set[int],
+) -> tuple[set[int], dict[str, Any]]:
+    """Return the bounded variant set whose candidate projection can change this wave."""
+    published_entries = {
+        int(entry.get("variantId") or 0): dict(entry)
+        for entry in _current_variant_entries(candidate)
+        if int(entry.get("variantId") or 0) > 0
+    }
+    published_ids = set(published_entries)
+    successful = {int(value) for value in successful_variants if int(value) > 0}
+    related_by_artifact: set[int] = set()
+    related_by_dependency: set[int] = set()
+    related_by_component: set[int] = set()
+
+    with closing(sqlite3.connect(database)) as db:
+        db.row_factory = sqlite3.Row
+        active = _active_variant_ids(db)
+        current_ids = {
+            int(row[0])
+            for row in db.execute("SELECT variant_id FROM plugin_security_current")
+            if int(row[0] or 0) > 0
+        }
+        retired = published_ids - active
+        newly_materialized = current_ids - published_ids
+        affected = set(successful) | retired | newly_materialized
+
+        if successful:
+            placeholders = ",".join("?" for _ in successful)
+            params = tuple(sorted(successful))
+            artifact_hashes = {
+                str(row[0] or "").strip().lower()
+                for row in db.execute(
+                    f"""SELECT DISTINCT artifact_sha256
+                          FROM plugin_security_current
+                         WHERE variant_id IN ({placeholders})
+                           AND TRIM(COALESCE(artifact_sha256,''))<>''""",
+                    params,
+                )
+                if str(row[0] or "").strip()
+            }
+            if artifact_hashes:
+                artifact_placeholders = ",".join("?" for _ in artifact_hashes)
+                related_by_artifact = {
+                    int(row[0])
+                    for row in db.execute(
+                        f"""SELECT DISTINCT variant_id
+                              FROM plugin_security_current
+                             WHERE lower(TRIM(COALESCE(artifact_sha256,''))) IN ({artifact_placeholders})""",
+                        tuple(sorted(artifact_hashes)),
+                    )
+                    if int(row[0] or 0) > 0
+                }
+
+            scan_ids = {
+                int(row[0])
+                for row in db.execute(
+                    f"SELECT scan_id FROM plugin_security_current WHERE variant_id IN ({placeholders})",
+                    params,
+                )
+                if int(row[0] or 0) > 0
+            }
+            if scan_ids and table_exists(db, "plugin_security_dependencies"):
+                dependency_columns = set(table_columns(db, "plugin_security_dependencies"))
+                if {"scan_id", "kind", "name"}.issubset(dependency_columns):
+                    scan_placeholders = ",".join("?" for _ in scan_ids)
+                    identities = {
+                        (str(row[0] or ""), str(row[1] or ""))
+                        for row in db.execute(
+                            f"""SELECT DISTINCT lower(TRIM(COALESCE(kind,''))),
+                                                       lower(TRIM(COALESCE(name,'')))
+                                  FROM plugin_security_dependencies
+                                 WHERE scan_id IN ({scan_placeholders})
+                                   AND TRIM(COALESCE(name,''))<>''""",
+                            tuple(sorted(scan_ids)),
+                        )
+                    }
+                    identities.discard(("", ""))
+                    if identities:
+                        db.execute("DROP TABLE IF EXISTS temp.sigmascope_delta_dependency_identity")
+                        db.execute(
+                            """CREATE TEMP TABLE sigmascope_delta_dependency_identity(
+                                   kind TEXT NOT NULL,
+                                   name TEXT NOT NULL,
+                                   PRIMARY KEY(kind,name)
+                               ) WITHOUT ROWID"""
+                        )
+                        db.executemany(
+                            "INSERT OR IGNORE INTO sigmascope_delta_dependency_identity(kind,name) VALUES(?,?)",
+                            sorted(identities),
+                        )
+                        related_by_dependency = {
+                            int(row[0])
+                            for row in db.execute(
+                                """SELECT DISTINCT c.variant_id
+                                     FROM plugin_security_current c
+                                     JOIN plugin_security_dependencies d ON d.scan_id=c.scan_id
+                                     JOIN sigmascope_delta_dependency_identity i
+                                       ON i.kind=lower(TRIM(COALESCE(d.kind,'')))
+                                      AND i.name=lower(TRIM(COALESCE(d.name,'')))"""
+                            )
+                            if int(row[0] or 0) > 0
+                        }
+
+            if scan_ids and table_exists(db, "plugin_security_dependency_resolutions"):
+                resolution_columns = set(table_columns(db, "plugin_security_dependency_resolutions"))
+                if {"scan_id", "component_key"}.issubset(resolution_columns):
+                    scan_placeholders = ",".join("?" for _ in scan_ids)
+                    component_keys = {
+                        str(row[0] or "").strip()
+                        for row in db.execute(
+                            f"""SELECT DISTINCT component_key
+                                  FROM plugin_security_dependency_resolutions
+                                 WHERE scan_id IN ({scan_placeholders})
+                                   AND TRIM(COALESCE(component_key,''))<>''""",
+                            tuple(sorted(scan_ids)),
+                        )
+                        if str(row[0] or "").strip()
+                    }
+                    if component_keys:
+                        db.execute("DROP TABLE IF EXISTS temp.sigmascope_delta_component_identity")
+                        db.execute(
+                            """CREATE TEMP TABLE sigmascope_delta_component_identity(
+                                   component_key TEXT PRIMARY KEY
+                               ) WITHOUT ROWID"""
+                        )
+                        db.executemany(
+                            "INSERT OR IGNORE INTO sigmascope_delta_component_identity(component_key) VALUES(?)",
+                            [(value,) for value in sorted(component_keys)],
+                        )
+                        related_by_component = {
+                            int(row[0])
+                            for row in db.execute(
+                                """SELECT DISTINCT c.variant_id
+                                     FROM plugin_security_current c
+                                     JOIN plugin_security_dependency_resolutions r ON r.scan_id=c.scan_id
+                                     JOIN sigmascope_delta_component_identity i ON i.component_key=r.component_key"""
+                            )
+                            if int(row[0] or 0) > 0
+                        }
+
+        affected.update(related_by_artifact)
+        affected.update(related_by_dependency)
+        affected.update(related_by_component)
+
+    return affected, {
+        "mode": "affected-only",
+        "successfulVariants": len(successful),
+        "retiredVariants": len(retired),
+        "newlyMaterializedVariants": len(newly_materialized),
+        "sharedArtifactVariants": len(related_by_artifact),
+        "sharedDependencyVariants": len(related_by_dependency),
+        "sharedComponentVariants": len(related_by_component),
+        "affectedVariants": len(affected),
+    }
+
+
+def _record_deleted_tree(candidate: Path, path: Path, deleted_paths: set[str]) -> None:
+    if path.is_file():
+        deleted_paths.add(path.relative_to(candidate).as_posix())
+        return
+    if not path.is_dir():
+        return
+    for child in path.rglob("*"):
+        if child.is_file():
+            deleted_paths.add(child.relative_to(candidate).as_posix())
+
+
+def _generated_delta_paths(candidate: Path) -> list[str]:
+    generated = {"index.json", "validation-report.json", "delta-manifest.json"}
+    for root in (candidate / "indexes", candidate / "rule-projections"):
+        if not root.exists():
+            continue
+        generated.update(
+            path.relative_to(candidate).as_posix()
+            for path in root.rglob("*")
+            if path.is_file()
+        )
+    if (candidate / "scanner-queue.json").is_file():
+        generated.add("scanner-queue.json")
+    return sorted(generated)
+
+
+def _write_candidate_delta_manifest(
+    candidate: Path,
+    *,
+    parent_index_sha256: str,
+    changed_paths: Iterable[str],
+    deleted_paths: Iterable[str],
+    generated_paths: Iterable[str],
+) -> dict[str, Any]:
+    changed: list[dict[str, Any]] = []
+    deleted = {safe_relpath(str(path)) for path in deleted_paths}
+    for rel in sorted({safe_relpath(str(path)) for path in changed_paths} - deleted):
+        path = candidate / rel
+        if not path.is_file():
+            raise RuntimeError(f"delta changed path is missing: {rel}")
+        changed.append({
+            "path": rel,
+            "bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
+        })
+    manifest = {
+        "schema": DELTA_MANIFEST_SCHEMA,
+        "parentIndexSha256": str(parent_index_sha256 or "").strip().lower(),
+        "changed": changed,
+        "deleted": sorted(deleted),
+        "generated": sorted({safe_relpath(str(path)) for path in generated_paths}),
+    }
+    write_json(candidate / "delta-manifest.json", manifest)
+    return manifest
+
+
+def _validate_candidate_delta_manifest(
+    candidate: Path,
+    manifest: dict[str, Any],
+    *,
+    parent_index_sha256: str,
+) -> list[str]:
+    errors: list[str] = []
+    if str(manifest.get("schema") or "") != DELTA_MANIFEST_SCHEMA:
+        errors.append("delta manifest schema mismatch")
+    if str(manifest.get("parentIndexSha256") or "").lower() != str(parent_index_sha256 or "").lower():
+        errors.append("delta manifest parent index binding mismatch")
+    seen: set[str] = set()
+    for entry in manifest.get("changed") or []:
+        if not isinstance(entry, dict):
+            errors.append("delta changed entry is malformed")
+            continue
+        try:
+            rel = safe_relpath(str(entry.get("path") or ""))
+        except Exception as exc:
+            errors.append(f"delta changed path is invalid: {type(exc).__name__}: {exc}")
+            continue
+        if rel in seen:
+            errors.append(f"delta changed path is duplicated: {rel}")
+            continue
+        seen.add(rel)
+        path = candidate / rel
+        if not path.is_file():
+            errors.append(f"delta changed path is missing: {rel}")
+            continue
+        if int(entry.get("bytes") or -1) != path.stat().st_size:
+            errors.append(f"delta changed path size mismatch: {rel}")
+        if str(entry.get("sha256") or "").lower() != sha256_file(path):
+            errors.append(f"delta changed path SHA-256 mismatch: {rel}")
+    for value in manifest.get("deleted") or []:
+        try:
+            rel = safe_relpath(str(value))
+        except Exception as exc:
+            errors.append(f"delta deleted path is invalid: {type(exc).__name__}: {exc}")
+            continue
+        if (candidate / rel).exists():
+            errors.append(f"delta deleted path still exists: {rel}")
+    return errors
+
+
+def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, Any]:
     """Merge successful current analyses while retaining the replaced current snapshot.
 
     A variant ID is a catalog identity, not an immutable artifact identity.  When a
@@ -618,6 +878,7 @@ def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
     """
     copied_artifacts = 0
     archived_snapshots = 0
+    changed_paths: set[str] = set()
     for path in (subset / "artifacts").rglob("*") if (subset / "artifacts").exists() else []:
         if not platform_path(path).is_file():
             continue
@@ -627,6 +888,7 @@ def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
         if platform_path(destination).exists() and sha256_file(platform_path(destination)) == sha256_file(platform_path(path)):
             continue
         shutil.copy2(platform_path(path), platform_path(destination))
+        changed_paths.add(rel.as_posix())
         copied_artifacts += 1
     for path in (subset / "variants").rglob("*.json") if (subset / "variants").exists() else []:
         rel = path.relative_to(subset)
@@ -644,9 +906,15 @@ def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
                         previous, replacement=incoming, observed_at_utc=utc_now(),
                     )
                     write_json(history, archived)
+                    changed_paths.add(history.relative_to(candidate).as_posix())
                     archived_snapshots += 1
         shutil.copy2(path, destination)
-    return {"artifactFilesCopied": copied_artifacts, "historicalSnapshotsArchived": archived_snapshots}
+        changed_paths.add(rel.as_posix())
+    return {
+        "artifactFilesCopied": copied_artifacts,
+        "historicalSnapshotsArchived": archived_snapshots,
+        "changedPaths": sorted(changed_paths),
+    }
 
 
 def _identity_maps(db: sqlite3.Connection) -> tuple[dict[int, dict[str, Any]], dict[int, dict[str, Any]], dict[int, dict[str, Any]]]:
@@ -832,7 +1100,13 @@ def _reconcile_source_analysis_cache_descriptor(
     return rebuilt, "repaired" if rows else "quarantined"
 
 
-def synchronize_candidate(candidate: Path, database: Path, successful_variants: set[int]) -> dict[str, Any]:
+def synchronize_candidate(
+    candidate: Path,
+    database: Path,
+    successful_variants: set[int],
+    *,
+    affected_variants: set[int] | None = None,
+) -> dict[str, Any]:
     """Synchronize current identities while retaining terminal Security Evidence v2.
 
     ``variants/`` is strictly the active/current projection consumed by normal queue and
@@ -846,6 +1120,10 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
     source_analysis_cache_descriptors_repaired = 0
     source_analysis_caches_quarantined = 0
     referenced_analyses: set[str] = set()
+    changed_paths: set[str] = set()
+    deleted_paths: set[str] = set()
+    retired_variant_ids: set[int] = set()
+    full_tree_maintenance = affected_variants is None
     catalog_revision = ""
     with closing(sqlite3.connect(database)) as db:
         db.row_factory = sqlite3.Row
@@ -856,7 +1134,30 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             catalog_revision = str(row[0] or "") if row else ""
         presentation = _presentation_by_variant(db, variants)
         current_rows = {int(row["variant_id"]): dict(row) for row in db.execute("SELECT * FROM plugin_security_current")}
-        variant_paths = sorted((candidate / "variants").rglob("*.json")) if (candidate / "variants").exists() else []
+        if full_tree_maintenance:
+            variant_paths = sorted((candidate / "variants").rglob("*.json")) if (candidate / "variants").exists() else []
+        else:
+            indexed = {
+                int(entry.get("variantId") or 0): dict(entry)
+                for entry in _current_variant_entries(candidate)
+                if int(entry.get("variantId") or 0) > 0
+            }
+            target_ids = {int(value) for value in (affected_variants or set()) if int(value) > 0}
+            target_ids.update(set(indexed) - active)
+            selected_paths: set[Path] = set()
+            for variant_id in sorted(target_ids):
+                entry = indexed.get(variant_id) or {}
+                rel = str(entry.get("variantPath") or "")
+                path = (
+                    candidate / safe_relpath(rel)
+                    if rel
+                    else candidate / "variants" / f"{variant_id // 1000:04d}" / f"{variant_id}.json"
+                )
+                if path.is_file():
+                    selected_paths.add(path)
+                elif variant_id in current_rows or variant_id in indexed:
+                    raise RuntimeError(f"affected Evidence-v2 variant {variant_id} has no candidate descriptor")
+            variant_paths = sorted(selected_paths)
         for path in variant_paths:
             try:
                 payload = json.loads(path.read_text(encoding="utf-8"))
@@ -893,11 +1194,15 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                                     observed_at_utc=utc_now(),
                                 ),
                             )
+                            changed_paths.add(history.relative_to(candidate).as_posix())
                 terminal.parent.mkdir(parents=True, exist_ok=True)
                 write_json(terminal, variant_lifecycle.terminal_snapshot(
                     payload, reason=reason, catalog_revision=catalog_revision, observed_at_utc=utc_now(),
                 ))
+                changed_paths.add(terminal.relative_to(candidate).as_posix())
+                deleted_paths.add(path.relative_to(candidate).as_posix())
                 path.unlink(missing_ok=True)
+                retired_variant_ids.add(variant_id)
                 retired_variants += 1
                 continue
 
@@ -959,12 +1264,21 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 )
                 if isinstance(reconciled_source_cache, dict):
                     existing_evidence["sourceAnalysisCache"] = reconciled_source_cache
+                    if reconciliation in {"repaired", "quarantined"}:
+                        for file_info in reconciled_source_cache.get("files") or []:
+                            if isinstance(file_info, dict) and file_info.get("path"):
+                                changed_paths.add(safe_relpath(str(file_info["path"])))
                 if reconciliation == "repaired":
                     source_analysis_cache_descriptors_repaired += 1
                 elif reconciliation == "quarantined":
                     source_analysis_caches_quarantined += 1
                 datasets_to_write.pop("sourceAnalysisCache", None)
             written = _write_variant_derived_datasets(candidate, variant_id, datasets_to_write)
+            for descriptor in written.values():
+                if isinstance(descriptor, dict):
+                    for file_info in descriptor.get("files") or []:
+                        if isinstance(file_info, dict) and file_info.get("path"):
+                            changed_paths.add(safe_relpath(str(file_info["path"])))
             source_cache = written.pop("sourceAnalysisCache", None)
             if isinstance(source_cache, dict):
                 # The descriptor must always describe the bytes just written, including
@@ -975,6 +1289,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 existing_evidence[name] = descriptor
             payload["derivedEvidence"] = existing_evidence
             write_json(path, payload)
+            changed_paths.add(path.relative_to(candidate).as_posix())
             updated_variants += 1
             analysis_path = str((payload.get("analysis") or {}).get("path") or "")
             if analysis_path:
@@ -982,7 +1297,10 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
 
     # Terminal and superseded descriptors retain immutable artifact-analysis
     # references. They intentionally do not retain mutable derivedEvidence paths.
-    for snapshot_root in (candidate / "terminal" / "variants", candidate / "history" / "variants"):
+    for snapshot_root in (
+        (candidate / "terminal" / "variants", candidate / "history" / "variants")
+        if full_tree_maintenance else ()
+    ):
         if not snapshot_root.exists():
             continue
         for path in sorted(snapshot_root.rglob("*.json")):
@@ -996,7 +1314,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
 
     removed_derived = 0
     derived_root = candidate / "derived" / "variants"
-    if derived_root.exists():
+    if derived_root.exists() and full_tree_maintenance:
         live_variant_ids = {
             int(json.loads(path.read_text(encoding="utf-8")).get("variantId") or 0)
             for path in (candidate / "variants").rglob("*.json")
@@ -1011,6 +1329,7 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
             except ValueError:
                 variant_id = 0
             if variant_id not in live_variant_ids:
+                _record_deleted_tree(candidate, directory, deleted_paths)
                 shutil.rmtree(directory, ignore_errors=True)
                 removed_derived += 1
         for directory in sorted([p for p in derived_root.rglob("*") if p.is_dir()], key=lambda p: len(p.parts), reverse=True):
@@ -1018,13 +1337,21 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
                 directory.rmdir()
             except OSError:
                 pass
+    elif derived_root.exists():
+        for variant_id in sorted(retired_variant_ids):
+            directory = derived_root / f"{variant_id // 1000:04d}" / str(variant_id)
+            if directory.exists():
+                _record_deleted_tree(candidate, directory, deleted_paths)
+                shutil.rmtree(directory, ignore_errors=True)
+                removed_derived += 1
 
     removed_analyses = 0
     analyses_root = candidate / "artifacts"
-    if analyses_root.exists():
+    if analyses_root.exists() and full_tree_maintenance:
         for manifest in sorted(analyses_root.glob("*/*/analyses/*/manifest.json")):
             analysis_dir = manifest.parent.relative_to(candidate).as_posix()
             if analysis_dir not in referenced_analyses:
+                _record_deleted_tree(candidate, manifest.parent, deleted_paths)
                 shutil.rmtree(manifest.parent, ignore_errors=True)
                 removed_analyses += 1
         for directory in sorted([p for p in analyses_root.rglob("*") if p.is_dir()], key=lambda p: len(p.parts), reverse=True):
@@ -1041,6 +1368,11 @@ def synchronize_candidate(candidate: Path, database: Path, successful_variants: 
         "derivedVariantDirectoriesGarbageCollected": removed_derived,
         "sourceAnalysisCacheDescriptorsRepaired": source_analysis_cache_descriptors_repaired,
         "sourceAnalysisCachesQuarantined": source_analysis_caches_quarantined,
+        "fullTreeMaintenance": full_tree_maintenance,
+        "garbageCollectionDeferred": not full_tree_maintenance,
+        "affectedVariantIds": sorted(affected_variants or []),
+        "changedPaths": sorted(changed_paths),
+        "deletedPaths": sorted(deleted_paths),
     }
 
 
@@ -1954,10 +2286,51 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     else:
         candidate_clone_method = _copy_evidence_tree(current_evidence, candidate)
     merge_report = _merge_successful_subset(candidate, subset)
+    previous_revisions_for_sync = previous_index.get("revisions") or {}
+    requested_catalog_revision = str(getattr(args, "catalog_revision", "") or "")
+    requested_advisory_revision = str(getattr(args, "advisory_revision", "") or "")
+    full_sync_reason = ""
+    if full_audit:
+        full_sync_reason = "full-audit"
+    elif parent_validation is None:
+        full_sync_reason = "untrusted-parent"
+    elif (
+        requested_catalog_revision
+        and requested_catalog_revision != str(previous_revisions_for_sync.get("catalogRevision") or "")
+    ):
+        full_sync_reason = "catalog-revision-changed"
+    elif (
+        advisory_queue_item is not None
+        or (
+            requested_advisory_revision
+            and requested_advisory_revision != str(previous_revisions_for_sync.get("advisoryRevision") or "")
+        )
+    ):
+        full_sync_reason = "advisory-reprojection"
+
+    if full_sync_reason:
+        affected_variant_ids: set[int] | None = None
+        affected_report = {"mode": "full", "reason": full_sync_reason}
+    else:
+        affected_variant_ids, affected_report = _affected_candidate_variants(
+            candidate, work_database, set(successful)
+        )
+    synchronized = synchronize_candidate(
+        candidate,
+        work_database,
+        set(successful),
+        affected_variants=affected_variant_ids,
+    )
     sync_report = {
         **merge_report,
-        **synchronize_candidate(candidate, work_database, set(successful)),
+        **synchronized,
         "candidateCloneMethod": candidate_clone_method,
+        "scope": affected_report,
+        "changedPaths": sorted(
+            set(merge_report.get("changedPaths") or [])
+            | set(synchronized.get("changedPaths") or [])
+        ),
+        "deletedPaths": sorted(set(synchronized.get("deletedPaths") or [])),
     }
 
     scan_context = {
@@ -2077,6 +2450,37 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "queueRevision": str(queue_doc.get("queueRevision") or ""),
             "output": str(deep_output),
         }
+    delta_manifest = _write_candidate_delta_manifest(
+        candidate,
+        parent_index_sha256=previous_index_sha,
+        changed_paths=sync_report.get("changedPaths") or [],
+        deleted_paths=sync_report.get("deletedPaths") or [],
+        generated_paths=_generated_delta_paths(candidate),
+    )
+    delta_errors = _validate_candidate_delta_manifest(
+        candidate,
+        delta_manifest,
+        parent_index_sha256=previous_index_sha,
+    )
+    if delta_errors:
+        raise RuntimeError("candidate delta manifest failed validation: " + "; ".join(delta_errors))
+    delta_manifest_path = candidate / "delta-manifest.json"
+    delta_entry = file_entry(
+        candidate,
+        delta_manifest_path,
+        records=len(delta_manifest.get("changed") or []),
+        encoding="json",
+    )
+    delta_entry.update({
+        "schema": DELTA_MANIFEST_SCHEMA,
+        "parentIndexSha256": previous_index_sha,
+        "changedPaths": len(delta_manifest.get("changed") or []),
+        "deletedPaths": len(delta_manifest.get("deleted") or []),
+        "generatedPaths": len(delta_manifest.get("generated") or []),
+    })
+    root_index["deltaManifest"] = delta_entry
+    write_json(candidate / "index.json", root_index)
+
     snapshot_validation = validate_snapshot(
         candidate,
         require_no_orphans=True,
@@ -2084,6 +2488,9 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     )
     snapshot_validation["validationStrategy"] = "full-audit" if full_audit else "parent-bound"
     snapshot_validation["parentBoundDepth"] = 0 if full_audit else parent_bound_depth + 1
+    snapshot_validation["deltaManifestSha256"] = sha256_file(delta_manifest_path)
+    snapshot_validation["deltaChangedPaths"] = len(delta_manifest.get("changed") or [])
+    snapshot_validation["deltaDeletedPaths"] = len(delta_manifest.get("deleted") or [])
     write_json(candidate / "validation-report.json", snapshot_validation)
     if not snapshot_validation.get("ok"):
         raise RuntimeError("candidate Security Evidence v2 snapshot failed validation: " + "; ".join(snapshot_validation.get("errors") or []))
@@ -2156,6 +2563,13 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "counts": root_index.get("counts") or {},
             "sync": sync_report,
             "validation": snapshot_validation,
+            "deltaManifest": {
+                "path": "delta-manifest.json",
+                "sha256": sha256_file(delta_manifest_path),
+                "changedPaths": len(delta_manifest.get("changed") or []),
+                "deletedPaths": len(delta_manifest.get("deleted") or []),
+                "generatedPaths": len(delta_manifest.get("generated") or []),
+            },
         },
         "srlReprojection": srl_reprojection,
         "deepScan": deep_scan_state,
