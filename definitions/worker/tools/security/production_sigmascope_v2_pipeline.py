@@ -24,6 +24,7 @@ import os
 from pathlib import Path
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
@@ -94,6 +95,7 @@ DEFAULT_MAX_SCANS = 60
 DEFAULT_RESCAN_HOURS = 168
 DEFAULT_MAX_BATCH_SECONDS = 4200
 BATCH_PUBLICATION_RESERVE_SECONDS = 300
+MAX_PARENT_BOUND_VALIDATION_DEPTH = 8
 SMALL_ANALYSIS_DATASETS: dict[str, str] = {
     "findings": "plugin_security_findings",
     "dependencies": "plugin_security_dependencies",
@@ -546,16 +548,63 @@ def _restore_last_known_good(database: Path, previous: dict[int, dict[str, Any]]
     return successful, failed
 
 
-def _copy_evidence_tree(source: Path, target: Path) -> None:
+def _copy_evidence_tree(source: Path, target: Path) -> str:
+    """Clone the parent with filesystem CoW when the runner supports reflinks."""
     if platform_path(target).exists():
         shutil.rmtree(platform_path(target))
     ignore = shutil.ignore_patterns(".git", ".omega-security-evidence-v2-migration.json", ".staging")
-    shutil.copytree(platform_path(source), platform_path(target), ignore=ignore)
+    source_platform = platform_path(source)
+    target_platform = platform_path(target)
+    clone_method = "copytree"
+    cp = shutil.which("cp")
+    if os.name != "nt" and cp:
+        target_platform.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            [cp, "--reflink=auto", "-a", str(source_platform) + os.sep + ".", str(target_platform)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            clone_method = "reflink"
+        else:
+            shutil.rmtree(target_platform)
+            shutil.copytree(source_platform, target_platform, ignore=ignore)
+    else:
+        shutil.copytree(source_platform, target_platform, ignore=ignore)
+
+    # A reflink clone starts as an exact directory clone, so remove checkout/state
+    # files that copytree historically excluded.
+    shutil.rmtree(target / ".git", ignore_errors=True)
+    shutil.rmtree(target / ".staging", ignore_errors=True)
+    (target / ".omega-security-evidence-v2-migration.json").unlink(missing_ok=True)
     # Sparse Evidence is a worker-input projection only. A full candidate may inherit
     # payload bytes from a formerly damaged head, but it must never inherit the marker
     # that describes that tree as a sparse view.
     (target / ".sigmascope-sparse-evidence.json").unlink(missing_ok=True)
     (target / "validation-report.json").unlink(missing_ok=True)
+    return clone_method
+
+
+def _trusted_parent_validation(evidence: Path) -> dict[str, Any] | None:
+    """Reuse a validation attestation only when it is bound to this exact root index."""
+    report_path = evidence / "validation-report.json"
+    index_path = evidence / "index.json"
+    if not report_path.is_file() or not index_path.is_file():
+        return None
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if (
+        report.get("schema") != SNAPSHOT_VALIDATION_SCHEMA
+        or report.get("ok") is not True
+        or report.get("mode") != "intrinsic"
+        or str(report.get("indexSha256") or "") != sha256_file(index_path)
+    ):
+        return None
+    return report
 
 
 def _merge_successful_subset(candidate: Path, subset: Path) -> dict[str, int]:
@@ -1586,6 +1635,13 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     baseline_security_rebuild = bool(
         queue_identity_epoch and previous_identity_epoch != queue_identity_epoch
     )
+    parent_validation = None if baseline_security_rebuild else _trusted_parent_validation(current_evidence)
+    parent_bound_depth = int((parent_validation or {}).get("parentBoundDepth") or 0)
+    full_audit = bool(
+        baseline_security_rebuild
+        or bool(getattr(args, "full_audit", False))
+        or parent_bound_depth >= MAX_PARENT_BOUND_VALIDATION_DEPTH
+    )
 
     if baseline_security_rebuild:
         initial_validation = {
@@ -1598,6 +1654,9 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "catalogIdentityEpoch": queue_identity_epoch,
             "errors": [],
         }
+    elif parent_validation is not None:
+        initial_validation = dict(parent_validation)
+        initial_validation["reusedTrustedAttestation"] = True
     else:
         initial_validation = validate_snapshot(current_evidence, require_no_orphans=False)
         if not initial_validation.get("ok"):
@@ -1605,6 +1664,7 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 "published Security Evidence v2 baseline failed intrinsic validation: "
                 + "; ".join(initial_validation.get("errors") or [])
             )
+        initial_validation["reusedTrustedAttestation"] = False
 
     work_database = work_dir / "omega-security-v2-working.sqlite"
     materialized = materialize_current_state(
@@ -1890,10 +1950,15 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         if candidate.exists():
             shutil.rmtree(candidate)
         candidate.mkdir(parents=True, exist_ok=True)
+        candidate_clone_method = "empty-baseline"
     else:
-        _copy_evidence_tree(current_evidence, candidate)
+        candidate_clone_method = _copy_evidence_tree(current_evidence, candidate)
     merge_report = _merge_successful_subset(candidate, subset)
-    sync_report = {**merge_report, **synchronize_candidate(candidate, work_database, set(successful))}
+    sync_report = {
+        **merge_report,
+        **synchronize_candidate(candidate, work_database, set(successful)),
+        "candidateCloneMethod": candidate_clone_method,
+    }
 
     scan_context = {
         "previousIndexSha256": previous_index_sha,
@@ -2012,7 +2077,13 @@ def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
             "queueRevision": str(queue_doc.get("queueRevision") or ""),
             "output": str(deep_output),
         }
-    snapshot_validation = validate_snapshot(candidate, require_no_orphans=True)
+    snapshot_validation = validate_snapshot(
+        candidate,
+        require_no_orphans=True,
+        trusted_parent=None if full_audit else current_evidence,
+    )
+    snapshot_validation["validationStrategy"] = "full-audit" if full_audit else "parent-bound"
+    snapshot_validation["parentBoundDepth"] = 0 if full_audit else parent_bound_depth + 1
     write_json(candidate / "validation-report.json", snapshot_validation)
     if not snapshot_validation.get("ok"):
         raise RuntimeError("candidate Security Evidence v2 snapshot failed validation: " + "; ".join(snapshot_validation.get("errors") or []))
@@ -2174,6 +2245,7 @@ def main() -> int:
     parser.add_argument("--max-osv-packages", type=int, default=2000)
     parser.add_argument("--deep-scan-state", type=Path, help="Optional previous deep-scan-state/index.json for durable request deduplication")
     parser.add_argument("--deep-scan-output", type=Path, help="Optional output directory for the deep-scan queue branch snapshot")
+    parser.add_argument("--full-audit", action="store_true", help="Force complete intrinsic Evidence validation instead of parent-bound acceleration")
     parser.add_argument("--github-output", type=Path)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
