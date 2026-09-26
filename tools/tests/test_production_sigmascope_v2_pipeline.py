@@ -45,6 +45,8 @@ from production_sigmascope_v2_pipeline import (
     _build_plugins_artifacts_indexes,
     _merge_scan_reports,
     rebuild_candidate_indexes,
+    _copy_evidence_tree,
+    _trusted_parent_validation,
     materialize_srl_reprojection_sidecar,
 )
 from security_evidence_v2 import canonical_json_bytes, read_record_dataset, sha256_bytes, validate_snapshot, verify_file_entry, write_record_dataset
@@ -52,6 +54,46 @@ from plugin_index_transport import read_plugin_index, write_plugin_index
 
 
 class ProductionSecurityV2PipelineTests(unittest.TestCase):
+    def test_candidate_clone_preserves_payload_and_drops_checkout_state(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-cow-clone-") as td:
+            root = Path(td)
+            parent = root / "parent"
+            candidate = root / "candidate"
+            parent.mkdir()
+            (parent / "variants").mkdir()
+            payload = b"x" * (1024 * 1024)
+            (parent / "variants" / "1.json").write_bytes(payload)
+            (parent / ".git").mkdir()
+            (parent / ".git" / "HEAD").write_text("ref: refs/heads/security-evidence-v2\n", encoding="utf-8")
+            (parent / ".staging").mkdir()
+            (parent / "validation-report.json").write_text("{}", encoding="utf-8")
+            (parent / ".sigmascope-sparse-evidence.json").write_text("{}", encoding="utf-8")
+
+            method = _copy_evidence_tree(parent, candidate)
+
+            self.assertIn(method, {"reflink", "copytree"})
+            self.assertEqual(payload, (candidate / "variants" / "1.json").read_bytes())
+            self.assertFalse((candidate / ".git").exists())
+            self.assertFalse((candidate / ".staging").exists())
+            self.assertFalse((candidate / "validation-report.json").exists())
+            self.assertFalse((candidate / ".sigmascope-sparse-evidence.json").exists())
+
+    def test_trusted_parent_attestation_must_match_index(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="omega-v2-parent-attestation-") as td:
+            root = Path(td)
+            index = root / "index.json"
+            index.write_text('{"schema":"omega.security-evidence.v2"}\n', encoding="utf-8")
+            report = {
+                "schema": "omega.security-evidence.snapshot-validation.v2",
+                "ok": True,
+                "mode": "intrinsic",
+                "indexSha256": hashlib.sha256(index.read_bytes()).hexdigest(),
+            }
+            (root / "validation-report.json").write_text(json.dumps(report), encoding="utf-8")
+            self.assertEqual(report, _trusted_parent_validation(root))
+            index.write_text('{"schema":"changed"}\n', encoding="utf-8")
+            self.assertIsNone(_trusted_parent_validation(root))
+
     def test_bounded_batch_report_aggregates_multiple_queue_invocations(self) -> None:
         reports = [
             {
