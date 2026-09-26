@@ -1,0 +1,91 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:WoLua.dll:VariableVixen.WoLua.Lua.Api.Game.PlayerApi.set_Target+0x19: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:WoLua.dll:VariableVixen.WoLua.Lua.Api.Game.PlayerApi.ClearTarget+0x6: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target",
+      "il:WoLua.dll:VariableVixen.WoLua.Lua.Api.Game.PlayerApi.set_FocusTarget+0x19: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget",
+      "il:WoLua.dll:VariableVixen.WoLua.Lua.Api.Game.PlayerApi.ClearFocusTarget+0x6: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Coroutine.Resume+0x35: callvirt MoonSharp.Interpreter.CallbackFunction.Invoke",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.ScriptExecutionContext.Call+0x2a: callvirt MoonSharp.Interpreter.CallbackFunction.Invoke",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Execution.VM.Processor.Processing_Loop+0x746: callvirt MoonSharp.Interpreter.CallbackFunction.Invoke",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Execution.VM.Processor.PerformMessageDecorationBeforeUnwind+0x4c: callvirt MoonSharp.Interpreter.CallbackFunction.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:MoonSharp.Interpreter.dll: p://www.moonsharp.org",
+      "artifact:MoonSharp.Interpreter.dll: Z:\\git\\my\\moonsharp\\src\\MoonSharp.Interpreter\\_Projects\\MoonSharp.Interpreter.netcore\\bin\\Release\\netstandard1.6\\MoonSharp.Interpreter.pdb",
+      "artifact:MoonSharp.Interpreter.dll: \\\\)(\\d{3}|[^\\d])?"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:WoLua.dll: SigScanner",
+      "metadata:WoLua.dll: Dalamud.Hooking",
+      "metadata:WoLua.dll: HookFromAddress",
+      "il:WoLua.dll:VariableVixen.WoLua.Game.GameFunctionBase`1..ctor+0x1d: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:WoLua.dll:VariableVixen.WoLua.Game.GameFunctionBase`1..ctor+0x4a: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:WoLua.dll:VariableVixen.WoLua.Game.GameFunctionBase`1..ctor+0x2f: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:WoLua.dll:VariableVixen.WoLua.Game.GameFunctionBase`1.Hook+0xd: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:WoLua.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:WoLua.dll: System.Diagnostics.Process",
+      "metadata:WoLua.dll: ProcessStartInfo",
+      "metadata:WoLua.dll: ShellExecute",
+      "metadata:WoLua.dll: Process.Start",
+      "il:WoLua.dll:VariableVixen.WoLua.Ui.MainWindow.Draw+0x283: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:WoLua.dll:VariableVixen.WoLua.Ui.MainWindow.Draw+0x283: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:WoLua.dll:VariableVixen.WoLua.Ui.MainWindow.Draw+0x28a: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:WoLua.dll:VariableVixen.WoLua.Ui.MainWindow.Draw+0x28a: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:MoonSharp.Interpreter.dll: FileStream",
+      "metadata:MoonSharp.Interpreter.dll: File.Delete",
+      "metadata:MoonSharp.Interpreter.dll: File.Move",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Platforms.DotNetCorePlatformAccessor.IO_OpenFile+0x10: newobj System.IO.FileStream..ctor: FileStream",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Platforms.DotNetCorePlatformAccessor.OS_FileDelete+0x1: call System.IO.File.Delete: File.Delete",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Platforms.DotNetCorePlatformAccessor.OS_FileMove+0x2: call System.IO.File.Move: File.Move",
+      "il:MoonSharp.Interpreter.dll:MoonSharp.Interpreter.Loaders.FileSystemScriptLoader.LoadFile+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:MoonSharp.Interpreter.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
