@@ -43,7 +43,8 @@ from production_sigmascope_v2_pipeline import (  # noqa: E402
     _export_nuget_index,
     _merge_successful_subset,
     _sigmascope_args,
-    materialize_current_state,
+    materialize_incremental_state,
+    materialized_state_cache_descriptor,
     materialize_definition_provenance_index,
     materialize_srl_reprojection_sidecar,
     materialize_threat_intelligence_index,
@@ -387,7 +388,8 @@ def _refresh_frozen_advisories(database: Path, work_dir: Path, definitions: Path
 def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bundle_roots: list[Path],
           candidate: Path, work_dir: Path, report: Path, queue_seed: Path | None = None,
           previous_deep_scan_state: Path | None = None, deep_scan_output: Path | None = None,
-          source_followup_output: Path | None = None) -> dict[str, Any]:
+          source_followup_output: Path | None = None, parent_work_database: Path | None = None,
+          materializer_revision: str = "") -> dict[str, Any]:
     current_evidence = current_evidence.resolve(); base_database = base_database.resolve(); definitions = definitions.resolve()
     candidate = candidate.resolve(); work_dir = work_dir.resolve(); report = report.resolve()
     if not bundle_roots or len(bundle_roots) > MAX_BUNDLES:
@@ -454,9 +456,22 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
     _prepare_transport_plugins_index(candidate, docs)
 
     work_database = work_dir / "omega-security-parallel-merge.sqlite"
+    parent_cache_descriptor = (
+        previous_index.get("materializedStateCache")
+        if isinstance(previous_index.get("materializedStateCache"), dict)
+        else {}
+    )
     materialized = _timed(
         "materialize working database",
-        lambda: materialize_current_state(base_database, candidate, work_database, include_evidence=True),
+        lambda: materialize_incremental_state(
+            base_database,
+            candidate,
+            parent_work_database,
+            work_database,
+            variant_ids=successful,
+            parent_descriptor=parent_cache_descriptor,
+            producer_revision=materializer_revision,
+        ),
     )
     osv_coverage = _timed(
         "refresh frozen advisory projection",
@@ -509,6 +524,18 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         root_index.setdefault("source", {})["reputationRevision"] = str(threat_intelligence.get("reputationRevision") or "")
         write_json(candidate / "index.json", root_index)
 
+    materialized_cache = _timed(
+        "bind auxiliary materialized-state cache",
+        lambda: materialized_state_cache_descriptor(
+            work_database,
+            base_database,
+            producer_revision=materializer_revision,
+            incremental_depth=int(materialized.get("incrementalDepth") or 0),
+        ),
+    )
+    root_index["materializedStateCache"] = materialized_cache
+    write_json(candidate / "index.json", root_index)
+
     queue_state, dynamic_source_followups = _merge_queue(
         current_evidence, docs, _current_rows(work_database), queue_seed=queue_seed
     )
@@ -560,6 +587,7 @@ def merge(*, current_evidence: Path, base_database: Path, definitions: Path, bun
         "candidateRevisions": dict(root_index.get("revisions") or {}),
         "queueSummary": scan_queue.state_summary(queue_state),
         "materialized": materialized,
+        "materializedStateCache": materialized_cache,
         "synchronize": {**sync_report, "historicalSnapshotsArchivedByBundleApply": archive_count, "derivedFilesCopiedBeforeMaterialization": copied_derived},
         "osvCoverage": osv_coverage,
         "srlReprojection": {key: value for key, value in srl.items() if key != "validation"},
@@ -597,6 +625,8 @@ def main() -> int:
     parser.add_argument("--previous-deep-scan-state", type=Path)
     parser.add_argument("--deep-scan-output", type=Path)
     parser.add_argument("--source-followup-output", type=Path)
+    parser.add_argument("--parent-work-database", type=Path, help="Optional hash-bound materialized DB cache for the exact parent Evidence head")
+    parser.add_argument("--materializer-revision", default="", help="Exact SigmaScope source revision that produced/consumes the auxiliary DB cache")
     parser.add_argument("bundles", nargs="+", type=Path)
     args = parser.parse_args()
     result = merge(
@@ -604,6 +634,7 @@ def main() -> int:
         bundle_roots=args.bundles, candidate=args.candidate_evidence, work_dir=args.work_dir, report=args.report,
         queue_seed=args.queue_seed, previous_deep_scan_state=args.previous_deep_scan_state,
         deep_scan_output=args.deep_scan_output, source_followup_output=args.source_followup_output,
+        parent_work_database=args.parent_work_database, materializer_revision=args.materializer_revision,
     )
     print(json.dumps({
         "schema": result["schema"], "mergeRevision": result["mergeRevision"],
