@@ -1,0 +1,1895 @@
+{
+  "analysis": {
+    "analysisId": "bb27c96a2ab56cdc945fdef444fe4109ed8d39d7abb75a9cfe3afdd59f003328",
+    "artifactSha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+    "path": "artifacts/ce/ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70/analyses/bb27c96a2ab56cdc945fdef444fe4109ed8d39d7abb75a9cfe3afdd59f003328",
+    "recordCount": 91
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+    "artifact_url": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+    "assembly_version": "1.4.3.345",
+    "automation_capabilities_json": [],
+    "automation_level": "none",
+    "capabilities_json": [
+      "Character action execution",
+      "Endpoint: github.com",
+      "Endpoint: pay.sdo.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 8,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SpeedRadiusPlugin.dll:A.F.A+0x13f: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+          "il:SpeedRadiusPlugin.dll:A.I.A+0x184: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:SpeedRadiusPlugin.dll: System.Diagnostics.Process",
+          "metadata:SpeedRadiusPlugin.dll: ProcessStartInfo",
+          "metadata:SpeedRadiusPlugin.dll: Process.Start",
+          "metadata:SpeedRadiusPlugin.dll: ShellExecute",
+          "il:SpeedRadiusPlugin.dll:A.D.A+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:SpeedRadiusPlugin.dll:A.D.A+0x7: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+          "il:SpeedRadiusPlugin.dll:A.D.A+0xd: callvirt System.Diagnostics.Process.get_StartTime: System.Diagnostics.Process",
+          "il:SpeedRadiusPlugin.dll:A.D.A+0x1: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "metadata:SpeedRadiusPlugin.dll: System.Net.Sockets",
+          "artifact:SpeedRadiusPlugin.dll: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SpeedRadiusPlugin.dll: https://pay.sdo.com/user"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.ba0fb8c056c3",
+        "severity": "caution",
+        "title": "Endpoint: pay.sdo.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:SpeedRadiusPlugin.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:SpeedRadiusPlugin.dll: Dalamud.Hooking",
+          "metadata:SpeedRadiusPlugin.dll: SigScanner",
+          "metadata:SpeedRadiusPlugin.dll: HookFromAddress",
+          "il:SpeedRadiusPlugin.dll:A.u..ctor+0x9b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:SpeedRadiusPlugin.dll:A.u..ctor+0x128: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:SpeedRadiusPlugin.dll:A.u..ctor+0x1b5: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:SpeedRadiusPlugin.dll:a.D.A+0x41: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:SpeedRadiusPlugin.dll:a.D.A+0x87: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:SpeedRadiusPlugin.dll: s://pay.sdo.com/user"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SpeedRadiusPlugin.dll:A.E.A+0x11: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:SpeedRadiusPlugin.dll:A.E.A+0x29: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:SpeedRadiusPlugin.dll:A.E.a+0x77: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:SpeedRadiusPlugin.dll:A.E.a+0x7d: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SpeedRadiusPlugin.dll:A.Q.a+0xb2: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SpeedRadiusPlugin.json: https://github.com/nihil-string/simple-Tool-dist"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.433f0411d7c4",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "evidence": [
+          "artifact:SpeedRadiusPlugin.json: https://raw.githubusercontent.com/nihil-string/simple-Tool-dist/main/icon.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.38b53009b461",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "High",
+        "description": "The artifact references network APIs, but no concrete static HTTP endpoint could be attributed. Destinations may be dynamically constructed, use non-HTTP protocols, or only incidental URL strings were present.",
+        "endpointOrigin": "derived-capability-gap",
+        "evidence": [],
+        "ruleId": "network.endpoint.dynamic-or-undetermined",
+        "severity": "informational",
+        "title": "Network destination undetermined"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:SpeedRadiusPlugin.dll: FileStream",
+          "metadata:SpeedRadiusPlugin.dll: Directory.CreateDirectory",
+          "metadata:SpeedRadiusPlugin.dll: WriteAllText",
+          "metadata:SpeedRadiusPlugin.dll: File.Move",
+          "metadata:SpeedRadiusPlugin.dll: File.Delete",
+          "metadata:SpeedRadiusPlugin.dll: Directory.Delete",
+          "metadata:SpeedRadiusPlugin.dll: WriteAllBytes",
+          "il:SpeedRadiusPlugin.dll:A.D.A+0xe6: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 4,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 136400,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-f635dde82419b48e",
+      "artifactBytes": 427115,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.4.3.345",
+        "artifactBytes": 427115,
+        "artifactSha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+        "catalogAssemblyVersion": "1.4.3.345",
+        "manifestInternalName": "",
+        "manifestPath": "SpeedRadiusPlugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Endpoint: github.com",
+        "Endpoint: pay.sdo.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.character.interact",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.socket",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 8,
+        "critical": 0,
+        "high": 1,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+        "internalName": "SpeedRadiusPlugin",
+        "manifestVersion": "1.4.3.345",
+        "observationId": 31629,
+        "observationKey": "manifest-e8ca6b5f02125e5e481cf7270c5d",
+        "repositoryUrl": "https://github.com/nihil-string/simple-Tool-dist",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 19063
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 930166
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-f635dde82419b48e",
+        "attemptId": "attempt-v2-2a4266263d564796",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ba2f8ebdc2c55e02",
+        "definitionsRevision": "defs-v1-5f02dd01434e5fa5",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-19063",
+        "queueSeedRevision": "queue-seed-v2-ba2d105bb5a58408ce26",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "3c1f62309b31e0378a40e1deaf0075e49383c7f1a4ca82d6d959367fcb7fe423",
+        "scannerRevision": "scanner-v1-3bcd359e4b435111",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-9df7c0407ffd93f6",
+        "targetFingerprint": "source-target-v2-0228279b38206d3b3b03",
+        "variantId": 19063,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-23T20:46:32Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/nihil-string/simple-Tool-dist"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/nihil-string/simple-Tool-dist: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/nihil-string/simple-Tool-dist",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 136403,
+    "scanned_at_utc": "2026-09-23T20:46:32Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/nihil-string/simple-Tool-dist",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 19063
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "revalidation",
+      "current_artifact_sha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+      "current_assembly_version": "1.4.3.345",
+      "current_scan_id": 136403,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-09-23T20:46:32Z",
+      "previous_artifact_sha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+      "previous_assembly_version": "1.4.3.345",
+      "previous_scan_id": 136400,
+      "previous_scanner_version": "2.15.0",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 19063
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 37,
+      "artifact_only_count": 37,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.55.1.9085"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:speedradiusplugin",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "SpeedRadiusPlugin",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.fileversioninfo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.FileVersionInfo",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.memorymappedfiles",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.MemoryMappedFiles",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipes",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipes",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipes.accesscontrol",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipes.AccessControl",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.nameresolution",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.NameResolution",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.ping",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Ping",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.private.corelib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Private.CoreLib",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.accesscontrol",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.AccessControl",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.principal.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Principal.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encodings.web",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encodings.Web",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:iphlpapi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "iphlpapi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-09-23T20:46:32Z",
+      "comparison_id": 10,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 136403,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 19063,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "f2d0a18502d52f519ba97053b39ef8476e8337a9ce627b329a65bf7f65fecd84",
+    "observedAtUtc": "2026-09-29T03:07:48Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "fddeb3ac21675a36832ab1b9865c3c031c9f37c63cc663813bc4fac08428d259",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "0a9d6cde6e40424632d7d4a3a85e6b7e3087e8677d7fb28213fa0c184c8572f1",
+        "records": 37,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "0be6611d1b840ef569bfd08bd6e5f61e27da175ad3cbae174b0150bad3b207a5",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "7a8f0afae4869370b377af16154d9581cce16bfcf3b28f1245e062e357fe34eb",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "7f8919d6cf410e813388b8892b346bfe9cd460e2078c2fcb5cd901f36dc9fc2e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceProvenance": {
+        "backingDataset": "sourceProvenance",
+        "collectionSchema": "omega.sigmascope.observation.source-provenance.v1",
+        "completeness": "retained",
+        "recordDigest": "2773e7e0ee62cefc30d6d6a7409deedcfdfac7065c8f7991046a7b67678909f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "binaryClassifications",
+      "nativeImports",
+      "networkEndpoints",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFiles",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-4e997df3170f2f37588cf26f3c2abe5944d72f8e85b2ff232644628130500389",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-f635dde82419b48e",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "SpeedRadiusPlugin",
+    "first_seen_utc": "2026-09-23T19:07:46Z",
+    "internal_name": "SpeedRadiusPlugin",
+    "last_seen_utc": "2026-09-27T19:33:08Z",
+    "plugin_id": 1577
+  },
+  "pluginId": 1577,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "给宝宝写的移速挂。使用方法：游戏内输入 /sr 打开配置窗口。",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 996,
+      "summary": "给宝宝写的移速挂",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/nihil-string/simple-Tool-dist",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "给宝宝做的插件",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/nihil-string/simple-Tool-dist"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "﻿# simple-Tool-dist",
+      "title": "simple-Tool-dist",
+      "url": "https://github.com/nihil-string/simple-Tool-dist"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0
+      },
+      "behaviorConsistency": {
+        "recordDigest": "449add74ee54d9d9de09dad5908d4e038551355465713d7b8502f49efe0e3186",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "e86a68adf66fcc9946ee744d82c840898a69df680b2b1cebe43da6ff21fa149d",
+        "records": 9
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "bb9c39f1fdd1a12452829a7cf46c9f1015eec77b8a79362544725a14ba7616d1",
+        "records": 13
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+    "artifact_url": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+    "assembly_version": "1.4.3.345",
+    "capabilities_json": [
+      "Character action execution",
+      "Endpoint: github.com",
+      "Endpoint: pay.sdo.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network destination undetermined",
+      "Process execution",
+      "Raw sockets",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 8,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 4,
+    "plugin_id": 1577,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 136400,
+      "artifactAnalysisReused": true,
+      "artifactAnalysisRevision": "artifact-analysis-v3-f635dde82419b48e",
+      "artifactBytes": 427115,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.4.3.345",
+        "artifactBytes": 427115,
+        "artifactSha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+        "catalogAssemblyVersion": "1.4.3.345",
+        "manifestInternalName": "",
+        "manifestPath": "SpeedRadiusPlugin.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [],
+        "level": "none"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [],
+          "observedWithoutProfile": [],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": true,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 0,
+          "observedDestinationWithoutProfileCount": 0,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Endpoint: github.com",
+        "Endpoint: pay.sdo.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network destination undetermined",
+        "Process execution",
+        "Raw sockets",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.character.interact",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.socket",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 8,
+        "critical": 0,
+        "high": 1,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 0,
+          "exactVersionObservedCount": 0,
+          "families": {},
+          "fingerprint": "2b28c5ea261ce56e1957d8e9ecca446d7b2bf7ece7660a22acf3531560832796",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {},
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 0,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 0,
+            "observed": 0,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 0
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 0,
+          "destinationsUndetermined": true,
+          "hostCount": 0,
+          "hosts": [],
+          "literalCount": 0,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": []
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+        "internalName": "SpeedRadiusPlugin",
+        "manifestVersion": "1.4.3.345",
+        "observationId": 31629,
+        "observationKey": "manifest-e8ca6b5f02125e5e481cf7270c5d",
+        "repositoryUrl": "https://github.com/nihil-string/simple-Tool-dist",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 19063
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 930166
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-f635dde82419b48e",
+        "attemptId": "attempt-v2-2a4266263d564796",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ba2f8ebdc2c55e02",
+        "definitionsRevision": "defs-v1-5f02dd01434e5fa5",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "source_followup",
+        "queueKey": "source-variant-19063",
+        "queueSeedRevision": "queue-seed-v2-ba2d105bb5a58408ce26",
+        "reasons": [
+          "source_followup"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "3c1f62309b31e0378a40e1deaf0075e49383c7f1a4ca82d6d959367fcb7fe423",
+        "scannerRevision": "scanner-v1-3bcd359e4b435111",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-9df7c0407ffd93f6",
+        "targetFingerprint": "source-target-v2-0228279b38206d3b3b03",
+        "variantId": 19063,
+        "workType": "source"
+      },
+      "scannedAtUtc": "2026-09-23T20:46:32Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "ce62879aca2c42c5e7591a591aa75b7073b651f1bd2e59ce42cd53e9b6c07d70",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/nihil-string/simple-Tool-dist"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "https://github.com/nihil-string/simple-Tool-dist: HTTP Error 429: too many requests",
+        "provenance": {
+          "identityMatched": false,
+          "schema": "omega.plugin-source-provenance.v1",
+          "versionMatched": false
+        },
+        "repository": "https://github.com/nihil-string/simple-Tool-dist",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "source"
+    },
+    "scan_id": 136403,
+    "scanned_at_utc": "2026-09-23T20:46:32Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1311,
+    "source_repository": "https://github.com/nihil-string/simple-Tool-dist",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 19063
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "101d1a4449a2dbd3a1897e117800735d8da3c4a980279cb89893b4c048640dfc",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"610f6157a89309db4770d868451c3a7444e500792f7a29792f8d9103dcfe589e\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-09-27T19:33:08Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-09-27T19:33:08Z",
+    "name": "nihil-string/simple-Tool-dist",
+    "plugin_count": 1,
+    "provider": "nihil-string/simple-Tool-dist",
+    "source_id": 1311,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/nihil-string/simple-Tool-dist/main/repo.json"
+  },
+  "sourceId": 1311,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.4.3.345",
+    "author": "091",
+    "authors_json": [
+      "091"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "给宝宝写的移速挂。使用方法：游戏内输入 /sr 打开配置窗口。",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+    "download_link_testing": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+    "download_link_update": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+    "first_seen_utc": "2026-09-23T19:07:46Z",
+    "icon_url": "https://raw.githubusercontent.com/nihil-string/simple-Tool-dist/main/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-23T19:07:46Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "SpeedRadiusPlugin",
+    "plugin_id": 1577,
+    "punchline": "给宝宝写的移速挂",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.4.3.345",
+      "Author": "091",
+      "DalamudApiLevel": 15,
+      "Description": "给宝宝写的移速挂。使用方法：游戏内输入 /sr 打开配置窗口。",
+      "DownloadLinkInstall": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+      "DownloadLinkTesting": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+      "DownloadLinkUpdate": "https://github.com/nihil-string/simple-Tool-dist/releases/download/v1.4.3.345/SpeedRadiusPlugin.zip",
+      "IconUrl": "https://raw.githubusercontent.com/nihil-string/simple-Tool-dist/main/icon.png",
+      "InternalName": "SpeedRadiusPlugin",
+      "Name": "SpeedRadiusPlugin",
+      "Punchline": "给宝宝写的移速挂",
+      "RepoUrl": "https://github.com/nihil-string/simple-Tool-dist",
+      "Tags": [
+        "tweak",
+        "utility"
+      ]
+    },
+    "repo_url": "https://github.com/nihil-string/simple-Tool-dist",
+    "source_entry_key": "speedradiusplugin|1.4.3.345|15|0|0",
+    "source_id": 1311,
+    "tags_json": [
+      "tweak",
+      "utility"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 19063
+  },
+  "variantId": 19063
+}
