@@ -1,0 +1,153 @@
+[
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:OtterGui.dll: s://github.com/Ottermandias/OtterGui.git",
+      "artifact:OtterGui.dll: s://www.patreon.com/Ottermandias in your browser.",
+      "artifact:OtterGui.dll: s://ko-fi.com/ottermandias in your browser.",
+      "artifact:OtterGui.dll: s://discord.gg/kVva7DHV4r",
+      "artifact:OtterGui.dll: s://reniguide.info/",
+      "artifact:OtterGui.dll: s://ko-fi.com/ottermandias",
+      "artifact:OtterGui.dll: s://ko-fi.com/ottermandias in external browser",
+      "artifact:OtterGui.dll: s://www.patreon.com/Ottermandias"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:OtterGui.dll: Dalamud.Hooking",
+      "metadata:OtterGui.dll: CreateHook",
+      "metadata:OtterGui.dll: HookFromAddress",
+      "il:OtterGui.dll:OtterGui.Services.HookManager.CreateHook+0x96: ldftn <CreateHook>g__Func|0: CreateHook",
+      "il:OtterGui.dll:OtterGui.Services.HookManager.CreateHook+0x32: ldftn <CreateHook>g__Func|0: CreateHook",
+      "il:OtterGui.dll:<>c.<get_Diagnostics>b__6_0+0x13: callvirt Dalamud.Hooking.IDalamudHook.get_Address: Dalamud.Hooking",
+      "il:OtterGui.dll:<>c__DisplayClass7_0`1.<CreateHook>g__Func|0+0x1e: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:OtterGui.dll:<>c__DisplayClass9_0`1.<TryReplaceHook>g__Func|0+0x28: callvirt Dalamud.Hooking.IDalamudHook.get_IsEnabled: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "A bundled native PE contains a section marked both writable and executable. This is a structural static signal and is not by itself evidence of malicious behavior.",
+    "evidence_json": [
+      "DirectXTexC.dll: .textbss",
+      "DirectXTexC.exe: .textbss"
+    ],
+    "rule_id": "native.pe.writable-executable-section",
+    "severity": "caution",
+    "title": "Writable and executable PE section"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Blake3.dll: DllImportAttribute",
+      "native-pe:DirectXTexC.dll: import VCRUNTIME140D.dll!__vcrt_LoadLibraryExW: LoadLibrary",
+      "native-pe:DirectXTexC.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "artifact:DirectXTexC.dll: LoadLibrary",
+      "artifact:DirectXTexC.dll: GetProcAddress",
+      "native-pe:DirectXTexC.exe: import VCRUNTIME140D.dll!__vcrt_LoadLibraryExW: LoadLibrary",
+      "native-pe:DirectXTexC.exe: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "artifact:DirectXTexC.exe: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "DirectXTexC.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:OtterGui.dll: System.Diagnostics.Process",
+      "metadata:OtterGui.dll: ProcessStartInfo",
+      "metadata:OtterGui.dll: ShellExecute",
+      "metadata:OtterGui.dll: Process.Start",
+      "il:OtterGui.dll:OtterGui.Custom.CustomGui.DrawLinkButton+0x19: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:OtterGui.dll:OtterGui.Custom.CustomGui.DrawLinkButton+0x19: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:OtterGui.dll:OtterGui.Custom.CustomGui.DrawLinkButton+0x20: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:OtterGui.dll:OtterGui.Custom.CustomGui.DrawLinkButton+0x20: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:DirectXTexC.dll: RegOpenKey",
+      "artifact:DirectXTexC.exe: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:OtterGui.dll: FileStream",
+      "metadata:OtterGui.dll: WriteAllBytes",
+      "metadata:OtterGui.dll: Directory.CreateDirectory",
+      "metadata:OtterGui.dll: File.Move",
+      "metadata:OtterGui.dll: File.Delete",
+      "il:OtterGui.dll:OtterGui.Compression.FileCompactor.WriteAllBytes+0x2: call System.IO.File.WriteAllBytes: WriteAllBytes",
+      "il:OtterGui.dll:OtterGui.Compression.Interop.CompactFile+0x1b: callvirt System.IO.FileStream.get_SafeFileHandle: FileStream",
+      "il:OtterGui.dll:OtterGui.Compression.Interop.DecompactFile+0x9: callvirt System.IO.FileStream.get_SafeFileHandle: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "DirectXTexC.dll",
+      "runtimes\\linux-arm\\native\\libblake3_dotnet.so",
+      "runtimes\\linux-arm64\\native\\libblake3_dotnet.so",
+      "runtimes\\linux-x64\\native\\libblake3_dotnet.so",
+      "runtimes\\osx-arm64\\native\\libblake3_dotnet.dylib",
+      "runtimes\\osx-x64\\native\\libblake3_dotnet.dylib",
+      "runtimes\\win-arm64\\native\\blake3_dotnet.dll",
+      "runtimes\\win-x64\\native\\blake3_dotnet.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
