@@ -1,0 +1,541 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:ECommons.dll: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+      "artifact:ECommons.dll: VirtualProtectEx"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+      "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
+      "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
+      "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:ECommons.dll: AssemblyLoadContext",
+      "metadata:ECommons.dll: Assembly.Load",
+      "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "artifact:ECommons.dll: AssemblyLoadContext",
+      "metadata:System.CodeDom.dll: Assembly.Load",
+      "metadata:System.CodeDom.dll: Assembly.LoadFile",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.CompilerResults.get_CompiledAssembly+0x1d: call System.Reflection.Assembly.LoadFile: Assembly.Load",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.CompilerResults.get_CompiledAssembly+0x1d: call System.Reflection.Assembly.LoadFile: Assembly.LoadFile"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:DiskInfoToolkit.dll: s://github.com/Blacktempel/DiskInfoToolkit",
+      "artifact:DiskInfoToolkit.dll: C:\\Code\\DiskInfoToolkit\\DiskInfoToolkit\\obj\\Release\\net10.0\\DiskInfoToolkit.pdb",
+      "artifact:DiskInfoToolkit.dll: \\\\.\\PhysicalDrive",
+      "artifact:ECommons.dll: s://github.com/NightmareXIV/ECommons",
+      "artifact:ECommons.dll: /home/runner/work/ECommons/ECommons/repo/ECommons/obj/x64/Release/ECommons.pdb",
+      "artifact:ECommons.dll: s://www.patreon.com/NightmareXIV",
+      "artifact:ECommons.dll: s://subscribe.nightmarexiv.org",
+      "artifact:ECommons.dll: s://donate.nightmarexiv.org"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner",
+      "metadata:ECommons.dll: HookFromAddress",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x3c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:ECommons.dll:ECommons.Hooks.ActorVfx.HookCreate+0x8: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActorVfx.HookCreate+0x14: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:BlackSharp.Core.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:BlackSharp.Core.dll: DllImportAttribute",
+      "metadata:BlackSharp.Core.dll: LoadLibrary",
+      "metadata:BlackSharp.Core.dll: GetProcAddress",
+      "il:BlackSharp.Core.dll:BlackSharp.Core.Interop.Windows.Utilities.DynamicLoader.GetDelegate+0x2: call BlackSharp.Core.Interop.Windows.Native.Kernel32.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "il:BlackSharp.Core.dll:BlackSharp.Core.Interop.Windows.Utilities.ModuleBase..ctor+0xf: call BlackSharp.Core.Interop.Windows.Native.Kernel32.LoadLibrary -> kernel32.dll!LoadLibrary: LoadLibrary",
+      "il:BlackSharp.Core.dll:BlackSharp.Core.Interop.Windows.Utilities.ModuleBase..ctor+0x27: callvirt BlackSharp.Core.Interop.Windows.Utilities.ModuleBase.LoadLibraryFunctions: LoadLibrary",
+      "artifact:BlackSharp.Core.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/timestamp.crl0",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/timestamp.crl0",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/timestamp.crl0",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/timestamp.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.172eac4f271a",
+    "severity": "caution",
+    "title": "Endpoint: crl.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://ocsp.apple.com/ocsp03-devid080",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: http://ocsp.apple.com/ocsp03-devid080",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://ocsp.apple.com/ocsp03-devid080",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: http://ocsp.apple.com/ocsp03-devid080"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3325a2fcd92f",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/DTDs/PropertyList-1.0.dtd",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/DTDs/PropertyList-1.0.dtd",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/DTDs/PropertyList-1.0.dtd",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/DTDs/PropertyList-1.0.dtd"
+    ],
+    "rule_id": "network.endpoint.insecure-http.4b2ae39f091a",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/root.crl0",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/root.crl0",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/root.crl0",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: http://crl.apple.com/root.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.60ec8712250f",
+    "severity": "caution",
+    "title": "Endpoint: crl.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.CodeDom.dll: http://www.microsoft.com0/",
+      "artifact:System.IO.Ports.dll: http://www.microsoft.com0/",
+      "artifact:System.Management.dll: http://www.microsoft.com0/",
+      "artifact:runtimes\\unix\\lib\\net10.0\\System.IO.Ports.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/appleca0",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/appleca0",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/appleca0",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/appleca0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.af62509be132",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/certificateauthority0",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/certificateauthority0",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/certificateauthority0",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: http://www.apple.com/certificateauthority0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b79ec9e5c769",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HidSharp.dll: http://software.seekye.com/hidsharp"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c170f13240ee",
+    "severity": "caution",
+    "title": "Endpoint: software.seekye.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0c/",
+      "artifact:runtimes\\linux-arm64\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0c/",
+      "artifact:runtimes\\linux-armel\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0c/",
+      "artifact:runtimes\\linux-x64\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-arm\\native\\libMonoPosixHelper.so: http://www.winimage.com/zLibDll",
+      "artifact:runtimes\\linux-arm64\\native\\libMonoPosixHelper.so: http://www.winimage.com/zLibDll",
+      "artifact:runtimes\\linux-armel\\native\\libMonoPosixHelper.so: http://www.winimage.com/zLibDll",
+      "artifact:runtimes\\linux-x64\\native\\libMonoPosixHelper.so: http://www.winimage.com/zLibDll"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d621f5a427be",
+    "severity": "caution",
+    "title": "Endpoint: www.winimage.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0n/",
+      "artifact:runtimes\\linux-arm64\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0n/",
+      "artifact:runtimes\\linux-armel\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0n/",
+      "artifact:runtimes\\linux-x64\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: http://ocsp.digicert.com0n/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.eaf7f9f0d685",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0n"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\maccatalyst-arm64\\native\\libSystem.IO.Ports.Native.dylib: https://www.apple.com/appleca/0",
+      "artifact:runtimes\\maccatalyst-x64\\native\\libSystem.IO.Ports.Native.dylib: https://www.apple.com/appleca/0",
+      "artifact:runtimes\\osx-arm64\\native\\libSystem.IO.Ports.Native.dylib: https://www.apple.com/appleca/0",
+      "artifact:runtimes\\osx-x64\\native\\libSystem.IO.Ports.Native.dylib: https://www.apple.com/appleca/0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.004c6e4dff86",
+    "severity": "caution",
+    "title": "Endpoint: www.apple.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\android-arm\\native\\libSystem.IO.Ports.Native.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes\\android-arm64\\native\\libSystem.IO.Ports.Native.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes\\android-x64\\native\\libSystem.IO.Ports.Native.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes\\android-x86\\native\\libSystem.IO.Ports.Native.so: https://android.googlesource.com/toolchain/llvm-project"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0575a452af0c",
+    "severity": "caution",
+    "title": "Endpoint: android.googlesource.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3641efc8bfda",
+    "severity": "caution",
+    "title": "Endpoint: www.patreon.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: https://www.digicert.com/CPS0",
+      "artifact:runtimes\\linux-arm64\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: https://www.digicert.com/CPS0",
+      "artifact:runtimes\\linux-armel\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: https://www.digicert.com/CPS0",
+      "artifact:runtimes\\linux-x64\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: https://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5a592d877451",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8785017a999f",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9d3ce8792d14",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ac38247bd18a",
+    "severity": "caution",
+    "title": "Endpoint: subscribe.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b5dad10c192a",
+    "severity": "caution",
+    "title": "Endpoint: donate.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc91d234fb3b",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.org"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: System.Net.Sockets",
+      "metadata:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll: Socket.Connect",
+      "il:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll:Mono.Unix.PeerCred..ctor+0x7: callvirt System.Net.Sockets.Socket.get_AddressFamily: System.Net.Sockets",
+      "il:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll:Mono.Unix.PeerCred..ctor+0x2b: callvirt System.Net.Sockets.Socket.GetSocketOption: System.Net.Sockets",
+      "il:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll:Mono.Unix.UnixClient..ctor+0x14: callvirt System.Net.Sockets.Socket.Close: System.Net.Sockets",
+      "il:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll:Mono.Unix.UnixClient..ctor+0x24: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll:Mono.Unix.UnixClient.get_LingerState+0x16: callvirt System.Net.Sockets.Socket.GetSocketOption: System.Net.Sockets",
+      "il:runtimes\\linux-arm\\lib\\netstandard2.0\\Mono.Posix.NETStandard.dll:Mono.Unix.UnixClient.set_LingerState+0x17: callvirt System.Net.Sockets.Socket.SetSocketOption: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Diagnostics.Process",
+      "metadata:ECommons.dll: ProcessStartInfo",
+      "metadata:ECommons.dll: ShellExecute",
+      "metadata:ECommons.dll: Process.Start",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x2: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x7: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x22: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:HidSharp.dll: RegOpenKey",
+      "il:HidSharp.dll:HidSharp.Platform.Windows.WinHidManager.SerialWatcherThread+0x1a: call HidSharp.Platform.Windows.NativeMethods.RegOpenKeyEx -> advapi32.dll!RegOpenKeyEx: RegOpenKey",
+      "artifact:HidSharp.dll: RegOpenKey",
+      "metadata:runtimes\\win\\lib\\net10.0\\System.IO.Ports.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net10.0\\System.IO.Ports.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.IO.Ports.dll:System.IO.Ports.SerialPort.GetPortNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net10.0\\System.IO.Ports.dll:System.IO.Ports.SerialPort.GetPortNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.IO.Ports.dll:System.IO.Ports.SerialPort.GetPortNames+0x14: callvirt Microsoft.Win32.RegistryKey.GetValueNames: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:BlackSharp.Core.dll: WriteAllText",
+      "il:BlackSharp.Core.dll:BlackSharp.Core.Logging.Logger.SaveToFile+0x22: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:BlackSharp.Core.dll: WriteAllText",
+      "metadata:ECommons.dll: FileStream",
+      "metadata:ECommons.dll: WriteAllText",
+      "metadata:ECommons.dll: File.Move",
+      "metadata:ECommons.dll: WriteAllBytes",
+      "metadata:ECommons.dll: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RAMSPDToolkit-NDD.dll: https://github.com/Blacktempel/RAMSPDToolkit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2f715be45056",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HardwareInfo.json: https://raw.githubusercontent.com/WINDOWCOLLAPSIBLE/Icons/main/HardwareInfo.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.59a74e99f116",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\win-arm64\\lib\\net10.0\\LibreHardwareMonitorLib.dll: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor",
+      "artifact:runtimes\\win-x64\\lib\\net10.0\\LibreHardwareMonitorLib.dll: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor",
+      "artifact:runtimes\\win-x86\\lib\\net10.0\\LibreHardwareMonitorLib.dll: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8f3bd6ff0e77",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HardwareInfo.dll: https://github.com/WINDOWCOLLAPSIBLE/HardwareInfo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a464dd6034d6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BlackSharp.Core.dll: https://github.com/Blacktempel/BlackSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a816cbc189cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.CodeDom.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.IO.Ports.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Management.dll: https://github.com/dotnet/dotnet",
+      "artifact:runtimes\\unix\\lib\\net10.0\\System.IO.Ports.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DiskInfoToolkit.dll: https://github.com/Blacktempel/DiskInfoToolkit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d4784e7c08e4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Networking.HttpClientProxyHelper.ApplyProxySettings+0x69: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x7: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler.BeginThreadIfNotRunning+0x15: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes\\android-arm\\native\\libSystem.IO.Ports.Native.so",
+      "runtimes\\android-arm64\\native\\libSystem.IO.Ports.Native.so",
+      "runtimes\\android-x64\\native\\libSystem.IO.Ports.Native.so",
+      "runtimes\\android-x86\\native\\libSystem.IO.Ports.Native.so",
+      "runtimes\\linux-arm\\native\\libMonoPosixHelper.so",
+      "runtimes\\linux-arm\\native\\libSystem.IO.Ports.Native.so",
+      "runtimes\\linux-arm64\\native\\libMonoPosixHelper.so",
+      "runtimes\\linux-arm64\\native\\libSystem.IO.Ports.Native.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
