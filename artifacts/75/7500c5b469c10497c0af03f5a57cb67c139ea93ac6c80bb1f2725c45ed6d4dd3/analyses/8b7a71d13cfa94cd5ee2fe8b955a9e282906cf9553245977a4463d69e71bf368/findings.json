@@ -1,0 +1,553 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:SharpGen.Runtime.dll: OpenProcess",
+      "il:SharpGen.Runtime.dll:SharpGen.Runtime.PlatformDetection.GetCurrentProcessToken+0xb: call SharpGen.Runtime.PlatformDetection.OpenProcessToken -> advapi32.dll!OpenProcessToken: OpenProcess",
+      "artifact:SharpGen.Runtime.dll: OpenProcess",
+      "native-pe:vulkan-1.dll: import ADVAPI32.dll!OpenProcessToken: OpenProcess",
+      "artifact:vulkan-1.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: http://127.0.0.1:4416/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.4f0015396aee",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: http://127.0.0.1/",
+      "artifact:XivMediaPlayer.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: http://127.0.0.1:5681/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.8cc74f4ffd4a",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: http://127.0.0.1:4416/ping"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.b462537b903e",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:HidSharp.dll:HidSharp.AsyncResult`1.Complete+0x50: callvirt System.AsyncCallback.Invoke",
+      "il:HidSharp.dll:HidSharp.OpenOption.Deserialize+0x7: callvirt HidSharp.OpenOptionDeserializeCallback.Invoke",
+      "il:HidSharp.dll:HidSharp.OpenOption.Serialize+0x7: callvirt HidSharp.OpenOptionSerializeCallback.Invoke",
+      "il:HidSharp.dll:HidSharp.Reports.Report.Read+0x61: callvirt HidSharp.Reports.ReportScanCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MediaPlayerCore.dll: Assembly.Load",
+      "metadata:MediaPlayerCore.dll: Assembly.LoadFrom",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.Resolvers.CefSharpResolver.Initialize+0x8d: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.Resolvers.CefSharpResolver.Initialize+0x8d: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "il:MediaPlayerCore.dll:<>c__DisplayClass3_0.<Initialize>b__0+0x3e: call System.Reflection.Assembly.LoadFrom: Assembly.Load",
+      "il:MediaPlayerCore.dll:<>c__DisplayClass3_0.<Initialize>b__0+0x3e: call System.Reflection.Assembly.LoadFrom: Assembly.LoadFrom",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:HidSharp.dll: p://www.zer7.com/software/hidsharp>",
+      "artifact:HidSharp.dll: C:\\Code\\src\\oss\\hidsharp\\hid\\HidSharp\\obj\\Release\\netstandard2.0\\HidSharp.pdb",
+      "artifact:HidSharp.dll: s://www.globalsign.com/repository/03",
+      "artifact:HidSharp.dll: p://crl.globalsign.net/root.crl0",
+      "artifact:HidSharp.dll: s://www.globalsign.com/repository/0",
+      "artifact:HidSharp.dll: p://crl.globalsign.com/gs/gstimestampingg2.crl0T",
+      "artifact:HidSharp.dll: p://secure.globalsign.com/cacert/gstimestampingg2.crt0",
+      "artifact:HidSharp.dll: s://secure.comodo.net/CPS0C"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:MediaPlayerCore.dll: TcpListener",
+      "metadata:MediaPlayerCore.dll: HttpListener",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.Stop+0x5a: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.Stop+0x74: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy..ctor+0x2d: newobj System.Net.HttpListener..ctor: HttpListener",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy..ctor+0x3d: callvirt System.Net.HttpListener.get_Prefixes: HttpListener",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy..ctor+0x78: callvirt System.Net.HttpListenerPrefixCollection.Add: HttpListener",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.Start+0x14: callvirt System.Net.HttpListener.get_IsListening: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:HidSharp.dll: DllImportAttribute",
+      "metadata:LibVLCSharp.dll: DllImportAttribute",
+      "metadata:LibVLCSharp.dll: LoadLibrary",
+      "il:LibVLCSharp.dll:LibVLCSharp.Shared.Core.LoadNativeLibrary+0x45: call Native.LoadLibraryW -> kernel32!LoadLibraryW: LoadLibrary",
+      "artifact:LibVLCSharp.dll: LoadLibrary",
+      "metadata:MediaPlayerCore.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HidSharp.dll: http://crl.globalsign.net/root.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3eecd0109392",
+    "severity": "caution",
+    "title": "Endpoint: crl.globalsign.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: http://ai.hubujubu.com:5681/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.57543f4432be",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HidSharp.dll: http://crl.globalsign.net/root-r3.crl0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b733c7d7f006",
+    "severity": "caution",
+    "title": "Endpoint: crl.globalsign.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public IP endpoint; no host purpose or reputation can be inferred from a static scan. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: http://50.70.102.177:5000/"
+    ],
+    "rule_id": "network.endpoint.public-ip-literal.54dea79ec8e4",
+    "severity": "caution",
+    "title": "Endpoint: 50.70.102.177"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public IP endpoint; no host purpose or reputation can be inferred from a static scan. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: http://24.77.70.65:5000/"
+    ],
+    "rule_id": "network.endpoint.public-ip-literal.7194eb6e52f1",
+    "severity": "caution",
+    "title": "Endpoint: 24.77.70.65"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: https://gql.twitch.tv/gql"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0c14e0ff2c3d",
+    "severity": "caution",
+    "title": "Endpoint: gql.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LibVLCSharp.dll: https://code.videolan.org/videolan/LibVLCSharp"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.40fbb726f4fd",
+    "severity": "caution",
+    "title": "Endpoint: code.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://addons.mozilla.org/en-US/firefox/addon/<redacted>"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.58c2cb6e79cc",
+    "severity": "caution",
+    "title": "Endpoint: addons.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://chromewebstore.google.com/detail/<redacted>/<redacted>"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7128da5d8ff1",
+    "severity": "caution",
+    "title": "Endpoint: chromewebstore.google.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:MediaPlayerCore.dll: System.Net.Sockets",
+      "metadata:MediaPlayerCore.dll: TcpClient",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.Stop+0x5a: callvirt System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.Stop+0x74: callvirt System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.StartWineListener+0x10: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.StartWineListener+0x20: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.StartWineListener+0x2c: callvirt System.Net.Sockets.TcpListener.get_LocalEndpoint: System.Net.Sockets",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.Dispose+0x46: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:MediaPlayerCore.dll: System.Diagnostics.Process",
+      "metadata:MediaPlayerCore.dll: ProcessStartInfo",
+      "metadata:MediaPlayerCore.dll: ShellExecute",
+      "metadata:MediaPlayerCore.dll: Process.Start",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.get_IsPlaying+0xe: callvirt System.Diagnostics.Process.get_HasExited: System.Diagnostics.Process",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.Stop+0x94: callvirt System.Diagnostics.Process.get_HasExited: System.Diagnostics.Process",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.FFmpegMediaObject.Stop+0xa1: callvirt System.Diagnostics.Process.Kill: System.Diagnostics.Process",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.VideoView.Attach+0x21: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:HidSharp.dll: RegOpenKey",
+      "il:HidSharp.dll:HidSharp.Platform.Windows.WinHidManager.SerialWatcherThread+0x1a: call HidSharp.Platform.Windows.NativeMethods.RegOpenKeyEx -> advapi32.dll!RegOpenKeyEx: RegOpenKey",
+      "artifact:HidSharp.dll: RegOpenKey",
+      "metadata:NAudio.Asio.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.Asio.dll: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0xa: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.Asio.dll:NAudio.Wave.Asio.AsioDriver.GetAsioDriverNames+0x1b: callvirt Microsoft.Win32.RegistryKey.GetSubKeyNames: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:XivMediaPlayer.dll: System.Windows.Forms.Clipboard",
+      "il:XivMediaPlayer.dll:XivMediaPlayer.Plugin.<OnDraw>b__400_2+0x1e: call System.Windows.Forms.Clipboard.GetText: System.Windows.Forms.Clipboard",
+      "il:XivMediaPlayer.dll:XivMediaPlayer.Plugin.<OnDraw>b__400_5+0x1e: call System.Windows.Forms.Clipboard.GetText: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HidSharp.dll: FileStream",
+      "metadata:HidSharp.dll: Directory.CreateDirectory",
+      "il:HidSharp.dll:HidSharp.Platform.SystemEvents.PosixEventManager.UpdateEventStream+0x3f: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HidSharp.dll:HidSharp.Platform.SystemEvents.PosixEventManager.UpdateEventStream+0x99: callvirt System.IO.FileStream.get_SafeFileHandle: FileStream",
+      "il:HidSharp.dll:HidSharp.Platform.SystemEvents.PosixEventManager.UpdateEventStream+0xd2: callvirt System.IO.FileStream.Lock: FileStream",
+      "artifact:HidSharp.dll: FileStream",
+      "metadata:MediaPlayerCore.dll: FileStream",
+      "metadata:MediaPlayerCore.dll: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://discord.gg/rtGXwMn7pX"
+    ],
+    "rule_id": "network.endpoint.community-invite.aa1feaad066c",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Vortice.Mathematics.dll: https://github.com/amerkoleci/Vortice.Mathematics"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0eb79cf9a56e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.json: https://github.com/Sebane1/XivMediaPlayer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0f9e0093eb5e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: https://github.com/denoland/deno/releases/download/v2.8.2/deno-x86_64-pc-windows-msvc.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.12c76313a22b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.291f8be159a4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SharpGen.Runtime.COM.dll: https://github.com/SharpGenTools/SharpGenTools",
+      "artifact:SharpGen.Runtime.dll: https://github.com/SharpGenTools/SharpGenTools"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.36ea9ab7e70a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://api.github.com/repos/MeowZWR/XivMediaPlayer/releases/latest"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.49c611592591",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.63a744cac89a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6f0e2b864d86",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://github.com/MeowZWR/XivMediaPlayer/releases/latest/download/XivMediaPlayer-Dependencies.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.730eea15e638",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://github.com/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.82c00ba1f20e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: https://github.com/Brainicism/<redacted>/releases/latest/download/bgutil-ytdlp-pot-provider.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.83b504765e04",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XivMediaPlayer.dll: https://github.com/MeowZWR/XivMediaPlayer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a022c5208b08",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Asio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Midi.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.AspNetCore.Connections.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Client.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.Http.Connections.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.AspNetCore.SignalR.Client.Core.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Vortice.D3DCompiler.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.Direct3D11.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.DirectX.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.DXGI.dll: https://github.com/amerkoleci/Vortice.Windows"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f3f194cb7761",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MediaPlayerCore.dll: https://github.com/seproDev/<redacted>/releases/latest/download/yt-dlp-ChromeCookieUnlock.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fe4295026a59",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:MediaPlayerCore.dll: System.Net.Http.HttpClient",
+      "metadata:MediaPlayerCore.dll: WebRequest",
+      "metadata:MediaPlayerCore.dll: HttpWebRequest",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.CreateStreamingHttpClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.CreateStreamingHttpClient+0x8: callvirt System.Net.Http.HttpClientHandler.set_UseCookies: System.Net.Http.HttpClient",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.CreateStreamingHttpClient+0xe: callvirt System.Net.Http.HttpClientHandler.get_SupportsAutomaticDecompression: System.Net.Http.HttpClient",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.CreateStreamingHttpClient+0x17: callvirt System.Net.Http.HttpClientHandler.set_AutomaticDecompression: System.Net.Http.HttpClient",
+      "il:MediaPlayerCore.dll:MediaPlayerCore.StreamProxy.CreateStreamingHttpClient+0x1d: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "vulkan-1.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
