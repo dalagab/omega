@@ -4,32 +4,32 @@
     "canonical_name": "Culprit",
     "first_seen_utc": "2026-10-01T07:27:45Z",
     "internal_name": "Culprit",
-    "last_seen_utc": "2026-10-01T07:27:45Z",
+    "last_seen_utc": "2026-10-01T09:36:54Z",
     "plugin_id": 1597
   },
   "presentation": {
-    "description": "Watches every other plugin's draw and update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit names it in a notification so you know which plugin to look at.",
+    "description": "Watches every other plugin's draw and update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit names it in a notification so you know which plugin to look at.\nhttps://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json",
     "image_urls_json": "[]",
     "nsfw": 0,
     "official": 0,
     "plugin_id": 1597,
-    "preferred_variant_id": 25582,
-    "presentation_variant_id": 25582,
+    "preferred_variant_id": 25765,
+    "presentation_variant_id": 25765,
     "rich_card": 0,
-    "richness_score": 307,
+    "richness_score": 1241,
     "summary": "Finds the plugin behind your stutter.",
-    "web_enriched": 0
+    "web_enriched": 1
   },
   "schema": "omega.catalog-json.plugin.v1",
   "search": {
     "author": "Vali",
-    "description": "Watches every other plugin's draw and update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit names it in a notification so you know which plugin to look at.",
+    "description": "Watches every other plugin's draw and update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit names it in a notification so you know which plugin to look at.\nhttps://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json",
     "internal_name": "Culprit",
     "name": "Culprit",
     "plugin_id": 1597,
     "punchline": "Finds the plugin behind your stutter.",
     "tags": "diagnostics performance stutter watchdog",
-    "website_text": " "
+    "website_text": "Dalamud plugin that finds the plugin behind your stutter. # Culprit\n\n[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Valiice/Culprit/total?style=flat-square&color=blue)](https://github.com/Valiice/Culprit/releases)\n[![GitHub Release](https://img.shields.io/github/v/release/Valiice/Culprit?include_prereleases&style=flat-square&color=green)](https://github.com/Valiice/Culprit/releases/latest)\n[![GitHub Issues](https://img.shields.io/github/issues/Valiice/Culprit?style=flat-square)](https://github.com/Valiice/Culprit/issues)\n[![Download Latest Zip](https://img.shields.io/badge/Download-Latest%20Zip-blue?style=flat-square)](https://github.com/Valiice/Culprit/releases/latest/download/Culprit.zip)\n\nFinds the plugin behind your stutter.\n\nCulprit watches every other Dalamud plugin's draw time, update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit shows a Dalamud notification naming that plugin.\n\n## Installation\n\n1. Add my custom plugin repository: [https://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json](https://github.com/Valiice/DalamudPluginRepo)\n2. Search for **Culprit** in the Plugin Installer.\n3. Install and Enable.\n\nNot on the official repo. Alternatively, build with `dotnet build Culprit/Culprit.csproj -c Release` and load `Culprit/bin/Release/Culprit` as a dev plugin.\n\n## Usage\n\n- `/culprit` opens the window.\n- `/culprit pause` and `/culprit resume` stop and restart detection.\n- `/culprit reset` clears counters and the incident log.\n- `/culprit report` saves a text report you can share.\n\nThe Live tab shows each plugin's latest and longest draw and update times, its 5 second average, and how many errors and incidents it has caused. It hides quiet plugins by default; tick \"Show all plugins\" to see every loaded plugin instead of just the offenders. The \"Copy report\" and \"Save report\" buttons on the Live tab give you the same plain text report as `/culprit report`, saved to `%AppData%\\XIVLauncher\\pluginConfigs\\Culprit\\culprit-report.txt`. The Incidents tab lists everything Culprit caught, with a Copy button for bug reports. Settings holds the thresholds, the cooldown, and the ignore list.\n\n## What counts as a hiccup\n\n- Stall: a plugin's draw or update took longer than the stall limit in one frame (default 40 ms).\n- Sustained: a plugin averaged more than the sustained limit per frame over a window (default 3 ms over 5 s).\n- Errors: a plugin logged at least the error count within the error window (default 5 in 60 s).\n- Unattributed: the whole frame was long but no plugin crossed the stall limit. Logged, not shown, unless you enable it.\n\nA plugin that keeps misbehaving is reported less and less often, doubling the gap each time up to an hour, so a permanently broken plugin does not spam you.\n\nBy default a plugin must stall or drain twice within 10 minutes before Culprit shows a toast, so a one-off cost like a plugin opening a window for the first time stays quiet; the Incidents tab still records every occurrence.\n\nCulprit stays quiet while zoning, in cutscenes, and for 5 seconds after any plugin loads or unloads, and for 5 seconds after a zone change finishes.\n\n## How it works\n\nDalamud already times every plugin's draw and update callbacks for its own Plugin Statistics window (`/xlstats`), but that tracking is off by default and has no alerts or history. Culprit turns it on, reads those numbers each frame, and applies the rules above. It also listens to Dalamud's log stream to count errors per plugin.\n\nThose counters are Dalamud internals, not public API. If a Dalamud update changes them, the Live tab shows which signal became unavailable and Culprit keeps running with what is left.\n\nUpdate handlers are matched to plugins through Dalamud's own subscription lists, which also covers static handlers and shared libraries, and Dalamud's internal handlers appear as \"Dalamud (internal)\". That row sums Dalamud's own per-frame work, which includes callbacks plugins register through Dalamud events, so a toast on it can mean a plugin callback that Dalamud invoked directly.\n\nTurning on Dalamud's update-time tracking has one side effect on other plugins: while it is on, Dalamud logs their update-handler exceptions as a generic framework error without the plugin name, and the dev-plugin error toast does not appear. Culprit still attributes those errors through the exception's stack trace. Unloading Culprit restores the previous setting.\n\n## Limitations\n\n- Time spent inside a plugin's game hooks is not measured by Dalamud and so not by Culprit. It can only show up as an unattributed stall.\n- Memory use cannot be attributed to a plugin and is not tracked.\n- Incidents are kept in memory only and are gone after a restart.\n- Because it reads Dalamud internals, Culprit is not eligible for the official plugin repository.\n- If you untick the tracking boxes in /xlstats, Culprit stops receiving draw or update times and says so on the Live tab.\n\n## Privacy\n\nNothing leaves your machine. Culprit reads other plugins' timing numbers and error messages, never their data."
   },
   "variants": [
     {
@@ -150,6 +150,66 @@
         "testing_assembly_version": null,
         "testing_dalamud_api_level": null,
         "variant_id": 25592
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "diagnostics",
+          "variant_id": 25765
+        },
+        {
+          "kind": "tag",
+          "tag": "performance",
+          "variant_id": 25765
+        },
+        {
+          "kind": "tag",
+          "tag": "stutter",
+          "variant_id": 25765
+        },
+        {
+          "kind": "tag",
+          "tag": "watchdog",
+          "variant_id": 25765
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "1.0.0.0",
+        "author": "Vali",
+        "authors_json": "[\"Vali\"]",
+        "category_tags_json": "[]",
+        "changelog": "- Add Culprit: names the plugin behind stutters and error spam",
+        "dalamud_api_level": 15,
+        "description": "Watches every other plugin's draw and update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit names it in a notification so you know which plugin to look at.\nhttps://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json",
+        "dip17_channel": "",
+        "download_count": 4,
+        "download_link_install": "https://github.com/Valiice/Culprit/releases/download/v1.0.0/Culprit.zip",
+        "download_link_testing": "https://github.com/Valiice/Culprit/releases/download/v1.0.0/Culprit.zip",
+        "download_link_update": "https://github.com/Valiice/Culprit/releases/download/v1.0.0/Culprit.zip",
+        "first_seen_utc": "2026-10-01T09:36:54Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-10-01T09:36:54Z",
+        "last_update": 1790812937,
+        "minimum_dalamud_version": null,
+        "name": "Culprit",
+        "plugin_id": 1597,
+        "punchline": "Finds the plugin behind your stutter.",
+        "raw_manifest_json": "{\"Author\":\"Vali\",\"Name\":\"Culprit\",\"AcceptsFeedback\":false,\"ApplicableVersion\":\"any\",\"AssemblyVersion\":\"1.0.0.0\",\"CanUnloadAsync\":false,\"Changelog\":\"- Add Culprit: names the plugin behind stutters and error spam\",\"DalamudApiLevel\":15,\"Description\":\"Watches every other plugin's draw and update time and error output. When one of them stalls a frame, eats frame time steadily, or throws repeatedly, Culprit names it in a notification so you know which plugin to look at.\\nhttps://raw.githubusercontent.com/Valiice/DalamudPluginRepo/master/repo.json\",\"DownloadCount\":4,\"DownloadLinkInstall\":\"https://github.com/Valiice/Culprit/releases/download/v1.0.0/Culprit.zip\",\"DownloadLinkTesting\":\"https://github.com/Valiice/Culprit/releases/download/v1.0.0/Culprit.zip\",\"DownloadLinkUpdate\":\"https://github.com/Valiice/Culprit/releases/download/v1.0.0/Culprit.zip\",\"ImageUrls\":[],\"InternalName\":\"Culprit\",\"IsHide\":false,\"IsTestingExclusive\":false,\"LastUpdate\":1790812937,\"LoadPriority\":0,\"LoadRequiredState\":0,\"LoadSync\":false,\"Punchline\":\"Finds the plugin behind your stutter.\",\"RepoUrl\":\"https://github.com/Valiice/Culprit\",\"Tags\":[\"performance\",\"stutter\",\"diagnostics\",\"watchdog\"]}",
+        "repo_url": "https://github.com/Valiice/Culprit",
+        "source_entry_key": "culprit|1.0.0.0|15|0|143",
+        "source_id": 594,
+        "tags_json": "[\"performance\",\"stutter\",\"diagnostics\",\"watchdog\"]",
+        "testing_assembly_version": null,
+        "testing_dalamud_api_level": null,
+        "variant_id": 25765
       }
     }
   ]
