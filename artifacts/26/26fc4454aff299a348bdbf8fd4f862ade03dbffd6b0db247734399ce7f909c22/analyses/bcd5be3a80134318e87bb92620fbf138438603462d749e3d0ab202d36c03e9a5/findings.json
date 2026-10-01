@@ -1,0 +1,230 @@
+[
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com0",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Dalamud.Hosting.dll: SigScanner",
+      "artifact:Dalamud.Hosting.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.CommandLine.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.EnvironmentVariables.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Json.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.UserSecrets.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Configuration.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Archipelago.MultiClient.Net.dll: Socket.Connect",
+      "il:Archipelago.MultiClient.Net.dll:<ConnectToProvidedUri>d__6.MoveNext+0x4c: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:Archipelago.MultiClient.Net.dll:<ConnectToProvidedUri>d__6.MoveNext+0xdc: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:Archipelago.MultiClient.Net.dll:<ConnectToProvidedUri>d__6.MoveNext+0x182: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Archipelago.MultiClient.Net.dll: Directory.CreateDirectory",
+      "metadata:Archipelago.MultiClient.Net.dll: WriteAllText",
+      "il:Archipelago.MultiClient.Net.dll:Archipelago.MultiClient.Net.DataPackage.FileSystemCheckSumDataPackageProvider.SaveDataPackageToFile+0x30: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:Archipelago.MultiClient.Net.dll:Archipelago.MultiClient.Net.DataPackage.FileSystemCheckSumDataPackageProvider.SaveDataPackageToFile+0x3f: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:Archipelago.MultiClient.Net.dll: WriteAllText",
+      "metadata:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream",
+      "il:Microsoft.Extensions.Configuration.FileExtensions.dll:Microsoft.Extensions.Configuration.FileConfigurationProvider.<Load>g__OpenRead|6_0+0x17: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.Configuration.FileExtensions.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Archipelago.MultiClient.Net.dll: https://github.com/ArchipelagoMW/Archipelago.MultiClient.Net"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6a880cbb7ba0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Archipendium.dll: https://github.com/andrewbabbittdev/archipendium"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.85b0dcfa2339",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/ArchipelagoMW/Archipelago.MultiClient.Net.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.96bf379d2733",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.CommandLine.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Dalamud.Hosting.dll: https://github.com/andrewbabbittdev/dalamud-hosting-sdk"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cda792030cbc",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NetEscapades.Configuration.Yaml.dll: https://github.com/andrewlock/NetEscapades.Configuration"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ea19572ace7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: WebRequest",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: HttpWebRequest",
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll: WebRequest",
+      "artifact:runtimes\\win\\lib\\net10.0\\System.Diagnostics.EventLog.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
