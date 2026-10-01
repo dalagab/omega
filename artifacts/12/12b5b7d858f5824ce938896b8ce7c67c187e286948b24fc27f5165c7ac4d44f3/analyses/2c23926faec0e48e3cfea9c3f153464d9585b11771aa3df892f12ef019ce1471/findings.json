@@ -1,0 +1,52 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Aetherment.dll: SigScanner",
+      "metadata:Aetherment.dll: Dalamud.Hooking",
+      "metadata:Aetherment.dll: HookFromAddress",
+      "il:Aetherment.dll:Aetherment.UiColor..ctor+0x17: call Aetherment.Aetherment.get_SigScanner: SigScanner",
+      "il:Aetherment.dll:Aetherment.UiColor..ctor+0x21: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:Aetherment.dll:Aetherment.UiColor..ctor+0x33: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:Aetherment.dll: Dalamud.Hooking",
+      "artifact:Aetherment.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Aetherment.dll: NativeLibrary.Load",
+      "metadata:Aetherment.dll: DllImportAttribute",
+      "metadata:Aetherment.dll: LoadLibrary",
+      "il:Aetherment.dll:Aetherment.Native..cctor+0x20: call System.Runtime.InteropServices.NativeLibrary.Load: NativeLibrary.Load",
+      "artifact:Aetherment.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "aetherment_core.dll",
+      "bcryptprimitives.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
