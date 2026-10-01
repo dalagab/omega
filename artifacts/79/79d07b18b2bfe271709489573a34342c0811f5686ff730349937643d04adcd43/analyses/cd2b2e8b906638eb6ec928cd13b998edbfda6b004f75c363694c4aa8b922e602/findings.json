@@ -1,0 +1,50 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:FlashOnReadyCheck.dll: Dalamud.Hooking",
+      "metadata:FlashOnReadyCheck.dll: HookFromAddress",
+      "il:FlashOnReadyCheck.dll:FlashOnReadyCheck.ReadyCheckHooking.Init+0x26: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:FlashOnReadyCheck.dll:FlashOnReadyCheck.ReadyCheckHooking.Init+0x60: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:FlashOnReadyCheck.dll: Dalamud.Hooking",
+      "artifact:FlashOnReadyCheck.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:FlashOnReadyCheck.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:FlashOnReadyCheck.dll: System.Diagnostics.Process",
+      "il:FlashOnReadyCheck.dll:FlashOnReadyCheck.FlashWindow.ApplicationIsActivated+0x10: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:FlashOnReadyCheck.dll:FlashOnReadyCheck.FlashWindow.ApplicationIsActivated+0x15: callvirt System.Diagnostics.Process.get_MainWindowHandle: System.Diagnostics.Process",
+      "il:FlashOnReadyCheck.dll:FlashOnReadyCheck.PluginFunctions.ExecuteFlashWindow+0x6f: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:FlashOnReadyCheck.dll:FlashOnReadyCheck.PluginFunctions.ExecuteFlashWindow+0x74: callvirt System.Diagnostics.Process.get_MainWindowHandle: System.Diagnostics.Process",
+      "artifact:FlashOnReadyCheck.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  }
+]
