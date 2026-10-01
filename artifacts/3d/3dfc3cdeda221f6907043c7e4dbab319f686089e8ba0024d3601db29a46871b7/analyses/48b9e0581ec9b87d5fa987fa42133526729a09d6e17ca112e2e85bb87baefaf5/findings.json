@@ -1,0 +1,120 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.GameFunctions.MovementFactory.cleanup+0xf: callvirt HypnotoadPlugin.Utils.CameraUtil.set_Enabled",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.GameFunctions.MovementFactory.Dispose+0xf: callvirt HypnotoadPlugin.Utils.CameraUtil.set_Enabled",
+      "il:HypnotoadPlugin.dll:<RunMoveTask>d__25.MoveNext+0xd9: callvirt HypnotoadPlugin.Utils.CameraUtil.set_Enabled",
+      "il:HypnotoadPlugin.dll:<RunMoveTask>d__25.MoveNext+0x183: callvirt HypnotoadPlugin.Utils.CameraUtil.set_Enabled"
+    ],
+    "rule_id": "automation.game.camera.control",
+    "severity": "caution",
+    "title": "Camera control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.GameFunctions.Party.EnterHouse+0x20: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:H.Pipes.dll: s://github.com/HavenDV/H.Pipes",
+      "artifact:H.Pipes.dll: \\\\.\\pipe\\",
+      "artifact:HypnotoadPlugin.dll: D:\\a\\Hypnotoad-Plugin\\Hypnotoad-Plugin\\HypnotoadPlugin\\obj\\x64\\Release\\HypnotoadPlugin.pdb",
+      "artifact:MessagePack.dll: s://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: /home/runner/work/MessagePack-CSharp/MessagePack-CSharp/obj/src/MessagePack/Release/net9.0/MessagePack.pdb"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:HypnotoadPlugin.dll: Dalamud.Hooking",
+      "metadata:HypnotoadPlugin.dll: SigScanner",
+      "metadata:HypnotoadPlugin.dll: HookFromAddress",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.Hypnotoad..ctor+0x34: call HypnotoadPlugin.Offsets.Api.get_SigScanner: SigScanner",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.Utils.OverrideMovement..ctor+0x11: call HypnotoadPlugin.Offsets.Api.get_SigScanner: SigScanner",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.Utils.OverrideMovement..ctor+0x1b: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.Utils.OverrideMovement..ctor+0x21: call HypnotoadPlugin.Offsets.Api.get_SigScanner: SigScanner",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.Utils.OverrideMovement..ctor+0x2b: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Memory.Data.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:H.Pipes.AccessControl.dll: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:H.Pipes.AccessControl.Utilities.ProcessUtilities.GetProcessesCount+0x6: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<>c__DisplayClass12_0.<TrySendAsync>b__1+0x1: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<>c__DisplayClass12_0.<TrySendAsync>b__1+0xc: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<TrySendAsync>d__12.MoveNext+0x21f: call System.Diagnostics.Process.GetProcessesByName: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<TrySendAsync>d__12.MoveNext+0x228: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:H.Pipes.AccessControl.dll:<TrySendAsync>d__12.MoveNext+0x26d: callvirt System.Diagnostics.Process.Kill: System.Diagnostics.Process",
+      "artifact:H.Pipes.AccessControl.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HypnotoadPlugin.dll: File.Delete",
+      "metadata:HypnotoadPlugin.dll: WriteAllText",
+      "il:HypnotoadPlugin.dll:HypnotoadPlugin.Windows.MainWindow.Draw+0x252: call System.IO.File.Delete: File.Delete",
+      "il:HypnotoadPlugin.dll:AgentConfigSystem.SaveConfig+0x43: call System.IO.File.WriteAllText: WriteAllText",
+      "artifact:HypnotoadPlugin.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
