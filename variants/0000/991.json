@@ -1,0 +1,3046 @@
+{
+  "analysis": {
+    "analysisId": "65a377ea37b72e066eaae59488aebfdce0ad7b6b8cc1efca4aff8d91dee5f594",
+    "artifactSha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+    "path": "artifacts/7e/7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2/analyses/65a377ea37b72e066eaae59488aebfdce0ad7b6b8cc1efca4aff8d91dee5f594",
+    "recordCount": 2165
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+    "artifact_url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+    "assembly_version": "0.0.1.6",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "very-high",
+        "evidence": [
+          "il:vfallguy.dll:<>c.<RegisterForDuty>b__7_0+0x5b: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": true,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "evidence": [
+          "il:vfallguy.dll:<>c.<RegisterForDuty>b__7_1+0x6c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:vfallguy.dll:<>c.<RegisterForDuty>b__7_2+0x6c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Dynamic code loading",
+      "Endpoint: apifox.com",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "Raw sockets",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "network",
+        "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+        "evidence": [
+          "artifact:vfallguy.deps.json: System.Net.Sockets"
+        ],
+        "ruleId": "network.socket",
+        "severity": "caution",
+        "title": "Raw socket access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:vfallguy.dll: https://apifox.com/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.36499d7247c7",
+        "severity": "caution",
+        "title": "Endpoint: apifox.com"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:vfallguy.dll: Dalamud.Hooking",
+          "metadata:vfallguy.dll: SigScanner",
+          "il:vfallguy.dll:vfallguy.AutoJoinLeave..ctor+0x12: call vfallguy.Service.get_SigScanner: SigScanner",
+          "il:vfallguy.dll:vfallguy.AutoJoinLeave..ctor+0x1c: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "artifact:vfallguy.dll: Dalamud.Hooking",
+          "artifact:vfallguy.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "artifact:vfallguy.deps.json: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:vfallguy.dll:<>c.<RegisterForDuty>b__7_1+0x6c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:vfallguy.dll:<>c.<RegisterForDuty>b__7_2+0x6c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:vfallguy.dll:<>c.<RegisterForDuty>b__7_0+0x5b: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:vfallguy.dll: System.Net.Http.HttpClient",
+          "il:vfallguy.dll:vfallguy.MainWindow..ctor+0x81: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:vfallguy.dll:vfallguy.MainWindow..ctor+0xdf: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+          "il:vfallguy.dll:vfallguy.MainWindow..ctor+0xf9: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+          "il:vfallguy.dll:<SendMessageToQQ>d__39.MoveNext+0xbc: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:vfallguy.dll: https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugin.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.86637eaa1911",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:vfallguy.dll: https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/main/plugin.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.6f225b2e9dba",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:vfallguy.dll: https://github.com/Cindy-Master/DalamudPlugins"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.60784ff75603",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:vfallguy.json: https://raw.githubusercontent.com/awgil/ffxiv_vfallguy/<redacted>/icon2.png"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.0f236fc20110",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 5,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "artifactBytes": 56695,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.0",
+        "artifactBytes": 56695,
+        "artifactSha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+        "catalogAssemblyVersion": "0.0.1.6",
+        "manifestInternalName": "vfallguy",
+        "manifestPath": "vfallguy.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "apifox.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "apifox.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Dynamic code loading",
+        "Endpoint: apifox.com",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "Raw sockets",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "game.character.interact",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "network.outbound",
+        "network.socket"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 91,
+          "exactVersionObservedCount": 91,
+          "families": {
+            "managed-assembly": 15,
+            "nuget": 76
+          },
+          "fingerprint": "0174420f9f92f07bceb6999ba95161c07fe32a379394ca2e5bd77cf05d698bb2",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 14,
+            "required": 76
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 15,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 76,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 14,
+            "optional": 0,
+            "required": 76,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 91
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "apifox.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "apifox.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://apifox.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Cindy-Master/DalamudPlugins"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/main/plugin.json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugin.json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_vfallguy/<redacted>/icon2.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+        "internalName": "vfallguy",
+        "manifestVersion": "0.0.1.6",
+        "observationId": 1756,
+        "observationKey": "manifest-913ae458bcd8dcbabdd413ee751b",
+        "repositoryUrl": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 991
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 155281
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+        "attemptId": "attempt-v2-87b146eca937118d",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-f38d29b0a0b2b9aa",
+        "definitionsRevision": "defs-v1-1b550826f3050a8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-991",
+        "queueSeedRevision": "queue-seed-v2-03430bce447ac602d949",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5563ff1111f33fe5",
+        "targetFingerprint": "artifact-target-v2-0eb0bbce76b4ce6037e8",
+        "variantId": 991,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-02T04:40:59Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Cindy-Master/ffxiv_vfallguy",
+          "https://github.com/Cindy-Master/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 10,
+    "scanned_at_utc": "2026-10-02T04:40:59Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 991
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+      "current_assembly_version": "0.0.1.6",
+      "current_scan_id": 10,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-02T04:41:00Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 991
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 91,
+      "artifact_only_count": 91,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.21"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.4999.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:vfallguy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "vfallguy",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.13"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.platforms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NETCore.Platforms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.netcore.targets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.NETCore.Targets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.win32.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:netstandard.library",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NETStandard.Library",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.6.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.debian.8-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.fedora.23-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.fedora.24-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.io.compression",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.IO.Compression",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.net.http",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Net.Http",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.security.cryptography.apple",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Security.Cryptography.Apple",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.opensuse.13.2-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.opensuse.13.2-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.opensuse.42.1-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.osx.10.10-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.rhel.7-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.rhel.7-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.16.04-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:runtime.ubuntu.16.10-x64.runtime.native.system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "runtime.ubuntu.16.10-x64.runtime.native.System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.mathematics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.appcontext",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.AppContext",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.buffers",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Buffers",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.collections.concurrent",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.console",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.debug",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.diagnosticsource",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.DiagnosticSource",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.tools",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Tools",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.diagnostics.tracing",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Diagnostics.Tracing",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization.calendars",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization.Calendars",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.globalization.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Globalization.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.compression",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.compression.zipfile",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.Compression.ZipFile",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.filesystem",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.FileSystem",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.io.filesystem.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.IO.FileSystem.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.linq",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.linq.expressions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.http",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.net.sockets",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Net.Sockets",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.objectmodel",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit.ilgeneration",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.emit.lightweight",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Emit.Lightweight",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.reflection.typeextensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Reflection.TypeExtensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.resources.resourcemanager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.handles",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Handles",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.interopservices",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.interopservices.runtimeinformation",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.InteropServices.RuntimeInformation",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.runtime.numerics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Runtime.Numerics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.algorithms",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Algorithms",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.cng",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Cng",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.csp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Csp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.encoding",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Encoding",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.openssl",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.OpenSsl",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.primitives",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.Primitives",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.security.cryptography.x509certificates",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Security.Cryptography.X509Certificates",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.encoding.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.text.regularexpressions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.tasks.extensions",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Tasks.Extensions",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.threading.timer",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Threading.Timer",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.xml.readerwriter",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Xml.ReaderWriter",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:system.xml.xdocument",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.3.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-02T04:41:00Z",
+      "comparison_id": 5,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 10,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 991,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 1081,
+          "encoding": "json",
+          "path": "derived/variants/0000/991/advisory-matches.json",
+          "recordDigest": "c74e825f7711d7441c19ab61918de33d46302ffd7b5bea0be9e3ea0f89371dde",
+          "records": 2,
+          "sha256": "e206d18ac53b996d4d9a73d152d4bac196899b384acd70947ac0819cb5b1806a"
+        }
+      ],
+      "recordDigest": "c74e825f7711d7441c19ab61918de33d46302ffd7b5bea0be9e3ea0f89371dde",
+      "records": 2
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/991/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 88931,
+          "encoding": "json",
+          "path": "derived/variants/0000/991/dependency-resolutions.json",
+          "recordDigest": "1935074583ffd6fc3e782acf17cef1ef41dcf63f40ba364a8cdf37fb2aedbaba",
+          "records": 91,
+          "sha256": "7add89ae326183a2cc2407b00651c54a6448ebd879983b4f518c2fb63b4f762c"
+        }
+      ],
+      "recordDigest": "1935074583ffd6fc3e782acf17cef1ef41dcf63f40ba364a8cdf37fb2aedbaba",
+      "records": 91
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0000/991/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-45933d95effaf684",
+    "identityFingerprint": "32cbc82989423331dfdb402c2cc1bc3ec1b23ae9ea76674207b31b890d28a529",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "54ca3e9845f741863d36fa02fae5fd0ac0320326b31264d816d07894db04ae57",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "1c78a577b2d4b0b2ece8bdb2c9fdaef6b3e6deab5d562c92b8afec5b11e02411",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "41ae69918bf197f26df8f91ef35978d386a6bd787adad47aa2656580ff2363ad",
+        "records": 91,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "1f481f7dfcdf98fbac13d36f5f06b752a8bc0865c8ff883501c7d4c5e24b9811",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "8641d3ae5930f00c1d29b7d2b39246aeeeaed2bf0f57cc2e93422ff0880b3f70",
+        "records": 1428,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "5eea63405b69fccc6d8ef3c8197c1a6967c7fc55234ebc79af07620a4e053b98",
+        "records": 99,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "a99290413c1b443b7e8a8ad6a1b9d76985b1a91ff558e4861d4b62a338d3317e",
+        "records": 498,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "f82079e369aacea4ae8f472392e4704b7cabc0aa5eb76a816ad5d70e9d4fa349",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "2d98daa230052b1fc056e0aa194bb2378463340b756b5d6c1f575839c0d36de8",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "07abfb360969e3d5abaa45ccf0c52aba3ff1e3f4649303cd09d920ec8a77663d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "1cf63afbd069186602af4a3dc090debc9730ff23c6bb3e4a1f78f23d6e2b8dac",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "49b5347aecc97aea2894dcd41abc5fc5183bb97678a107df46aee2544d2cad33",
+        "records": 13,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-0fd80bee30b914cc0b246672aed354e37b80e03e9c04f500d89fe8adf94e0a2e",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "vfallguy",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "vfallguy",
+    "last_seen_utc": "2026-10-02T00:31:17Z",
+    "plugin_id": 531
+  },
+  "pluginId": 531,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Bot that does fall guys event automatically.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 165,
+      "summary": "Get that achievement!",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Cindy-Master/ffxiv_vfallguy"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# ffxiv_vfallguy dalamud plugin\nvFallguy dalamud plugin aims to make the Fall Guys Collaboration event in FFXIV less of a hassle\n\nDalamud repository:\n```\nhttps://puni.sh/api/repository/veyn\n```\n\n# How to install\n\n1) Open the Dalamud Settings menu in-game\n2) Under Custom Plugin Repositories, enter ```https://puni.sh/api/repository/veyn``` into the empty box at the bottom\n3) Click the \"+\" button.\n4) Click the \"Save and Close\" button.\n5) You will now be able to find the plugin in your Plugin Installer and install it\n\n# Current list of features\nAutomatically registers for the Fall Guys minigame \n\nAutomatically leaves the instance if you are not the only person in it (Useful for finding solo instances)\n\nBuilt-in button to leave the instance quickly (skips the confirmation button)\n\nAdds markers to showcase upcoming AoEs on stage 3 of the minigame",
+      "title": "ffxiv_vfallguy",
+      "url": "https://github.com/Cindy-Master/ffxiv_vfallguy"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "c6eb7b508bc4fca392bd2ab257600d8b24a0e48f625f7e8ec45532fe834f8eec",
+        "records": 2
+      },
+      "behaviorConsistency": {
+        "recordDigest": "b74362edcc25c95e128a05b4b60a4147e171fec394a13c2cb299c8083295dae9",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "e9b236986cbce34df1567e889ee6202599704e37d6f5b82d7a7e974173860914",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "99ed3f4ea82565f8e6754ab28e01746709fd2bb38393185dca839260a5e425af",
+        "records": 12
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+    "artifact_url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+    "assembly_version": "0.0.1.6",
+    "capabilities_json": [
+      "Dynamic code loading",
+      "Endpoint: apifox.com",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "Raw sockets",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 5,
+    "plugin_id": 531,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "artifactBytes": 56695,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.0.0.0",
+        "artifactBytes": 56695,
+        "artifactSha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+        "catalogAssemblyVersion": "0.0.1.6",
+        "manifestInternalName": "vfallguy",
+        "manifestPath": "vfallguy.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.socket",
+            "label": "Raw socket access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "apifox.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "apifox.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Dynamic code loading",
+        "Endpoint: apifox.com",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "Raw sockets",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "game.character.interact",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "network.outbound",
+        "network.socket"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 91,
+          "exactVersionObservedCount": 91,
+          "families": {
+            "managed-assembly": 15,
+            "nuget": 76
+          },
+          "fingerprint": "0174420f9f92f07bceb6999ba95161c07fe32a379394ca2e5bd77cf05d698bb2",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 14,
+            "required": 76
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 15,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 76,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 14,
+            "optional": 0,
+            "required": 76,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 91
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "apifox.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "apifox.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://apifox.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Cindy-Master/DalamudPlugins"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/main/plugin.json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugin.json"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/awgil/ffxiv_vfallguy/<redacted>/icon2.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+        "internalName": "vfallguy",
+        "manifestVersion": "0.0.1.6",
+        "observationId": 1756,
+        "observationKey": "manifest-913ae458bcd8dcbabdd413ee751b",
+        "repositoryUrl": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 991
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 155281
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+        "attemptId": "attempt-v2-87b146eca937118d",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-f38d29b0a0b2b9aa",
+        "definitionsRevision": "defs-v1-1b550826f3050a8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-991",
+        "queueSeedRevision": "queue-seed-v2-03430bce447ac602d949",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5563ff1111f33fe5",
+        "targetFingerprint": "artifact-target-v2-0eb0bbce76b4ce6037e8",
+        "variantId": 991,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-02T04:40:59Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "7eb98a86992dd1629a9e70091d7119011bfe374d550b06ca762d47133b5297c2",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Cindy-Master/ffxiv_vfallguy",
+          "https://github.com/Cindy-Master/DalamudPlugins"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 10,
+    "scanned_at_utc": "2026-10-02T04:40:59Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 237,
+    "source_repository": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 991
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "dac6862519b1667a981072574741715fd0cc39d3d64cbdcff6f8c4bba26a2744",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"84e42600dd36c8e7a6fbe7a7cd51faa23bd4b453fb3b5b6d8e1152caaf76069e\"",
+    "highest_api": 13,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-02T00:31:17Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-02T00:31:17Z",
+    "name": "Cindy-Master/DalamudPlugins",
+    "plugin_count": 3,
+    "provider": "Cindy-Master/DalamudPlugins",
+    "source_id": 237,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/main/plugin.json"
+  },
+  "sourceId": 237,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.0.1.6",
+    "author": "veyn,Cindy-Master,Airexplosion,Siren",
+    "authors_json": [
+      "veyn",
+      "Cindy-Master",
+      "Airexplosion",
+      "Siren"
+    ],
+    "category_tags_json": [],
+    "changelog": "1.4:\n  优化自动进本逻辑\n1.3:\n 修复打开人物信息界面的时候 会导致玩家人数+1的bug\n  尝试修复了一下偶尔会卡一下导致无法自动进本的情况\n1.1:\n  喜欢录屏举报?增加排本前选中NPC\n1.0:\n  增加王之进度\n0.9:\n  增加第三关结束后立刻退本(自行想能用在哪)\n  QQ机器人配置在点击应用后可保存",
+    "dalamud_api_level": 10,
+    "description": "糖豆人Plus",
+    "dip17_channel": "",
+    "download_count": 58342,
+    "download_link_install": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+    "first_seen_utc": "2026-08-20T00:07:32Z",
+    "icon_url": "https://s3.puni.sh/media/plugin/41/icon-ky2vlcaen2q.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T00:07:32Z",
+    "last_update": 1713148778,
+    "minimum_dalamud_version": null,
+    "name": "vfallguy",
+    "plugin_id": 531,
+    "punchline": "Plus",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.0.1.6",
+      "Author": "veyn,Cindy-Master,Airexplosion,Siren",
+      "Changelog": "1.4:\n  优化自动进本逻辑\n1.3:\n 修复打开人物信息界面的时候 会导致玩家人数+1的bug\n  尝试修复了一下偶尔会卡一下导致无法自动进本的情况\n1.1:\n  喜欢录屏举报?增加排本前选中NPC\n1.0:\n  增加王之进度\n0.9:\n  增加第三关结束后立刻退本(自行想能用在哪)\n  QQ机器人配置在点击应用后可保存",
+      "DalamudApiLevel": "10",
+      "Description": "糖豆人Plus",
+      "DownloadCount": 58342,
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/Cindy-Master/DalamudPlugins/refs/heads/main/plugins/vfallguy/latest.zip",
+      "IconUrl": "https://s3.puni.sh/media/plugin/41/icon-ky2vlcaen2q.png",
+      "InternalName": "vfallguy",
+      "LastUpdate": 1713148778,
+      "Name": "vfallguy",
+      "Punchline": "Plus",
+      "RepoUrl": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+      "Tags": []
+    },
+    "repo_url": "https://github.com/Cindy-Master/ffxiv_vfallguy",
+    "source_entry_key": "vfallguy|0.0.1.6|10|0|2",
+    "source_id": 237,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 991
+  },
+  "variantId": 991
+}

@@ -1,0 +1,177 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:PeNet.Asn1.dll: s://github.com/secana/asn1",
+      "artifact:PeNet.Asn1.dll: /Users/hausi/repos/PeNet.Asn1/src/PeNet.Asn1/obj/Release/net8/PeNet.Asn1.pdb",
+      "artifact:PeNet.dll: s://github.com/secana/PeNet",
+      "artifact:PeNet.dll: /home/runner/work/PeNet/PeNet/src/PeNet/obj/Release/net10.0/PeNet.pdb",
+      "artifact:PeNet.dll: p://",
+      "artifact:Weave.dll: s://github.com/Eauldane/Weave"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Weave.dll: Dalamud.Hooking",
+      "metadata:Weave.dll: HookFromAddress",
+      "il:Weave.dll:Weave.Plugin..ctor+0x11d: newobj Weave.Interop.PeSigScanner..ctor: SigScanner",
+      "il:Weave.dll:Weave.Plugin.Dispose+0xa2: callvirt Weave.Interop.PeSigScanner.Dispose: SigScanner",
+      "il:Weave.dll:Weave.Interop.DrawObjectContextService..ctor+0x6d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Weave.dll:Weave.Interop.DrawObjectContextService..ctor+0x8b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Weave.dll:Weave.Interop.DrawObjectContextService.TryInitializeEnableDrawHook+0x85: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:Weave.dll:Weave.Interop.HumanMetaPathService..ctor+0x4c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:System.Security.Cryptography.Pkcs.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Security.Cryptography.Pkcs.dll: DllImportAttribute",
+      "metadata:Weave.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.Pkcs.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.Pkcs.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Weave.dll: System.Diagnostics.Process",
+      "il:Weave.dll:Weave.Interop.PeSigScanner..ctor+0x6: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:Weave.dll:Weave.Interop.PeSigScanner..ctor+0xb: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:Weave.dll:Weave.Interop.PeSigScanner..ctor+0x21: callvirt System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process",
+      "il:Weave.dll:Weave.Interop.PeSigScanner..ctor+0x38: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "artifact:Weave.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:PeNet.dll: FileStream",
+      "il:PeNet.dll:PeNet.PeFile.IsPeFile+0x3: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:PeNet.dll: FileStream",
+      "metadata:Weave.dll: FileStream",
+      "metadata:Weave.dll: Directory.Delete",
+      "metadata:Weave.dll: Directory.CreateDirectory",
+      "metadata:Weave.dll: File.Delete",
+      "metadata:Weave.dll: WriteAllBytes"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Weave.dll: https://github.com/Eauldane/Weave"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.10c54bca8799",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Iced.dll: https://github.com/icedland"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.819fe4f6ef75",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.Pkcs.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PeNet.dll: https://github.com/secana/PeNet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.dc49bcf7351e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PeNet.Asn1.dll: https://github.com/secana/asn1"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.dc67c1559034",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Iced.dll: https://github.com/icedland/iced"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e0484baf82ab",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.Pkcs.dll: WebRequest",
+      "artifact:System.Security.Cryptography.Pkcs.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
