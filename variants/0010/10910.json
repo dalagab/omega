@@ -1,0 +1,2990 @@
+{
+  "analysis": {
+    "analysisId": "ed92d0ce50e4e4327b30260b9fdf7c51cd00ec1242ee640e33e61496dfc76478",
+    "artifactSha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+    "path": "artifacts/be/be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9/analyses/ed92d0ce50e4e4327b30260b9fdf7c51cd00ec1242ee640e33e61496dfc76478",
+    "recordCount": 9809
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+    "artifact_url": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+    "assembly_version": "1.5.1.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "high",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:<Execute>d__5.MoveNext+0x77: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": false,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`1.FireCallback+0x1a: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`1.FireNullCallback+0xa: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.inventory_control",
+        "confidence": "high",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:SomethingNeedDoing.Grammar.Commands.ItemCommand.UseItem+0x29: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem"
+        ],
+        "indirect": false,
+        "label": "Inventory UI/control",
+        "reachable": false,
+        "reason": "Invokes inventory-mutating or inventory-action functionality."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.synthetic_click",
+        "confidence": "high",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`2.InvokeReceiveEvent+0x18: callvirt ClickLib.Bases.ReceiveEventDelegate.Invoke"
+        ],
+        "indirect": false,
+        "label": "Synthetic game UI interaction",
+        "reachable": false,
+        "reason": "Invokes code associated with synthetic clicks or selection dialogs."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Character target control",
+      "Dynamic code loading",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Process execution",
+      "Process memory access",
+      "Shell/PowerShell",
+      "Synthetic game UI interaction"
+    ],
+    "caution_count": 8,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "Contains indicators for invoking command shells or PowerShell.",
+        "evidence": [
+          "artifact:lua54.dll: cmd.exe"
+        ],
+        "ruleId": "shell.powershell",
+        "severity": "high",
+        "title": "Shell or PowerShell invocation"
+      },
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:SomethingNeedDoing.dll: ReadProcessMemory",
+          "metadata:SomethingNeedDoing.dll: WriteProcessMemory",
+          "metadata:SomethingNeedDoing.dll: VirtualAllocEx",
+          "metadata:SomethingNeedDoing.dll: VirtualProtectEx",
+          "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.Read+0x3a: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+          "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.Read+0x3b: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+          "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.ReadRaw+0x3b: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+          "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.Write+0x37: call Reloaded.Memory.Kernel32.Kernel32.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "native-pe:lua54.dll: import KERNEL32.dll!CreateProcessW: CreateProcess",
+          "artifact:lua54.dll: CreateProcess",
+          "metadata:SomethingNeedDoing.dll: System.Diagnostics.Process",
+          "il:SomethingNeedDoing.dll:SomethingNeedDoing.Misc.Keyboard.Send+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:SomethingNeedDoing.dll:SomethingNeedDoing.Misc.Keyboard.Send+0x22: callvirt System.Diagnostics.Process.get_MainWindowHandle: System.Diagnostics.Process",
+          "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory..ctor+0x2: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+          "artifact:SomethingNeedDoing.dll: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:KeraLua.dll: DllImportAttribute",
+          "native-pe:lua54.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+          "native-pe:lua54.dll: import KERNEL32.dll!LoadLibraryExA: LoadLibrary",
+          "native-pe:lua54.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+          "artifact:lua54.dll: LoadLibrary",
+          "artifact:lua54.dll: GetProcAddress",
+          "metadata:SomethingNeedDoing.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:SomethingNeedDoing.dll: s://github.com/daemitus/SomethingNeedDoing/blob/master/SomethingNeedDoing/Misc/ICommandInterface.cs",
+          "artifact:SomethingNeedDoing.dll: s://github.com/daemitus/ClickLib/tree/master/ClickLib/Clicks for any details."
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:NLua.dll: Reflection.Emit",
+          "metadata:NLua.dll: Assembly.Load",
+          "il:NLua.dll:NLua.CodeGeneration..ctor+0x72: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+          "il:NLua.dll:NLua.CodeGeneration..ctor+0x88: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+          "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x4f: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+          "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x84: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit",
+          "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x89: callvirt System.Reflection.Emit.MethodBuilder.GetILGenerator: Reflection.Emit",
+          "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x94: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`2.InvokeReceiveEvent+0x18: callvirt ClickLib.Bases.ReceiveEventDelegate.Invoke"
+        ],
+        "ruleId": "automation.game.ui.synthetic_click",
+        "severity": "caution",
+        "title": "Synthetic game UI interaction"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:SomethingNeedDoing.Grammar.Commands.ItemCommand.UseItem+0x29: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem"
+        ],
+        "ruleId": "automation.game.ui.inventory_control",
+        "severity": "caution",
+        "title": "Inventory UI/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`1.FireCallback+0x1a: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`1.FireNullCallback+0xa: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:SomethingNeedDoing.dll:<Execute>d__5.MoveNext+0x77: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "lua54.dll"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "artifactBytes": 420635,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.5.1.0",
+        "artifactBytes": 420635,
+        "artifactSha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+        "catalogAssemblyVersion": "1.5.1.0",
+        "manifestInternalName": "SomethingNeedDoing",
+        "manifestPath": "SomethingNeedDoing.json",
+        "manifestRepositoryUrl": "https://github.com/WorkingRobot/SomethingNeedDoing",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/700608890/10b7bdd6-127c-4787-8109-3ac567132cdc?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-02T04%3A30%3A16Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-02T03%3A29%3A40Z&ske=2026-10-02T04%3A30%3A16Z&sks=b&skv=2018-11-09&sig=zxf3%2BEnNBzy3ersGMik4M7dWY%2BCwbJf4SgCEJ0aRn7I%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDkxMzQ3NiwibmJmIjoxNzkwOTEzMTc2LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.JERw9Mr4ErZwcSdV1phqseS_B7vlCz3pCDOlAqKBVBk&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 13,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Character target control",
+        "Dynamic code loading",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Process execution",
+        "Process memory access",
+        "Shell/PowerShell",
+        "Synthetic game UI interaction"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.inventory_control",
+        "game.ui.synthetic_click",
+        "memory.process",
+        "native.interop",
+        "process.execute",
+        "process.inspect",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 8,
+        "critical": 0,
+        "high": 2,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 53,
+          "exactVersionObservedCount": 48,
+          "families": {
+            "managed-assembly": 41,
+            "native": 5,
+            "nuget": 7
+          },
+          "fingerprint": "e3e81914d4eaf304fe6649cd63ee1177ef241215c8ebc30cf57ab99d90111793",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 126,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 104
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CloseHandle",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CreateProcessW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "DeleteCriticalSection",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "DuplicateHandle",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "EncodePointer",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "EnterCriticalSection",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ExitProcess",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FormatMessageA",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetCurrentProcess",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetCurrentProcessId",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetCurrentThreadId",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetLastError",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleFileNameA",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleFileNameW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleHandleExW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleHandleW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetStartupInfoW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetSystemTimeAsFileTime",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetTempPathW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "InitializeCriticalSectionAndSpinCount",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "InitializeSListHead",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "InterlockedFlushSList",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 42,
+            "required": 7
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 45,
+          "binaryOnly": 1,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 7,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 42,
+            "optional": 0,
+            "required": 7,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 53
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/WorkingRobot/SomethingNeedDoing"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/daemitus/ClickLib/tree/master/ClickLib/Clicks"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/daemitus/SomethingNeedDoing/blob/master/SomethingNeedDoing/Misc/ICommandInterface.cs"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/game.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+        "internalName": "SomethingNeedDoing",
+        "manifestVersion": "1.5.1.0",
+        "observationId": 17846,
+        "observationKey": "manifest-8381000d052a49e380b323e0da78",
+        "repositoryUrl": "https://github.com/WorkingRobot/SomethingNeedDoing",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 10910
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 1,
+        "fileCount": 7,
+        "uncompressedBytes": 877967
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+        "attemptId": "attempt-v2-45e2b2b3801fff1c",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-f38d29b0a0b2b9aa",
+        "definitionsRevision": "defs-v1-1b550826f3050a8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-10910",
+        "queueSeedRevision": "queue-seed-v2-03430bce447ac602d949",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5563ff1111f33fe5",
+        "targetFingerprint": "artifact-target-v2-bc7bfef44fcfa1cc3fde",
+        "variantId": 10910,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-02T03:52:56Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/WorkingRobot/SomethingNeedDoing"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/WorkingRobot/SomethingNeedDoing",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 13,
+    "scanned_at_utc": "2026-10-02T03:52:56Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/WorkingRobot/SomethingNeedDoing",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 10910
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+      "current_assembly_version": "1.5.1.0",
+      "current_scan_id": 13,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-02T03:52:57Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 10910
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 38,
+      "artifact_only_count": 38,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.0.4530.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:keralua",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KeraLua",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.3.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:nlua",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "NLua",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.6.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:somethingneeddoing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "SomethingNeedDoing",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.emit.ilgeneration",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Emit.ILGeneration",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.compilerservices.unsafe",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.serialization.formatters",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Serialization.Formatters",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.channels",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Channels",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "KERNEL32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:lua54",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "lua54.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.13"
+          ]
+        },
+        {
+          "componentKey": "nuget:ilrepack",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ILRepack",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.0-beta1"
+          ]
+        },
+        {
+          "componentKey": "nuget:keralua",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "KeraLua",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.3.1"
+          ]
+        },
+        {
+          "componentKey": "nuget:nlua",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "NLua",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.6.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:reloaded.memory",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Reloaded.Memory",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "7.1.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:stylecop.analyzers",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "StyleCop.Analyzers",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.0-beta.435"
+          ]
+        },
+        {
+          "componentKey": "nuget:stylecop.analyzers.unstable",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "StyleCop.Analyzers.Unstable",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.2.0.435"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-02T03:52:57Z",
+      "comparison_id": 5,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 13,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 10910,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0010/10910/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0010/10910/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 50815,
+          "encoding": "json",
+          "path": "derived/variants/0010/10910/dependency-resolutions.json",
+          "recordDigest": "1432712e752463fbb8ca2f5c9c5f840b4f26e2559246669bc440f71b424fc08b",
+          "records": 53,
+          "sha256": "103d5a2ed18e2736be3a01273ec2ed5a8012809a842d6b79d3a3684e3113901c"
+        }
+      ],
+      "recordDigest": "1432712e752463fbb8ca2f5c9c5f840b4f26e2559246669bc440f71b424fc08b",
+      "records": 53
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0010/10910/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-f17a26d07d4ef7f6",
+    "identityFingerprint": "d1e16584e6cf9fd04c34f8fcef9f2d309ed73564988941c620d2e53f540542a6",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "a460a3d377f942a7c8dfcb0503b5c7125487db59e6bf977bad2dd6d09189d0a9",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "7e747bf4eedb50c9d1f875ec1264392bc38ef669c6425b009e673909a899ff85",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "3215ab358965c39f96751fe90d1b981a59e68fbf1491fd05dc9cc16f016bfd24",
+        "records": 53,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "daa0dc2826f690d17b6c6a5f3c6ed871f2625a3e0ba49a65f812dc7be874945d",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "00b4c668c6dae6d503144c98e8510be1e9de5a74dd609aa7ccbb9e29489ed54e",
+        "records": 7300,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "5c6cc6a95b83f65adf47f706e402b25f12aa5a06de56f78883f5121c3de3f9b0",
+        "records": 255,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "fd9057a9b534d0009ca59741dbe2e6f18a474e203d73b815f75181074d6529f1",
+        "records": 1704,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "b4f843f6bca18bfc84748f3f1b36b3813476db0071cc669e728ea5228534d6b1",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "b82bd9404164299afb0c11c43c003605a7aeb552753e3835d5b6307864f88996",
+        "records": 230,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "1dcbd8300cba1f608e69e4ed2c5f1c8c1b278255dc088af1ee04d0cf666f6aaf",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "8c036fbf179adbbda23e69733a7c5eb9578e424d13771c719c26b09becfec6d6",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "4154d899614fe4c0ee29dc24bafaa988179c5f7bf2c03d9050a569deb46b7691",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "033508b17b067942fefd7b1c3fff39ff532fd9256818f330eaf918b30eb390c3",
+        "records": 219,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-005aeaa4a5d0c9835d4f4f8c2082efb6f4e9db7f24fd91107f8425edbab2867b",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Something Need Doing",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "SomethingNeedDoing",
+    "last_seen_utc": "2026-10-02T00:31:17Z",
+    "plugin_id": 508
+  },
+  "pluginId": 508,
+  "presentation": {
+    "images": [
+      {
+        "kind": "screenshot",
+        "source": "manifest",
+        "url": "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/game.png"
+      }
+    ],
+    "plugin": {
+      "description": "Macro expansion and lua scripting engine plugin for FFXIV",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1044,
+      "summary": "Work work.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/WorkingRobot/SomethingNeedDoing",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [
+        "https://github.com/daemitus/SomethingNeedDoing/raw/master/res/game.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/WorkingRobot/SomethingNeedDoing"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "## Something Need Doing\n\nThis plugin gives you control of a little Orc peon that does things for you. \nSpecifically, crafting. \nIt's a better way of storing and running all your different macros.\n\n![](https://github.com/daemitus/SomethingNeedDoing/raw/master/res/game.png)\n\n## Features\n- Folders, drag/drop re-ordering, and renaming of macros.\n- Fractional wait modifiers.\n- Looping\n- Clicking? :O\n- ...and more!\n\nNote: Unless otherwise provided by the game or another plugin, these do not work outside the craft interface.\n\n## In-game usage\n* Type `/pcraft` to pull up the GUI.\n* Type `/pcraft help` for some help.\n\n## Lua functions\n[Go here.](https://github.com/daemitus/SomethingNeedDoing/blob/master/SomethingNeedDoing/Misc/ICommandInterface.cs)",
+      "title": "SomethingNeedDoing",
+      "url": "https://github.com/WorkingRobot/SomethingNeedDoing"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "3905c5cd84521233733c3dd07b8ba7b8229074871473d600b3126675f3669294",
+        "records": 4
+      },
+      "behaviorConsistency": {
+        "recordDigest": "ec5b05db3ffb813fb3f45da0369181cca357f6d3b1e1f4a3317be8861a0fd267",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "3bca11015066ca484d9f128a190efe4ab967a06368d2abfb2913712091bab6c0",
+        "records": 13
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "e6b00d575050d6c726136f0382aea705b1898e3a4ec3e5305fe68aa7e8058103",
+        "records": 11
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+    "artifact_url": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+    "assembly_version": "1.5.1.0",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Character target control",
+      "Dynamic code loading",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Process execution",
+      "Process memory access",
+      "Shell/PowerShell",
+      "Synthetic game UI interaction"
+    ],
+    "caution_count": 8,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "plugin_id": 508,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "artifactBytes": 420635,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.5.1.0",
+        "artifactBytes": 420635,
+        "artifactSha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+        "catalogAssemblyVersion": "1.5.1.0",
+        "manifestInternalName": "SomethingNeedDoing",
+        "manifestPath": "SomethingNeedDoing.json",
+        "manifestRepositoryUrl": "https://github.com/WorkingRobot/SomethingNeedDoing",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/700608890/10b7bdd6-127c-4787-8109-3ac567132cdc?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-02T04%3A30%3A16Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-02T03%3A29%3A40Z&ske=2026-10-02T04%3A30%3A16Z&sks=b&skv=2018-11-09&sig=zxf3%2BEnNBzy3ersGMik4M7dWY%2BCwbJf4SgCEJ0aRn7I%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDkxMzQ3NiwibmJmIjoxNzkwOTEzMTc2LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.JERw9Mr4ErZwcSdV1phqseS_B7vlCz3pCDOlAqKBVBk&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.synthetic_click",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Synthetic game UI interaction",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.synthetic_click",
+            "label": "Synthetic game UI interaction",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "shell.powershell",
+            "label": "Shell or PowerShell invocation",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 13,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 13,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Character target control",
+        "Dynamic code loading",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Process execution",
+        "Process memory access",
+        "Shell/PowerShell",
+        "Synthetic game UI interaction"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.inventory_control",
+        "game.ui.synthetic_click",
+        "memory.process",
+        "native.interop",
+        "process.execute",
+        "process.inspect",
+        "shell.powershell"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 8,
+        "critical": 0,
+        "high": 2,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 53,
+          "exactVersionObservedCount": 48,
+          "families": {
+            "managed-assembly": 41,
+            "native": 5,
+            "nuget": 7
+          },
+          "fingerprint": "e3e81914d4eaf304fe6649cd63ee1177ef241215c8ebc30cf57ab99d90111793",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 126,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 104
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CloseHandle",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CreateProcessW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "DeleteCriticalSection",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "DuplicateHandle",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "EncodePointer",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "EnterCriticalSection",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "ExitProcess",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FormatMessageA",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetCurrentProcess",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetCurrentProcessId",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetCurrentThreadId",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetLastError",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleFileNameA",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleFileNameW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleHandleExW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetModuleHandleW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetStartupInfoW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetSystemTimeAsFileTime",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetTempPathW",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "InitializeCriticalSectionAndSpinCount",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "InitializeSListHead",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "lua54.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "InterlockedFlushSList",
+              "library": "KERNEL32.dll",
+              "managedName": "",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 42,
+            "required": 7
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 45,
+          "binaryOnly": 1,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 7,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 42,
+            "optional": 0,
+            "required": 7,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 53
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 2,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/WorkingRobot/SomethingNeedDoing"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/daemitus/ClickLib/tree/master/ClickLib/Clicks"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/daemitus/SomethingNeedDoing/blob/master/SomethingNeedDoing/Misc/ICommandInterface.cs"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/game.png"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/icon.png"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+        "internalName": "SomethingNeedDoing",
+        "manifestVersion": "1.5.1.0",
+        "observationId": 17846,
+        "observationKey": "manifest-8381000d052a49e380b323e0da78",
+        "repositoryUrl": "https://github.com/WorkingRobot/SomethingNeedDoing",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 10910
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 1,
+        "fileCount": 7,
+        "uncompressedBytes": 877967
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+        "attemptId": "attempt-v2-45e2b2b3801fff1c",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-f38d29b0a0b2b9aa",
+        "definitionsRevision": "defs-v1-1b550826f3050a8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-10910",
+        "queueSeedRevision": "queue-seed-v2-03430bce447ac602d949",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5563ff1111f33fe5",
+        "targetFingerprint": "artifact-target-v2-bc7bfef44fcfa1cc3fde",
+        "variantId": 10910,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-02T03:52:56Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "be4001f64d324566e852596a4a4e421497beb0660cc4ed8e091669ffd80b9ea9",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/WorkingRobot/SomethingNeedDoing"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/WorkingRobot/SomethingNeedDoing",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 13,
+    "scanned_at_utc": "2026-10-02T03:52:56Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1154,
+    "source_repository": "https://github.com/WorkingRobot/SomethingNeedDoing",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 10910
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "435ab669388a73547cddec5dc566e65e3d8262a22aa8c224ca2f2c01907e28f3",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"870263cf51252bd3d7b99cc91b32a21f8c355e9fe2f76080c349be0cd82c9210\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-02T00:31:17Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-02T00:31:17Z",
+    "name": "WorkingRobot/MyDalamudPlugins",
+    "plugin_count": 4,
+    "provider": "WorkingRobot/MyDalamudPlugins",
+    "source_id": 1154,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/WorkingRobot/MyDalamudPlugins/main/plogon.json"
+  },
+  "sourceId": 1154,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.5.1.0",
+    "author": "Asriel & daemitus",
+    "authors_json": [
+      "Asriel",
+      "daemitus"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 10,
+    "description": "A hard-working peon that crafts what you tell him to. An all-in-one sythesizing solution.",
+    "dip17_channel": "",
+    "download_count": 6985,
+    "download_link_install": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+    "download_link_testing": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+    "download_link_update": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+    "first_seen_utc": "2026-09-13T20:44:34Z",
+    "icon_url": "https://raw.githubusercontent.com/WorkingRobot/MyDalamudPlugins/main/icons/SomethingNeedDoing.png",
+    "image_urls_json": [
+      "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/game.png"
+    ],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-10-02T00:31:17Z",
+    "last_update": 1720021607,
+    "minimum_dalamud_version": null,
+    "name": "Something Need Doing",
+    "plugin_id": 508,
+    "punchline": "Work work.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.5.1.0",
+      "Author": "Asriel & daemitus",
+      "CanUnloadAsync": false,
+      "DalamudApiLevel": 10,
+      "Description": "A hard-working peon that crafts what you tell him to. An all-in-one sythesizing solution.",
+      "DownloadCount": 6985,
+      "DownloadLinkInstall": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+      "DownloadLinkTesting": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/WorkingRobot/SomethingNeedDoing/releases/download/1.5.1.0/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/WorkingRobot/MyDalamudPlugins/main/icons/SomethingNeedDoing.png",
+      "ImageUrls": [
+        "https://raw.githubusercontent.com/WorkingRobot/SomethingNeedDoing/main/res/game.png"
+      ],
+      "InternalName": "SomethingNeedDoing",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1720021607,
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "Something Need Doing",
+      "Punchline": "Work work.",
+      "RepoUrl": "https://github.com/WorkingRobot/SomethingNeedDoing"
+    },
+    "repo_url": "https://github.com/WorkingRobot/SomethingNeedDoing",
+    "source_entry_key": "somethingneeddoing|1.5.1.0|10|0|3",
+    "source_id": 1154,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 10910
+  },
+  "variantId": 10910
+}

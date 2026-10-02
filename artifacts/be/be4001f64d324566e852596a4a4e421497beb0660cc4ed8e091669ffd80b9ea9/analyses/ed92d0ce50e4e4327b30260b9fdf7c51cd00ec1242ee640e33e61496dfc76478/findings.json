@@ -1,0 +1,140 @@
+[
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:SomethingNeedDoing.dll: ReadProcessMemory",
+      "metadata:SomethingNeedDoing.dll: WriteProcessMemory",
+      "metadata:SomethingNeedDoing.dll: VirtualAllocEx",
+      "metadata:SomethingNeedDoing.dll: VirtualProtectEx",
+      "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.Read+0x3a: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.Read+0x3b: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.ReadRaw+0x3b: call Reloaded.Memory.Kernel32.Kernel32.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory.Write+0x37: call Reloaded.Memory.Kernel32.Kernel32.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:lua54.dll: cmd.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SomethingNeedDoing.dll:<Execute>d__5.MoveNext+0x77: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`1.FireCallback+0x1a: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`1.FireNullCallback+0xa: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Grammar.Commands.ItemCommand.UseItem+0x29: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.UseItem"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for synthetic game ui interaction. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SomethingNeedDoing.dll:ClickLib.Bases.ClickBase`2.InvokeReceiveEvent+0x18: callvirt ClickLib.Bases.ReceiveEventDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.synthetic_click",
+    "severity": "caution",
+    "title": "Synthetic game UI interaction"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:NLua.dll: Reflection.Emit",
+      "metadata:NLua.dll: Assembly.Load",
+      "il:NLua.dll:NLua.CodeGeneration..ctor+0x72: call System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration..ctor+0x88: callvirt System.Reflection.Emit.AssemblyBuilder.DefineDynamicModule: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x4f: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x84: callvirt System.Reflection.Emit.TypeBuilder.DefineMethod: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x89: callvirt System.Reflection.Emit.MethodBuilder.GetILGenerator: Reflection.Emit",
+      "il:NLua.dll:NLua.CodeGeneration.GenerateEvent+0x94: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SomethingNeedDoing.dll: s://github.com/daemitus/SomethingNeedDoing/blob/master/SomethingNeedDoing/Misc/ICommandInterface.cs",
+      "artifact:SomethingNeedDoing.dll: s://github.com/daemitus/ClickLib/tree/master/ClickLib/Clicks for any details."
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:KeraLua.dll: DllImportAttribute",
+      "native-pe:lua54.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:lua54.dll: import KERNEL32.dll!LoadLibraryExA: LoadLibrary",
+      "native-pe:lua54.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:lua54.dll: LoadLibrary",
+      "artifact:lua54.dll: GetProcAddress",
+      "metadata:SomethingNeedDoing.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "native-pe:lua54.dll: import KERNEL32.dll!CreateProcessW: CreateProcess",
+      "artifact:lua54.dll: CreateProcess",
+      "metadata:SomethingNeedDoing.dll: System.Diagnostics.Process",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Misc.Keyboard.Send+0x1d: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:SomethingNeedDoing.dll:SomethingNeedDoing.Misc.Keyboard.Send+0x22: callvirt System.Diagnostics.Process.get_MainWindowHandle: System.Diagnostics.Process",
+      "il:SomethingNeedDoing.dll:Reloaded.Memory.Sources.ExternalMemory..ctor+0x2: callvirt System.Diagnostics.Process.get_Handle: System.Diagnostics.Process",
+      "artifact:SomethingNeedDoing.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "lua54.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

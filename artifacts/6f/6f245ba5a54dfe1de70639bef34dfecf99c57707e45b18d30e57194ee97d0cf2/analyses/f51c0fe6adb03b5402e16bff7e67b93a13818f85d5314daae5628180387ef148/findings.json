@@ -1,0 +1,380 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:ECommons.dll:ECommons.GenericHelpers.Callback+0x127: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.CodeAnalysis.dll: Reflection.Emit",
+      "metadata:Microsoft.CodeAnalysis.dll: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.DefaultAnalyzerAssemblyLoader.LoadFromPathUncheckedImpl+0x69: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyName: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.DefaultAnalyzerAssemblyLoader..cctor+0x180: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "artifact:Microsoft.CodeAnalysis.dll: AssemblyLoadContext",
+      "artifact:Microsoft.CodeAnalysis.dll: Reflection.Emit",
+      "metadata:Splatoon.dll: AssemblyLoadContext",
+      "il:Splatoon.dll:Splatoon.SplatoonScripting.Compiler.Load+0x3c: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromStream: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:ECommons.dll: C:\\VS\\Splatoon\\ECommons\\ECommons\\obj\\x64\\Release\\ECommons.pdb",
+      "artifact:ECommons.dll: s://nightmarexiv.github.io/donate.html",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: s://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ECommons.dll: Dalamud.Hooking",
+      "metadata:ECommons.dll: SigScanner",
+      "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0xa: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0x14: callvirt Dalamud.Game.SigScanner.ScanText: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Init+0x12: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.ActionEffect.Init+0x1e: callvirt Dalamud.Game.SigScanner.TryScanText: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.DirectorUpdate.Init+0x12: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+      "il:ECommons.dll:ECommons.Hooks.DirectorUpdate.Init+0x1e: callvirt Dalamud.Game.SigScanner.TryScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Splatoon.dll: HttpListener",
+      "il:Splatoon.dll:Splatoon.Modules.HTTPServer..ctor+0x27: newobj System.Net.HttpListener..ctor: HttpListener",
+      "il:Splatoon.dll:Splatoon.Modules.HTTPServer..ctor+0x2d: callvirt System.Net.HttpListener.get_Prefixes: HttpListener",
+      "il:Splatoon.dll:Splatoon.Modules.HTTPServer..ctor+0x56: callvirt System.Net.HttpListenerPrefixCollection.Add: HttpListener",
+      "il:Splatoon.dll:Splatoon.Modules.HTTPServer..ctor+0x66: callvirt System.Net.HttpListener.Start: HttpListener",
+      "il:Splatoon.dll:Splatoon.Modules.HTTPServer.Dispose+0x6: callvirt System.Net.HttpListener.Abort: HttpListener",
+      "il:Splatoon.dll:<>c__DisplayClass2_0.<.ctor>b__0+0x17: callvirt System.Net.HttpListener.GetContext: HttpListener",
+      "il:Splatoon.dll:<>c__DisplayClass2_0.<.ctor>b__0+0x1e: callvirt System.Net.HttpListenerContext.get_Request: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ECommons.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.CodeAnalysis.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.dll: LoadLibrary",
+      "metadata:Microsoft.CodeAnalysis.dll: GetProcAddress",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.DiaSymReader.SymUnmanagedFactory.TryLoadFromAlternativePath+0x20: call Microsoft.DiaSymReader.SymUnmanagedFactory.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:cs\\Microsoft.CodeAnalysis.CSharp.resources.dll: http://www.microsoft.com0/",
+      "artifact:cs\\Microsoft.CodeAnalysis.resources.dll: http://www.microsoft.com0/",
+      "artifact:de\\Microsoft.CodeAnalysis.CSharp.resources.dll: http://www.microsoft.com0/",
+      "artifact:de\\Microsoft.CodeAnalysis.resources.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.xml: http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.a6a3f94b1cda",
+    "severity": "caution",
+    "title": "Endpoint: www.boost.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-2.1.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e8b4a5cbf22e",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: http://json.schemastore.org/sarif-1.0.0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fa0c83d25376",
+    "severity": "caution",
+    "title": "Endpoint: json.schemastore.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://www.github.com/NightmareXIV/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.98b3e371f434",
+    "severity": "caution",
+    "title": "Endpoint: www.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://nightmarexiv.github.io/donate.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.aef8978f9bfe",
+    "severity": "caution",
+    "title": "Endpoint: nightmarexiv.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://msdn.microsoft.com/query/roslyn.query"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ce13eaccbf59",
+    "severity": "caution",
+    "title": "Endpoint: msdn.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://frostffxiv.carrd.co/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.da912c24927a",
+    "severity": "caution",
+    "title": "Endpoint: frostffxiv.carrd.co"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Diagnostics.Process",
+      "metadata:ECommons.dll: ProcessStartInfo",
+      "metadata:ECommons.dll: ShellExecute",
+      "metadata:ECommons.dll: Process.Start",
+      "il:ECommons.dll:<>c__DisplayClass43_0.<ShellStart>b__0+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:ECommons.dll:<>c__DisplayClass43_0.<ShellStart>b__0+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:ECommons.dll:<>c__DisplayClass43_0.<ShellStart>b__0+0xc: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:ECommons.dll:<>c__DisplayClass43_0.<ShellStart>b__0+0xc: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:ECommons.dll: WriteAllText",
+      "metadata:ECommons.dll: File.Move",
+      "il:ECommons.dll:ECommons.LanguageHelpers.Localization.Save+0x39: call System.IO.File.WriteAllText: WriteAllText",
+      "il:ECommons.dll:ECommons.Configuration.EzConfig.SaveConfiguration+0x84: call System.IO.File.Move: File.Move",
+      "il:ECommons.dll:ECommons.Configuration.EzConfig.SaveConfiguration+0x12b: call System.IO.File.WriteAllText: WriteAllText",
+      "il:ECommons.dll:ECommons.Configuration.EzConfig.SaveConfiguration+0x149: call System.IO.File.Move: File.Move",
+      "artifact:ECommons.dll: WriteAllText",
+      "metadata:Microsoft.CodeAnalysis.CSharp.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://discord.gg/m8NRt4X8Gf"
+    ],
+    "rule_id": "network.endpoint.community-invite.eec4be6490a7",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.351354630292",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/Exnter/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.455f636b8c87",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/LAMMY-33"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.484d2db8b82e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/NightmareXIV/Splatoon/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.72b3d4e86e4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/NightmareXIV/MyDalamudPlugins"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7df026bdd638",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://raw.githubusercontent.com/NightmareXIV/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.86a556a34060",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/NightmareXIV/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a223232352a3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://raw.githubusercontent.com/NightmareXIV/Splatoon/master/versions.txt"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a6a7f6bcda09",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://raw.githubusercontent.com/NightmareXIV/Splatoon/master/revocationList.txt"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ac82bc342d71",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.json: https://github.com/NightmareXIV/Splatoon"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ec86aa14c318",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/Errerer/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fcc94b45b733",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Splatoon.dll: https://github.com/NightmareXIV/Splatoon"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fed6db2da5f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:ECommons.dll: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler..cctor+0x12: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler..cctor+0x26: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "il:ECommons.dll:<>c__DisplayClass4_0.<BeginThreadIfNotRunning>b__2+0x8e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+      "artifact:Microsoft.CodeAnalysis.dll: WebRequest",
+      "metadata:Splatoon.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
