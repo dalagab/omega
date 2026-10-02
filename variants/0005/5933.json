@@ -1,0 +1,3284 @@
+{
+  "analysis": {
+    "analysisId": "eff179471ff727e5f2a9c3f5b37274b51cc1a44608198929a2f76c936ba0b3b5",
+    "artifactSha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+    "path": "artifacts/e4/e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d/analyses/eff179471ff727e5f2a9c3f5b37274b51cc1a44608198929a2f76c936ba0b3b5",
+    "recordCount": 12976
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+    "artifact_url": "https://github.com/Jukkales/NecroLens/releases/latest/download/latest.zip",
+    "assembly_version": "1.0.7.3",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "very-high",
+        "evidence": [
+          "il:NecroLens.dll:NecroLens.Service.DeepDungeonService.TryInteract+0xe8: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+          "il:NecroLens.dll:NecroLens.Service.DeepDungeonService.TryNearestOpenChest+0x7d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": true,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "high",
+        "evidence": [
+          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": false,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "evidence": [
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt AtkUnitBase_FireCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Automation.Callback.FireRaw+0x15: callvirt AtkUnitBase_FireCallbackDelegate.Invoke",
+          "il:NecroLens.dll:<>c__DisplayClass21_0.<OnPomanderCommand>b__1+0x2d: call ECommons.Automation.Callback.Fire"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crowdin.com",
+      "Endpoint: egorbo.com",
+      "Endpoint: github.com",
+      "Endpoint: graphics.stanford.edu",
+      "Endpoint: necrolens.jusrv.de",
+      "Endpoint: nightmarexiv.github.io",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: www.boost.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 14,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Diagnostics.Process",
+          "metadata:ECommons.dll: ProcessStartInfo",
+          "metadata:ECommons.dll: ShellExecute",
+          "metadata:ECommons.dll: Process.Start",
+          "il:ECommons.dll:<>c__DisplayClass87_0.<ShellStart>b__0+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:ECommons.dll:<>c__DisplayClass87_0.<ShellStart>b__0+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:ECommons.dll:<>c__DisplayClass87_0.<ShellStart>b__0+0xc: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:ECommons.dll:<>c__DisplayClass87_0.<ShellStart>b__0+0xc: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NecroLens.dll: https://crowdin.com/project/necrolens"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f97260ff905b",
+        "severity": "caution",
+        "title": "Endpoint: crowdin.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:ECommons.xml: https://egorbo.com/llvm-range-checks.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.f4c18a6e1831",
+        "severity": "caution",
+        "title": "Endpoint: egorbo.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://nightmarexiv.github.io/donate.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.aef8978f9bfe",
+        "severity": "caution",
+        "title": "Endpoint: nightmarexiv.github.io"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NecroLens.dll: https://necrolens.jusrv.de/api/import"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.290988d73ac5",
+        "severity": "caution",
+        "title": "Endpoint: necrolens.jusrv.de"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:ECommons.xml: https://graphics.stanford.edu/~seander/bithacks.html"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.114e27c77ba6",
+        "severity": "caution",
+        "title": "Endpoint: graphics.stanford.edu"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:ECommons.xml: http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
+        ],
+        "ruleId": "network.endpoint.insecure-http.a6a3f94b1cda",
+        "severity": "caution",
+        "title": "Endpoint: www.boost.org"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:ECommons.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:ECommons.dll: Dalamud.Hooking",
+          "metadata:ECommons.dll: SigScanner",
+          "metadata:ECommons.dll: HookFromAddress",
+          "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0xf: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+          "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0x19: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+          "il:ECommons.dll:ECommons.ObjectLifeTracker.ObjectLife.Init+0x3a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x13: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:ECommons.dll: D:\\Dev\\NecroLens\\ECommons\\ECommons\\obj\\x64\\Release\\ECommons.pdb",
+          "artifact:ECommons.dll: s://nightmarexiv.github.io/donate.html"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:ECommons.dll: AssemblyLoadContext",
+          "artifact:ECommons.dll: AssemblyLoadContext",
+          "artifact:ECommons.xml: AssemblyLoadContext"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt AtkUnitBase_FireCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Automation.Callback.FireRaw+0x15: callvirt AtkUnitBase_FireCallbackDelegate.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Game.ClientState.Objects.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:NecroLens.dll:NecroLens.Service.DeepDungeonService.TryInteract+0xe8: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject",
+          "il:NecroLens.dll:NecroLens.Service.DeepDungeonService.TryNearestOpenChest+0x7d: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.Opcodes.OpcodeUpdater.DownloadOpcodes+0x21: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler..cctor+0x3c: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:ECommons.ImGuiMethods.ThreadLoadImageHandler..cctor+0x50: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass1_0.<DownloadOpcodes>b__0+0x3e: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x2: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x16: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+          "il:ECommons.dll:<>c__DisplayClass9_0.<Init>b__1+0x21: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:NecroLens.json: https://github.com/Jukkales/NecroLens"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.d44250b8ed63",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:NecroLens.dll: https://raw.githubusercontent.com/Jukkales/NecroLens/main/NecroLens/Data/allMobs.json"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.7afaedc5de43",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:ECommons.dll: WriteAllText",
+          "metadata:ECommons.dll: File.Move",
+          "il:ECommons.dll:ECommons.LanguageHelpers.Localization.Save+0x39: call System.IO.File.WriteAllText: WriteAllText",
+          "il:ECommons.dll:ECommons.Configuration.EzConfig.Migrate+0xe1: call System.IO.File.Move: File.Move",
+          "il:ECommons.dll:<>c__DisplayClass16_0.<SaveConfiguration>g__Write|0+0xa9: call System.IO.File.Move: File.Move",
+          "il:ECommons.dll:<>c__DisplayClass16_0.<SaveConfiguration>g__Write|0+0xee: call System.IO.File.WriteAllText: WriteAllText",
+          "il:ECommons.dll:<>c__DisplayClass16_0.<SaveConfiguration>g__Write|0+0x116: call System.IO.File.Move: File.Move",
+          "artifact:ECommons.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "privacy",
+        "description": "References APIs that can read or modify clipboard contents.",
+        "evidence": [
+          "metadata:ECommons.dll: System.Windows.Forms.Clipboard",
+          "il:ECommons.dll:ECommons.GenericHelpers.Copy+0x8: call System.Windows.Forms.Clipboard.Clear: System.Windows.Forms.Clipboard",
+          "il:ECommons.dll:ECommons.GenericHelpers.Copy+0x1d: call System.Windows.Forms.Clipboard.SetText: System.Windows.Forms.Clipboard",
+          "il:ECommons.dll:ECommons.GenericHelpers.Paste+0x0: call System.Windows.Forms.Clipboard.GetText: System.Windows.Forms.Clipboard"
+        ],
+        "ruleId": "clipboard",
+        "severity": "informational",
+        "title": "Clipboard access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "artifactBytes": 283946,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.7.2",
+        "artifactBytes": 283946,
+        "artifactSha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+        "catalogAssemblyVersion": "1.0.7.3",
+        "manifestInternalName": "NecroLens",
+        "manifestPath": "NecroLens.json",
+        "manifestRepositoryUrl": "https://github.com/Jukkales/NecroLens",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/617668363/fe6c5f32-1746-4240-a344-3e60434483c9?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-02T02%3A51%3A59Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-02T01%3A51%3A09Z&ske=2026-10-02T02%3A51%3A59Z&sks=b&skv=2018-11-09&sig=0gcyBJ1RmdRFtyGhTUu4g89Vzi2WVtd%2BNV9FGwTPR2U%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDkwNzc0MCwibmJmIjoxNzkwOTA3NDQwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.xIMqhBOe49jGCKb8VBNz_CrnKd8PqFef4MQchOvzFtM&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crowdin.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "egorbo.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "graphics.stanford.edu",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "necrolens.jusrv.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nightmarexiv.github.io",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.boost.org",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crowdin.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "egorbo.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "graphics.stanford.edu",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "necrolens.jusrv.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nightmarexiv.github.io",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.boost.org",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 15,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crowdin.com",
+        "Endpoint: egorbo.com",
+        "Endpoint: github.com",
+        "Endpoint: graphics.stanford.edu",
+        "Endpoint: necrolens.jusrv.de",
+        "Endpoint: nightmarexiv.github.io",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: www.boost.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 14,
+        "critical": 0,
+        "high": 1,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 64,
+          "exactVersionObservedCount": 62,
+          "families": {
+            "managed-assembly": 61,
+            "native": 2,
+            "nuget": 1
+          },
+          "fingerprint": "d363338fecac819bc34550897ae1d409268adfe9811c76c5f12075f96f5861b8",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 5,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 7,
+            "observed": 56,
+            "required": 1
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 63,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 1,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 7,
+            "observed": 56,
+            "optional": 0,
+            "required": 1,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 64
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 8,
+          "destinationsUndetermined": false,
+          "hostCount": 9,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crowdin.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "egorbo.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "graphics.stanford.edu",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "VeryHigh",
+              "host": "learn.microsoft.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "necrolens.jusrv.de",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "nightmarexiv.github.io",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "www.boost.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 11,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crowdin.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crowdin.com/project/necrolens"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "egorbo.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://egorbo.com/llvm-range-checks.html"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Jukkales/DalamudPlugins/blob/main/RepoChange.md"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Jukkales/NecroLens"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Jukkales/NecroLens/raw/main/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "graphics.stanford.edu",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://graphics.stanford.edu/~seander/bithacks.html"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "learn.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "documentation/reference link",
+            "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-12.0/using-alias-types"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "necrolens.jusrv.de",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://necrolens.jusrv.de/api/import"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "nightmarexiv.github.io",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://nightmarexiv.github.io/donate.html"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Jukkales/NecroLens/main/NecroLens/Data/allMobs.json"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "www.boost.org",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Jukkales/NecroLens/releases/latest/download/latest.zip",
+        "internalName": "NecroLens",
+        "manifestVersion": "1.0.7.3",
+        "observationId": 9694,
+        "observationKey": "manifest-4c30302ea73806391505e95f9618",
+        "repositoryUrl": "https://github.com/Jukkales/NecroLens",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 5933
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 7,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 13,
+        "uncompressedBytes": 787829
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+        "attemptId": "attempt-v2-27dbd778a782417d",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-f38d29b0a0b2b9aa",
+        "definitionsRevision": "defs-v1-1b550826f3050a8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-5933",
+        "queueSeedRevision": "queue-seed-v2-03430bce447ac602d949",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5563ff1111f33fe5",
+        "targetFingerprint": "artifact-target-v2-52c2608bb88e0867e900",
+        "variantId": 5933,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-02T02:17:19Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Jukkales/NecroLens"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Jukkales/NecroLens",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 10,
+    "scanned_at_utc": "2026-10-02T02:17:19Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Jukkales/NecroLens",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 5933
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+      "current_assembly_version": "1.0.7.3",
+      "current_scan_id": 10,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-02T02:17:21Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 5933
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 38,
+      "artifact_only_count": 38,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.1.0.7"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ecommons",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "2.1.0.7"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.3675"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.visualbasic.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.VisualBasic.Core",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:necrolens",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NecroLens",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.7.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:necrolens.resources",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "NecroLens.resources",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.0.7.2"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:pinvoke.user32",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "PInvoke.User32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "0.7.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "2.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.windows.forms",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Windows.Forms",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:cimgui",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cimgui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:comdlg32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Comdlg32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.12"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-02T02:17:21Z",
+      "comparison_id": 1,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 10,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 5933,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0005/5933/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0005/5933/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 60281,
+          "encoding": "json",
+          "path": "derived/variants/0005/5933/dependency-resolutions.json",
+          "recordDigest": "300cd569b72968e4f9d0151beabef170f47f00f28189a4746c5ae4596a069063",
+          "records": 64,
+          "sha256": "a446323f7d02028b4bb26b92257643b0c5969b14bfd56eff492c13b6488195b6"
+        }
+      ],
+      "recordDigest": "300cd569b72968e4f9d0151beabef170f47f00f28189a4746c5ae4596a069063",
+      "records": 64
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0005/5933/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-135ef0afe70697b6",
+    "identityFingerprint": "5370e65ca68d5204afb266e25c2d19b0438157a7c4728ccf03a2841a3fa5a617",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "fc3f6704c87dd89fdc4a7ee147e72f14da963418edcf3bb6fe16751b4a0749f6",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "5d5a6cd3ab0a94f8d9f3dd5e92cb43a21c3f0ff23882af0a421b092e9b14fdf1",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "48e69e84bfa76368e0b56534724c11a9db3ce7c161e4b5c690fae6d26b8c16df",
+        "records": 64,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "c5f6c897569779d615e367566b377e76a6aabb4660fa5de385fa8ed098e91a00",
+        "records": 7,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "4ee2ee7203f5c0e96cdd72c649efb2baec496172f33dd0edc502091bd98f9f08",
+        "records": 10027,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "0527d1bd47c7de87a131b00332dc1dceedff4f102032a1ae4db70976af29529a",
+        "records": 684,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "8d81de0eb49dece06c15557e10c850db9e35664a8406431048ed6143d6106d4c",
+        "records": 2000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "2324fd417defb6396bf89c34c2d3e7181a367451ea0d0f0de6b37041c3a5e913",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "f7293d35af3270827e09eb4e58614b3ad0b2dcc516f891f096aa56b170f21da2",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "5e47b8475935ec1539e94dfd5a569b192315fb98600b597ba3d1eb11957d0b90",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "259378378b52a0e5126e4597ea22872f5ec207a5110908dbeda8054d7a4101e7",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "cc478c2cab3fb30f11204443f18abc1d1ce01ec80fc69de27462a4cffd65947c",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "25c243688ff8058aa32c3e9dcf2ff121f1748d86e34a4b5e584914022349d944",
+        "records": 116,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-66cc53eeae7a7d66d6ebe18f6e459a2d061662d6b96aa8d6fae992c033fbb7c8",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "NecroLens",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "NecroLens",
+    "last_seen_utc": "2026-10-02T00:31:17Z",
+    "plugin_id": 514
+  },
+  "pluginId": 514,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "DeepDungeon Helper. Radar for Mobs, Aggro, Sight and everything else.",
+      "images": [
+        "https://s3.puni.sh/media/plugin/53/image-lfoiry0hm9.png",
+        "https://discordapp.com/api/guilds/1001823907193552978/embed.png?style=banner2",
+        "https://raw.githubusercontent.com/Jukkales/NecroLens/main/screen.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 31175,
+      "summary": "A true Necromancer always know the DeepDungeon ... everyone else just uses a high tech!",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Jukkales/NecroLens",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Explore a DeepDungeon with a tool like the HoloLens or GoogleGlass on",
+      "homepage": "",
+      "images": [
+        "https://discordapp.com/api/guilds/1001823907193552978/embed.png?style=banner2",
+        "https://raw.githubusercontent.com/Jukkales/NecroLens/main/screen.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Jukkales/NecroLens"
+        },
+        {
+          "kind": "discord",
+          "label": "Join Discord",
+          "url": "https://discord.gg/Zzrcc8kmvy"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "[![Build](https://github.com/Jukkales/NecroLens/actions/workflows/build-plugin.yml/badge.svg)](https://github.com/Jukkales/NecroLens/actions/workflows/build-plugin.yml)\n[![Downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fpuni.sh%2Fapi%2Frepository%2Fjukka&query=%24%5B0%5D.DownloadCount&label=Downloads&color=4DC71F\n)]()\n[![Last Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fpuni.sh%2Fapi%2Frepository%2Fjukka&query=%24%5B0%5D.AssemblyVersion&label=release\n)]()\n[![Last Commit](https://img.shields.io/github/last-commit/Jukkales/NecroLens)]()\n\n[![image](https://discordapp.com/api/guilds/1001823907193552978/embed.png?style=banner2)](https://discord.gg/Zzrcc8kmvy)\n\n### Want to help with localization?\nhttps://crowdin.com/project/necrolens\n\n# NecroLens\n```\nhttps://puni.sh/api/repository/jukka\n```\n\n<img src=\"https://raw.githubusercontent.com/Jukkales/NecroLens/main/icon.png\" width=\"100\" height=\"100\" align=\"left\">\n\nThis Plugin allows you to explore a DeepDungeon with a tool like the HoloLens or GoogleGlass on.\nYou will be able to see trough walls, see where monster are looking ore be aware of you and many more.\n\nThis is an ESP hack (extrasensory perception), so don't use it if you not feel well.\n\n## Installation\nFor installation instructions, please see my [custom plugin repo](https://github.com/Jukkales/DalamudPlugins).\n\n![image](screen.png)\n\n## Features\n - ESP draws for ever monster\n   - Proximity mobs will have a large circle around them. Tey aggro you once you step in\n   - Sight mobs wil have a 90° view in front and agro you once they see you in this area\n   - Sound mobs are like proximity mobs, but they only aggro you if you run ner to them or touch them\n   - Patrols always have a movement direction arrow\n - Detection of dungeon objects like chests, exit, return and so on\n   - The plugin can NOT detect whats not there. \n   - Invisible Traps, Chest bombs and Hoards are ServerSide only! (expect you use a Pomander)\n - Highlight of objects once near\n - Respawn and Floor timer\n - Pomander tracker of static floor effects\n - Automatically opens chest for you once near\n   - Only when safe, max one time and it very rarely stuck you \n - `/pomander` command\n\n## Usage\nThe Plugin is only active in **Palace of the Dead**, **Heaven on High** or **Eureka Orthos**. Once you enter this duties a Window opens up showing floor information and the ESP is drawing.\n\nIf you accidentally closed the main window you can bring it back with the `/necrolens` chat command.\n\n## Planned Features\n - Mob Movement tracker\n   - Shows you an indicator if its safe to move or if the mob will soon move\n - Accurate aggro ranges\n   - Currently the aggro range is fixed but some mobs have slightly bigger or smaller ranges\n   - Tracking these and safe these values to be more precise\n - Better remaining kills detection\n - Pomander auto usage\n - Enemy AoE Radar\n - Trap/Hoard location logging\n\n---\n_Special thanks to Leonhart for making the icon!_",
+      "title": "NecroLens",
+      "url": "https://github.com/Jukkales/NecroLens"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "774e75e7d5f59bb4d1ef18aa0d822530ddf1a2032a556f6e87e5de3efb67e7d7",
+        "records": 3
+      },
+      "behaviorConsistency": {
+        "recordDigest": "6ec4ce067134956e590dfb260016c2ae2ab68b0c5dee1d51cf2c6617d91400a4",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "da378843eeaa9d1ed451cc64aa9d2372afcd629f9be2afb884713b3405af54a7",
+        "records": 15
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "8c66e3803933700308dfa1787982dcf260978e5d1035d52053cbc11430f0a564",
+        "records": 20
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+    "artifact_url": "https://github.com/Jukkales/NecroLens/releases/latest/download/latest.zip",
+    "assembly_version": "1.0.7.3",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crowdin.com",
+      "Endpoint: egorbo.com",
+      "Endpoint: github.com",
+      "Endpoint: graphics.stanford.edu",
+      "Endpoint: necrolens.jusrv.de",
+      "Endpoint: nightmarexiv.github.io",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: www.boost.org",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 14,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 5,
+    "plugin_id": 514,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+      "artifactBytes": 283946,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.0.7.2",
+        "artifactBytes": 283946,
+        "artifactSha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+        "catalogAssemblyVersion": "1.0.7.3",
+        "manifestInternalName": "NecroLens",
+        "manifestPath": "NecroLens.json",
+        "manifestRepositoryUrl": "https://github.com/Jukkales/NecroLens",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/617668363/fe6c5f32-1746-4240-a344-3e60434483c9?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-02T02%3A51%3A59Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-02T01%3A51%3A09Z&ske=2026-10-02T02%3A51%3A59Z&sks=b&skv=2018-11-09&sig=0gcyBJ1RmdRFtyGhTUu4g89Vzi2WVtd%2BNV9FGwTPR2U%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MDkwNzc0MCwibmJmIjoxNzkwOTA3NDQwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.xIMqhBOe49jGCKb8VBNz_CrnKd8PqFef4MQchOvzFtM&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crowdin.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "egorbo.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "graphics.stanford.edu",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "necrolens.jusrv.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nightmarexiv.github.io",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.boost.org",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crowdin.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "egorbo.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "VeryHigh",
+              "host": "graphics.stanford.edu",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "necrolens.jusrv.de",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "nightmarexiv.github.io",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "VeryHigh",
+              "host": "www.boost.org",
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 15,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 15,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crowdin.com",
+        "Endpoint: egorbo.com",
+        "Endpoint: github.com",
+        "Endpoint: graphics.stanford.edu",
+        "Endpoint: necrolens.jusrv.de",
+        "Endpoint: nightmarexiv.github.io",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: www.boost.org",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 14,
+        "critical": 0,
+        "high": 1,
+        "informational": 5
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 64,
+          "exactVersionObservedCount": 62,
+          "families": {
+            "managed-assembly": 61,
+            "native": 2,
+            "nuget": 1
+          },
+          "fingerprint": "d363338fecac819bc34550897ae1d409268adfe9811c76c5f12075f96f5861b8",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 5,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 7,
+            "observed": 56,
+            "required": 1
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 63,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 1,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 7,
+            "observed": 56,
+            "optional": 0,
+            "required": 1,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 64
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 8,
+          "destinationsUndetermined": false,
+          "hostCount": 9,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crowdin.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "egorbo.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "graphics.stanford.edu",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "VeryHigh",
+              "host": "learn.microsoft.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "necrolens.jusrv.de",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "nightmarexiv.github.io",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "www.boost.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 11,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crowdin.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crowdin.com/project/necrolens"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "egorbo.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://egorbo.com/llvm-range-checks.html"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Jukkales/DalamudPlugins/blob/main/RepoChange.md"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Jukkales/NecroLens"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source-code reference",
+            "url": "https://github.com/Jukkales/NecroLens/raw/main/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "graphics.stanford.edu",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unrecognised public host",
+            "url": "https://graphics.stanford.edu/~seander/bithacks.html"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "VeryHigh",
+            "host": "learn.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "documentation/reference link",
+            "url": "https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-12.0/using-alias-types"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "necrolens.jusrv.de",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://necrolens.jusrv.de/api/import"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "nightmarexiv.github.io",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://nightmarexiv.github.io/donate.html"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Jukkales/NecroLens/main/NecroLens/Data/allMobs.json"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "www.boost.org",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.boost.org/doc/libs/1_53_0/libs/circular_buffer/doc/circular_buffer.html"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Jukkales/NecroLens/releases/latest/download/latest.zip",
+        "internalName": "NecroLens",
+        "manifestVersion": "1.0.7.3",
+        "observationId": 9694,
+        "observationKey": "manifest-4c30302ea73806391505e95f9618",
+        "repositoryUrl": "https://github.com/Jukkales/NecroLens",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 5933
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 7,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 13,
+        "uncompressedBytes": 787829
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-bd4904d724ce40f2",
+        "attemptId": "attempt-v2-27dbd778a782417d",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-f38d29b0a0b2b9aa",
+        "definitionsRevision": "defs-v1-1b550826f3050a8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-5933",
+        "queueSeedRevision": "queue-seed-v2-03430bce447ac602d949",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-5563ff1111f33fe5",
+        "targetFingerprint": "artifact-target-v2-52c2608bb88e0867e900",
+        "variantId": 5933,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-02T02:17:19Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "e41965b3eee0a9933e21cfc0783edb83f37a85c566715827c087da99776c927d",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Jukkales/NecroLens"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Jukkales/NecroLens",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 10,
+    "scanned_at_utc": "2026-10-02T02:17:19Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 894,
+    "source_repository": "https://github.com/Jukkales/NecroLens",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 5933
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "81d5d3fa2325e36b15f51dc9a91ccbdc0639636b064d0c8f6d33bd24555b925e",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"21c5c66b3637fa512c2c44c331734d2d46a79466267aa7cf2cca4b0e95f2d991\"",
+    "highest_api": 9,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-02T00:31:17Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-02T00:31:17Z",
+    "name": "Jukkales/DalamudPlugins",
+    "plugin_count": 2,
+    "provider": "Jukkales/DalamudPlugins",
+    "source_id": 894,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/Jukkales/DalamudPlugins/main/repo.json"
+  },
+  "sourceId": 894,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.0.7.3",
+    "author": "Jukka",
+    "authors_json": [
+      "Jukka"
+    ],
+    "category_tags_json": [],
+    "changelog": "v1.0.7.3 repo change things",
+    "dalamud_api_level": 9,
+    "description": "DeepDungeon Helper. Radar for Mobs, Aggro, Sight and everything else.",
+    "dip17_channel": "",
+    "download_count": 20204,
+    "download_link_install": "https://github.com/Jukkales/NecroLens/releases/latest/download/latest.zip",
+    "download_link_testing": "https://github.com/Jukkales/NecroLens/releases/download/download/latest.zip",
+    "download_link_update": "https://github.com/Jukkales/NecroLens/releases/download/download/latest.zip",
+    "first_seen_utc": "2026-09-02T07:10:54Z",
+    "icon_url": "https://github.com/Jukkales/NecroLens/raw/main/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-09-02T07:10:54Z",
+    "last_update": 1714859444,
+    "minimum_dalamud_version": null,
+    "name": "NecroLens",
+    "plugin_id": 514,
+    "punchline": "A true Necromancer always know the DeepDungeon ... everyone else just uses a high tech!",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.0.7.3",
+      "Author": "Jukka",
+      "Changelog": "v1.0.7.3 repo change things",
+      "DalamudApiLevel": 9,
+      "Description": "DeepDungeon Helper. Radar for Mobs, Aggro, Sight and everything else.",
+      "DownloadCount": 20204,
+      "DownloadLinkInstall": "https://github.com/Jukkales/NecroLens/releases/latest/download/latest.zip",
+      "DownloadLinkTesting": "https://github.com/Jukkales/NecroLens/releases/download/download/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Jukkales/NecroLens/releases/download/download/latest.zip",
+      "IconUrl": "https://github.com/Jukkales/NecroLens/raw/main/icon.png",
+      "ImageUrls": [],
+      "InternalName": "NecroLens",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": "1714859444",
+      "Name": "NecroLens",
+      "Punchline": "A true Necromancer always know the DeepDungeon ... everyone else just uses a high tech!",
+      "RepoUrl": "https://github.com/Jukkales/NecroLens",
+      "Tags": [
+        "potd",
+        "hoh",
+        "eo",
+        "esp",
+        "radar",
+        "sonar",
+        "deep",
+        "dungeon"
+      ]
+    },
+    "repo_url": "https://github.com/Jukkales/NecroLens",
+    "source_entry_key": "necrolens|1.0.7.3|9|0|0",
+    "source_id": 894,
+    "tags_json": [
+      "potd",
+      "hoh",
+      "eo",
+      "esp",
+      "radar",
+      "sonar",
+      "deep",
+      "dungeon"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 5933
+  },
+  "variantId": 5933
+}
