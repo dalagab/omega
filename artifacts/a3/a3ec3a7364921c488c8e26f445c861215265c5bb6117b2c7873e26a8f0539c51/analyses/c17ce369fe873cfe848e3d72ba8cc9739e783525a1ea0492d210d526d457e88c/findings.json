@@ -1,0 +1,82 @@
+[
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:TextCopy.dll: powershell.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:TextCopy.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:TidyChat.dll: System.Diagnostics.Process",
+      "metadata:TidyChat.dll: ProcessStartInfo",
+      "metadata:TidyChat.dll: ShellExecute",
+      "metadata:TidyChat.dll: Process.Start",
+      "il:TidyChat.dll:TidyChat.Settings.UI.PluginUI.DrawWikiFooter+0x53: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:TidyChat.dll:TidyChat.Settings.UI.PluginUI.DrawWikiFooter+0x53: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:TidyChat.dll:TidyChat.Settings.UI.PluginUI.DrawWikiFooter+0x5e: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:TidyChat.dll:TidyChat.Settings.UI.PluginUI.DrawWikiFooter+0x5e: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:TidyChat.dll: TextCopy.ClipboardService",
+      "il:TidyChat.dll:TidyChat.Utility.BetterStrings.SayReminder+0x5a: call TextCopy.ClipboardService.SetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.GetTextAsync+0x1: call TextCopy.ClipboardService.GetTextAsync: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.GetText+0x0: call TextCopy.ClipboardService.GetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.SetTextAsync+0x2: call TextCopy.ClipboardService.SetTextAsync: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.Clipboard.SetText+0x1: call TextCopy.ClipboardService.SetText: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0x1c: call TextCopy.ClipboardService.CreateAsyncGet: TextCopy.ClipboardService",
+      "il:TextCopy.dll:TextCopy.ClipboardService..cctor+0x26: call TextCopy.ClipboardService.CreateGet: TextCopy.ClipboardService"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:TextCopy.dll: WriteAllText",
+      "metadata:TextCopy.dll: File.Delete",
+      "il:TextCopy.dll:LinuxClipboard.SetText+0x8: call System.IO.File.WriteAllText: WriteAllText",
+      "il:TextCopy.dll:LinuxClipboard.InnerSetText+0x38: call System.IO.File.Delete: File.Delete",
+      "il:TextCopy.dll:LinuxClipboard.GetText+0x16: call System.IO.File.Delete: File.Delete",
+      "il:TextCopy.dll:<GetTextAsync>d__6.MoveNext+0x96: call System.IO.File.Delete: File.Delete",
+      "il:TextCopy.dll:<SetTextAsync>d__2.MoveNext+0x27: call System.IO.File.WriteAllTextAsync: WriteAllText",
+      "artifact:TextCopy.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
