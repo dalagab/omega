@@ -1,0 +1,582 @@
+[
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:Files\\oggenc2.exe: cmd.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:HelixToolkit.SharpDX.Core.dll:HelixToolkit.SharpDX.Core.CameraExtension.AnimateWidth+0x13: callvirt HelixToolkit.SharpDX.Core.Cameras.OrthographicCameraCore.set_Width",
+      "il:HelixToolkit.SharpDX.Core.dll:HelixToolkit.SharpDX.Core.CameraExtension.ZoomToRectangle+0x153: callvirt HelixToolkit.SharpDX.Core.Cameras.OrthographicCameraCore.set_Width",
+      "il:HelixToolkit.SharpDX.Core.dll:HelixToolkit.SharpDX.Core.CameraExtension.ZoomToRectangle+0x195: callvirt HelixToolkit.SharpDX.Core.Cameras.CameraCore.set_LookDirection",
+      "il:HelixToolkit.SharpDX.Core.dll:HelixToolkit.SharpDX.Core.CameraExtension.ZoomToRectangle+0x1aa: callvirt HelixToolkit.SharpDX.Core.Cameras.CameraCore.set_Position"
+    ],
+    "rule_id": "automation.game.camera.control",
+    "severity": "caution",
+    "title": "Camera control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:fastCSV.dll: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x23: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x39: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x43: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "artifact:fastCSV.dll: Reflection.Emit",
+      "artifact:VFXEditor.deps.json: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: s://github.com/Nominom/BCnEncoder.NET",
+      "artifact:BCnEncoder.dll: C:\\Projects\\BCnEncoder.NET\\BCnEnc.Net\\obj\\Release\\netstandard2.1\\BCnEncoder.pdb",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: D:\\Checkout\\trunk\\cyotek\\source\\Libraries\\Cyotek.Drawing.BitmapFont\\src\\obj\\Release\\netcoreapp3.1\\Cyotek.Drawing.BitmapFont.pdb",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: s://sectigo.com/CPS0C",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: p://crl.sectigo.com/SectigoRSACodeSigningCA.crl0s",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: p://crt.sectigo.com/SectigoRSACodeSigningCA.crt0#",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: p://ocsp.sectigo.com0",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: p://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:VFXEditor.dll: SigScanner",
+      "metadata:VFXEditor.dll: Dalamud.Hooking",
+      "metadata:VFXEditor.dll: HookFromAddress",
+      "il:VFXEditor.dll:VfxEditor.Ui.Tools.ResourceTab.Draw+0x0: call VfxEditor.Dalamud.get_SigScanner: SigScanner",
+      "il:VFXEditor.dll:VfxEditor.Ui.Tools.ResourceTab.Draw+0xb: callvirt Dalamud.Game.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "il:VFXEditor.dll:VfxEditor.Interop.ResourceLoader..ctor+0x122: call VfxEditor.Dalamud.get_SigScanner: SigScanner",
+      "il:VFXEditor.dll:VfxEditor.Interop.ResourceLoader..ctor+0x12c: callvirt Dalamud.Game.ISigScanner.ScanText: SigScanner",
+      "il:VFXEditor.dll:VfxEditor.Interop.ResourceLoader..ctor+0x13b: call VfxEditor.Dalamud.get_SigScanner: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "native-pe:DirectXTexC.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:DirectXTexC.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:DirectXTexC.dll: LoadLibrary",
+      "artifact:DirectXTexC.dll: GetProcAddress",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:NAudio.Core.dll: DllImportAttribute",
+      "metadata:NAudio.Core.dll: LoadLibrary",
+      "metadata:NAudio.Core.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-x64\\native\\libFreeImage.so: http://ns.adobe.not/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.396663799862",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.not"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: http://ocsp.sectigo.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.635e7622e035",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.sectigo.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8a267402d93a",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: http://crt.usertrust.com/USERTrustRSAAddTrustCA.crt0%"
+    ],
+    "rule_id": "network.endpoint.insecure-http.aeb2bc651c32",
+    "severity": "caution",
+    "title": "Endpoint: crt.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-x64\\native\\libFreeImage.so: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes\\osx-x64\\native\\libFreeImage.dylib: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes\\win-x64\\native\\FreeImage.dll: http://ns.adobe.com/xap/1.0/",
+      "artifact:runtimes\\win-x86\\native\\FreeImage.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: http://ocsp.usertrust.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e7b69f6dd1e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.usertrust.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes\\linux-x64\\native\\libFreeImage.so: http://freeimage.sourceforge.net/",
+      "artifact:runtimes\\osx-x64\\native\\libFreeImage.dylib: http://freeimage.sourceforge.net/",
+      "artifact:runtimes\\win-x64\\native\\FreeImage.dll: http://freeimage.sourceforge.net/",
+      "artifact:runtimes\\win-x86\\native\\FreeImage.dll: http://freeimage.sourceforge.net/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f4d247370213",
+    "severity": "caution",
+    "title": "Endpoint: freeimage.sourceforge.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: https://sectigo.com/CPS0C"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.10cef8d6ec44",
+    "severity": "caution",
+    "title": "Endpoint: sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: https://www.cyotek.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.159716cd212f",
+    "severity": "caution",
+    "title": "Endpoint: www.cyotek.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: https://developer.microsoft.com/en-us/windows/uwp-community-toolkit"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.18af43152701",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: https://sectigo.com/CPS0D"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.190eb93ec273",
+    "severity": "caution",
+    "title": "Endpoint: sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SharpGLTF.Core.dll: https://github.khronos.org/glTF-Validator/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c5e4895a3c5d",
+    "severity": "caution",
+    "title": "Endpoint: github.khronos.org"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "artifact:VFXEditor.deps.json: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "Files\\adpcmencode3.exe",
+      "Files\\oggenc2.exe",
+      "Files\\d3d\\fxc.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:VFXEditor.dll: System.Diagnostics.Process",
+      "metadata:VFXEditor.dll: ProcessStartInfo",
+      "metadata:VFXEditor.dll: ShellExecute",
+      "metadata:VFXEditor.dll: Process.Start",
+      "il:VFXEditor.dll:VfxEditor.Utils.UiUtils.OpenUrl+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:VFXEditor.dll:VfxEditor.Utils.UiUtils.OpenUrl+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:VFXEditor.dll:VfxEditor.Utils.UiUtils.OpenUrl+0x7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:VFXEditor.dll:VfxEditor.Utils.UiUtils.OpenUrl+0x7: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: RegistryKey",
+      "metadata:NAudio.WinMM.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.WinMM.dll: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:BCnEncoder.dll: FileStream",
+      "artifact:BCnEncoder.dll: FileStream",
+      "metadata:Cyotek.Drawing.BitmapFont.dll: FileStream",
+      "artifact:Cyotek.Drawing.BitmapFont.dll: FileStream",
+      "metadata:fastCSV.dll: FileStream",
+      "il:fastCSV.dll:fastCSV.WriteFile+0x3: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:fastCSV.dll: FileStream",
+      "metadata:HelixToolkit.SharpDX.Core.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://discord.gg/3NMcUV5"
+    ],
+    "rule_id": "network.endpoint.community-invite.8ff55aa5c907",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HelixToolkit.SharpDX.Core.dll: https://github.com/helix-toolkit/helix-toolkit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1fc7ab822fc0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SharpGLTF.Core.dll: https://github.com/vpenades/SharpGLTF",
+      "artifact:SharpGLTF.Runtime.dll: https://github.com/vpenades/SharpGLTF",
+      "artifact:SharpGLTF.Toolkit.dll: https://github.com/vpenades/SharpGLTF"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2f594c5d9170",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Google.FlatBuffers.dll: https://github.com/google/flatbuffers"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.379f055ed85a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/0ceal0t/Dalamud-VFXEditor"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.472b230eff22",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/0ceal0t/Dalamud-VFXEditor/wiki/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5c930fd7cb85",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/cycleapple/Dalamud-VFXEditor-API13/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5ccee4857e4f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: https://github.com/CommunityToolkit/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5e2c4ed80499",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/0ceal0t/Dalamud-VFXEditor/wiki"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6cf30bce4dbe",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/lmcintyre/ResLogger2"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.78169f59acf3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Vorbis.dll: https://github.com/naudio/Vorbis"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8a00ac9049a1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/0ceal0t/Dalamud-VFXEditor/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8f17e070bef0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/0ceal0t/Dalamud-VFXEditor/wiki/Notes-on-TMFC"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.94897e31d5aa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.json: https://github.com/cycleapple/Dalamud-VFXEditor-API13"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9be822bc9512",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Logging.Abstractions.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/0ceal0t/Dalamud-VFXEditor/issues/new"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a3ff445f21d8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NAudio.Core.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.Wasapi.dll: https://github.com/naudio/NAudio",
+      "artifact:NAudio.WinMM.dll: https://github.com/naudio/NAudio"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.acd34a308b7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:VFXEditor.dll: https://github.com/cycleapple/Dalamud-VFXEditor-API13.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b07de279a53c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NVorbis.dll: https://github.com/NVorbis/NVorbis"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b1bec96132a1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: https://github.com/Nominom/BCnEncoder.NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e85fd72d0e75",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "DirectXTexC.dll",
+      "runtimes\\linux-x64\\native\\libFreeImage.so",
+      "runtimes\\linux-x64\\native\\libnvtt.so",
+      "runtimes\\osx-x64\\native\\libFreeImage.dylib",
+      "runtimes\\osx-x64\\native\\libnvtt.dylib",
+      "runtimes\\win-x64\\native\\FreeImage.dll",
+      "runtimes\\win-x64\\native\\nvtt.dll",
+      "runtimes\\win-x86\\native\\FreeImage.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

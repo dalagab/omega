@@ -1,0 +1,70 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:YokaiCheck.dll:YokaiCheck.Windows.MainWindow.DrawMinionWeaponTable+0x1b1: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:HaselCommon.dll:HaselCommon.Services.AddonObserver.OnFrameworkUpdate+0xf6: callvirt CallbackDelegate.Invoke",
+      "il:HaselCommon.dll:HaselCommon.Services.AddonObserver.OnFrameworkUpdate+0x16e: callvirt CallbackDelegate.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:HaselCommon.dll: SigScanner",
+      "il:HaselCommon.dll:HaselCommon.Interop.Resolver.Resolve+0x7c: call HaselCommon.Service.get_SigScanner: SigScanner",
+      "il:HaselCommon.dll:<>c__DisplayClass6_0.<Resolve>b__0+0xe: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner",
+      "il:HaselCommon.dll:<>c__DisplayClass6_0.<Resolve>b__0+0xa5: callvirt Dalamud.Game.ISigScanner.get_Module: SigScanner",
+      "artifact:HaselCommon.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:HaselCommon.dll: System.Diagnostics.Process",
+      "il:HaselCommon.dll:<>c__DisplayClass6_0.<Resolve>b__0+0xaa: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "artifact:HaselCommon.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HaselCommon.dll: WriteAllText",
+      "il:HaselCommon.dll:HaselCommon.ConfigurationManager.Load+0x15f: call System.IO.File.WriteAllText: WriteAllText",
+      "il:HaselCommon.dll:HaselCommon.ConfigurationManager.Save+0x27: call Dalamud.Utility.Util.WriteAllTextSafe: WriteAllText",
+      "artifact:HaselCommon.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

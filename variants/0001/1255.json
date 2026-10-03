@@ -1,0 +1,2027 @@
+{
+  "analysis": {
+    "analysisId": "ca511fb5cf752eef014d1e61ff1796f2c99b646bae2afcd415f1a2aa3e4dec62",
+    "artifactSha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+    "path": "artifacts/ab/ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb/analyses/ca511fb5cf752eef014d1e61ff1796f2c99b646bae2afcd415f1a2aa3e4dec62",
+    "recordCount": 5047
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+    "artifact_url": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+    "assembly_version": "1.2.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "full-gameplay-automation",
+        "capabilityId": "game.character.execute_action",
+        "confidence": "very-high",
+        "evidence": [
+          "il:YokaiCheck.dll:YokaiCheck.Windows.MainWindow.DrawMinionWeaponTable+0x1b1: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "indirect": false,
+        "label": "Character action execution",
+        "reachable": true,
+        "reason": "Invokes game action-execution APIs that can perform combat, crafting, gathering, or other character actions."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "evidence": [
+          "il:HaselCommon.dll:HaselCommon.Services.AddonObserver.OnFrameworkUpdate+0xf6: callvirt CallbackDelegate.Invoke",
+          "il:HaselCommon.dll:HaselCommon.Services.AddonObserver.OnFrameworkUpdate+0x16e: callvirt CallbackDelegate.Invoke"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "full-gameplay-automation",
+    "capabilities_json": [
+      "Character action execution",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:YokaiCheck.dll:YokaiCheck.Windows.MainWindow.DrawMinionWeaponTable+0x1b1: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+        ],
+        "ruleId": "automation.game.character.execute_action",
+        "severity": "high",
+        "title": "Character action execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:HaselCommon.dll: System.Diagnostics.Process",
+          "il:HaselCommon.dll:<>c__DisplayClass6_0.<Resolve>b__0+0xaa: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+          "artifact:HaselCommon.dll: System.Diagnostics.Process"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:HaselCommon.dll: SigScanner",
+          "il:HaselCommon.dll:HaselCommon.Interop.Resolver.Resolve+0x7c: call HaselCommon.Service.get_SigScanner: SigScanner",
+          "il:HaselCommon.dll:<>c__DisplayClass6_0.<Resolve>b__0+0xe: callvirt Dalamud.Game.ISigScanner.TryScanText: SigScanner",
+          "il:HaselCommon.dll:<>c__DisplayClass6_0.<Resolve>b__0+0xa5: callvirt Dalamud.Game.ISigScanner.get_Module: SigScanner",
+          "artifact:HaselCommon.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:HaselCommon.dll:HaselCommon.Services.AddonObserver.OnFrameworkUpdate+0xf6: callvirt CallbackDelegate.Invoke",
+          "il:HaselCommon.dll:HaselCommon.Services.AddonObserver.OnFrameworkUpdate+0x16e: callvirt CallbackDelegate.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:HaselCommon.dll: WriteAllText",
+          "il:HaselCommon.dll:HaselCommon.ConfigurationManager.Load+0x15f: call System.IO.File.WriteAllText: WriteAllText",
+          "il:HaselCommon.dll:HaselCommon.ConfigurationManager.Save+0x27: call Dalamud.Utility.Util.WriteAllTextSafe: WriteAllText",
+          "artifact:HaselCommon.dll: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-e12145d97eed273b",
+      "artifactBytes": 167217,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.2.0.0",
+        "artifactBytes": 167217,
+        "artifactSha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+        "catalogAssemblyVersion": "1.2.0",
+        "manifestInternalName": "YokaiCheck",
+        "manifestPath": "YokaiCheck.json",
+        "manifestRepositoryUrl": "https://github.com/Haselnussbomber/YokaiCheck",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/792048807/3e0734f1-a891-4170-8e7d-389644c58a0c?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-03T21%3A15%3A03Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-03T20%3A14%3A08Z&ske=2026-10-03T21%3A15%3A03Z&sks=b&skv=2018-11-09&sig=zVd0ymhSHIVLj90hnmWSUnC8%2B1xsZqtYu9wAfTWYRm0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MTA1ODc4MywibmJmIjoxNzkxMDU4NDgzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.wu_bIdY8P48QV3xDtrc_kli4J8Mmr3kgMxZJH1cFSHE&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "game.ui.callback",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 33,
+          "exactVersionObservedCount": 33,
+          "families": {
+            "managed-assembly": 29,
+            "nuget": 4
+          },
+          "fingerprint": "a20dfe6ff87492081a5f7c7efe0b412d6282a59562ac24a283a98136a28535fa",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 27,
+            "required": 4
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 29,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 4,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 27,
+            "optional": 0,
+            "required": 4,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 33
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.garlandtools.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Haselnussbomber/HaselCommon.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Haselnussbomber/YokaiCheck"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Haselnussbomber/YokaiCheck"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Haselnussbomber/YokaiCheck/main/YokaiCheck/Assets/Icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.garlandtools.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.garlandtools.org/db/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+        "internalName": "YokaiCheck",
+        "manifestVersion": "1.2.0",
+        "observationId": 2081,
+        "observationKey": "manifest-b5f4cbbdc157670c925e2c9ee3a5",
+        "repositoryUrl": "https://github.com/Haselnussbomber/YokaiCheck",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1255
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 248277
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-e12145d97eed273b",
+        "attemptId": "attempt-v2-0fc04af56f6ff9be",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-c2d40adb235e2458",
+        "definitionsRevision": "defs-v1-ed58d99dc53cbc8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1255",
+        "queueSeedRevision": "queue-seed-v2-1346968b42ec34851cd1",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-978e5a9e72641687",
+        "targetFingerprint": "artifact-target-v2-7130dee7d0aaa968e366",
+        "variantId": 1255,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-03T20:14:43Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Haselnussbomber/YokaiCheck"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Haselnussbomber/YokaiCheck",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 16,
+    "scanned_at_utc": "2026-10-03T20:14:43Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Haselnussbomber/YokaiCheck",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1255
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+      "current_assembly_version": "1.2.0",
+      "current_scan_id": 16,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-03T20:14:44Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 1255
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 24,
+      "artifact_only_count": 24,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "9.1.0.7"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.3675"
+          ]
+        },
+        {
+          "componentKey": "assembly:haselcommon",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "HaselCommon",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:imgui.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "ImGui.NET",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.82.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:yokaicheck",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "YokaiCheck",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "1.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:dalamudpackager",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "DalamudPackager",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "2.1.12"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.build.tasks.git",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Build.Tasks.Git",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.sourcelink.common",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.SourceLink.Common",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.0.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.sourcelink.github",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.SourceLink.GitHub",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "8.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-03T20:14:44Z",
+      "comparison_id": 3,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 16,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 1255,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1255/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1255/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 31001,
+          "encoding": "json",
+          "path": "derived/variants/0001/1255/dependency-resolutions.json",
+          "recordDigest": "866c8431937a24f5270a684f185fd594fab137a6455412da87fbb04aa545663d",
+          "records": 33,
+          "sha256": "182416c39746cfa0a8f14f170fceb5b71544c627096801973d8c5d26baa47ac5"
+        }
+      ],
+      "recordDigest": "866c8431937a24f5270a684f185fd594fab137a6455412da87fbb04aa545663d",
+      "records": 33
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0001/1255/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-6e6d076e5c0d8521",
+    "identityFingerprint": "a864f61b4bbf059e2af540001416776b9c8f0ab3785bb4547f4209ee8896462c",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "7b34542ef5af0d288b7a745f937977f0c731bfc94188e1966b2246e34180be99",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "41ed268b7c1467bb1e97b8515a85059d4a636d57fbd48a79f31de17be8e1cc01",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "458b15caa42cce383dca91e76a18f6f049883be2c3a9ab5f4af8897c32949308",
+        "records": 33,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "3328f567c3238ce192606e36396d722ded0cd7b1e70ffda78508f98615c0446b",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "150b60025b55547a0f864bdee9eccffe05be88b011797816b08ac6c743b551ef",
+        "records": 3440,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "7e375c720831ffc1d779fb2dfa594ef6a0664ee1f8588d65162d225651024075",
+        "records": 83,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "4d14a847075073dfd404d29e7cc149a390918c5654d518ec7678d858de2de4ba",
+        "records": 1448,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "569119855eea38b71ef2762ff394f14582f6b02a90a59c1047fae446a56ca82d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "0a16766f8a331b59ae5c05cfac4310ee665148e49f582242a305fdca8d547ff5",
+        "records": 5,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "3384a1f6fb9f3471d0b9da2d56852bebf6c9ca14faa9ee697cf0e082de19c529",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "e301d426b96f5bce3ff51f962c0010bf46c66c9ff1ea0e4c6f36ca3baf9c5124",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "7e6aae3c9caca5651e37c6c94ac2b8e89d4a4b71e64c2056e8e71c08474eb4e1",
+        "records": 12,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-775cda9c3289d6c6320ae3078cdfdf229c1acfc2762a369c1e6e007427ae9dcc",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-e12145d97eed273b",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Yo-kai Check",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "YokaiCheck",
+    "last_seen_utc": "2026-10-03T13:34:42Z",
+    "plugin_id": 403
+  },
+  "pluginId": 403,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Yo-kai Check is a small plugin to assist you in tracking the rewards of the Yo-kai Watch event.",
+      "images": [
+        "https://github.com/user-attachments/assets/4e306eb5-d36f-4025-aeb7-7beee3cb98c8"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 11132,
+      "summary": "Tracking assistant for Yo-kai Watch rewards",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Haselnussbomber/YokaiCheck",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "Tracking assistant for Yo-kai Watch rewards.",
+      "homepage": "",
+      "images": [
+        "https://github.com/user-attachments/assets/4e306eb5-d36f-4025-aeb7-7beee3cb98c8"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Haselnussbomber/YokaiCheck"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "<img align=\"left\" src=\"YokaiCheck/Assets/Icon.png\" width=\"60px\" height=\"60px\" alt=\"Yo-kai Check\"/>\n\n**Yo-kai Check** is a small plugin to assist you in tracking the rewards of the Yo-kai Watch event.<br/>\n<br/>\n<hr>\n\nThis plugin is available in the Dalamud plugin repository!\n\nIt shows a list of minions, weapons and how many medals you still need.  \nWhen you have a minion summoned, the amount of medals you have and need for the weapon is displayed in the Server Info Bar.\n\nOpen with `/yokai` or `/yokaicheck`.\n\n---\n\n<img width=\"584\" height=\"949\" alt=\"Screenshot\" src=\"https://github.com/user-attachments/assets/4e306eb5-d36f-4025-aeb7-7beee3cb98c8\" />",
+      "title": "YokaiCheck",
+      "url": "https://github.com/Haselnussbomber/YokaiCheck"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "3b38bc59ff85e9a7fdb55f97ea50109c2d77480a4d7396e82eae5dad960b1ce0",
+        "records": 2
+      },
+      "behaviorConsistency": {
+        "recordDigest": "d9a3c49ddb4cf54c7dcc5b04e77b8221c5b2eecb5858a0d03549b8efbdf6d855",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "a9ab1ea84230380dab29a9d18ba45218ae26886e666b8fb25ab03d9b5f94ebfa",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "fee5e0d4a2d58341d2ccff18d840edab71be4455c5008052c36615fac795c7cb",
+        "records": 6
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+    "artifact_url": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+    "assembly_version": "1.2.0",
+    "capabilities_json": [
+      "Character action execution",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 1,
+    "highest_severity": "high",
+    "informational_count": 1,
+    "plugin_id": 403,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-e12145d97eed273b",
+      "artifactBytes": 167217,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "1.2.0.0",
+        "artifactBytes": 167217,
+        "artifactSha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+        "catalogAssemblyVersion": "1.2.0",
+        "manifestInternalName": "YokaiCheck",
+        "manifestPath": "YokaiCheck.json",
+        "manifestRepositoryUrl": "https://github.com/Haselnussbomber/YokaiCheck",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/792048807/3e0734f1-a891-4170-8e7d-389644c58a0c?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-03T21%3A15%3A03Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-03T20%3A14%3A08Z&ske=2026-10-03T21%3A15%3A03Z&sks=b&skv=2018-11-09&sig=zVd0ymhSHIVLj90hnmWSUnC8%2B1xsZqtYu9wAfTWYRm0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MTA1ODc4MywibmJmIjoxNzkxMDU4NDgzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.wu_bIdY8P48QV3xDtrc_kli4J8Mmr3kgMxZJH1cFSHE&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": false
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "full-gameplay-automation",
+            "capabilityId": "game.character.execute_action",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character action execution",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "full-gameplay-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.execute_action",
+            "label": "Character action execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.garlandtools.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character action execution",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.execute_action",
+        "game.memory.read",
+        "game.ui.callback",
+        "process.execute"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 1,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 33,
+          "exactVersionObservedCount": 33,
+          "families": {
+            "managed-assembly": 29,
+            "nuget": 4
+          },
+          "fingerprint": "a20dfe6ff87492081a5f7c7efe0b412d6282a59562ac24a283a98136a28535fa",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 2,
+            "observed": 27,
+            "required": 4
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 29,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 4,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 2,
+            "observed": 27,
+            "optional": 0,
+            "required": 4,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 33
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 5,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.garlandtools.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 5,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Haselnussbomber/HaselCommon.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Haselnussbomber/YokaiCheck"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Haselnussbomber/YokaiCheck"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Haselnussbomber/YokaiCheck/main/YokaiCheck/Assets/Icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.garlandtools.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.garlandtools.org/db/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+        "internalName": "YokaiCheck",
+        "manifestVersion": "1.2.0",
+        "observationId": 2081,
+        "observationKey": "manifest-b5f4cbbdc157670c925e2c9ee3a5",
+        "repositoryUrl": "https://github.com/Haselnussbomber/YokaiCheck",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 1255
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 2,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 4,
+        "uncompressedBytes": 248277
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-e12145d97eed273b",
+        "attemptId": "attempt-v2-0fc04af56f6ff9be",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-c2d40adb235e2458",
+        "definitionsRevision": "defs-v1-ed58d99dc53cbc8b",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-1255",
+        "queueSeedRevision": "queue-seed-v2-1346968b42ec34851cd1",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-978e5a9e72641687",
+        "targetFingerprint": "artifact-target-v2-7130dee7d0aaa968e366",
+        "variantId": 1255,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-03T20:14:43Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "ab9b188189a8accf773aeffeeb82f1eaaa5b9e631061dec8850583b79e54c0cb",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Haselnussbomber/YokaiCheck"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Haselnussbomber/YokaiCheck",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 16,
+    "scanned_at_utc": "2026-10-03T20:14:43Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 273,
+    "source_repository": "https://github.com/Haselnussbomber/YokaiCheck",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 1255
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "db719a2da5b95739aa048dbe286278f973f831ede680cae6df4c9026d9a12837",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"5565dbea0057c5882028e77e74a1bc8577ea1d39b9528f6e8f9f5f98186edb7e\"",
+    "highest_api": 12,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-03T13:34:42Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-03T13:34:42Z",
+    "name": "WilliamW1979/FFXIV",
+    "plugin_count": 4,
+    "provider": "WilliamW1979/FFXIV",
+    "source_id": 273,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/WilliamW1979/FFXIV/main/plugin_repos/10_repo.json"
+  },
+  "sourceId": 273,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "1.2.0",
+    "author": "Haselnussbomber",
+    "authors_json": [
+      "Haselnussbomber"
+    ],
+    "category_tags_json": [],
+    "changelog": "- Added: The server info bar entry can not be clicked to open the plugin window.\n- Added: The server info bar entry now shows the locations in which you can farm the medals in the tooltip.\n- Added: In the table, the medal count of each weapon now also has a tooltip that shows the locations in which you can farm them. A location displayed in a green color is your current location.\n- Added: In the table, the minion name can now be clicked to summon it and will be shown in a green color when it is currently summoned.\n- Changed: The server info bar entry is now based on the currently summoned minion (previously it was based on inventory changes - the medals that were added) and will persist between zones until the minion is sent away or the weapon has been acquired.",
+    "dalamud_api_level": 9,
+    "description": "Yo-kai Check is a small plugin to assist you in tracking the rewards of the Yo-kai Watch event.",
+    "dip17_channel": "",
+    "download_count": 912,
+    "download_link_install": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "icon_url": "https://raw.githubusercontent.com/Haselnussbomber/YokaiCheck/main/YokaiCheck/Assets/Icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-08-20T06:02:54Z",
+    "last_update": 1714178614,
+    "minimum_dalamud_version": null,
+    "name": "Yo-kai Check",
+    "plugin_id": 403,
+    "punchline": "Tracking assistant for Yo-kai Watch rewards",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "1.2.0",
+      "Author": "Haselnussbomber",
+      "CanUnloadAsync": true,
+      "Changelog": "- Added: The server info bar entry can not be clicked to open the plugin window.\n- Added: The server info bar entry now shows the locations in which you can farm the medals in the tooltip.\n- Added: In the table, the medal count of each weapon now also has a tooltip that shows the locations in which you can farm them. A location displayed in a green color is your current location.\n- Added: In the table, the minion name can now be clicked to summon it and will be shown in a green color when it is currently summoned.\n- Changed: The server info bar entry is now based on the currently summoned minion (previously it was based on inventory changes - the medals that were added) and will persist between zones until the minion is sent away or the weapon has been acquired.",
+      "DalamudApiLevel": 9,
+      "Description": "Yo-kai Check is a small plugin to assist you in tracking the rewards of the Yo-kai Watch event.",
+      "DownloadCount": 912,
+      "DownloadLinkInstall": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Haselnussbomber/YokaiCheck/releases/download/v1.2.0/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/Haselnussbomber/YokaiCheck/main/YokaiCheck/Assets/Icon.png",
+      "InternalName": "YokaiCheck",
+      "LastUpdate": 1714178614,
+      "LoadPriority": 0,
+      "LoadRequiredState": 1,
+      "LoadSync": false,
+      "Name": "Yo-kai Check",
+      "Punchline": "Tracking assistant for Yo-kai Watch rewards",
+      "RepoUrl": "https://github.com/Haselnussbomber/YokaiCheck"
+    },
+    "repo_url": "https://github.com/Haselnussbomber/YokaiCheck",
+    "source_entry_key": "yokaicheck|1.2.0|9|0|3",
+    "source_id": 273,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 1255
+  },
+  "variantId": 1255
+}
