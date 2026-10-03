@@ -1,0 +1,430 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "native-pe:renderer/libvlc/win-x64/plugins/keystore/libfile_keystore_plugin.dll: import CRYPT32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:renderer/libvlc/win-x64/plugins/keystore/libfile_keystore_plugin.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "artifact:runtimes/win-x64/native/WebView2Loader.dll: OpenProcess",
+      "artifact:runtimes/win-arm64/native/WebView2Loader.dll: OpenProcess",
+      "artifact:runtimes/win-x86/native/WebView2Loader.dll: OpenProcess",
+      "native-pe:renderer/libvlc/win-x64/plugins/video_chroma/libswscale_plugin.dll: import KERNEL32.dll!OpenProcess: OpenProcess",
+      "artifact:renderer/libvlc/win-x64/plugins/video_chroma/libswscale_plugin.dll: OpenProcess",
+      "native-pe:renderer/libvlc/win-x64/plugins/services_discovery/libupnp_plugin.dll: import KERNEL32.dll!OpenProcess: OpenProcess",
+      "artifact:renderer/libvlc/win-x64/plugins/services_discovery/libupnp_plugin.dll: OpenProcess",
+      "native-pe:renderer/libvlc/win-x64/plugins/stream_extractor/libarchive_plugin.dll: import KERNEL32.dll!OpenProcess: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs commonly used to start execution in another process.",
+    "evidence_json": [
+      "native-pe:renderer/libvlc/win-x64/libvlccore.dll: import KERNEL32.dll!QueueUserAPC: QueueUserAPC",
+      "artifact:renderer/libvlc/win-x64/libvlccore.dll: QueueUserAPC"
+    ],
+    "rule_id": "memory.remote-thread",
+    "severity": "high",
+    "title": "Remote thread creation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:NAudio.Wasapi.dll:<NAudio_MediaFoundation_Interfaces_IMFAsyncCallback>F56AA61A776016C1D481DFE779C66784D41B5366A81BA806F841223A715C72716__InterfaceImplementation.ABI_Invoke+0x9: callvirt NAudio.MediaFoundation.Interfaces.IMFAsyncCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Assemblies.get_MscorlibAssembly+0xe: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateParameterizedConstructor+0x2f: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateMethodCall+0x3c: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:HtmlAgilityPack.dll: C:\\GitHub\\html-agility-pack\\src\\HtmlAgilityPack.Net8\\obj\\Release\\net8.0\\HtmlAgilityPack.pdb",
+      "artifact:HtmlAgilityPack.dll: s://github.com/zzzprojects/html-agility-pack/issues/513",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: s://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: s://aka.ms/SecurityTokenUnableToValidateException",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.IdentityModel.Tokens.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.IdentityModel.Tokens.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.Diagnostics.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:NAudio.WinMM.dll: DllImportAttribute",
+      "metadata:Microsoft.Win32.SystemEvents.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:NAudio.Wasapi.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.Core.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/run.css"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3a90592e71a8",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/grill.png"
+    ],
+    "rule_id": "network.endpoint.insecure-http.74f99e101181",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/wv2.png"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8a16bd11de07",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:renderer/libvlc/win-x64/plugins/codec/libavcodec_plugin.dll: http://dashif.org/guidelines/trickmode"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e38d22c9067b",
+    "severity": "caution",
+    "title": "Endpoint: dashif.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: http://appassets.example/winrt_test.txt"
+    ],
+    "rule_id": "network.endpoint.insecure-http.ea134e5b7e64",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AbsoluteRoleplay.dll: https://absolute-roleplay.net/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.120d723807c6",
+    "severity": "caution",
+    "title": "Endpoint: absolute-roleplay.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.chrome.com/docs/privacy-sandbox/storage-partitioning/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2572b01729c5",
+    "severity": "caution",
+    "title": "Endpoint: developer.chrome.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:renderer/LibVLCSharp.dll: https://code.videolan.org/videolan/LibVLCSharp"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.40fbb726f4fd",
+    "severity": "caution",
+    "title": "Endpoint: code.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.chrome.com/docs/privacy-sandbox/chips/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.43251e581dcc",
+    "severity": "caution",
+    "title": "Endpoint: developer.chrome.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://contoso.com/path/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.46b1e6ffc96d",
+    "severity": "caution",
+    "title": "Endpoint: contoso.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Glossary/Origin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5c70a745bded",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://contoso.com/example"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6947b6372254",
+    "severity": "caution",
+    "title": "Endpoint: contoso.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://datatracker.ietf.org/doc/html/rfc5646"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6c5d0dd2e188",
+    "severity": "caution",
+    "title": "Endpoint: datatracker.ietf.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:renderer/libvlc/win-x64/plugins/misc/libaddonsvorepository_plugin.dll: https://api-addons.videolan.org/xml"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.74959d36760d",
+    "severity": "caution",
+    "title": "Endpoint: api-addons.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://contoso.com/a/b/c"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.753211642151",
+    "severity": "caution",
+    "title": "Endpoint: contoso.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.microsoft.com/fluentui"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.83048e7dcdc5",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://dev.w3.org/html5/spec-LC/urls.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9bf76d77a940",
+    "severity": "caution",
+    "title": "Endpoint: dev.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a2654cf37c31",
+    "severity": "caution",
+    "title": "Endpoint: developer.mozilla.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://appassets.example/index.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ab1138f3ac1b",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://chromedevtools.github.io/devtools-protocol/tot/Target"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c67ec7c4d8f0",
+    "severity": "caution",
+    "title": "Endpoint: chromedevtools.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.xml: https://appassets.example/my-local-file.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c74af439dc72",
+    "severity": "caution",
+    "title": "Endpoint: appassets.example"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x37f: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "metadata:AbsoluteRoleplay.dll: System.Net.Sockets",
+      "metadata:AbsoluteRoleplay.dll: TcpClient",
+      "il:AbsoluteRoleplay.dll:Networking.ClientTCP.UpdateConnectionStatus+0x4: callvirt System.Net.Sockets.TcpClient.get_Connected: System.Net.Sockets",
+      "il:AbsoluteRoleplay.dll:Networking.ClientTCP.UpdateConnectionStatus+0x4: callvirt System.Net.Sockets.TcpClient.get_Connected: TcpClient",
+      "il:AbsoluteRoleplay.dll:Networking.ClientTCP.Disconnect+0x42: call System.Net.Sockets.TcpClient.Close: System.Net.Sockets",
+      "il:AbsoluteRoleplay.dll:Networking.ClientTCP.Disconnect+0x42: call System.Net.Sockets.TcpClient.Close: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "il:NAudio.Wasapi.dll:NAudio.Wave.WasapiRecorderBuilder.BuildAsync+0x77: call NAudio.Wave.WasapiRecorder.CreateProcessLoopbackAsync: CreateProcess",
+      "artifact:NAudio.Wasapi.dll: CreateProcess",
+      "artifact:System.Private.Windows.Core.dll: CreateProcess",
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Newtonsoft.Json.dll: CreateProcess",
+      "artifact:MessagePack.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.WinMM.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.WinMM.dll: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HtmlAgilityPack.dll: FileStream",
+      "metadata:HtmlAgilityPack.dll: Directory.CreateDirectory",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.FilePreparePath+0x2a: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.SaveStream+0xc: newobj System.IO.FileStream..ctor: FileStream",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.IOLibrary.CopyAlways+0xf: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "artifact:HtmlAgilityPack.dll: FileStream",
+      "metadata:System.Private.Windows.Core.dll: FileStream",
+      "il:System.Private.Windows.Core.dll:Windows.Win32.System.Com.ComManagedStream.Windows.Win32.System.Com.IStream.Interface.Stat+0x7d: callvirt System.IO.FileStream.get_Name: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:HtmlAgilityPack.dll: System.Net.Http.HttpClient",
+      "metadata:HtmlAgilityPack.dll: WebRequest",
+      "metadata:HtmlAgilityPack.dll: HttpWebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x5: call System.Net.WebRequest.Create: WebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x31: callvirt System.Net.HttpWebRequest.set_MaximumAutomaticRedirections: WebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x31: callvirt System.Net.HttpWebRequest.set_MaximumAutomaticRedirections: HttpWebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x3d: callvirt System.Net.WebRequest.set_Timeout: WebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x44: callvirt System.Net.WebRequest.set_Method: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "renderer/libvlc/win-x64/libvlccore.dll",
+      "renderer/libvlc/win-x64/libvlc.dll",
+      "runtimes/win-x64/native/WebView2Loader.dll",
+      "runtimes/win-arm64/native/WebView2Loader.dll",
+      "runtimes/win-x86/native/WebView2Loader.dll",
+      "renderer/libvlc/win-x64/plugins/video_splitter/libwall_plugin.dll",
+      "renderer/libvlc/win-x64/plugins/video_splitter/libpanoramix_plugin.dll",
+      "renderer/libvlc/win-x64/plugins/video_splitter/libclone_plugin.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
