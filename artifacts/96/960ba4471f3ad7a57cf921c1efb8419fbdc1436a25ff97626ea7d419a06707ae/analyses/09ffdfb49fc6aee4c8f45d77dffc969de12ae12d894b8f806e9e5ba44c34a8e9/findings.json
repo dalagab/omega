@@ -1,0 +1,572 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.EntityFrameworkCore.Relational.dll: Assembly.Load",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:HtmlAgilityPack.dll: C:\\GitHub\\html-agility-pack\\src\\HtmlAgilityPack.Net7\\obj\\Release\\net7.0\\HtmlAgilityPack.pdb",
+      "artifact:HtmlAgilityPack.dll: s://github.com/zzzprojects/html-agility-pack/issues/513",
+      "artifact:PlayerNexusTracker.dll: s://eu.finalfantasyxiv.com/lodestone/character/",
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Data.Sqlite.dll: s://github.com/dotnet/runtime/issues/97057",
+      "artifact:Microsoft.Data.Sqlite.dll: s://www.sqlite.org/rescode.html",
+      "artifact:Microsoft.Data.Sqlite.dll: s://go.microsoft.com/fwlink/?linkid=2142181.",
+      "artifact:Microsoft.Data.Sqlite.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:NexusKit.GameData.dll: Dalamud.Hooking",
+      "metadata:NexusKit.GameData.dll: HookFromAddress",
+      "il:NexusKit.GameData.dll:NexusKit.GameData.ObjectTables.InspectSearchCommentWatcher..ctor+0x2d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:NexusKit.GameData.dll: Dalamud.Hooking",
+      "artifact:NexusKit.GameData.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Binder.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:SQLitePCLRaw.provider.e_sqlite3.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/android-x64/native/libe_sqlite3.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-x86/native/libe_sqlite3.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-arm/native/libe_sqlite3.so: https://android.googlesource.com/toolchain/llvm-project",
+      "artifact:runtimes/android-arm64/native/libe_sqlite3.so: https://android.googlesource.com/toolchain/llvm-project"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0575a452af0c",
+    "severity": "caution",
+    "title": "Endpoint: android.googlesource.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Modules.Lodestone.dll: https://fr.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.37d640f932ac",
+    "severity": "caution",
+    "title": "Endpoint: fr.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Modules.Lodestone.dll: https://jp.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.56defd9f6f87",
+    "severity": "caution",
+    "title": "Endpoint: jp.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Modules.Lodestone.dll: https://de.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8e34104d5766",
+    "severity": "caution",
+    "title": "Endpoint: de.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.Relational.dll: https://go.microsoft.com/fwlink/",
+      "artifact:Microsoft.Data.Sqlite.dll: https://go.microsoft.com/fwlink/",
+      "artifact:Microsoft.EntityFrameworkCore.Sqlite.dll: https://go.microsoft.com/fwlink/",
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://go.microsoft.com/fwlink/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b2a093ba178f",
+    "severity": "caution",
+    "title": "Endpoint: go.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Modules.Lodestone.dll: https://eu.finalfantasyxiv.com/",
+      "artifact:NetStone.dll: https://eu.finalfantasyxiv.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.baaecb5fc531",
+    "severity": "caution",
+    "title": "Endpoint: eu.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Modules.FfxivCollect.dll: https://ffxivcollect.com/api",
+      "artifact:de/NexusKit.Modules.FfxivCollect.resources.dll: https://ffxivcollect.com/api"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c6a39e6e8a17",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.Relational.dll: CreateProcess",
+      "metadata:Newtonsoft.Json.dll: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlDocumentWrapper.CreateProcessingInstruction+0x8: callvirt System.Xml.XmlDocument.CreateProcessingInstruction: CreateProcess",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Converters.XmlNodeConverter.CreateInstruction+0xf2: callvirt Newtonsoft.Json.Converters.IXmlDocument.CreateProcessingInstruction: CreateProcess",
+      "artifact:Newtonsoft.Json.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HtmlAgilityPack.dll: FileStream",
+      "metadata:HtmlAgilityPack.dll: Directory.CreateDirectory",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.FilePreparePath+0x2a: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.SaveStream+0xc: newobj System.IO.FileStream..ctor: FileStream",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.IOLibrary.CopyAlways+0xf: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "artifact:HtmlAgilityPack.dll: FileStream",
+      "metadata:NexusKit.Persistence.dll: Directory.CreateDirectory",
+      "il:NexusKit.Persistence.dll:<>c.<AddNexusKitPersistence>b__0_0+0xd: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerNexusTracker.dll: https://eu.finalfantasyxiv.com/lodestone/character/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.3b68d9b19b68",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Http.dll: https://github.com/mono/linker/issues/1416",
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/35337"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.089f02a03b8d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/linker/issues/2482"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0e59facf2405",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/31411"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.111e1c976283",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Karashiiro.HtmlAgilityPack.CssSelectors.NetCoreFork.dll: https://github.com/karashiiro/HtmlAgilityPack.CssSelectors.NetCore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.267ec4b919f0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerNexusTracker.json: https://raw.githubusercontent.com/NexusFFXIV/PlayerNexusTracker/main/PlayerNexusTracker.Plugin/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3327b6a618e6",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/31244"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.405f1f653763",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Data.Sqlite.dll: https://github.com/dotnet/runtime/issues/97057"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.52b4e7e02b68",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerNexusTracker.dll: https://github.com/NexusFFXIV/PlayerNexusTracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.54954fd3ba76",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.Relational.dll: https://github.com/dotnet/efcore/issues/36558"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.55a3c01a0e04",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HtmlAgilityPack.dll: https://github.com/zzzprojects/html-agility-pack/issues/513"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5a2ea5f9cf28",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NetStone.dll: https://raw.githubusercontent.com/xivapi/lodestone-css-selectors/main/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5a96e03ded11",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/31254"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6627cea52e63",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NetStone.dll: https://github.com/xivapi/NetStone"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6798cfe70afd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerNexusTracker.json: https://github.com/NexusFFXIV/PlayerNexusTracker/issues/new/choose"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7537e24aca3a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Persistence.dll: https://github.com/NexusFFXIV/NexusKit",
+      "artifact:NexusKit.ChatNotifications.dll: https://github.com/NexusFFXIV/NexusKit",
+      "artifact:NexusKit.Ipc.dll: https://github.com/NexusFFXIV/NexusKit",
+      "artifact:NexusKit.GameData.dll: https://github.com/NexusFFXIV/NexusKit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.78890ca1522e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/31243"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f00f7b61d20",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/36175"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bafcd095dabe",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/linker/issues/2482o"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bedcb01163c6",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.Relational.dll: https://github.com/dotnet/linker/issues/2473",
+      "artifact:Microsoft.EntityFrameworkCore.Sqlite.dll: https://github.com/dotnet/linker/issues/2473",
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/linker/issues/2473"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c00ca0ba665d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Abstractions.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Binder.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.EntityFrameworkCore.Relational.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SQLitePCLRaw.batteries_v2.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.provider.e_sqlite3.dll: https://github.com/ericsink/SQLitePCL.raw",
+      "artifact:SQLitePCLRaw.core.dll: https://github.com/ericsink/SQLitePCL.raw"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cfabce510df0",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.dll: https://github.com/dotnet/efcore/issues/35613"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d1a4a807dc45",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PlayerNexusTracker.json: https://github.com/NexusFFXIV/PlayerNexusTracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d532432ec6aa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.EntityFrameworkCore.Relational.dll: https://github.com/dotnet/efcore/issues/36688"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d685ee80c97d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:NexusKit.Modules.PlayerEnrichment.dll: https://github.com/NexusFFXIV/NexusKit.Modules",
+      "artifact:NexusKit.Modules.FfxivCollect.dll: https://github.com/NexusFFXIV/NexusKit.Modules",
+      "artifact:NexusKit.Modules.ExternalData.dll: https://github.com/NexusFFXIV/NexusKit.Modules",
+      "artifact:NexusKit.Modules.PluginBridge.dll: https://github.com/NexusFFXIV/NexusKit.Modules"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.d95f2c7ca0e7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:HtmlAgilityPack.dll: System.Net.Http.HttpClient",
+      "metadata:HtmlAgilityPack.dll: WebRequest",
+      "metadata:HtmlAgilityPack.dll: HttpWebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x5: call System.Net.WebRequest.Create: WebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x31: callvirt System.Net.HttpWebRequest.set_MaximumAutomaticRedirections: WebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x31: callvirt System.Net.HttpWebRequest.set_MaximumAutomaticRedirections: HttpWebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x3d: callvirt System.Net.WebRequest.set_Timeout: WebRequest",
+      "il:HtmlAgilityPack.dll:HtmlAgilityPack.HtmlWeb.Get+0x44: callvirt System.Net.WebRequest.set_Method: WebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-x86/native/libe_sqlite3.so",
+      "runtimes/osx-arm64/native/libe_sqlite3.dylib",
+      "runtimes/linux-musl-x64/native/libe_sqlite3.so",
+      "runtimes/android-x64/native/libe_sqlite3.so",
+      "runtimes/linux-riscv64/native/libe_sqlite3.so",
+      "runtimes/linux-mips64/native/libe_sqlite3.so",
+      "runtimes/android-x86/native/libe_sqlite3.so",
+      "runtimes/linux-musl-arm64/native/libe_sqlite3.so"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
