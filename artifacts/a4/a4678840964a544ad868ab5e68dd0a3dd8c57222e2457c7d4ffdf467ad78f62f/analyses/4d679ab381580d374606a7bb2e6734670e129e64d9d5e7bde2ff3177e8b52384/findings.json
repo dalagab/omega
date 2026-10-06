@@ -1,0 +1,118 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge.TrySelectRetainerById+0x13c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge.TryAdvanceRetainerDialogue+0xe4: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge.TryAdvanceRetainerDialogue+0xf0: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge.TryAdvanceRetainerDialogue+0xfb: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:RetainerPricer.dll: Dalamud.Hooking",
+      "metadata:RetainerPricer.dll: SigScanner",
+      "metadata:RetainerPricer.dll: HookFromAddress",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge..ctor+0x9a: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge..ctor+0xf3: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge..ctor+0x142: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:RetainerPricer.dll:RetainerPricer.NativeMarketBridge..ctor+0x166: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:RetainerPricer.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RetainerPricer.dll: https://script.google.com/macros/s/<redacted>/exec"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6d87b3d54fc5",
+    "severity": "caution",
+    "title": "Endpoint: script.google.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:RetainerPricer.dll: Socket.Connect",
+      "il:RetainerPricer.dll:<ConnectAsync>d__5.MoveNext+0x3f: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RetainerPricer.dll: https://discord.gg/TTPZ82xaUd"
+    ],
+    "rule_id": "network.endpoint.community-invite.63b8c67ce7fa",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RetainerPricer.dll: https://universalis.app/api/v2/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48e0f530ab27",
+    "severity": "informational",
+    "title": "Endpoint: universalis.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RetainerPricer.json: https://github.com/Jacob5800/RetainerPricer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4ad92a2fff81",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RetainerPricer.dll: https://github.com/Jacob5800/RetainerPricer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e8752cf49ac2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:RetainerPricer.dll: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:RetainerPricer.FeedbackClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:RetainerPricer.FeedbackClient..ctor+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:RetainerPricer.UniversalisClient..ctor+0x1: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:RetainerPricer.UniversalisClient..ctor+0x8: callvirt System.Net.Http.HttpClientHandler.set_AutomaticDecompression: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:RetainerPricer.UniversalisClient..ctor+0xd: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:RetainerPricer.UniversalisClient..ctor+0x18: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:RetainerPricer.dll:<SendAsync>d__5.MoveNext+0xb2: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
