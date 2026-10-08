@@ -1,0 +1,68 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:AethertekUI.dll:AethertekUI.MaterialWindowFold.OnSize+0x28: callvirt Dalamud.Bindings.ImGui.ImGuiSizeCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:mom.dll: AssemblyLoadContext",
+      "il:mom.dll:mom.PublicShell.ModuleLoader.Dispose+0x3a: call System.Runtime.Loader.AssemblyLoadContext.Unload: AssemblyLoadContext",
+      "il:mom.dll:ModuleContext..ctor+0x1e: call System.Runtime.Loader.AssemblyLoadContext..ctor: AssemblyLoadContext",
+      "il:mom.dll:ModuleContext.LoadAccessAssembly+0x3: call System.Runtime.Loader.AssemblyLoadContext.LoadFromStream: AssemblyLoadContext",
+      "il:mom.dll:ModuleContext.Load+0x13d: call System.Runtime.Loader.AssemblyLoadContext.LoadFromStream: AssemblyLoadContext",
+      "il:mom.dll:ModuleContext.Load+0x2b6: call System.Runtime.Loader.AssemblyLoadContext.get_Default: AssemblyLoadContext",
+      "il:mom.dll:ModuleContext.Load+0x2bd: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyPath: AssemblyLoadContext",
+      "artifact:mom.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:mom.dll: s://discord.gg/ac6gjDvR8R",
+      "artifact:mom.dll: s://ko-fi.com/mcvaxius"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:AethertekUI.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:AethertekUI.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:mom.dll: FileStream",
+      "metadata:mom.dll: Directory.CreateDirectory",
+      "metadata:mom.dll: File.Move",
+      "metadata:mom.dll: File.Delete",
+      "il:mom.dll:XA.Access.PrivateManifest.ReadFile+0x47: newobj System.IO.FileStream..ctor: FileStream",
+      "il:mom.dll:mom.PublicShell.ModuleLoader.Load+0xb3: newobj System.IO.FileStream..ctor: FileStream",
+      "il:mom.dll:mom.PublicShell.PublicPreferences.Save+0xee: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:mom.dll:mom.PublicShell.PublicPreferences.Save+0x120: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
