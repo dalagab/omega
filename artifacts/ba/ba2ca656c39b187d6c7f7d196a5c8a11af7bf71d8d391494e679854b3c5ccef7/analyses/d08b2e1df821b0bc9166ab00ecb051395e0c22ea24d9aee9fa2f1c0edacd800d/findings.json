@@ -1,0 +1,91 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:Housingway.dll: s://github.com/Abyeon/Housingway.git",
+      "artifact:Housingway.dll: p://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "artifact:Housingway.dll: p://ns.adobe.com/xap/1.0/",
+      "artifact:Housingway.dll: p://ns.adobe.com/photoshop/1.0/",
+      "artifact:Housingway.dll: p://purl.org/dc/elements/1.1/",
+      "artifact:Housingway.dll: p://ns.adobe.com/exif/1.0/",
+      "artifact:Housingway.dll: p://ns.adobe.com/tiff/1.0/",
+      "artifact:Housingway.dll: p://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:Housingway.dll: SigScanner",
+      "metadata:Housingway.dll: Dalamud.Hooking",
+      "il:Housingway.dll:Housingway.Structs.AreaCullingManager.Instance+0x0: call Housingway.Service.get_SigScanner: SigScanner",
+      "il:Housingway.dll:Housingway.Structs.AreaCullingManager.Instance+0xb: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "artifact:Housingway.dll: Dalamud.Hooking",
+      "artifact:Housingway.dll: SigScanner",
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Pictomancy.dll: DllImportAttribute",
+      "metadata:SharpDX.D3DCompiler.dll: DllImportAttribute",
+      "metadata:SharpDX.Direct2D1.dll: DllImportAttribute",
+      "metadata:SharpDX.Direct3D11.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: DllImportAttribute",
+      "metadata:SharpDX.dll: GetProcAddress",
+      "il:SharpDX.dll:SharpDX.Utilities.GetProcAddress+0x2: call SharpDX.Utilities.GetProcAddress_ -> kernel32!GetProcAddress: GetProcAddress",
+      "artifact:SharpDX.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:SharpDX.Direct3D11.dll: CreateProcess",
+      "artifact:SharpDX.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:Housingway.dll: FileStream",
+      "metadata:Housingway.dll: File.Delete",
+      "metadata:Housingway.dll: WriteAllText",
+      "il:Housingway.dll:<DeleteFile>d__8.MoveNext+0x4c: newobj System.IO.FileStream..ctor: FileStream",
+      "il:Housingway.dll:<DeleteFile>d__8.MoveNext+0xd3: call System.IO.File.Delete: File.Delete",
+      "il:Housingway.dll:<SaveFile>d__7`1.MoveNext+0x42: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+      "il:Housingway.dll:<<Delete>b__20_0>d.MoveNext+0x12: call Housingway.Profiles.Profile.DeleteAsync: File.Delete",
+      "il:Housingway.dll:<<Render>b__4>d.MoveNext+0x88: callvirt Housingway.Profiles.Profile.DeleteAsync: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
