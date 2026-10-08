@@ -1,0 +1,139 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.dll: s://github.com/Deckerz/xiv-remote-chat.git",
+      "artifact:XIVRemoteChat.dll: s://xivremote.chat/auth/login/discord",
+      "artifact:XIVRemoteChat.dll: s://xivremote.chat",
+      "artifact:XIVRemoteChat.dll: s://xivremote.chat/characters/",
+      "artifact:XIVRemoteChat.dll: s://xivremote.chat/send/socket",
+      "artifact:XIVRemoteChat.dll: s://xivremote.chat/auth/renew"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:XIVRemoteChat.dll: SigScanner",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Helpers.RefreshPlayerFreindsList+0x9: call XIVRemoteChat.Plugin.get_SigScanner: SigScanner",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Helpers.RefreshPlayerFreindsList+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "artifact:XIVRemoteChat.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:XIVRemoteChat.dll: TcpListener",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Start+0x23: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Start+0x2c: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Stop+0x1e: call System.Net.Sockets.TcpListener.get_Server: TcpListener",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Stop+0x3a: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:XIVRemoteChat.dll:<ListenAsync>d__13.MoveNext+0x32: callvirt System.Net.Sockets.TcpListener.AcceptTcpClientAsync: TcpListener",
+      "artifact:XIVRemoteChat.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.dll: https://xivremote.chat/auth/renew"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.083965826f90",
+    "severity": "caution",
+    "title": "Endpoint: xivremote.chat"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.dll: https://xivremote.chat/auth/login/discord"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6474d581d41d",
+    "severity": "caution",
+    "title": "Endpoint: xivremote.chat"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.dll: https://xivremote.chat/characters/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ae41f05dea21",
+    "severity": "caution",
+    "title": "Endpoint: xivremote.chat"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.dll: https://xivremote.chat/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ca8cc74fd51a",
+    "severity": "caution",
+    "title": "Endpoint: xivremote.chat"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:XIVRemoteChat.dll: System.Net.Sockets",
+      "metadata:XIVRemoteChat.dll: TcpClient",
+      "metadata:XIVRemoteChat.dll: Socket.Connect",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Start+0x23: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Start+0x2c: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Stop+0x1e: call System.Net.Sockets.TcpListener.get_Server: System.Net.Sockets",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Stop+0x23: callvirt System.Net.Sockets.Socket.Close: System.Net.Sockets",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.AuthCallbackServer.Stop+0x3a: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.dll: https://github.com/Deckerz/xiv-remote-chat.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0e9ef5422cb7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:XIVRemoteChat.json: https://github.com/Deckerz/xiv-remote-chat"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bc8ac86598f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:XIVRemoteChat.dll: System.Net.Http.HttpClient",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.FriendListRefreshService..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.FriendListRefreshService..ctor+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.TokenRenewalService..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:XIVRemoteChat.dll:XIVRemoteChat.Services.TokenRenewalService..ctor+0xf: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:XIVRemoteChat.dll:<PostFriendsAsync>d__11.MoveNext+0x11d: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient",
+      "il:XIVRemoteChat.dll:<RenewAsync>d__8.MoveNext+0x77: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

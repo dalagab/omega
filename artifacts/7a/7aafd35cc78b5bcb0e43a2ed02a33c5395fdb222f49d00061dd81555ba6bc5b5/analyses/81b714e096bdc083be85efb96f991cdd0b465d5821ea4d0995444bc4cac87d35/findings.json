@@ -1,0 +1,101 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:PetService.dll: Dalamud.Hooking",
+      "metadata:PetService.dll: HookFromAddress",
+      "il:PetService.dll:PetService.ChatCommandGuard..ctor+0x30: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PetService.dll:PetService.MovementGuard..ctor+0x21: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PetService.dll:PetService.TradeRecorder..ctor+0x4d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PetService.dll:PetService.TradeRecorder..ctor+0xad: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PetService.dll:PetService.TravelRecorder..ctor+0x5c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:PetService.dll:PetService.TravelRecorder..ctor+0xbc: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PetService.dll: https://brandonnissen.com/pet-service-test"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9cf7074b1b27",
+    "severity": "caution",
+    "title": "Endpoint: brandonnissen.com"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:PetService.dll: Directory.CreateDirectory",
+      "metadata:PetService.dll: WriteAllText",
+      "metadata:PetService.dll: File.Delete",
+      "il:PetService.dll:PetService.Plugin.ArchiveRecovery+0x18: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:PetService.dll:PetService.Plugin.ArchiveRecovery+0x8c: call System.IO.File.WriteAllText: WriteAllText",
+      "il:PetService.dll:PetService.Plugin.RetryRecovery+0x102: call System.IO.File.Delete: File.Delete",
+      "il:PetService.dll:PetService.Windows.MasterPortalView.ExportHistory+0x51: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "artifact:PetService.dll: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PetService.dll: https://github.com/anomalousgamer/PetService"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5e9b514e9ac8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PetService.json: https://raw.githubusercontent.com/anomalousgamer/PetService/main/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.796ad8269032",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PetService.json: https://github.com/anomalousgamer/PetService"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7ee762bdf2fc",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:PetService.dll: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.MasterPortalClient..ctor+0xc: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.MasterPortalClient..ctor+0x13: callvirt System.Net.Http.HttpClientHandler.set_AllowAutoRedirect: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.MasterPortalClient..ctor+0x18: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.MasterPortalClient..ctor+0x26: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.ServiceClient..ctor+0xc: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.ServiceClient..ctor+0x13: callvirt System.Net.Http.HttpClientHandler.set_AllowAutoRedirect: System.Net.Http.HttpClient",
+      "il:PetService.dll:PetService.Core.ServiceClient..ctor+0x18: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
