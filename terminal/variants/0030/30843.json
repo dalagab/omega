@@ -1,0 +1,1672 @@
+{
+  "analysis": {
+    "analysisId": "b8cb555874db98ae77446168904b381a37c2ce9a1ee5b206d1bf4cb6a38b15a4",
+    "artifactSha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+    "path": "artifacts/24/248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c/analyses/b8cb555874db98ae77446168904b381a37c2ce9a1ee5b206d1bf4cb6a38b15a4",
+    "recordCount": 26855
+  },
+  "current": {
+    "artifact_channel": "testing",
+    "artifact_sha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+    "artifact_url": "https://puni.sh/api/plugins/download/168/Eidos/versions/0.1.0.82/install/testing.zip",
+    "assembly_version": "0.1.0.82",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.camera.control",
+        "confidence": "very-high",
+        "evidence": [
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.RefreshCameraEditor+0xeb: callvirt Eidos.Models.NeutralCamera.set_Name",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.TryConvertCapturedPathCamera+0x67: callvirt Eidos.Models.NeutralCamera.set_Position",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.TryConvertCapturedPathCamera+0x7e: callvirt Eidos.Models.NeutralCamera.set_Rotation",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.TryConvertCapturedPathCamera+0xf9: callvirt Eidos.Models.NeutralCamera.set_Position",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.SwitchCameraView+0x96: callvirt Eidos.Models.NeutralCamera.set_Name",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.ApplyCameraEditor+0x9d: callvirt Eidos.Models.NeutralCamera.set_IsViewUnlocked",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.ApplyCameraEditor+0xa4: callvirt Eidos.Models.NeutralCamera.set_PreviewOrigin",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.ApplyCameraEditor+0xb3: callvirt Eidos.Models.NeutralCamera.set_SessionViewId"
+        ],
+        "indirect": false,
+        "label": "Camera control",
+        "reachable": true,
+        "reason": "References camera-mutating functionality."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Camera control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Eidos.dll: System.Diagnostics.Process",
+          "metadata:Eidos.dll: ProcessStartInfo",
+          "metadata:Eidos.dll: ShellExecute",
+          "metadata:Eidos.dll: Process.Start",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.OpenDirectory+0x12: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.OpenDirectory+0x12: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.OpenDirectory+0x19: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.OpenDirectory+0x19: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Eidos.dll: SigScanner",
+          "metadata:Eidos.dll: Dalamud.Hooking",
+          "metadata:Eidos.dll: HookFromAddress",
+          "il:Eidos.dll:Eidos.Plugin..ctor+0x1ab: call Eidos.Plugin.get_SigScanner: SigScanner",
+          "il:Eidos.dll:Eidos.Plugin..ctor+0x41c: call Eidos.Plugin.get_SigScanner: SigScanner",
+          "il:Eidos.dll:Eidos.Services.CameraNativeRuntime..ctor+0x34: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:Eidos.dll:Eidos.Services.CameraNativeRuntime..ctor+0x43: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:Eidos.dll:Eidos.Services.CameraNativeRuntime..ctor+0x85: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Eidos.dll: s://github.com/Nainaiowo/Eidos"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.RefreshCameraEditor+0xeb: callvirt Eidos.Models.NeutralCamera.set_Name",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.TryConvertCapturedPathCamera+0x67: callvirt Eidos.Models.NeutralCamera.set_Position",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.TryConvertCapturedPathCamera+0x7e: callvirt Eidos.Models.NeutralCamera.set_Rotation",
+          "il:Eidos.dll:Eidos.Windows.EidosWorkspace.TryConvertCapturedPathCamera+0xf9: callvirt Eidos.Models.NeutralCamera.set_Position"
+        ],
+        "ruleId": "automation.game.camera.control",
+        "severity": "caution",
+        "title": "Camera control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Eidos.dll: FileStream",
+          "metadata:Eidos.dll: Directory.CreateDirectory",
+          "metadata:Eidos.dll: WriteAllText",
+          "metadata:Eidos.dll: File.Move",
+          "metadata:Eidos.dll: File.Delete",
+          "il:Eidos.dll:Eidos.Services.ImportService.ReadEidosDocument+0xe: newobj System.IO.FileStream..ctor: FileStream",
+          "il:Eidos.dll:Eidos.Services.PoseFileExportService.Export+0x2b: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Eidos.dll:Eidos.Services.PoseFileExportService.Export+0x5b: call System.IO.File.WriteAllText: WriteAllText"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-d422a743c136a140",
+      "artifactBytes": 652770,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.1.0.82",
+        "artifactBytes": 652770,
+        "artifactSha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+        "catalogAssemblyVersion": "0.1.0.82",
+        "manifestInternalName": "Eidos",
+        "manifestPath": "Eidos.json",
+        "manifestRepositoryUrl": "https://github.com/Nainaiowo/Eidos",
+        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/168/versions/0.1.0.82.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20261009%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261009T215930Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=22401849b4edc03ca9e118d419edbf5f9cd972e54ea21f9592c995ce27817f46",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 1,
+          "observedDestinationWithoutProfileCount": 1,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.memory.read",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 18,
+          "exactVersionObservedCount": 18,
+          "families": {
+            "managed-assembly": 18
+          },
+          "fingerprint": "e6aab6cb434371cf1dc3ba5dc06cd2b93712cbb58d63dc9a5bafb8ecfe560567",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 17
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 18,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 17,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 18
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 1,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 2,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Nainaiowo/Eidos"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Nainaiowo/Eidos"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "testing",
+        "downloadUrl": "https://puni.sh/api/plugins/download/168/Eidos/versions/0.1.0.82/install/testing.zip",
+        "internalName": "Eidos",
+        "manifestVersion": "0.1.0.82",
+        "observationId": 50989,
+        "observationKey": "manifest-34870eca210bbe023e108c15855f",
+        "repositoryUrl": "https://github.com/Nainaiowo/Eidos",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 30843
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 1564656
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-d422a743c136a140",
+        "attemptId": "attempt-v2-f877087e3f9a36c0",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-3df74a7d28fa4051",
+        "definitionsRevision": "defs-v1-44fa6be1b1c71479",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-30843",
+        "queueSeedRevision": "queue-seed-v2-38aade2c70d86c9c684d",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-274f784600e921b3",
+        "targetFingerprint": "artifact-target-v2-ccb6deac25ef74832647",
+        "variantId": 30843,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-09T21:59:30Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Nainaiowo/Eidos"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Nainaiowo/Eidos",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-10-09T21:59:30Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Nainaiowo/Eidos",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 30843
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+      "current_assembly_version": "0.1.0.82",
+      "current_scan_id": 12,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-09T21:59:34Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 30843
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 18,
+      "artifact_only_count": 18,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.6"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imguizmo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGuizmo",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:eidos",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Eidos",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.1.0.82"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.56.2.9136"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encodings.web",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encodings.Web",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-09T21:59:34Z",
+      "comparison_id": 12,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 12,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 30843,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "9d49b1940fc21ed728d56567b2632f69799467269b75a4262300ae2f2147938e",
+    "observedAtUtc": "2026-10-11T07:18:24Z",
+    "reason": "catalog_variant_inactive",
+    "rescanEligible": false,
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "retired",
+    "terminal": true
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "fedbddaeb5df1ec79432beee9dc2d516d0b2e35d66b0ad0e04e742ba46c47c6b",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "297f2a429c3a760bd436e71d287ed20af24adf4311c64e88b541619766a262f3",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "6d33748240b238c953ad63b1d030a0624fea7045be1b0e43cd3f6792d5c88ad0",
+        "records": 18,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "a4351903e592702ed62e69006b1843a6d57b9176c21035661d1e9534461159ad",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "d8713c013998d787cd476423bf87358ea2aee62d26b611aac3b31255397d44d6",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "ad6f0172c8b9003e33477798c4dc9c0f902ad390789b1ce7872fbc9aff0e7ac0",
+        "records": 5517,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "69f281b3782b1ee00f541fb68f533023b16506805a151a16dd674a15e3e4c26b",
+        "records": 1240,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "ef89ed2b3f9b1314753058888409ee681e0f47baa0f59339d9a8a5e28c06c99d",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "58b783cfc1d8c372675c860e1f16b20c93911c5460cf8bfded227840d42213ed",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "1d9418f2bc804ad31603de165f07d7d417ba93576be999546ecad6743de1acfc",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "91333075494a621afc73f72cf30b863ca94ded19242fe63612bb6426cdcb6984",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "e2823b98af5f032e36279658cc0b9bc1d7117365bdf399d9cbb6373858801480",
+        "records": 47,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-298515a410d5d9316ef5c0ce0b9695eda401a83c2ef98b81c521a4674cccbc60",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-d422a743c136a140",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Eidos",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "Eidos",
+    "last_seen_utc": "2026-10-09T20:43:00Z",
+    "plugin_id": 686
+  },
+  "pluginId": 686,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "A Gposing and scene tool.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 90,
+      "summary": "A Gposing tool.",
+      "webEnriched": false
+    },
+    "projectRepository": "https://github.com/Nainaiowo/Eidos",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "bbb849e1fb22e825cde117e737e235fe239aedbb58c812de476be9211fa68691",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "8d63221e9b068417c19f7dbb5364498c5af4b5b05973d2006980ba1d96233acb",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "cb9e1be99ed717d9d1d4b306b20dafa89c66d9c7f5ae25cf16311d6a50d1813c",
+        "records": 8
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "70ec5c95a7a4c9cf89a4821d705d326376be31022cbcbf99a8504ffa2d78cab8",
+        "records": 5
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "testing",
+    "artifact_sha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+    "artifact_url": "https://puni.sh/api/plugins/download/168/Eidos/versions/0.1.0.82/install/testing.zip",
+    "assembly_version": "0.1.0.82",
+    "capabilities_json": [
+      "Camera control",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Hard-coded external file access",
+      "Process execution"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 686,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-d422a743c136a140",
+      "artifactBytes": 652770,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.1.0.82",
+        "artifactBytes": 652770,
+        "artifactSha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+        "catalogAssemblyVersion": "0.1.0.82",
+        "manifestInternalName": "Eidos",
+        "manifestPath": "Eidos.json",
+        "manifestRepositoryUrl": "https://github.com/Nainaiowo/Eidos",
+        "resolvedArtifactUrl": "https://s3.puni.sh/plugins/168/versions/0.1.0.82.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=root%2F20261009%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261009T215930Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=22401849b4edc03ca9e118d419edbf5f9cd972e54ea21f9592c995ce27817f46",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.camera.control",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Camera control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.camera.control",
+            "label": "Camera control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 8,
+          "observedConcreteDestinationCount": 1,
+          "observedDestinationWithoutProfileCount": 1,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 8,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Camera control",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Hard-coded external file access",
+        "Process execution"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.camera.control",
+        "game.memory.read",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 18,
+          "exactVersionObservedCount": 18,
+          "families": {
+            "managed-assembly": 18
+          },
+          "fingerprint": "e6aab6cb434371cf1dc3ba5dc06cd2b93712cbb58d63dc9a5bafb8ecfe560567",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 17
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 18,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 17,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 18
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 1,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 2,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            }
+          ],
+          "literalCount": 2,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Nainaiowo/Eidos"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Nainaiowo/Eidos"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "testing",
+        "downloadUrl": "https://puni.sh/api/plugins/download/168/Eidos/versions/0.1.0.82/install/testing.zip",
+        "internalName": "Eidos",
+        "manifestVersion": "0.1.0.82",
+        "observationId": 50989,
+        "observationKey": "manifest-34870eca210bbe023e108c15855f",
+        "repositoryUrl": "https://github.com/Nainaiowo/Eidos",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 30843
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 3,
+        "uncompressedBytes": 1564656
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-d422a743c136a140",
+        "attemptId": "attempt-v2-f877087e3f9a36c0",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-3df74a7d28fa4051",
+        "definitionsRevision": "defs-v1-44fa6be1b1c71479",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-30843",
+        "queueSeedRevision": "queue-seed-v2-38aade2c70d86c9c684d",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-274f784600e921b3",
+        "targetFingerprint": "artifact-target-v2-ccb6deac25ef74832647",
+        "variantId": 30843,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-09T21:59:30Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "248acdd70b74f5e3d09ca33f5650e7d88b811e31130d6a36cc41c613ae34f70c",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Nainaiowo/Eidos"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Nainaiowo/Eidos",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-10-09T21:59:30Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 146,
+    "source_repository": "https://github.com/Nainaiowo/Eidos",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 30843
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "bb7c509b419385f20e6f48a819b8dbdcb5c26cb89ad41afd226bb84e2b74338f",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-09T20:43:00Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-09T20:43:00Z",
+    "name": "nainai",
+    "plugin_count": 5,
+    "provider": "nainai",
+    "source_id": 146,
+    "source_repo_url": "",
+    "url": "https://puni.sh/api/repository/nainai"
+  },
+  "sourceId": 146,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.1.0.82",
+    "author": "nainaiowo",
+    "authors_json": [
+      "nainaiowo"
+    ],
+    "category_tags_json": [],
+    "changelog": "Camera previews retain their names with an unlocked preview suffix and remember movement when switching views or returning from Game camera. Lock preview restores the angle from before previewing. Scene cameras now load movable immediately, with stable identity instead of borrowing a matching session camera's name. Camera Undo/Redo, path restoration and scene rollback preserve preview modes and original angles. Preview state clears on GPose exit and is never serialized into saved files. Scene placement remains character-relative by default; the separate camera-path placement option is unchanged.",
+    "dalamud_api_level": 15,
+    "description": "A Gposing and scene tool.",
+    "dip17_channel": "",
+    "download_count": 264,
+    "download_link_install": "",
+    "download_link_testing": "https://puni.sh/api/plugins/download/168/Eidos/versions/0.1.0.82/install/testing.zip",
+    "download_link_update": "",
+    "first_seen_utc": "2026-10-09T09:48:03Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 1,
+    "last_seen_utc": "2026-10-09T20:43:00Z",
+    "last_update": 1785334785,
+    "minimum_dalamud_version": null,
+    "name": "Eidos",
+    "plugin_id": 686,
+    "punchline": "A Gposing tool.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.1.0.82",
+      "Author": "nainaiowo",
+      "Changelog": "Camera previews retain their names with an unlocked preview suffix and remember movement when switching views or returning from Game camera. Lock preview restores the angle from before previewing. Scene cameras now load movable immediately, with stable identity instead of borrowing a matching session camera's name. Camera Undo/Redo, path restoration and scene rollback preserve preview modes and original angles. Preview state clears on GPose exit and is never serialized into saved files. Scene placement remains character-relative by default; the separate camera-path placement option is unchanged.",
+      "DalamudApiLevel": "15",
+      "Description": "A Gposing and scene tool.\n",
+      "DownloadCount": 264,
+      "DownloadLinkTesting": "https://puni.sh/api/plugins/download/168/Eidos/versions/0.1.0.82/install/testing.zip",
+      "InternalName": "Eidos",
+      "IsTestingExclusive": true,
+      "LastUpdate": 1785334785,
+      "Name": "Eidos",
+      "Punchline": "A Gposing tool.",
+      "RepoUrl": "https://github.com/Nainaiowo/Eidos",
+      "Tags": [
+        "gpose",
+        "pose",
+        "scene",
+        "studio"
+      ],
+      "TestingAssemblyVersion": "0.1.0.82",
+      "TestingDalamudApiLevel": "15"
+    },
+    "repo_url": "https://github.com/Nainaiowo/Eidos",
+    "source_entry_key": "eidos|0.1.0.82|15|15|0",
+    "source_id": 146,
+    "tags_json": [
+      "gpose",
+      "pose",
+      "scene",
+      "studio"
+    ],
+    "testing_assembly_version": "0.1.0.82",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 30843
+  },
+  "variantId": 30843
+}

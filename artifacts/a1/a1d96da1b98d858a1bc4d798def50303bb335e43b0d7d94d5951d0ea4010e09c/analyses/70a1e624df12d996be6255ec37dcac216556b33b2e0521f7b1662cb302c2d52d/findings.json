@@ -1,0 +1,107 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:MoonbaseOmega.dll: s://github.com/NotNite/MoonbaseOmega.git",
+      "artifact:MoonbaseOmega.dll: s://github.com/dectalk/dectalk/releases/download/2023-10-30/vs2022.zip"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:MoonbaseOmega.TextToSpeech.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MoonbaseOmega.TextToSpeech.dll: NativeLibrary.Load",
+      "metadata:MoonbaseOmega.TextToSpeech.dll: DllImportAttribute",
+      "il:MoonbaseOmega.TextToSpeech.dll:MoonbaseOmega.TextToSpeech.Native.SetupResolver+0x19: newobj System.Runtime.InteropServices.DllImportResolver..ctor: System.Runtime.InteropServices.DllImport",
+      "il:MoonbaseOmega.TextToSpeech.dll:<>c__DisplayClass9_0.<SetupResolver>b__0+0x10: call System.Runtime.InteropServices.NativeLibrary.Load: NativeLibrary.Load",
+      "il:MoonbaseOmega.TextToSpeech.dll:<>c__DisplayClass9_0.<SetupResolver>b__0+0x1c: call System.Runtime.InteropServices.NativeLibrary.Load: NativeLibrary.Load"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:MoonbaseOmega.TextToSpeech.dll: System.Diagnostics.Process",
+      "il:MoonbaseOmega.TextToSpeech.dll:MoonbaseOmega.TextToSpeech.TextToSpeech.GetLogFilePath+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:MoonbaseOmega.TextToSpeech.dll:MoonbaseOmega.TextToSpeech.TextToSpeech.GetLogFilePath+0x5: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:MoonbaseOmega.TextToSpeech.dll:MoonbaseOmega.TextToSpeech.TextToSpeech.GetLogFilePath+0x11: callvirt System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process",
+      "artifact:MoonbaseOmega.TextToSpeech.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:MoonbaseOmega.dll: FileStream",
+      "metadata:MoonbaseOmega.dll: Directory.CreateDirectory",
+      "il:MoonbaseOmega.dll:MoonbaseOmega.Plugin..ctor+0xc1: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "artifact:MoonbaseOmega.dll: FileStream",
+      "metadata:MoonbaseOmega.TextToSpeech.dll: File.Delete",
+      "il:MoonbaseOmega.TextToSpeech.dll:MoonbaseOmega.TextToSpeech.TextToSpeech.DeleteLogFile+0x12: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MoonbaseOmega.json: https://github.com/NotNite/MoonbaseOmega"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.13756c452245",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MoonbaseOmega.dll: https://github.com/dectalk/dectalk/releases/download/2023-10-30/vs2022.zip"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6ebb4352863a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MoonbaseOmega.dll: https://github.com/NotNite/MoonbaseOmega.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cd34368c09f2",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:MoonbaseOmega.dll: System.Net.Http.HttpClient",
+      "il:MoonbaseOmega.dll:<DownloadDecTalk>d__13.MoveNext+0x7b: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:MoonbaseOmega.dll:<DownloadDecTalk>d__13.MoveNext+0x9d: callvirt System.Net.Http.HttpClient.GetByteArrayAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
