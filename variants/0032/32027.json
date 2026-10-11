@@ -1,0 +1,2133 @@
+{
+  "analysis": {
+    "analysisId": "407de056deab9d53ddb721a84d0c09981dc640afb65fccba421e189a3797956e",
+    "artifactSha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+    "path": "artifacts/86/86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc/analyses/407de056deab9d53ddb721a84d0c09981dc640afb65fccba421e189a3797956e",
+    "recordCount": 27867
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+    "artifact_url": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+    "assembly_version": "2.0.0.6",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "very-high",
+        "evidence": [
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameHelpers.TargetAndInteract+0x93: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": true,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "evidence": [
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameHelpers.TargetAndInteract+0x73: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AethertekUI.dll:AethertekUI.MaterialWindowFold.OnSize+0x28: callvirt Dalamud.Bindings.ImGui.ImGuiSizeCallback.Invoke",
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameHelpers.FireAddonCallback+0x128: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.inventory_control",
+        "confidence": "high",
+        "evidence": [
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameInventoryService.TryDiscardItem+0x7b: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.DiscardItem"
+        ],
+        "indirect": false,
+        "label": "Inventory UI/control",
+        "reachable": false,
+        "reason": "Invokes inventory-mutating or inventory-action functionality."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Filesystem write",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Process execution",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:ChokeAbo.dll: System.Diagnostics.Process",
+          "metadata:ChokeAbo.dll: ProcessStartInfo",
+          "metadata:ChokeAbo.dll: ShellExecute",
+          "metadata:ChokeAbo.dll: Process.Start",
+          "il:ChokeAbo.dll:ChokeAbo.Windows.ConfigWindow.DrawGeneralSettings+0x8a: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+          "il:ChokeAbo.dll:ChokeAbo.Windows.ConfigWindow.DrawGeneralSettings+0x8a: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+          "il:ChokeAbo.dll:ChokeAbo.Windows.ConfigWindow.DrawGeneralSettings+0x95: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+          "il:ChokeAbo.dll:ChokeAbo.Windows.ConfigWindow.DrawGeneralSettings+0x95: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:AethertekUI.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:AethertekUI.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:ChokeAbo.dll: s://github.com/McVaxius/ChokeAbo",
+          "artifact:ChokeAbo.dll: s://ko-fi.com/mcvaxius",
+          "artifact:ChokeAbo.dll: s://discord.gg/ac6gjDvR8R"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameInventoryService.TryDiscardItem+0x7b: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.DiscardItem"
+        ],
+        "ruleId": "automation.game.ui.inventory_control",
+        "severity": "caution",
+        "title": "Inventory UI/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AethertekUI.dll:AethertekUI.MaterialWindowFold.OnSize+0x28: callvirt Dalamud.Bindings.ImGui.ImGuiSizeCallback.Invoke",
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameHelpers.FireAddonCallback+0x128: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameHelpers.TargetAndInteract+0x73: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:ChokeAbo.dll:ChokeAbo.Services.GameHelpers.TargetAndInteract+0x93: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:AethertekUI.Dalamud.dll: FileStream",
+          "metadata:AethertekUI.Dalamud.dll: Directory.CreateDirectory",
+          "metadata:AethertekUI.Dalamud.dll: File.Delete",
+          "il:AethertekUI.Dalamud.dll:AethertekUI.Dalamud.SupportLogArchive.Create+0x4: newobj System.IO.FileStream..ctor: FileStream",
+          "il:AethertekUI.Dalamud.dll:AethertekUI.Dalamud.SupportLogArchive.Create+0x12: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:AethertekUI.Dalamud.dll:AethertekUI.Dalamud.SupportLogArchive.Create+0x5f: newobj System.IO.FileStream..ctor: FileStream",
+          "il:AethertekUI.Dalamud.dll:AethertekUI.Dalamud.SupportLogArchive.Create+0xff: call System.IO.File.Delete: File.Delete",
+          "artifact:AethertekUI.Dalamud.dll: FileStream"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-feb5f3d94a133151",
+      "artifactBytes": 1079167,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.0.0.6",
+        "artifactBytes": 1079167,
+        "artifactSha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+        "catalogAssemblyVersion": "2.0.0.6",
+        "manifestInternalName": "ChokeAbo",
+        "manifestPath": "ChokeAbo.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1192179146/35f14b84-7a3c-42a7-bdd8-f1f5ea1ef622?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-11T08%3A35%3A26Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-11T07%3A34%3A30Z&ske=2026-10-11T08%3A35%3A26Z&sks=b&skv=2018-11-09&sig=nug7Kaf%2FxRQQ%2B6JdALBkuJPxKKKcU0XeMGjVOU3FzTI%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MTcwNTk3NSwibmJmIjoxNzkxNzA1Njc1LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.z8_WJrXsr1pTO8bP_q1fSGaSZlwO0ubVFXjLp6tKkOk&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Filesystem write",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Process execution",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.inventory_control",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 40,
+          "exactVersionObservedCount": 39,
+          "families": {
+            "managed-assembly": 39,
+            "native": 1
+          },
+          "fingerprint": "ce111afe25a516e798cd7bfb08e5b0a0251dfbaad766cc16603d166d3af2e539",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 1,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "AethertekUI.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DWriteCreateFactory",
+              "library": "dwrite.dll",
+              "managedName": "DWriteCreateFactory",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 37
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 40,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 37,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 40
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/ac6gjDvR8R"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/McVaxius/ChokeAbo"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ko-fi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/mcvaxius"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+        "internalName": "ChokeAbo",
+        "manifestVersion": "2.0.0.6",
+        "observationId": 52846,
+        "observationKey": "manifest-c15892b48ea306876834d72c43df",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 32027
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 2116158
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-feb5f3d94a133151",
+        "attemptId": "attempt-v2-b8c4826c711a60a7",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-53766489304ba546",
+        "definitionsRevision": "defs-v1-abcaa46e5b002554",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-32027",
+        "queueSeedRevision": "queue-seed-v2-64e97eb96bcfd0cb3eb9",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-d10fe04941dc7002",
+        "targetFingerprint": "artifact-target-v2-0949149fd35852a62ed0",
+        "variantId": 32027,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-11T08:01:14Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/McVaxius/ChokeAbo"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-10-11T08:01:14Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 32027
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+      "current_assembly_version": "2.0.0.6",
+      "current_scan_id": 12,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-11T08:01:17Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 32027
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 23,
+      "artifact_only_count": 23,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:aethertekui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "AethertekUI",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:aethertekui.dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "AethertekUI.Dalamud",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:chokeabo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "ChokeAbo",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.0.0.6"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.6"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.56.2.9136"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:dwrite",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dwrite.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-11T08:01:17Z",
+      "comparison_id": 10,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 12,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 32027,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0032/32027/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0032/32027/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 37691,
+          "encoding": "json",
+          "path": "derived/variants/0032/32027/dependency-resolutions.json",
+          "recordDigest": "0a9a0b4a8b92f75225c26c56655a9775a06b759210ae771c1fc33b1eb05ac00c",
+          "records": 40,
+          "sha256": "926d4af8624ff857bf2b38b185b9dcb076c31bfc20b243d3fec0b5552d400411"
+        }
+      ],
+      "recordDigest": "0a9a0b4a8b92f75225c26c56655a9775a06b759210ae771c1fc33b1eb05ac00c",
+      "records": 40
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0032/32027/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-9c019f5de0e65bdf",
+    "identityFingerprint": "467d25e96726322e5245d5a60aebcb134bc66eb465b739c6c1322e897d4177f2",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "52030c018b97c2cd669b299a6da48e58c1b60da92519334a424f2ca9dcff4588",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "1fd1da83552bac14d395ac01755d70976c1846c9c486b397361c692443f30a43",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "726ca61b2adb8e6115fb52688c320ec158265844c7fe10a147992e658eab4bf8",
+        "records": 40,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "278249add44c89f3b2e993a1b6e154fd973558f15c552863b3e22c49e63b6c1a",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "1dc26db7d381ebcec6f0eb963734d89a4d2f38fb2c6fa13bf3da0d073fdb8054",
+        "records": 18455,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "2d2d105a871d1bc589774962f49fec7af51b1dc899b27cd2bccb603ed60954ef",
+        "records": 6949,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "5981e91537fc1d4bc92cee4a5285223d1d4d1113af5a9f7b3797527143f895ad",
+        "records": 2314,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "6af6b83e87095d368089dee416c5c4dbc545118bc8e55be932a658dd38276214",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "14b3affb160c7a58232c16f608b277b2fd3a20129bdfe8581231c969d1cf7026",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "3d5b534d584efc1c4fd798550b851acf250102a2a8bae4cc5460f20c0ebfaf41",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "494c536926c0136e39f9930eaa6bde2a86ef5c354e22a75fb1273c04384eac3a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "2f300936b67184d2360dad0c64cfdba8859cf29ce7f0ec3e611b3b8614bfe9a5",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "ade67f3a05c0c05e424f47be72ce36f62b57e6e1d202def4c40ffcc9dc4b0aa8",
+        "records": 68,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-44b07b9a25dc7c5efa1aac7ff50a8242165d9723e5e7bdaf7bec00ab7cc7f97c",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-feb5f3d94a133151",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Choke-abo",
+    "first_seen_utc": "2026-08-26T03:31:07Z",
+    "internal_name": "ChokeAbo",
+    "last_seen_utc": "2026-10-11T06:41:43Z",
+    "plugin_id": 1298
+  },
+  "pluginId": 1298,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "(Racing Chocobo) Feed your Racing chocobo Grade 1-2-3 Feed. Includes automatic buying and feeding.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1215,
+      "summary": "(Racing Chocobo) Feed your Racing chocobo Grade 1-2-3 Feed. Includes automatic buying and feeding.",
+      "webEnriched": true
+    },
+    "projectRepository": "",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "",
+      "url": ""
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "17584b646b2ce2f8811c352a7516c928a92a5e76689ff6c8f61618514f72f22f",
+        "records": 4
+      },
+      "behaviorConsistency": {
+        "recordDigest": "fdd6c35eb406b877eb9523ddc2708a1f27ac90fe1ff6a809d4ad523539c65d9b",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "ac9d29a53960c721ae9989c4f49cb355d60f7bd0d4490a0fd3727eaec1397bf2",
+        "records": 11
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "307e65489902b5db59d1e54789ee7f8723da298fd79af72610c9515c899e5661",
+        "records": 8
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+    "artifact_url": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+    "assembly_version": "2.0.0.6",
+    "capabilities_json": [
+      "Character target control",
+      "Filesystem write",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Inventory UI/control",
+      "Native/PInvoke",
+      "Process execution",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 1298,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-feb5f3d94a133151",
+      "artifactBytes": 1079167,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "2.0.0.6",
+        "artifactBytes": 1079167,
+        "artifactSha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+        "catalogAssemblyVersion": "2.0.0.6",
+        "manifestInternalName": "ChokeAbo",
+        "manifestPath": "ChokeAbo.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1192179146/35f14b84-7a3c-42a7-bdd8-f1f5ea1ef622?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-11T08%3A35%3A26Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-11T07%3A34%3A30Z&ske=2026-10-11T08%3A35%3A26Z&sks=b&skv=2018-11-09&sig=nug7Kaf%2FxRQQ%2B6JdALBkuJPxKKKcU0XeMGjVOU3FzTI%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MTcwNTk3NSwibmJmIjoxNzkxNzA1Njc1LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.z8_WJrXsr1pTO8bP_q1fSGaSZlwO0ubVFXjLp6tKkOk&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.inventory_control",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Inventory UI/control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.inventory_control",
+            "label": "Inventory UI/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 11,
+          "observedConcreteDestinationCount": 2,
+          "observedDestinationWithoutProfileCount": 2,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 11,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Filesystem write",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Inventory UI/control",
+        "Native/PInvoke",
+        "Process execution",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.write",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "game.ui.inventory_control",
+        "native.interop",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 40,
+          "exactVersionObservedCount": 39,
+          "families": {
+            "managed-assembly": 39,
+            "native": 1
+          },
+          "fingerprint": "ce111afe25a516e798cd7bfb08e5b0a0251dfbaad766cc16603d166d3af2e539",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 1,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "AethertekUI.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "DWriteCreateFactory",
+              "library": "dwrite.dll",
+              "managedName": "DWriteCreateFactory",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 3,
+            "observed": 37
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 40,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 3,
+            "observed": 37,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 40
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 2,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "community-invite"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "discord.gg",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ko-fi.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "community-invite",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "discord.gg",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "community invite",
+            "url": "https://discord.gg/ac6gjDvR8R"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/McVaxius/ChokeAbo"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ko-fi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://ko-fi.com/mcvaxius"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+        "internalName": "ChokeAbo",
+        "manifestVersion": "2.0.0.6",
+        "observationId": 52846,
+        "observationKey": "manifest-c15892b48ea306876834d72c43df",
+        "repositoryUrl": "",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 32027
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 3,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 2116158
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-feb5f3d94a133151",
+        "attemptId": "attempt-v2-b8c4826c711a60a7",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-53766489304ba546",
+        "definitionsRevision": "defs-v1-abcaa46e5b002554",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-32027",
+        "queueSeedRevision": "queue-seed-v2-64e97eb96bcfd0cb3eb9",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-d10fe04941dc7002",
+        "targetFingerprint": "artifact-target-v2-0949149fd35852a62ed0",
+        "variantId": 32027,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-11T08:01:14Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "86fbb08b128f24ab11a5c25f5e7021cf2adc57c5bc9957f0fd6ab9d82dbc81bc",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/McVaxius/ChokeAbo"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 12,
+    "scanned_at_utc": "2026-10-11T08:01:14Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1003,
+    "source_repository": "",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 32027
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "c21b750df388e9b61e814f1da3fcfe2bab0a032a688df36be4f3d7be765fa445",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"e80c473401627e9c674e612b03d7c83fbd5723c05143c5d52d1facc040fd0df9\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-11T06:41:43Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-11T06:41:43Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 18,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 1003,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/mcvaxius-thedumpsterfire.json"
+  },
+  "sourceId": 1003,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "2.0.0.6",
+    "author": "DhogGPT",
+    "authors_json": [
+      "DhogGPT"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "(Racing Chocobo) Feed your Racing chocobo Grade 1-2-3 Feed. Includes automatic buying and feeding.",
+    "dip17_channel": "",
+    "download_count": 1268,
+    "download_link_install": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+    "first_seen_utc": "2026-10-10T21:50:28Z",
+    "icon_url": "https://raw.githubusercontent.com/McVaxius/ChokeAbo/main/ChokeAbo/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-10-10T21:50:28Z",
+    "last_update": 1791635775,
+    "minimum_dalamud_version": null,
+    "name": "Choke-abo",
+    "plugin_id": 1298,
+    "punchline": "(Racing Chocobo) Feed your Racing chocobo Grade 1-2-3 Feed. Includes automatic buying and feeding.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "2.0.0.6",
+      "Author": "DhogGPT",
+      "CategoryTags": [
+        "utility"
+      ],
+      "DalamudApiLevel": 15,
+      "Description": "(Racing Chocobo) Feed your Racing chocobo Grade 1-2-3 Feed. Includes automatic buying and feeding.",
+      "DownloadCount": 1268,
+      "DownloadLinkInstall": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/McVaxius/ChokeAbo/releases/download/v2.0.0.6/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/McVaxius/ChokeAbo/main/ChokeAbo/images/icon.png",
+      "InternalName": "ChokeAbo",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1791635775,
+      "Name": "Choke-abo",
+      "Punchline": "(Racing Chocobo) Feed your Racing chocobo Grade 1-2-3 Feed. Includes automatic buying and feeding.",
+      "SupportsProfiles": true,
+      "Tags": [
+        "ffxiv",
+        "chokeabo",
+        "dhog"
+      ],
+      "_SourceId": "mcvaxius-thedumpsterfire",
+      "_SourceName": "McVaxius / TheDumpsterFire",
+      "_SourceUrl": "https://raw.githubusercontent.com/McVaxius/TheDumpsterFire/master/repo.json"
+    },
+    "repo_url": "",
+    "source_entry_key": "chokeabo|2.0.0.6|15|0|4",
+    "source_id": 1003,
+    "tags_json": [
+      "ffxiv",
+      "chokeabo",
+      "dhog"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 32027
+  },
+  "variantId": 32027
+}
