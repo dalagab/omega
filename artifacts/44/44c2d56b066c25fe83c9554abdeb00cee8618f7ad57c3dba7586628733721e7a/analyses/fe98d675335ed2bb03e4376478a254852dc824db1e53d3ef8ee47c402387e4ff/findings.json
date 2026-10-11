@@ -1,0 +1,105 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:LLib.dll:LLib.Gear.ExtractActions.TryOpenExtractionWindow+0x1c: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:LLib.dll:LLib.Gear.MeldActions.TryOpenMeldAgent+0x1c: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:LLib.dll:LLib.Gear.RepairActions.TryOpenRepairWindow+0x1b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:LLib.dll:LLib.GameData.GameStateHelper.Mount+0x85: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:LLib.dll:LLib.GameData.TeleportHelper.Teleport+0xd9: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport"
+    ],
+    "rule_id": "automation.game.character.teleport",
+    "severity": "caution",
+    "title": "Teleport/travel control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:LLib.dll:LLib.Shop.GcSupplyActions.TrySelectStringOption+0x26: call LLib.GameUI.AddonCallback.Fire",
+      "il:LLib.dll:LLib.Shop.GcSupplyActions.TryCloseSelectString+0x1c: call LLib.GameUI.AddonCallback.Fire",
+      "il:LLib.dll:LLib.Shop.GcSupplyActions.TrySwitchToExpertTab+0x26: call LLib.GameUI.AddonCallback.Fire",
+      "il:LLib.dll:LLib.Shop.GcSupplyActions.TrySelectItem+0x2a: call LLib.GameUI.AddonCallback.Fire"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:LLib.dll:LLib.Gear.EEquipSlotCategoryExtensions.TryUnequipItem+0x18c: call FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.MoveItemSlot"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:LLib.dll: s://github.com/WigglyMuffin/LLib.git",
+      "artifact:LLib.dll: s://raw.githubusercontent.com/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:LLib.dll: Dalamud.Hooking",
+      "metadata:LLib.dll: SigScanner",
+      "il:LLib.dll:LLib.Movement.MovementOverrideHook.TryInstallHook+0x27: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:LLib.dll:LLib.Movement.MovementOverrideHook.TryInstallHook+0x3f: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:LLib.dll:LLib.Movement.MovementOverrideHook.TryInstallHook+0x186: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "artifact:LLib.dll: Dalamud.Hooking",
+      "artifact:LLib.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:LLib.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:LLib.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.Logging.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:LLib.dll: FileStream",
+      "metadata:LLib.dll: File.Move",
+      "metadata:LLib.dll: File.Delete",
+      "metadata:LLib.dll: Directory.CreateDirectory",
+      "il:LLib.dll:LLib.AtomicFile.WriteAllText+0x46: newobj System.IO.FileStream..ctor: FileStream",
+      "il:LLib.dll:LLib.AtomicFile.WriteAllText+0x62: callvirt System.IO.FileStream.Flush: FileStream",
+      "il:LLib.dll:LLib.AtomicFile.WriteAllText+0x82: call System.IO.File.Move: File.Move",
+      "il:LLib.dll:LLib.AtomicFile.WriteAllText+0x92: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
