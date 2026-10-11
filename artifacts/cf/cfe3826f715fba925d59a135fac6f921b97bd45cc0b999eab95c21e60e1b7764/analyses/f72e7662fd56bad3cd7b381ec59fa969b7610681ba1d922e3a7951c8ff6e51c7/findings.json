@@ -1,0 +1,145 @@
+[
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:Poser.Game.dll: ReadProcessMemory",
+      "artifact:Poser.Game.dll: ReadProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x79: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitScopeCache+0x1f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: s://github.com/MidoriKami/KamiToolKit",
+      "artifact:Poser.dll: s://github.com/midona-rhel/Poser.git",
+      "artifact:Poser.Documents.dll: p://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "artifact:Poser.Documents.dll: p://ns.adobe.com/xap/1.0/",
+      "artifact:Poser.Documents.dll: p://purl.org/dc/elements/1.1/",
+      "artifact:Poser.Documents.dll: p://ns.adobe.com/photoshop/1.0/",
+      "artifact:Poser.Documents.dll: p://ns.adobe.com/xap/1.0/mm/",
+      "artifact:Poser.Documents.dll: p://ns.adobe.com/xap/1.0/sType/ResourceEvent#"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress",
+      "metadata:Poser.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Blake3.dll: DllImportAttribute",
+      "metadata:Microsoft.Extensions.DependencyInjection.Abstractions.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Poser.Documents.dll: DllImportAttribute",
+      "metadata:Poser.Game.dll: DllImportAttribute",
+      "native-pe:runtimes/win-arm64/native/blake3_dotnet.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:runtimes/win-arm64/native/blake3_dotnet.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "artifact:runtimes/win-arm64/native/blake3_dotnet.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:Poser.Game.dll: System.Diagnostics.Process",
+      "artifact:Poser.Game.dll: System.Diagnostics.Process",
+      "metadata:Poser.UI.dll: System.Diagnostics.Process",
+      "metadata:Poser.UI.dll: ProcessStartInfo",
+      "metadata:Poser.UI.dll: ShellExecute",
+      "metadata:Poser.UI.dll: Process.Start",
+      "il:Poser.UI.dll:Poser.UI.PoseLibraryPane.OpenLibraryInExplorer+0x3a: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:Poser.UI.dll:Poser.UI.PoseLibraryPane.OpenLibraryInExplorer+0x3a: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:Poser.UI.dll: Microsoft.Win32.Registry",
+      "metadata:Poser.UI.dll: RegistryKey",
+      "artifact:Poser.UI.dll: Microsoft.Win32.Registry",
+      "artifact:Poser.UI.dll: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.SaveAddonConfig+0x3c: call Dalamud.Utility.FilesystemUtil.WriteAllTextSafe: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:Poser.dll: FileStream",
+      "metadata:Poser.dll: Directory.CreateDirectory",
+      "metadata:Poser.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-arm/native/libblake3_dotnet.so",
+      "runtimes/linux-arm64/native/libblake3_dotnet.so",
+      "runtimes/linux-musl-arm64/native/libblake3_dotnet.so",
+      "runtimes/linux-musl-x64/native/libblake3_dotnet.so",
+      "runtimes/linux-x64/native/libblake3_dotnet.so",
+      "runtimes/osx-arm64/native/libblake3_dotnet.dylib",
+      "runtimes/osx-x64/native/libblake3_dotnet.dylib",
+      "runtimes/win-arm64/native/blake3_dotnet.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
