@@ -1,0 +1,424 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:FFLogsPlugin.dll: ProtectedData.Unprotect",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Helpers.CredentialHelper.Decrypt+0x56: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Helpers.CredentialHelper.Decrypt+0xce: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x8b: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x29: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8ScriptEngine.OnContinuationTimer+0xb: callvirt Microsoft.ClearScript.ContinuationCallback.Invoke",
+      "il:ClearScript.V8.dll:<>c.<CreateModuleContext>b__62_0+0x11: callvirt Microsoft.ClearScript.DocumentContextCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateParameterizedConstructor+0x2f: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateMethodCall+0x3c: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x8: callvirt System.Reflection.Emit.ILGenerator.DefineLabel: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x15: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.dll: s://github.com/Robert5204/FFLogsUploader",
+      "artifact:FFLogsPlugin.dll: s://www.fflogs.com/reports/",
+      "artifact:FFLogsPlugin.dll: s://www.fflogs.com",
+      "artifact:FFLogsPlugin.dll: s://www.fflogs.com/oauth/token",
+      "artifact:FFLogsPlugin.dll: s://www.fflogs.com/api/v2/client",
+      "artifact:ClearScript.Core.dll: C:\\Code\\ClearScript\\NetCore\\ClearScript.Core\\obj\\Release\\net5.0\\ClearScript.Core.pdb",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:ClearScript.Core.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:ClearScript.V8.dll: TcpListener",
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8DebugAgent.StartAcceptWebClient+0x6: callvirt System.Net.Sockets.TcpListener.AcceptSocketAsync: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_0+0x11: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_0+0x26: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_1+0x11: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_1+0x26: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:ClearScript.V8.dll:<>c.<Dispose>b__21_0+0x1: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "artifact:ClearScript.V8.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ClearScript.V8.dll: NativeLibrary.Load",
+      "metadata:ClearScript.V8.dll: DllImportAttribute",
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8Proxy.LoadNativeLibrary+0x72: call Microsoft.ClearScript.V8.V8Proxy.LoadLibrary: LoadLibrary",
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8Proxy.LoadNativeLibrary+0x9f: call Microsoft.ClearScript.V8.V8Proxy.GetLoadLibraryErrorMessage: LoadLibrary",
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8Proxy.LoadLibrary+0x1: call System.Runtime.InteropServices.NativeLibrary.Load: NativeLibrary.Load",
+      "artifact:ClearScript.V8.dll: LoadLibrary",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClearScript.V8.ICUData.dll: http://www.unicode.org/copyright.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.452052199a8d",
+    "severity": "caution",
+    "title": "Endpoint: www.unicode.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClearScript.V8.dll: http://www.microsoft.com0/",
+      "artifact:ClearScript.V8.ICUData.dll: http://www.microsoft.com0/",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: http://www.microsoft.com0/",
+      "artifact:ClearScript.Core.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.w3.org/2000/xmlns/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.d06315e1b027",
+    "severity": "caution",
+    "title": "Endpoint: www.w3.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.nuget.org/packages/Newtonsoft.Json.Bson"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fc10d6dbcb0",
+    "severity": "caution",
+    "title": "Endpoint: www.nuget.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.dll: https://www.fflogs.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.87a5fe13ef2d",
+    "severity": "caution",
+    "title": "Endpoint: www.fflogs.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.dll: https://www.fflogs.com/oauth/token"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8ce294c08232",
+    "severity": "caution",
+    "title": "Endpoint: www.fflogs.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7f45af35c13",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.dll: https://www.fflogs.com/api/v2/client"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b8b4dc0a9e6d",
+    "severity": "caution",
+    "title": "Endpoint: www.fflogs.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://www.newtonsoft.com/jsonschema"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be2490e7d948",
+    "severity": "caution",
+    "title": "Endpoint: www.newtonsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ClearScript.V8.dll: https://microsoft.github.io/ClearScript/favicon.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d11e8fda227c",
+    "severity": "caution",
+    "title": "Endpoint: microsoft.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.dll: https://www.fflogs.com/reports/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f5005c281af5",
+    "severity": "caution",
+    "title": "Endpoint: www.fflogs.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:ClearScript.V8.dll: System.Net.Sockets",
+      "il:ClearScript.V8.dll:Microsoft.ClearScript.V8.V8DebugAgent.StartAcceptWebClient+0x6: callvirt System.Net.Sockets.TcpListener.AcceptSocketAsync: System.Net.Sockets",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_0+0x11: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_0+0x26: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_1+0x11: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:ClearScript.V8.dll:<>c.<.ctor>b__9_1+0x26: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:ClearScript.V8.dll:<>c.<Dispose>b__21_0+0x1: callvirt System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "artifact:ClearScript.V8.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:FFLogsPlugin.dll: System.Diagnostics.Process",
+      "metadata:FFLogsPlugin.dll: ProcessStartInfo",
+      "metadata:FFLogsPlugin.dll: ShellExecute",
+      "metadata:FFLogsPlugin.dll: Process.Start",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Windows.ParseViewerWindow.DrawReportHeader+0xc4: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Windows.ParseViewerWindow.DrawReportHeader+0xc4: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Windows.ParseViewerWindow.DrawReportHeader+0xda: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Windows.ParseViewerWindow.DrawReportHeader+0xda: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:ClearScript.Core.dll: Microsoft.Win32.Registry",
+      "metadata:ClearScript.Core.dll: RegistryKey",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x12: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x12: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x47: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x47: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x80: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:ClearScript.Core.dll:Microsoft.ClearScript.Util.ObjectHelpers.GetPrimaryInteropAssembly+0x80: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:FFLogsPlugin.dll: FileStream",
+      "metadata:FFLogsPlugin.dll: Directory.CreateDirectory",
+      "metadata:FFLogsPlugin.dll: File.Delete",
+      "metadata:FFLogsPlugin.dll: WriteAllText",
+      "metadata:FFLogsPlugin.dll: File.Move",
+      "il:FFLogsPlugin.dll:<EnsureParserAsync>d__29.MoveNext+0x3a: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:FFLogsPlugin.dll:<EnsureParserAsync>d__29.MoveNext+0x98: call System.IO.File.Delete: File.Delete",
+      "il:FFLogsPlugin.dll:<EnsureParserAsync>d__29.MoveNext+0x1ec: call System.IO.File.Delete: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.dll: https://github.com/Robert5204/FFLogsUploader"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.417321ef3cdd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:FFLogsPlugin.json: https://github.com/Robert5204/FFLogsPlugin"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5e956a8ad6a7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Security.Cryptography.ProtectedData.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:FFLogsPlugin.dll: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsApiService..ctor+0x19: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsService..ctor+0x2e: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsService..ctor+0x3a: callvirt System.Net.Http.HttpClientHandler.set_CookieContainer: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsService..ctor+0x41: callvirt System.Net.Http.HttpClientHandler.set_UseCookies: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsService..ctor+0x48: callvirt System.Net.Http.HttpClientHandler.set_AutomaticDecompression: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsService..ctor+0x50: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:FFLogsPlugin.dll:FFLogsPlugin.Services.FFLogsService..ctor+0x60: callvirt System.Net.Http.HttpClient.set_BaseAddress: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "runtimes/linux-x64/native/ClearScriptV8.linux-x64.so",
+      "runtimes/osx-arm64/native/ClearScriptV8.osx-arm64.dylib",
+      "runtimes/osx-x64/native/ClearScriptV8.osx-x64.dylib",
+      "runtimes/win-x64/native/ClearScriptV8.win-x64.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
