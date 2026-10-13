@@ -1,0 +1,765 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:AngleSharp.dll:AngleSharp.Dom.MutationObserver.Trigger+0x29: callvirt AngleSharp.Dom.MutationCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.CodeAnalysis.dll: Reflection.Emit",
+      "metadata:Microsoft.CodeAnalysis.dll: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader..ctor+0x89: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.IsHostAssembly+0x7: call System.Runtime.Loader.AssemblyLoadContext.GetLoadContext: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.IsHostAssembly+0x17: call System.Runtime.Loader.AssemblyLoadContext.get_Default: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.Load+0x4c: callvirt Microsoft.CodeAnalysis.CodeAnalysisEventSource.CreateAssemblyLoadContext: AssemblyLoadContext",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.CodeAnalysis.AnalyzerAssemblyLoader.Load+0x6c: callvirt System.Runtime.Loader.AssemblyLoadContext.LoadFromAssemblyName: AssemblyLoadContext",
+      "artifact:Microsoft.CodeAnalysis.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: s://github.com/AngleSharp/AngleSharp",
+      "artifact:AngleSharp.dll: p://localhost/",
+      "artifact:AngleSharp.dll: p://www.w3.org/1999/xhtml",
+      "artifact:AngleSharp.dll: p://www.w3.org/2000/xmlns/",
+      "artifact:AngleSharp.dll: p://www.w3.org/1999/xlink",
+      "artifact:AngleSharp.dll: p://www.w3.org/XML/1998/namespace",
+      "artifact:AngleSharp.dll: p://www.w3.org/2000/svg",
+      "artifact:AngleSharp.dll: p://www.w3.org/1998/Math/MathML"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: SigScanner",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Internal.Classes.AtkUnitManagerFunctions.Initialize+0xa: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:KamiToolKit.dll:KamiToolKit.Internal.Classes.NativeAddonControlFunctions..ctor+0x13: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:KamiToolKit.dll:KamiToolKit.Internal.Classes.NativeAddonControlFunctions..ctor+0x24: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:KamiToolKit.dll:KamiToolKit.Internal.Classes.NativeAddonControlFunctions..ctor+0x35: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:KamiToolKit.dll:KamiToolKit.Internal.Classes.NativeAddonControlFunctions..ctor+0x46: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.CodeAnalysis.dll: DllImportAttribute",
+      "metadata:Microsoft.CodeAnalysis.dll: LoadLibrary",
+      "metadata:Microsoft.CodeAnalysis.dll: GetProcAddress",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.DiaSymReader.SymUnmanagedFactory.TryLoadFromAlternativePath+0x20: call Microsoft.DiaSymReader.SymUnmanagedFactory.LoadLibrary -> kernel32!LoadLibrary: LoadLibrary",
+      "il:Microsoft.CodeAnalysis.dll:Microsoft.DiaSymReader.SymUnmanagedFactory.TryLoadFromAlternativePath+0x3c: call Microsoft.DiaSymReader.SymUnmanagedFactory.GetProcAddress -> kernel32!GetProcAddress: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/OptimizedSalvage/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.002b9a5863da",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines.Announcement/refs/heads/main/PassAuthInfo.txt"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0830cf8d77ed",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://assets.sumemo.dev/mitigation.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1d7992c6973e",
+    "severity": "caution",
+    "title": "Endpoint: assets.sumemo.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/BetterPartyFinderFilter/preview-2.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2065d2bec890",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ff14.org/duty/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2fbb4ab54d28",
+    "severity": "caution",
+    "title": "Endpoint: ff14.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/CustomizeMapMarker/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.412e5abd2d52",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/CrossDCPartyFinder/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4dc7c3166da1",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/AutoMarksFinder/SpawnPoints.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.51678cef2246",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines.Localizations/main/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5925019bac5b",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/AutoCollectableExchange/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5ecc41abdcff",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.Common.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines.Info/master/assets/AuthorSupportLinks.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.659a59075c88",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ff14risingstones.web.sdo.com/pc/index.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.66152a6151e0",
+    "severity": "caution",
+    "title": "Endpoint: ff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://assets.sumemo.dev/card-order.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6ab5225b000f",
+    "severity": "caution",
+    "title": "Endpoint: assets.sumemo.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.dll: https://auth.n4ko.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.752024ee37fe",
+    "severity": "caution",
+    "title": "Endpoint: auth.n4ko.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ff14.huijiwiki.com/wiki/%E7%89%A9%E5%93%81:{0"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.76f3c26ef847",
+    "severity": "caution",
+    "title": "Endpoint: ff14.huijiwiki.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/BetterMKDSupportJobList/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.815a7c82ef11",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/AtmoOmen/StaticAssets/main/DailyRoutines/image/AutoNotifyMentorRouletteProgress-UI.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.82a6bb46b739",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://cycleapple.github.io/ffxiv-item-search-tc"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8440abb6add0",
+    "severity": "caution",
+    "title": "Endpoint: cycleapple.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://assets.sumemo.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8584d0c51825",
+    "severity": "caution",
+    "title": "Endpoint: assets.sumemo.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/AutoShowItemNPCShopInfo/AutoShowItemNPCShopInfo-UI.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8e60201408db",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/AtmoOmen/StaticAssets/main/DailyRoutines/image/OptimizedMacro-UI.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.91b0d5d16571",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ffxiv.consolegameswiki.com/mediawiki/index.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.964ab77789a5",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.consolegameswiki.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://dlog.luyulight.cn/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9a24ba6661a0",
+    "severity": "caution",
+    "title": "Endpoint: dlog.luyulight.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ce-crowdsource.atmoomen.top/dc/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9ec17719bfae",
+    "severity": "caution",
+    "title": "Endpoint: ce-crowdsource.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://api.deepseek.com/v1"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9f2650d0ce25",
+    "severity": "caution",
+    "title": "Endpoint: api.deepseek.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/StaticAssets/main/DailyRoutines/image/AutoRetainersDispatch-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a6a1b2ccc9d2",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://assets.sumemo.dev/heal-action.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ac0799cbc7f4",
+    "severity": "caution",
+    "title": "Endpoint: assets.sumemo.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ffxiv.gamerescape.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ad76b3ad085f",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.gamerescape.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/AtmoOmen/StaticAssets/main/DailyRoutines/image/AutoDisplayFateItemCount-UI.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b113f4e1507d",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/thewakingsands/novice-network/refs/heads/master/docs/duty/{0}.md"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b203873e3e13",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/AutoShowItemNPCShopInfo/AutoShowItemNPCShopInfo-Tooltip.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b21e1a210c0d",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://apiff14risingstones.web.sdo.com/api/common/search"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b6db6f065be4",
+    "severity": "caution",
+    "title": "Endpoint: apiff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.dll: https://auth-test.n4ko.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ba4060e1f095",
+    "severity": "caution",
+    "title": "Endpoint: auth-test.n4ko.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.dll: https://auth.n3ko.fun/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bace20fb16ac",
+    "severity": "caution",
+    "title": "Endpoint: auth.n3ko.fun"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/OptimizedEnemyList/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c0802f81c2dc",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/BetterPartyFinderFilter/preview-3.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d3852edb4414",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/BetterPartyFinderFilter/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d41b312ce9d8",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/<redacted>/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d4344331b40d",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://docs.qq.com/sheet/DVmxFek1pUUtmYVhl"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d57967e2ebda",
+    "severity": "caution",
+    "title": "Endpoint: docs.qq.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://ffxivteamcraft.com/db/{0}/item/{1"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dc41ad741dd2",
+    "severity": "caution",
+    "title": "Endpoint: ffxivteamcraft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DailyRoutines/main/Resources/Modules/BetterMarketBoard/preview-1.png"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f74728a147c3",
+    "severity": "caution",
+    "title": "Endpoint: gh.atmoomen.top"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://docs.qq.com/doc/DTUNRZkJjTVhvT2Nv"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f7679ae5136a",
+    "severity": "caution",
+    "title": "Endpoint: docs.qq.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:AngleSharp.dll: System.Net.Sockets",
+      "artifact:AngleSharp.dll: System.Net.Sockets",
+      "metadata:GuerrillaNtp.dll: System.Net.Sockets",
+      "metadata:GuerrillaNtp.dll: Socket.Connect",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.CreateSocket+0x3: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.CreateSocket+0x1c: callvirt System.Net.Sockets.Socket.set_ReceiveTimeout: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.Connect+0xe: callvirt System.Net.Sockets.Socket.Connect: System.Net.Sockets",
+      "il:GuerrillaNtp.dll:GuerrillaNtp.NtpClient.Connect+0xe: callvirt System.Net.Sockets.Socket.Connect: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: CreateProcess",
+      "metadata:OmenTools.dll: System.Diagnostics.Process",
+      "metadata:OmenTools.dll: ProcessStartInfo",
+      "metadata:OmenTools.dll: ShellExecute",
+      "metadata:OmenTools.dll: Process.Start",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x78: newobj System.Diagnostics.Process..ctor: System.Diagnostics.Process",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x7f: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:OmenTools.dll:OmenTools.Interop.Windows.Helpers.FileHelper.OpenByPath+0x7f: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:DailyRoutines.ModulesPublic.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:<SaveAsync>d__3.MoveNext+0x48: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:Microsoft.CodeAnalysis.CSharp.dll: FileStream",
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: FileStream",
+      "metadata:Microsoft.CodeAnalysis.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://api.github.com/gists"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.086e7fb00b0b",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/67592"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2f1b858ecd88",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.CSharp.dll: https://github.com/dotnet/roslyn",
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.351354630292",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://api.github.com/gists/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e0e62f95305",
+    "severity": "informational",
+    "title": "Endpoint: api.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: https://github.com/Dalamud-DailyRoutines/KamiToolKit.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48fbb4f206ca",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AngleSharp.dll: https://github.com/AngleSharp/AngleSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6b451201cf63",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.Modules.dll: https://github.com/Dalamud-DailyRoutines/DailyRoutines.Modules.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.76d5ba217aab",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OmenTools.KamiToolKit.dll: https://github.com/AtmoOmen/OmenTools.KamiToolKit.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.90fe43f058bc",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.Common.dll: https://github.com/Dalamud-DailyRoutines/DailyRoutines.Common.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.a79f190e691c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.dll: https://github.com/AtmoOmen/DailyRoutines.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b44b7007e393",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Management.dll: https://github.com/dotnet/dotnet",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/63440"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cb6335723c68",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.ModulesPublic.dll: https://github.com/Dalamud-DailyRoutines/DailyRoutines.ModulesPublic.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cdb5cfd6033b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.CodeAnalysis.dll: https://github.com/dotnet/roslyn/issues/70609"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f0697fe68c5e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:OmenTools.dll: https://github.com/AtmoOmen/OmenTools.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f73df46cb0d5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DailyRoutines.json: https://github.com/Dalamud-DailyRoutines/DailyRoutines"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f7abb5a2dd5d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:AngleSharp.dll: WebRequest",
+      "metadata:AngleSharp.dll: HttpWebRequest",
+      "il:AngleSharp.dll:AngleSharp.Io.DefaultHttpRequester.RaiseConnectionLimit+0x1: callvirt System.Net.HttpWebRequest.get_ServicePoint: WebRequest",
+      "il:AngleSharp.dll:AngleSharp.Io.DefaultHttpRequester.RaiseConnectionLimit+0x1: callvirt System.Net.HttpWebRequest.get_ServicePoint: HttpWebRequest",
+      "artifact:AngleSharp.dll: WebRequest",
+      "artifact:AngleSharp.dll: HttpWebRequest",
+      "artifact:Microsoft.CodeAnalysis.dll: WebRequest",
+      "metadata:OmenTools.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
