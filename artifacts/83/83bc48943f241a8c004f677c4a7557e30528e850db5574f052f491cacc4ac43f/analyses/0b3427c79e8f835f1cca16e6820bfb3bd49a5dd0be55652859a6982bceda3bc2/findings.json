@@ -1,0 +1,172 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:GoldSaucerTree.dll: Reflection.Emit",
+      "artifact:GoldSaucerTree.dll: Reflection.Emit",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: Assembly.Load",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0xb5: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.ManagementClassGenerator.InitializeCodeGenerator+0x149: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:System.CodeDom.dll: Assembly.Load",
+      "metadata:System.CodeDom.dll: Assembly.LoadFile",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.CompilerResults.get_CompiledAssembly+0x1d: call System.Reflection.Assembly.LoadFile: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:GoldSaucerTree.dll: i:\\r",
+      "artifact:GoldSaucerTree.dll: U:/6<",
+      "artifact:GoldSaucerTree.dll: i:\\,b",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: s://github.com/dotnet/dotnet",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: s://aka.ms/dotnet-warnings/{0}",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:GoldSaucerTree.dll: SigScanner",
+      "metadata:GoldSaucerTree.dll: Dalamud.Hooking",
+      "metadata:GoldSaucerTree.dll: HookFromAddress",
+      "artifact:GoldSaucerTree.dll: Dalamud.Hooking",
+      "artifact:GoldSaucerTree.dll: SigScanner",
+      "artifact:GoldSaucerTree.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:GoldSaucerTree.dll: DllImportAttribute",
+      "metadata:GoldSaucerTree.dll: GetProcAddress",
+      "il:GoldSaucerTree.dll:‎‎‭​‎‪‎‍‏‫‏‭‎‬‎‎+0x3ac: call ‎‎‭​‎‪‎‍‏‫‏‭‎‬‎‎ -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "artifact:GoldSaucerTree.dll: GetProcAddress",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: DllImportAttribute",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: GetProcAddress",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: http://www.microsoft.com0/",
+      "artifact:System.CodeDom.dll: http://www.microsoft.com0/",
+      "artifact:System.Management.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:System.CodeDom.dll: System.Diagnostics.Process",
+      "metadata:System.CodeDom.dll: ProcessStartInfo",
+      "metadata:System.CodeDom.dll: Process.Start",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.Executor.ExecWaitWithCapture+0xb9: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.Executor.ExecWaitWithCapture+0xb9: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.Executor.ExecWaitWithCapture+0xc0: callvirt System.Diagnostics.ProcessStartInfo.set_WorkingDirectory: System.Diagnostics.Process",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.Executor.ExecWaitWithCapture+0xc0: callvirt System.Diagnostics.ProcessStartInfo.set_WorkingDirectory: ProcessStartInfo",
+      "il:System.CodeDom.dll:System.CodeDom.Compiler.Executor.ExecWaitWithCapture+0xc7: callvirt System.Diagnostics.ProcessStartInfo.set_RedirectStandardOutput: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x25: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.CompatSwitches.GetSwitchValueFromRegistry+0x5e: call Microsoft.Win32.RegistryKey.Dispose: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:GoldSaucerTree.dll: FileStream",
+      "artifact:GoldSaucerTree.dll: FileStream",
+      "metadata:runtimes/win/lib/net10.0/System.Management.dll: FileStream",
+      "il:runtimes/win/lib/net10.0/System.Management.dll:System.Management.ManagementClassGenerator.GenerateCode+0x37: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: FileStream",
+      "metadata:System.CodeDom.dll: FileStream",
+      "metadata:System.CodeDom.dll: File.Delete",
+      "metadata:System.CodeDom.dll: Directory.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:GoldSaucerTree.json: https://raw.githubusercontent.com/extrant/I-Ching/refs/heads/main/saucericon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2ee44d9d8b88",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.CodeDom.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Management.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: WebRequest",
+      "artifact:runtimes/win/lib/net10.0/System.Management.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
