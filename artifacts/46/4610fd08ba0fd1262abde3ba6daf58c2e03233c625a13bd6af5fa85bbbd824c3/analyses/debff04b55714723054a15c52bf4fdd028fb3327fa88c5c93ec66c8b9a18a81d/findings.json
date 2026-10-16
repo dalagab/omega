@@ -1,0 +1,129 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:CrystalCast.dll:CrystalCast.Video.BrowserSynchronizationContext.ExecutePending+0x1b: callvirt System.Threading.SendOrPostCallback.Invoke",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Web.WebView2.Core.dll: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xad: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xb4: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xcc: callvirt System.Reflection.Emit.ILGenerator.DeclareLocal: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xdc: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xf2: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xfe: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0x10f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: s://github.com/Wrepsk/crystal-cast.git",
+      "artifact:CrystalCast.dll: s://",
+      "artifact:CrystalCast.dll: s://api.dailymotion.com/video/",
+      "artifact:CrystalCast.dll: s://geo.dailymotion.com/libs/player.js",
+      "artifact:CrystalCast.dll: s://www.dailymotion.com/playlist/",
+      "artifact:CrystalCast.dll: s://www.dailymotion.com/video/",
+      "artifact:CrystalCast.dll: s://player.twitch.tv/js/embed/v1.js",
+      "artifact:CrystalCast.dll: s://www.twitch.tv/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress",
+      "metadata:Pictomancy.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: DllImportAttribute",
+      "metadata:Microsoft.Web.WebView2.Core.dll: DllImportAttribute",
+      "metadata:Microsoft.Web.WebView2.Core.dll: LoadLibrary",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.CoreWebView2Environment.LoadWebView2LoaderDll+0xd3: call Microsoft.Web.WebView2.Core.CoreWebView2Environment.LoadLibrary -> kernel32.dll!LoadLibrary: LoadLibrary",
+      "artifact:Microsoft.Web.WebView2.Core.dll: LoadLibrary",
+      "metadata:Pictomancy.dll: DllImportAttribute",
+      "metadata:SharpDX.D3DCompiler.dll: DllImportAttribute",
+      "metadata:SharpDX.Direct2D1.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:SharpDX.Direct3D11.dll: CreateProcess",
+      "artifact:SharpDX.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:WebView2Loader.dll: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: Directory.CreateDirectory",
+      "metadata:CrystalCast.dll: WriteAllText",
+      "metadata:CrystalCast.dll: File.Delete",
+      "metadata:CrystalCast.dll: Directory.Delete",
+      "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.RequestClearOnNextStart+0x5: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.RequestClearOnNextStart+0x2c: call System.IO.File.WriteAllText: WriteAllText",
+      "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.ApplyPendingClearRequest+0x9b: call System.IO.File.Delete: File.Delete",
+      "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.DeleteKnownProfileDirectory+0x57: call System.IO.Directory.Delete: Directory.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "WebView2Loader.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

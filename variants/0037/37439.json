@@ -1,0 +1,4575 @@
+{
+  "analysis": {
+    "analysisId": "debff04b55714723054a15c52bf4fdd028fb3327fa88c5c93ec66c8b9a18a81d",
+    "artifactSha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+    "path": "artifacts/46/4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3/analyses/debff04b55714723054a15c52bf4fdd028fb3327fa88c5c93ec66c8b9a18a81d",
+    "recordCount": 34706
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+    "artifact_url": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+    "assembly_version": "0.7.0.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:CrystalCast.dll:CrystalCast.Video.BrowserSynchronizationContext.ExecutePending+0x1b: callvirt System.Threading.SendOrPostCallback.Invoke",
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "ui-automation",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Dynamic code loading",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Registry access"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "system",
+        "description": "References Windows Registry APIs.",
+        "evidence": [
+          "artifact:WebView2Loader.dll: RegOpenKey"
+        ],
+        "ruleId": "registry.access",
+        "severity": "caution",
+        "title": "Windows Registry access"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "artifact:SharpDX.Direct3D11.dll: CreateProcess",
+          "artifact:SharpDX.dll: CreateProcess"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:CrystalCast.dll: DllImportAttribute",
+          "metadata:Microsoft.Web.WebView2.Core.dll: DllImportAttribute",
+          "metadata:Microsoft.Web.WebView2.Core.dll: LoadLibrary",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.CoreWebView2Environment.LoadWebView2LoaderDll+0xd3: call Microsoft.Web.WebView2.Core.CoreWebView2Environment.LoadLibrary -> kernel32.dll!LoadLibrary: LoadLibrary",
+          "artifact:Microsoft.Web.WebView2.Core.dll: LoadLibrary",
+          "metadata:Pictomancy.dll: DllImportAttribute",
+          "metadata:SharpDX.D3DCompiler.dll: DllImportAttribute",
+          "metadata:SharpDX.Direct2D1.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:KamiToolKit.dll: Dalamud.Hooking",
+          "metadata:KamiToolKit.dll: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:KamiToolKit.dll: Dalamud.Hooking",
+          "artifact:KamiToolKit.dll: HookFromAddress",
+          "metadata:Pictomancy.dll: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:CrystalCast.dll: s://github.com/Wrepsk/crystal-cast.git",
+          "artifact:CrystalCast.dll: s://",
+          "artifact:CrystalCast.dll: s://api.dailymotion.com/video/",
+          "artifact:CrystalCast.dll: s://geo.dailymotion.com/libs/player.js",
+          "artifact:CrystalCast.dll: s://www.dailymotion.com/playlist/",
+          "artifact:CrystalCast.dll: s://www.dailymotion.com/video/",
+          "artifact:CrystalCast.dll: s://player.twitch.tv/js/embed/v1.js",
+          "artifact:CrystalCast.dll: s://www.twitch.tv/"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:Microsoft.Web.WebView2.Core.dll: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xad: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xb4: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xcc: callvirt System.Reflection.Emit.ILGenerator.DeclareLocal: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xdc: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xf2: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xfe: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+          "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0x10f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:CrystalCast.dll:CrystalCast.Video.BrowserSynchronizationContext.ExecutePending+0x1b: callvirt System.Threading.SendOrPostCallback.Invoke",
+          "il:KamiToolKit.dll:KamiToolKit.NativeAddon.OnFireCallback+0x85: callvirt FireCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "package",
+        "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+        "evidence": [
+          "WebView2Loader.dll"
+        ],
+        "ruleId": "package.native-library",
+        "severity": "informational",
+        "title": "Bundled native libraries"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:CrystalCast.dll: Directory.CreateDirectory",
+          "metadata:CrystalCast.dll: WriteAllText",
+          "metadata:CrystalCast.dll: File.Delete",
+          "metadata:CrystalCast.dll: Directory.Delete",
+          "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.RequestClearOnNextStart+0x5: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.RequestClearOnNextStart+0x2c: call System.IO.File.WriteAllText: WriteAllText",
+          "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.ApplyPendingClearRequest+0x9b: call System.IO.File.Delete: File.Delete",
+          "il:CrystalCast.dll:CrystalCast.Video.BrowserProfileManager.DeleteKnownProfileDirectory+0x57: call System.IO.Directory.Delete: Directory.Delete"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 2,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-40867a279b025223",
+      "artifactBytes": 2083282,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.7.0.0",
+        "artifactBytes": 2083282,
+        "artifactSha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+        "catalogAssemblyVersion": "0.7.0.0",
+        "manifestInternalName": "CrystalCast",
+        "manifestPath": "CrystalCast.json",
+        "manifestRepositoryUrl": "https://github.com/Wrepsk/crystal-cast",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1241820192/0e5cdfe8-6473-42b7-ad41-389f07cfa3b0?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-16T11%3A01%3A52Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-16T10%3A01%3A06Z&ske=2026-10-16T11%3A01%3A52Z&sks=b&skv=2018-11-09&sig=iEYom1oTHsMVYcAdU1qV9LR4l7OCy3hY3jBKmBIrI9A%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MjE0NTc2OSwibmJmIjoxNzkyMTQ1NDY5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.KY2sKyabhw290vlH-DsyMki6pRiUt-g1bSIHSrcaGvo&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "ui-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crystalcast.local",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "geo.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crystalcast.local",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "geo.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 13,
+          "observedDestinationWithoutProfileCount": 13,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Dynamic code loading",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 2
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 169,
+          "exactVersionObservedCount": 150,
+          "families": {
+            "managed-assembly": 141,
+            "native": 19,
+            "nuget": 9
+          },
+          "fingerprint": "e709cf0038628ba39fb57ee67a8bcec2750b543a24d1aac3c46ebc936a3bb62f",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 4,
+            "externalOrRuntimeResolved": 43,
+            "platformLibrary": 129
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "Pictomancy.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "Pictomancy.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "Pictomancy.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RoGetActivationFactory",
+              "library": "combase.dll",
+              "managedName": "RoGetActivationFactory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RoInitialize",
+              "library": "combase.dll",
+              "managedName": "RoInitialize",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 3,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RoUninitialize",
+              "library": "combase.dll",
+              "managedName": "RoUninitialize",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsCreateString",
+              "library": "combase.dll",
+              "managedName": "WindowsCreateString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsDeleteString",
+              "library": "combase.dll",
+              "managedName": "WindowsDeleteString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1ComputeMaximumScaleFactor",
+              "library": "d2d1.dll",
+              "managedName": "D2D1ComputeMaximumScaleFactor_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1ConvertColorSpace",
+              "library": "d2d1.dll",
+              "managedName": "D2D1ConvertColorSpace_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1CreateDevice",
+              "library": "d2d1.dll",
+              "managedName": "D2D1CreateDevice_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1CreateDeviceContext",
+              "library": "d2d1.dll",
+              "managedName": "D2D1CreateDeviceContext_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1CreateFactory",
+              "library": "d2d1.dll",
+              "managedName": "D2D1CreateFactory_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1GetGradientMeshInteriorPointsFromCoonsPatch",
+              "library": "d2d1.dll",
+              "managedName": "D2D1GetGradientMeshInteriorPointsFromCoonsPatch_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1InvertMatrix",
+              "library": "d2d1.dll",
+              "managedName": "D2D1InvertMatrix_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1IsMatrixInvertible",
+              "library": "d2d1.dll",
+              "managedName": "D2D1IsMatrixInvertible_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1MakeRotateMatrix",
+              "library": "d2d1.dll",
+              "managedName": "D2D1MakeRotateMatrix_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1MakeSkewMatrix",
+              "library": "d2d1.dll",
+              "managedName": "D2D1MakeSkewMatrix_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1SinCos",
+              "library": "d2d1.dll",
+              "managedName": "D2D1SinCos_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1Tan",
+              "library": "d2d1.dll",
+              "managedName": "D2D1Tan_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1Vec3Length",
+              "library": "d2d1.dll",
+              "managedName": "D2D1Vec3Length_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CreateDirect3D11DeviceFromDXGIDevice",
+              "library": "d3d11.dll",
+              "managedName": "CreateDirect3D11DeviceFromDXGIDevice",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.Direct3D11.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "D3D11CreateDevice",
+              "library": "d3d11.dll",
+              "managedName": "D3D11CreateDevice_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.Direct3D11.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "D3D11On12CreateDevice",
+              "library": "d3d11.dll",
+              "managedName": "D3D11On12CreateDevice_",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 12,
+            "observed": 148,
+            "required": 9
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 159,
+          "binaryOnly": 1,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 9,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 12,
+            "observed": 148,
+            "optional": 0,
+            "required": 9,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 169
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 21,
+          "destinationsUndetermined": false,
+          "hostCount": 15,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "api.dailymotion.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crystalcast.local",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "geo.dailymotion.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 4,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "learn.microsoft.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "player.twitch.tv",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "player.vimeo.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "vimeo.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.dailymotion.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure",
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.twitch.tv",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 4,
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 31,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 59047
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "api.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://api.dailymotion.com/video/"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crystalcast.local",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crystalcast.local/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "geo.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://geo.dailymotion.com/libs/player.js"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/MidoriKami/KamiToolKit"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/SixLabors/ImageSharp"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Wrepsk/crystal-cast"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Wrepsk/crystal-cast.git"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "learn.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://learn.microsoft.com/microsoft-edge/webview2/concepts/versioning"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "player.twitch.tv",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://player.twitch.tv/js/embed/v1.js"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "player.vimeo.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://player.vimeo.com/api/player.js"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Wrepsk/repo/main/CrystalCast/images/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "vimeo.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://vimeo.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.dailymotion.com/playlist/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.dailymotion.com/video/"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.microsoft.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.twitch.tv",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.twitch.tv/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.twitch.tv",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.twitch.tv/videos/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/embed/live_stream"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/iframe_api"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/playlist"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/watch"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+        "internalName": "CrystalCast",
+        "manifestVersion": "0.7.0.0",
+        "observationId": 61679,
+        "observationKey": "manifest-9fb4e0c3e7d4f8fe020fadd55be4",
+        "repositoryUrl": "https://github.com/Wrepsk/crystal-cast",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 37439
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 11,
+        "bundledNativeLibraryCount": 1,
+        "fileCount": 14,
+        "uncompressedBytes": 5924101
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-40867a279b025223",
+        "attemptId": "attempt-v2-0e9673792bf5bb45",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-88818a105a2dd142",
+        "definitionsRevision": "defs-v1-f5b52d8936d25209",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-37439",
+        "queueSeedRevision": "queue-seed-v2-0f7236591fc41a5b",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-c03905b9268a8b90",
+        "targetFingerprint": "artifact-target-v2-16132f9d07dce9078d63",
+        "variantId": 37439,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-16T10:11:09Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Wrepsk/crystal-cast"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Wrepsk/crystal-cast",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 6,
+    "scanned_at_utc": "2026-10-16T10:11:09Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Wrepsk/crystal-cast",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 37439
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+      "current_assembly_version": "0.7.0.0",
+      "current_scan_id": 6,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-10-16T10:11:14Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 37439
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 76,
+      "artifact_only_count": 76,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:crystalcast",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "CrystalCast",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.7.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0",
+            "15.0.3.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imguizmo",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGuizmo",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.50.0.7966",
+            "7.51.0.8681"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:kamitoolkit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KamiToolKit",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.1.2.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.web.webview2.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Web.WebView2.Core",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.3967.48"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.win32.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.Win32.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:mscorlib",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "mscorlib",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:pictomancy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Pictomancy",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "0.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.d3dcompiler",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.D3DCompiler",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.direct2d1",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "SharpDX.Direct2D1",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.direct3d11",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.Direct3D11",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.dxgi",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.DXGI",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sharpdx.mathematics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "4.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:sixlabors.imagesharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "SixLabors.ImageSharp",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Core",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.debug",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Debug",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.globalization",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Globalization",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.compression",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Compression",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.reflection.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Reflection.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.resources.resourcemanager",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Resources.ResourceManager",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.compilerservices.unsafe",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.CompilerServices.Unsafe",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.extensions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Extensions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography.algorithms",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography.Algorithms",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.encoding.codepages",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Encoding.CodePages",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "4.0.0.0",
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.tasks.parallel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Tasks.Parallel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.threadpool",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.ThreadPool",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.xml.xdocument",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Xml.XDocument",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "6.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:cimgui",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cimgui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:combase",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "combase.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:d2d1",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d2d1.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:d3d11",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3d11.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:d3dcompiler_47",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "d3dcompiler_47.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dwrite",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dwrite.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:dxgi",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "dxgi.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:ole32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "ole32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:oleaut32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "oleaut32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:webview2loader",
+          "componentKind": "native",
+          "kinds": [
+            "native-import",
+            "native-library"
+          ],
+          "name": "WebView2Loader.dll",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:kamitoolkit",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "KamiToolKit",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.1.2"
+          ]
+        },
+        {
+          "componentKey": "nuget:microsoft.web.webview2",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "Microsoft.Web.WebView2",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "1.0.3967.48"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.d3dcompiler",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.D3DCompiler",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.direct2d1",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.Direct2D1",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.direct3d11",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.Direct3D11",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.dxgi",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.DXGI",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sharpdx.mathematics",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SharpDX.Mathematics",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "4.2.0"
+          ]
+        },
+        {
+          "componentKey": "nuget:sixlabors.imagesharp",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "SixLabors.ImageSharp",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.1.12"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-10-16T10:11:14Z",
+      "comparison_id": 1,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 6,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 37439,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 5025,
+          "encoding": "json",
+          "path": "derived/variants/0037/37439/advisory-matches.json",
+          "recordDigest": "4297d785bdd76a50a45c9fdcd2f29d25aad0e23491a73fc8aabf7ffd5301d2da",
+          "records": 9,
+          "sha256": "5edf7be74a2ad1f4d6ed29cda9a9c2800a33f73d9ca14b4bed50cb5c1f05cbf7"
+        }
+      ],
+      "recordDigest": "4297d785bdd76a50a45c9fdcd2f29d25aad0e23491a73fc8aabf7ffd5301d2da",
+      "records": 9
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0037/37439/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 163219,
+          "encoding": "json",
+          "path": "derived/variants/0037/37439/dependency-resolutions.json",
+          "recordDigest": "fa83d718ffcaebc6cb4e61a400294831056bacd41f9711db351e2b2a5072fb9a",
+          "records": 169,
+          "sha256": "c6d0a44d69a820de676c7ba139494b2c224b73062d41980de32dae4e6cf4fc13"
+        }
+      ],
+      "recordDigest": "fa83d718ffcaebc6cb4e61a400294831056bacd41f9711db351e2b2a5072fb9a",
+      "records": 169
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0037/37439/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "ba03cf28a19b37cb70a479f6814079b945bffaf68ac498fbffa52b68812c5143",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "8997ff00b864875d5d06a04e4a5dc644447cc9b6127aeb86345abb532afbe9d2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "cdd830399741e653e21986b5887fa8a271572af6b7995a936880dd49bacd0f15",
+        "records": 12,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "b72d39bfe251c676c3ff27bf6501f9b3867c852bbb53d6b60795574b78026e9a",
+        "records": 169,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "9bd0516daa03c9917736bbf20468da8093c80bb6f93cbf0dbadc6923aed1d0c9",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "a41061a3943802b1d4cb78643eae9f3b3741fdbb078b68309863b9d85b1c8e83",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "642607920be7617f1201eb217aca4c28e0d92f705798715d3c1fad876dcc185c",
+        "records": 6715,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "67afd231c0b90bc3123c84c64d6f7607e9ed941d0bd1e47ded629d23301a1bf8",
+        "records": 7412,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "5e382b5f0e4477261a95db397dd9e5ecb74152e12a1368e2f9f685d471802915",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "7cdcaec2f0063874cdda554569e0367c128d1b0f274d4f08e8cd68e52c88f213",
+        "records": 176,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "8484488fd714d220e3dd2f10a6d78d978d11d285bc76c30c2a53bdf38e323b8e",
+        "records": 31,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "2ea3792be65c22bbe081312c591ae79d4c45bd48b629063d06c9eb2c1685e370",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "0f2875301e9124749c40127961e86a2be1b076ce083e3b17f085663c66195451",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "d1bf200d8555600ab060acf9b3f8bcec7d40eaebf26214a980a0e3dc11227ad9",
+        "records": 140,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-5248350b8b8cf10238e9d55cdd0174c23da2e123f9c83cda19a562d93a04ba81",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-40867a279b025223",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Crystal Cast",
+    "first_seen_utc": "2026-10-15T08:20:14Z",
+    "internal_name": "CrystalCast",
+    "last_seen_utc": "2026-10-16T08:17:53Z",
+    "plugin_id": 1626
+  },
+  "pluginId": 1626,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Renders a local-only world-space image/video screen through Pictomancy. Use /crystalcast to configure placement, source, and sync IPC state.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1125,
+      "summary": "World-space video screen prototype.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Wrepsk/crystal-cast",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "",
+      "homepage": "",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/Wrepsk/crystal-cast"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# CrystalCast\n\nCrystalCast is a Dalamud API 15 plugin for rendering local world-space browser screens in FFXIV.\n\nIt uses a pinned source checkout of [Pictomancy](https://github.com/sourpuh/ffxiv_pictomancy) and draws media through `AutoDraw.SceneComposite` with scene-depth occlusion. YouTube, Twitch, Dailymotion, Vimeo, and Generic Web screens are captured through WebView2.\n\nCrystalCast does not download or extract streaming media. Browser sources load the provider's embedded player locally and capture the resulting browser pixels for the world-space renderer.\n\n## Build\n\nThe repository pins its .NET SDK in `global.json`. A current Dalamud development installation is also required.\n\n1. Clone submodules:\n\n   ```powershell\n   git submodule update --init --recursive\n   ```\n\n2. Restore locked dependencies and build the solution:\n\n   ```powershell\n   dotnet restore CrystalCast.sln --locked-mode -p:Platform=x64\n   dotnet build CrystalCast.sln -c Debug --no-restore -p:Platform=x64\n   ```\n\n3. Add `CrystalCast/bin/x64/Debug/CrystalCast.dll` as a Dalamud dev plugin.\n\n## Tests\n\nThe browser-only model, migration, provider URL parsers, source-kind compatibility, screen and runtime budgets, IPC change filtering, remote-state sequencing, browser factory mapping, page isolation, lifecycle races, pooled-frame leases, adaptive tessellation, native graphics error classification, and placement-prediction resets are covered by the xUnit test project:\n\n```powershell\ndotnet test CrystalCast.Tests/CrystalCast.Tests.csproj -c Debug -p:Platform=x64\n```\n\nThe tests use an injected browser-frame-source factory and do not start WebView2, Windows Graphics Capture, or D3D resources.\n\nPull requests and pushes to `master` build and test both Debug and Release configurations. Release builds produce `CrystalCast/bin/x64/Release/CrystalCast/latest.zip`; CI verifies its exact runtime contents and generated manifest before uploading it.\n\n## Usage\n\nOpen the controls with `/crystalcast`.\n\nScreens can be enabled, placed in front of the player, rotated/scaled, curved, and switched between supported browser providers.\n\nBrowser screens currently support YouTube, Twitch, Dailymotion, Vimeo, and Generic Web. YouTube accepts video URLs/IDs, playlist URLs/IDs, playlist watch URLs, channel IDs, and channel live embeds. Twitch accepts channel and VOD URLs. Dailymotion accepts video URLs/IDs and playlist URLs. Vimeo accepts video URLs/IDs, including unlisted video URLs with hashes. Generic Web accepts HTTP/HTTPS page URLs and syncs playback when it can access a page `<video>` or `<audio>` element. Browser audio is local to the client when enabled, and browser sources start muted by default.\n\nFor YouTube, use **Show browser controls** to open the interactive player and change captions, playback quality, playback speed, and other YouTube settings. YouTube no longer exposes programmatic quality selection through the IFrame API, so quality changes use YouTube's own settings menu.\n\nCrystalCast's intended render output is Pictomancy `SceneComposite`, which composites the world screen into the game backbuffer before native UI/nameplates.\n\n## Browser compatibility\n\nCrystalCast supports two WebView2 capture paths:\n\n- WebView2 window capture, the preferred Auto path on Windows; it uses Windows Graphics Capture to avoid CPU readback when supported.\n- WebView2 JPEG capture, used as the Windows fallback and forced when running under Wine.\n\nIn Auto mode on Windows, CrystalCast prefers WebView2 window capture and falls back to WebView2 JPEG capture when Windows Graphics Capture is unavailable.\n\nWebView2 JPEG capture uses browser screenshot capture rather than a direct raw frame or texture feed, so it may have lower quality or higher overhead than window capture. WebView2 window capture uses Windows Graphics Capture, synchronizes its shared D3D texture with keyed mutexes, and falls back to JPEG capture if the OS, capture session, or graphics device becomes unavailable.\n\n### Experimental Wine support\n\nMicrosoft does not officially support WebView2 on Linux or Wine. CrystalCast detects Wine, disables Windows Graphics Capture, and uses JPEG capture only. If WebView2 is missing, first-time Wine users see a setup assistant with the command `WINEPREFIX=\"/path/to/your/ffxiv-wine-prefix\" winetricks webview2`.\n\nUse a recent Winetricks release and install WebView2 into the exact Wine prefix that runs FFXIV. Check the generated prefix path before running the command and back up important prefixes first. This path is intentionally manual: CrystalCast does not download installers or modify a Wine prefix itself. Wine support remains experimental and is not yet tested on a real Linux installation.\n\nEach WebView2 screen serves its player from a unique immutable in-memory page resource. Browser controls and telemetry use per-screen WebMessages protected by an instance nonce, so concurrent screens cannot overwrite a shared page or accept another screen's messages. Browser initialization and capture are cancellation-driven; commands and disposal do not synchronously wait on the render or UI thread.\n\n### Browser security and privacy\n\nProvider URLs accept only credential-free HTTP/HTTPS URLs on the provider's exact host or a real subdomain; lookalike suffixes such as `youtube.com.example.org` are rejected. Provider player documents cannot navigate their top-level browser outside the generated player page. WebView2 blocks popups, downloads, external URL schemes, and sensitive browser permissions such as camera, microphone, location, notifications, and file access. It allows only its media-autoplay permission so host Play commands can operate embedded players. Browser telemetry is accepted only from the expected main document with the current screen nonce, and message size, JSON depth, text, URL, and media-time values are bounded.\n\nWebView2 stores each provider in a separate profile. The Browser settings tab can schedule all CrystalCast browser cookies, local storage, cache, and saved state for deletion on the next plugin load, before a browser runtime starts. Legacy CrystalCast browser-profile locations are included in that cleanup.\n\nGeneric Web intentionally has a broader trust surface: it runs CrystalCast's media-control script inside the HTTP/HTTPS page supplied by the user. That page can track the user, navigate to other HTTP/HTTPS pages, and observe or fabricate its own playback telemetry. The nonce prevents cross-screen message confusion, but it does not make an untrusted Generic Web page trustworthy. Load only sites you trust; popups, downloads, external schemes, and sensitive browser permissions remain blocked, while media autoplay is allowed for playback control.\n\nAt most eight browser runtimes are active simultaneously. Additional enabled screens remain configured but are deferred in list order; the renderer and Diagnostics tab report this explicitly. GPU texture sampling diagnostics are disabled by default because they introduce a synchronous readback, and can be enabled temporarily from the Diagnostics tab.\n\n| Source | Windows WebView2 | Experimental Wine WebView2 | Notes |\n|---|---:|---:|---|\n| YouTube videos | Supported | Untested | Wine forces JPEG capture. |\n| YouTube Live | Supported | Untested | Wine forces JPEG capture. |\n| Twitch | Supported | Untested | Wine forces JPEG capture. |\n| Dailymotion | Supported | Untested | Wine forces JPEG capture. |\n| Vimeo | Supported | Untested | Wine forces JPEG capture. |\n| Generic Web | Supported | Untested | Playback sync is best effort for browser-accessible HTML media; otherwise URL/page capture still works. |\n\nIf WebView2 is missing or unsupported for a source, CrystalCast reports the failure in the UI/status path and keeps the plugin running.\n\n## IPC\n\nCrystalCast exposes state-only IPC for media-screen synchronization:\n\n- `CrystalCast.ApiVersion`\n- `CrystalCast.Screen.GetSnapshot`\n- `CrystalCast.Screen.ApplyState`\n- `CrystalCast.Screen.ApplyStateDetailed`\n- `CrystalCast.Screen.Remove`\n- `CrystalCast.Screen.LocalStateChanged`\n- `CrystalCast.Screen.Create`\n- `CrystalCast.Screen.Update`\n- `CrystalCast.Screen.UpdateSource`\n- `CrystalCast.Screen.SetSourceLock`\n- `CrystalCast.Screen.GetSourceState`\n- `CrystalCast.Screen.Changed`\n\nThe IPC payload intentionally exchanges screen pose, source identity, playback state, sequence, host timestamp, and visual flags only. Received states are retained for snapshot consumers; CrystalCast does not automatically render remote states. It does not sync raw pixels or audio.\n\nAPI version 7 validates browser-only remote states, limits each payload to 64 KiB, stores at most 256 remote screens keyed by owner session and screen ID, and expires entries five minutes after their last accepted receipt. `ApplyState` remains a compatibility boolean API. `ApplyStateDetailed` accepts the same JSON state and returns a JSON result distinguishing `Applied`, `IgnoredDuplicate`, `IgnoredStale`, `IgnoredSelf`, `RejectedInvalid`, and `RejectedCapacity`.\n\n`CrystalCast.Screen.Create`, `CrystalCast.Screen.Update`, `CrystalCast.Screen.UpdateSource`, and `CrystalCast.Screen.SetSourceLock` accept camel-case JSON strings and return a JSON result with `success`, `error`, `screenId`, and a screen summary when applicable. IPC-created browser screens are marked separately from user-created screens: the normal UI creation limit remains 8 screens, IPC can create up to 56 screens, and the combined render cap is 64.\n\n`Create`/`Update` support `name`, `ownerId`, `enabled`, `activate`, `sourceControlsLocked`, `sourceControlsOwnerId`, `placement`, `provider`, `youtube`, `twitch`, `dailymotion`, `vimeo`, and `genericWeb` settings. `UpdateSource` supports `screenId`, `ownerId`, `activate`, `provider`, `youtube`, `twitch`, `dailymotion`, `vimeo`, and `genericWeb` for source-only updates. Source locks protect owner-controlled source and placement fields such as URL, play/pause, seek/progress, loop, autoplay, playback rate, world position, rotation, size, and visual placement from the local UI only; IPC updates remain authoritative. Audio, spatial-audio, browser resolution, and capture FPS remain locally adjustable.\n\n`ownerId` identifies the external integration or sync owner associated with a screen. It is coordination metadata and is not a security boundary. `sourceControlsOwnerId` is displayed in the UI when source controls are locked.\n\n`CrystalCast.Screen.GetSourceState` accepts a screen ID and returns the current provider and source-specific state. For browser screens this includes the configured URL, canonical URL/source identity, title, playback state, position, duration, rate, and host timestamp when available.\n\n`CrystalCast.Screen.Changed` broadcasts a JSON event when CrystalCast observes placement, visual, source, playback, source-lock, IPC-created-screen, or screen-availability changes. The event includes `changes` and the current screen state envelope. When a previously visible local screen is disabled, deleted, or made unavailable by disabling CrystalCast, `changes` contains `Unavailable` and `state` is `null` so sync consumers can refresh snapshots and remove stale remote screens.\n\n## Safety and scope\n\nCrystalCast is a local media rendering plugin. It does not automate gameplay, send game actions, spoof packets, parse combat data, collect account identifiers, or interact with FFXIV servers.\n\nOn source switches and plugin unload, CrystalCast is expected to dispose active browser frame sources, capture objects, and dynamic textures. Missing browser runtimes, bad URLs, and failed media loads should report clear errors without crashing the plugin.\n\nConfigurations created before browser-only version 2 are migrated automatically. Existing browser screens are retained. If the active legacy source was local video, its screens are disabled during migration so browser media does not begin playing unexpectedly; the legacy placement is retained on the first browser screen, but local file and FFmpeg settings are discarded.\n\n## Development and releases\n\nSee [CONTRIBUTING.md](CONTRIBUTING.md) for development and release instructions, [CHANGELOG.md](CHANGELOG.md) for notable changes, [SECURITY.md](SECURITY.md) for vulnerability reporting and security boundaries, and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency provenance.\n\nThe Pictomancy submodule intentionally points to a pinned CrystalCast-specific fork derived from the upstream Pictomancy project. Tagged numeric versions trigger a Release build, tests, manifest/package verification, and GitHub Release publication.",
+      "title": "crystal-cast",
+      "url": "https://github.com/Wrepsk/crystal-cast"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "1eaf3fc5d008b34249ce139e1754ce7ac12f6bd953001f3a9d6c5d15466f179c",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "7f9b84ace9da64faf8c541c622c5b4ae3b0fb36447c55d9655df0ea713b2dec6",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "a93973c39f3dcfbbd511faf7607176c4d46591f43caade61410149935ac6cd9e",
+        "records": 9
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "4e475d72ea53a556ae8bb78f99514b45b6f9cdbe714a6617c5f1019526c697fa",
+        "records": 9
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+    "artifact_url": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+    "assembly_version": "0.7.0.0",
+    "capabilities_json": [
+      "Bundled native libraries",
+      "Dynamic code loading",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Process execution",
+      "Registry access"
+    ],
+    "caution_count": 7,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 2,
+    "plugin_id": 1626,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-40867a279b025223",
+      "artifactBytes": 2083282,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.7.0.0",
+        "artifactBytes": 2083282,
+        "artifactSha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+        "catalogAssemblyVersion": "0.7.0.0",
+        "manifestInternalName": "CrystalCast",
+        "manifestPath": "CrystalCast.json",
+        "manifestRepositoryUrl": "https://github.com/Wrepsk/crystal-cast",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1241820192/0e5cdfe8-6473-42b7-ad41-389f07cfa3b0?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-10-16T11%3A01%3A52Z&rscd=attachment%3B+filename%3Dlatest.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-10-16T10%3A01%3A06Z&ske=2026-10-16T11%3A01%3A52Z&sks=b&skv=2018-11-09&sig=iEYom1oTHsMVYcAdU1qV9LR4l7OCy3hY3jBKmBIrI9A%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5MjE0NTc2OSwibmJmIjoxNzkyMTQ1NDY5LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.KY2sKyabhw290vlH-DsyMki6pRiUt-g1bSIHSrcaGvo&response-content-disposition=attachment%3B%20filename%3Dlatest.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "ui-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "system",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "registry.access",
+            "label": "Windows Registry access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crystalcast.local",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "geo.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "api.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crystalcast.local",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "geo.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "player.vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "vimeo.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.dailymotion.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.twitch.tv",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 13,
+          "observedDestinationWithoutProfileCount": 13,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Bundled native libraries",
+        "Dynamic code loading",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Process execution",
+        "Registry access"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop",
+        "process.execute",
+        "registry.access"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 7,
+        "critical": 0,
+        "high": 0,
+        "informational": 2
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 169,
+          "exactVersionObservedCount": 150,
+          "families": {
+            "managed-assembly": 141,
+            "native": 19,
+            "nuget": 9
+          },
+          "fingerprint": "e709cf0038628ba39fb57ee67a8bcec2750b543a24d1aac3c46ebc936a3bb62f",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 4,
+            "externalOrRuntimeResolved": 43,
+            "platformLibrary": 129
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "Pictomancy.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "Pictomancy.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "Pictomancy.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RoGetActivationFactory",
+              "library": "combase.dll",
+              "managedName": "RoGetActivationFactory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RoInitialize",
+              "library": "combase.dll",
+              "managedName": "RoInitialize",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 3,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "RoUninitialize",
+              "library": "combase.dll",
+              "managedName": "RoUninitialize",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsCreateString",
+              "library": "combase.dll",
+              "managedName": "WindowsCreateString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsDeleteString",
+              "library": "combase.dll",
+              "managedName": "WindowsDeleteString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1ComputeMaximumScaleFactor",
+              "library": "d2d1.dll",
+              "managedName": "D2D1ComputeMaximumScaleFactor_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1ConvertColorSpace",
+              "library": "d2d1.dll",
+              "managedName": "D2D1ConvertColorSpace_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1CreateDevice",
+              "library": "d2d1.dll",
+              "managedName": "D2D1CreateDevice_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1CreateDeviceContext",
+              "library": "d2d1.dll",
+              "managedName": "D2D1CreateDeviceContext_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1CreateFactory",
+              "library": "d2d1.dll",
+              "managedName": "D2D1CreateFactory_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1GetGradientMeshInteriorPointsFromCoonsPatch",
+              "library": "d2d1.dll",
+              "managedName": "D2D1GetGradientMeshInteriorPointsFromCoonsPatch_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1InvertMatrix",
+              "library": "d2d1.dll",
+              "managedName": "D2D1InvertMatrix_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1IsMatrixInvertible",
+              "library": "d2d1.dll",
+              "managedName": "D2D1IsMatrixInvertible_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1MakeRotateMatrix",
+              "library": "d2d1.dll",
+              "managedName": "D2D1MakeRotateMatrix_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1MakeSkewMatrix",
+              "library": "d2d1.dll",
+              "managedName": "D2D1MakeSkewMatrix_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1SinCos",
+              "library": "d2d1.dll",
+              "managedName": "D2D1SinCos_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1Tan",
+              "library": "d2d1.dll",
+              "managedName": "D2D1Tan_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "SharpDX.Direct2D1.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "D2D1Vec3Length",
+              "library": "d2d1.dll",
+              "managedName": "D2D1Vec3Length_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "CrystalCast.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "CreateDirect3D11DeviceFromDXGIDevice",
+              "library": "d3d11.dll",
+              "managedName": "CreateDirect3D11DeviceFromDXGIDevice",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.Direct3D11.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "D3D11CreateDevice",
+              "library": "d3d11.dll",
+              "managedName": "D3D11CreateDevice_",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "SharpDX.Direct3D11.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "D3D11On12CreateDevice",
+              "library": "d3d11.dll",
+              "managedName": "D3D11On12CreateDevice_",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 12,
+            "observed": 148,
+            "required": 9
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 159,
+          "binaryOnly": 1,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 9,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 12,
+            "observed": 148,
+            "optional": 0,
+            "required": 9,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 169
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 21,
+          "destinationsUndetermined": false,
+          "hostCount": 15,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "api.dailymotion.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crystalcast.local",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "geo.dailymotion.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 4,
+              "confidence": "VeryHigh",
+              "host": "github.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string",
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "learn.microsoft.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "ns.adobe.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "player.twitch.tv",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "player.vimeo.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "vimeo.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.dailymotion.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure",
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 2,
+              "confidence": "Low",
+              "host": "www.twitch.tv",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 4,
+              "confidence": "Low",
+              "host": "www.youtube.com",
+              "literalCount": 4,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 31,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 59047
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "api.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://api.dailymotion.com/video/"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crystalcast.local",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crystalcast.local/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "geo.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://geo.dailymotion.com/libs/player.js"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/MidoriKami/KamiToolKit"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/SixLabors/ImageSharp"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://github.com/Wrepsk/crystal-cast"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Wrepsk/crystal-cast.git"
+          },
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "learn.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://learn.microsoft.com/microsoft-edge/webview2/concepts/versioning"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "ns.adobe.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://ns.adobe.com/xap/1.0/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "player.twitch.tv",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://player.twitch.tv/js/embed/v1.js"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "player.vimeo.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://player.vimeo.com/api/player.js"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Wrepsk/repo/main/CrystalCast/images/icon.png"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "vimeo.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://vimeo.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.dailymotion.com/playlist/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.dailymotion.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.dailymotion.com/video/"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.microsoft.com/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.twitch.tv",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.twitch.tv/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.twitch.tv",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.twitch.tv/videos/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/embed/live_stream"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/iframe_api"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/playlist"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.youtube.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.youtube.com/watch"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+        "internalName": "CrystalCast",
+        "manifestVersion": "0.7.0.0",
+        "observationId": 61679,
+        "observationKey": "manifest-9fb4e0c3e7d4f8fe020fadd55be4",
+        "repositoryUrl": "https://github.com/Wrepsk/crystal-cast",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 37439
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 11,
+        "bundledNativeLibraryCount": 1,
+        "fileCount": 14,
+        "uncompressedBytes": 5924101
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-40867a279b025223",
+        "attemptId": "attempt-v2-0e9673792bf5bb45",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-88818a105a2dd142",
+        "definitionsRevision": "defs-v1-f5b52d8936d25209",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-37439",
+        "queueSeedRevision": "queue-seed-v2-0f7236591fc41a5b",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-c03905b9268a8b90",
+        "targetFingerprint": "artifact-target-v2-16132f9d07dce9078d63",
+        "variantId": 37439,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-10-16T10:11:09Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "4610fd08ba0fd1262abde3ba6daf58c2e03233c625a13bd6af5fa85bbbd824c3",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Wrepsk/crystal-cast"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Wrepsk/crystal-cast",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 6,
+    "scanned_at_utc": "2026-10-16T10:11:09Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1468,
+    "source_repository": "https://github.com/Wrepsk/crystal-cast",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 37439
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "14a78a7dbd253723f89690a03c39da24a75f4f00c4c533b62edcd801fcc59e71",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"f624448e7ea4566c966d3d8e61bb1b8fa9ea895b5fb4dbbab7e59fa54c5cf5bd\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-10-16T08:17:53Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-10-16T08:17:53Z",
+    "name": "Wrepsk/repo",
+    "plugin_count": 3,
+    "provider": "Wrepsk/repo",
+    "source_id": 1468,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/Wrepsk/repo/main/plogonmaster.json"
+  },
+  "sourceId": 1468,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.7.0.0",
+    "author": "Wrepsk",
+    "authors_json": [
+      "Wrepsk"
+    ],
+    "category_tags_json": [],
+    "changelog": "",
+    "dalamud_api_level": 15,
+    "description": "Renders a local-only world-space image/video screen through Pictomancy. Use /crystalcast to configure placement, source, and sync IPC state.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+    "first_seen_utc": "2026-10-15T08:20:14Z",
+    "icon_url": "https://raw.githubusercontent.com/Wrepsk/repo/main/CrystalCast/images/icon.png",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-10-15T08:20:14Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Crystal Cast",
+    "plugin_id": 1626,
+    "punchline": "World-space video screen prototype.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.7.0.0",
+      "Author": "Wrepsk",
+      "DalamudApiLevel": 15,
+      "Description": "Renders a local-only world-space image/video screen through Pictomancy. Use /crystalcast to configure placement, source, and sync IPC state.",
+      "DownloadLinkInstall": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+      "DownloadLinkUpdate": "https://github.com/Wrepsk/crystal-cast/releases/download/0.7.0/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/Wrepsk/repo/main/CrystalCast/images/icon.png",
+      "InternalName": "CrystalCast",
+      "Name": "Crystal Cast",
+      "Punchline": "World-space video screen prototype.",
+      "RepoUrl": "https://github.com/Wrepsk/crystal-cast"
+    },
+    "repo_url": "https://github.com/Wrepsk/crystal-cast",
+    "source_entry_key": "crystalcast|0.7.0.0|15|0|1",
+    "source_id": 1468,
+    "tags_json": [],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 37439
+  },
+  "variantId": 37439
+}
