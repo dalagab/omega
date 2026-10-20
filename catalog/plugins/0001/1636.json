@@ -1,0 +1,216 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Private Roulette",
+    "first_seen_utc": "2026-10-20T08:27:20Z",
+    "internal_name": "PrivateRoulette",
+    "last_seen_utc": "2026-10-20T08:27:20Z",
+    "plugin_id": 1636
+  },
+  "presentation": {
+    "description": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\nhttps://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1636,
+    "preferred_variant_id": 40506,
+    "presentation_variant_id": 40506,
+    "rich_card": 0,
+    "richness_score": 1185,
+    "summary": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\nhttps://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "Akari",
+    "description": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\nhttps://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json",
+    "internal_name": "PrivateRoulette",
+    "name": "Private Roulette",
+    "plugin_id": 1636,
+    "punchline": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\nhttps://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json",
+    "tags": "dealer gamba private roulette",
+    "website_text": "Private whitelisted dealer roulette for FFXIV - provably fair spins, live web players # Private Roulette\n\nFully self-hosted dealer roulette for FFXIV. No third-party services — the\nplugin, the backend and the web client are all yours.\n\n```\n┌──────────────────────┐   WebSocket   ┌──────────────────────────┐   WebSocket   ┌─────────────────────────┐\n│ PrivateRoulette      │◄─────────────►│ Your Cloudflare Worker    │◄─────────────►│ Your web client          │\n│ (Dalamud, in-game)   │   JSON        │ + Durable Object          │   JSON        │ (GitHub Pages)           │\n│ dealer console+wheel │               │ games, bets, ledger,      │               │ betting, spin, chat      │\n└──────────────────────┘               │ provable-fairness spins   │               └─────────────────────────┘\n                                       └──────────────────────────┘\n```\n\n## For the dealer (quick start)\n\n1. Update the plugin from your Dalamud plugin repo, `/pr`.\n2. First run: paste your dealer token (matching the worker's `DEALER_TOKEN` secret).\n3. **Create control game** → the dealer console opens.\n4. **Add player** → enter `Name@World`, buy-in, optionally VIP / free play.\n   **Copy link** and send it to the player.\n5. They open the link on any device — bets go on the board, chips stack live.\n6. When everyone has bet: **Request spin** → roll `/random` in game (the plugin\n   captures the result automatically, or type the number) → the in-game wheel\n   and the website wheel spin together.\n7. Result + provable-fairness proof appear everywhere; balances and the ledger\n   update automatically.\n\nExtra tools: **Open dealer page** (auto-login dealer web console),\n**Open spectator page**, **Show wheel**, dealer stats, per-round ledger with\nCSV export, table chat, tips/payouts via balance adjustments, per-player\ncash-out, VIP/UnVIP toggles. A fully playable demo lives at\n`https://dexcss.github.io/PrivateRoulette/#/demo` (no backend needed).\n\n## Features\n\n- **American double-zero wheel:** 38 pockets (0, 00, 1–36), both zeros green,\n  `00` encoded as 37 internally. Provable fairness:\n  `result = uint32(sha256(\"{dice}:{control}\")[0..8]) % 38`, verified\n  client-side on the site and in the plugin. Control number is issued per game\n  by your backend.\n- **All bet types:** straight, split, street, corner, six-line, top line\n  (0-00-1-2-3), first-four, dozens, columns, red/black, odd/even, low/high —\n  with the standard payouts.\n- **Live experience:** animated wheel with the same 28s ball profile on both\n  ends (procedural art, no borrowed assets), synthesized sound effects on the\n  web, hot/cold stats, result history, chat, per-player colored chips.\n- **Dealer control:** spin modes (control / random / manual), per-spot and\n  per-player total bet limits with VIP variants, chips, ready states, rebet,\n  clear, cash-out, tips, adjustments, VIP toggle after seating, live table\n  chat from the plugin or web console.\n- **Announcements:** customizable templates for game info, last call/current\n  bets, results and the party `Win` line; party result reveal is delayed until\n  the wheel lands.\n- **Hardened backend:** dealer-only WebSocket events are role-gated and bet\n  mutations are rate-limited per connection.\n- **Ledger:** every round, bet, payout and adjustment persisted server-side;\n  CSV export from the plugin.\n- **Access control:** plugin whitelist + dealer token; players only join via\n  per-player links; spectators never see player keys.\n- **Deferred reveal:** balance/result/chat stay hidden until the wheel lands\n  on both the website and in-game party chat.\n\n## Repo layout\n\n- `private roulette plugin source` (repo root) — Dalamud plugin, C# / net10\n- `server/` — Cloudflare Worker + Durable Object (TypeScript)\n- `web/` — player/spectator web client (Vite + TypeScript, no framework)\n- `.github/workflows/` — `release.yml` (plugin zip) and `pages.yml` (web deploy)\n- `docs/` — audit, architecture, runbook, testing playbook\n- `HANDOFF.md` — current state, deployments, known issues, next steps\n\n## Documentation\n\n- `HANDOFF.md` — current state, live versions, known issues, next steps\n- `docs/ARCHITECTURE.md` — components, protocol, storage, fairness, bet table\n- `docs/RUNBOOK.md` — dealer ops, plugin/backend/web deploys, rollback, troubleshooting\n- `docs/TESTING.md` — demo mode, test scripts, verification recipes\n- `docs/AUDIT.md` — 2026-10-20 audit with findings (incl. backend role-gating P1)\n\n## Deploying\n\n- **Plugin:** push a `v*` tag → CI builds `PrivateRoulette.zip`.\n- **Web:** push to `main` touching `web/**` → Pages redeploys automatically.\n- **Backend:** `cd server && npx wrangler deploy` (see `server/README.md`).\n  Note: Durable Object instances keep the code version they started with —\n  bump `DO_VERSION` in `server/src/worker.ts` when a backend change must take\n  effect immediately (this starts a fresh instance and resets game storage)."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "dealer",
+          "variant_id": 40506
+        },
+        {
+          "kind": "tag",
+          "tag": "gamba",
+          "variant_id": 40506
+        },
+        {
+          "kind": "tag",
+          "tag": "private",
+          "variant_id": 40506
+        },
+        {
+          "kind": "tag",
+          "tag": "roulette",
+          "variant_id": 40506
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.7.0.0",
+        "author": "Akari",
+        "authors_json": "[\"Akari\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\nhttps://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "download_link_testing": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "download_link_update": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "first_seen_utc": "2026-10-20T08:27:20Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-10-20T08:27:20Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Private Roulette",
+        "plugin_id": 1636,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"Akari\",\"Name\":\"Private Roulette\",\"AcceptsFeedback\":false,\"ApplicableVersion\":\"any\",\"AssemblyVersion\":\"0.7.0.0\",\"DalamudApiLevel\":15,\"Description\":\"Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\\nhttps://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json\",\"DownloadLinkInstall\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"DownloadLinkTesting\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"DownloadLinkUpdate\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"InternalName\":\"PrivateRoulette\",\"RepoUrl\":\"https://github.com/dexcss/PrivateRoulette\",\"Tags\":[\"roulette\",\"gamba\",\"dealer\",\"private\"],\"TestingAssemblyVersion\":\"0.7.0.0\",\"TestingDalamudApiLevel\":15}",
+        "repo_url": "https://github.com/dexcss/PrivateRoulette",
+        "source_entry_key": "privateroulette|0.7.0.0|15|15|457",
+        "source_id": 594,
+        "tags_json": "[\"roulette\",\"gamba\",\"dealer\",\"private\"]",
+        "testing_assembly_version": "0.7.0.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 40506
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "dealer",
+          "variant_id": 40993
+        },
+        {
+          "kind": "tag",
+          "tag": "gamba",
+          "variant_id": 40993
+        },
+        {
+          "kind": "tag",
+          "tag": "private",
+          "variant_id": 40993
+        },
+        {
+          "kind": "tag",
+          "tag": "roulette",
+          "variant_id": 40993
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.5.0.0",
+        "author": "Akari",
+        "authors_json": "[\"Akari\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "download_link_testing": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "download_link_update": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "first_seen_utc": "2026-10-20T08:27:20Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-10-20T08:27:20Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Private Roulette",
+        "plugin_id": 1636,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"Akari\",\"Name\":\"Private Roulette\",\"InternalName\":\"PrivateRoulette\",\"AssemblyVersion\":\"0.5.0.0\",\"TestingAssemblyVersion\":\"0.5.0.0\",\"Description\":\"Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/dexcss/PrivateRoulette\",\"Tags\":[\"roulette\",\"gamba\",\"dealer\",\"private\"],\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"DownloadLinkInstall\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"DownloadLinkTesting\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"DownloadLinkUpdate\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"AcceptsFeedback\":false,\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"dexcss-dalamudplugins\",\"_SourceName\":\"dexcss / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json\",\"_Category\":\"automation\"}",
+        "repo_url": "https://github.com/dexcss/PrivateRoulette",
+        "source_entry_key": "privateroulette|0.5.0.0|15|15|92",
+        "source_id": 691,
+        "tags_json": "[\"roulette\",\"gamba\",\"dealer\",\"private\"]",
+        "testing_assembly_version": "0.5.0.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 40993
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "tag",
+          "tag": "dealer",
+          "variant_id": 41010
+        },
+        {
+          "kind": "tag",
+          "tag": "gamba",
+          "variant_id": 41010
+        },
+        {
+          "kind": "tag",
+          "tag": "private",
+          "variant_id": 41010
+        },
+        {
+          "kind": "tag",
+          "tag": "roulette",
+          "variant_id": 41010
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.5.0.0",
+        "author": "Akari",
+        "authors_json": "[\"Akari\"]",
+        "category_tags_json": "[]",
+        "changelog": "",
+        "dalamud_api_level": 15,
+        "description": "Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "download_link_testing": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "download_link_update": "https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip",
+        "first_seen_utc": "2026-10-20T08:27:20Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-10-20T08:27:20Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "Private Roulette",
+        "plugin_id": 1636,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"Akari\",\"Name\":\"Private Roulette\",\"InternalName\":\"PrivateRoulette\",\"AssemblyVersion\":\"0.5.0.0\",\"TestingAssemblyVersion\":\"0.5.0.0\",\"Description\":\"Personal dealer-hosted gil roulette: provably-fair control spins, live web players, chat announcements and a dealer console worth watching. Whitelisted to authorized dealers only.\",\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/dexcss/PrivateRoulette\",\"Tags\":[\"roulette\",\"gamba\",\"dealer\",\"private\"],\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"DownloadLinkInstall\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"DownloadLinkTesting\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"DownloadLinkUpdate\":\"https://github.com/dexcss/PrivateRoulette/releases/latest/download/PrivateRoulette.zip\",\"AcceptsFeedback\":false,\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"dexcss-dalamudplugins\",\"_SourceName\":\"dexcss / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json\"}",
+        "repo_url": "https://github.com/dexcss/PrivateRoulette",
+        "source_entry_key": "privateroulette|0.5.0.0|15|15|6",
+        "source_id": 1086,
+        "tags_json": "[\"roulette\",\"gamba\",\"dealer\",\"private\"]",
+        "testing_assembly_version": "0.5.0.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 41010
+      }
+    }
+  ]
+}
