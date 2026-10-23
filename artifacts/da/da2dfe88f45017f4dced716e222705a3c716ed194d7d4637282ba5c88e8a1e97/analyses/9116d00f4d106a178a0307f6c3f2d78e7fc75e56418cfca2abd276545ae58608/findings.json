@@ -1,0 +1,562 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "native-pe:libvlc/win-x64/plugins/keystore/libfile_keystore_plugin.dll: import CRYPT32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:libvlc/win-x64/plugins/keystore/libfile_keystore_plugin.dll: CryptUnprotectData",
+      "native-pe:libvlc/win-x86/plugins/keystore/libfile_keystore_plugin.dll: import CRYPT32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:libvlc/win-x86/plugins/keystore/libfile_keystore_plugin.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: OpenProcess",
+      "metadata:AQuestReborn.dll: ReadProcessMemory",
+      "metadata:AQuestReborn.dll: WriteProcessMemory",
+      "metadata:AQuestReborn.dll: VirtualProtectEx",
+      "il:AQuestReborn.dll:AnamCore.AnamcoreManager..ctor+0x8b: callvirt Anamnesis.Memory.MemoryService.OpenProcess: OpenProcess",
+      "il:AQuestReborn.dll:Anamnesis.Memory.MemoryService.ReadPtr+0x11: call Anamnesis.Memory.MemoryService.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:AQuestReborn.dll:Anamnesis.Memory.MemoryService.Read+0x38: call Anamnesis.Memory.MemoryService.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:AQuestReborn.dll:Anamnesis.Memory.MemoryService.Read+0x5d: call Anamnesis.Memory.MemoryService.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs commonly used to start execution in another process.",
+    "evidence_json": [
+      "native-pe:libvlc/win-x64/libvlccore.dll: import KERNEL32.dll!QueueUserAPC: QueueUserAPC",
+      "artifact:libvlc/win-x64/libvlccore.dll: QueueUserAPC",
+      "native-pe:libvlc/win-x86/libvlccore.dll: import KERNEL32.dll!QueueUserAPC: QueueUserAPC",
+      "artifact:libvlc/win-x86/libvlccore.dll: QueueUserAPC"
+    ],
+    "rule_id": "memory.remote-thread",
+    "severity": "high",
+    "title": "Remote thread creation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for camera control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:AQuestReborn.dll:SamplePlugin.Windows.EditorWindow.DrawQuestEventEditor+0x121d: call AQuestReborn.CutsceneCamera.set_IsCameraEditor",
+      "il:AQuestReborn.dll:AQuestReborn.CutsceneCamera.set_IsDoingCutScene+0x13: callvirt Brio.Capabilities.Camera.CameraCapability.set_DelimitCamera",
+      "il:AQuestReborn.dll:AQuestReborn.CutsceneCamera.set_IsDoingCutScene+0x1e: callvirt Brio.Capabilities.Camera.CameraCapability.set_DisableCollision",
+      "il:AQuestReborn.dll:AQuestReborn.CutsceneCamera.set_IsCameraEditor+0x13: callvirt Brio.Capabilities.Camera.CameraCapability.set_DelimitCamera"
+    ],
+    "rule_id": "automation.game.camera.control",
+    "severity": "caution",
+    "title": "Camera control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: AssemblyLoadContext",
+      "il:AQuestReborn.dll:SamplePlugin.Plugin.GetAutomationGlobalState+0x1e: callvirt System.Runtime.Loader.AssemblyLoadContext.get_Assemblies: AssemblyLoadContext",
+      "il:AQuestReborn.dll:SamplePlugin.Plugin.SetAutomationGlobalState+0x1e: callvirt System.Runtime.Loader.AssemblyLoadContext.get_Assemblies: AssemblyLoadContext",
+      "artifact:AQuestReborn.dll: AssemblyLoadContext",
+      "metadata:ECommons.dll: AssemblyLoadContext",
+      "metadata:ECommons.dll: Assembly.Load",
+      "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "artifact:ECommons.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:AQuestReborn.dll: s://github.com/MeowZWR/AQuestReborn",
+      "artifact:AQuestReborn.dll: s://www.youtube.com/watch?v=JJM9aHRHkDw",
+      "artifact:AQuestReborn.dll: s://ko-fi.com/sebastina",
+      "artifact:AQuestReborn.dll: s://api.pawan.krd/cosmosrp/v1 or http://localhost:1234/v1",
+      "artifact:AQuestReborn.dll: s://ai.hubujubu.com:5696",
+      "artifact:AQuestReborn.dll: p://localhost:5000/api/v1/chat",
+      "artifact:AQuestReborn.dll: s://localhost:5005/api/v1/stream",
+      "artifact:AQuestReborn.dll: s://generativelanguage.googleapis.com/v1beta/models/"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: Dalamud.Hooking",
+      "metadata:AQuestReborn.dll: SigScanner",
+      "metadata:AQuestReborn.dll: HookFromAddress",
+      "metadata:AQuestReborn.dll: CreateHook",
+      "il:AQuestReborn.dll:Hypostasis.PluginModule.get_IsValid+0xd: call Hypostasis.Dalamud.DalamudApi.get_SigScanner: SigScanner",
+      "il:AQuestReborn.dll:Hypostasis.PluginModule.get_IsValid+0x13: callvirt Hypostasis.Dalamud.SigScannerWrapper.Inject: SigScanner",
+      "il:AQuestReborn.dll:Hypostasis.Util.IsValidHookAddress+0x0: call Hypostasis.Dalamud.DalamudApi.get_SigScanner: SigScanner",
+      "il:AQuestReborn.dll:Hypostasis.Util.IsValidHookAddress+0x6: callvirt Hypostasis.Dalamud.SigScannerWrapper.IsValidHookAddress: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:Brio.dll: HttpListener",
+      "artifact:Brio.dll: HttpListener",
+      "metadata:EmbedIO.dll: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer..ctor+0x9: call EmbedIO.WebServer.CreateHttpListener: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.Prepare+0x6: callvirt EmbedIO.IHttpListener.Start: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0x1: call EmbedIO.WebServer.<CreateHttpListener>g__DoCreate|20_0: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0xd: callvirt EmbedIO.IHttpListener.get_Name: HttpListener",
+      "il:EmbedIO.dll:EmbedIO.WebServer.CreateHttpListener+0x7f: callvirt EmbedIO.IHttpListener.AddPrefix: HttpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: DllImportAttribute",
+      "metadata:ComputeSharp.dll: DllImportAttribute",
+      "metadata:ECommons.dll: DllImportAttribute",
+      "native-pe:libmp3lame.32.dll: import KERNEL32.dll!LoadLibraryA: LoadLibrary",
+      "native-pe:libmp3lame.32.dll: import KERNEL32.dll!LoadLibraryExA: LoadLibrary",
+      "native-pe:libmp3lame.32.dll: import KERNEL32.dll!GetProcAddress: GetProcAddress",
+      "native-pe:libmp3lame.32.dll: import KERNEL32.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:libmp3lame.32.dll: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: http://ai.hubujubu.com:5671/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.21dcb0124ab1",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: http://ai.hubujubu.com:5677/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.36111241b0f6",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/gui/libqt_plugin.dll: http://creativecommons.org/ns",
+      "artifact:libvlc/win-x86/plugins/gui/libqt_plugin.dll: http://creativecommons.org/ns"
+    ],
+    "rule_id": "network.endpoint.insecure-http.3725513aa406",
+    "severity": "caution",
+    "title": "Endpoint: creativecommons.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/video_output/libdirect3d11_plugin.dll: http://filmicworlds.com/blog/<redacted>",
+      "artifact:libvlc/win-x86/plugins/video_output/libdirect3d11_plugin.dll: http://filmicworlds.com/blog/<redacted>"
+    ],
+    "rule_id": "network.endpoint.insecure-http.39266247b77d",
+    "severity": "caution",
+    "title": "Endpoint: filmicworlds.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingQuestCore.dll: http://ai.hubujubu.com:5681/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.57543f4432be",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/gui/libqt_plugin.dll: http://forum.videolan.org/",
+      "artifact:libvlc/win-x86/plugins/gui/libqt_plugin.dll: http://forum.videolan.org/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.724b5e93d4ed",
+    "severity": "caution",
+    "title": "Endpoint: forum.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: http://ai.hubujubu.com:5684/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7da7b3f3286b",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x86/plugins/access/libaccess_srt_plugin.dll: http://gcc.gnu.org/bugs.html",
+      "artifact:libvlc/win-x86/plugins/access/libdcp_plugin.dll: http://gcc.gnu.org/bugs.html",
+      "artifact:libvlc/win-x86/plugins/access/libdshow_plugin.dll: http://gcc.gnu.org/bugs.html",
+      "artifact:libvlc/win-x86/plugins/access/libdtv_plugin.dll: http://gcc.gnu.org/bugs.html"
+    ],
+    "rule_id": "network.endpoint.insecure-http.82642325f897",
+    "severity": "caution",
+    "title": "Endpoint: gcc.gnu.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/libvlccore.dll: http://download.videolan.org/pub/keys/%.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X.asc",
+      "artifact:libvlc/win-x86/libvlccore.dll: http://download.videolan.org/pub/keys/%.2X%.2X%.2X%.2X%.2X%.2X%.2X%.2X.asc"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9090d28f8555",
+    "severity": "caution",
+    "title": "Endpoint: download.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/codec/libavcodec_plugin.dll: http://dashif.org/guidelines/trickmode",
+      "artifact:libvlc/win-x86/plugins/codec/libavcodec_plugin.dll: http://dashif.org/guidelines/trickmode"
+    ],
+    "rule_id": "network.endpoint.insecure-http.e38d22c9067b",
+    "severity": "caution",
+    "title": "Endpoint: dashif.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: https://api.fish.audio/wallet/self/api-credit"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.04a4f995355f",
+    "severity": "caution",
+    "title": "Endpoint: api.fish.audio"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AQuestReborn.dll: https://api.pawan.krd/cosmosrp/v1"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1d80f23a9661",
+    "severity": "caution",
+    "title": "Endpoint: api.pawan.krd"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LibVLCSharp.dll: https://code.videolan.org/videolan/LibVLCSharp"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.40fbb726f4fd",
+    "severity": "caution",
+    "title": "Endpoint: code.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/misc/libaddonsvorepository_plugin.dll: https://api-addons.videolan.org/xml",
+      "artifact:libvlc/win-x86/plugins/misc/libaddonsvorepository_plugin.dll: https://api-addons.videolan.org/xml"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.74959d36760d",
+    "severity": "caution",
+    "title": "Endpoint: api-addons.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/misc/libfingerprinter_plugin.dll: https://fingerprint.videolan.org/acoustid.php",
+      "artifact:libvlc/win-x86/plugins/misc/libfingerprinter_plugin.dll: https://fingerprint.videolan.org/acoustid.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.79ce6946caae",
+    "severity": "caution",
+    "title": "Endpoint: fingerprint.videolan.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://etheirystools.carrd.co/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.83c068be12a5",
+    "severity": "caution",
+    "title": "Endpoint: etheirystools.carrd.co"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8785017a999f",
+    "severity": "caution",
+    "title": "Endpoint: crypto.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: https://download.pytorch.org/whl/cu118"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8d837a698bcd",
+    "severity": "caution",
+    "title": "Endpoint: download.pytorch.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9d3ce8792d14",
+    "severity": "caution",
+    "title": "Endpoint: explore.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: https://api.fish.audio/v1/tts"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a6cdccc9475d",
+    "severity": "caution",
+    "title": "Endpoint: api.fish.audio"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b5dad10c192a",
+    "severity": "caution",
+    "title": "Endpoint: donate.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AQuestReborn.dll: https://generativelanguage.googleapis.com/v1beta/models/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cac3624fefd2",
+    "severity": "caution",
+    "title": "Endpoint: generativelanguage.googleapis.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc91d234fb3b",
+    "severity": "caution",
+    "title": "Endpoint: discord.nightmarexiv.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:AQuestReborn.dll: https://ai.hubujubu.com:5696/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cf99ea6d8228",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:libvlc/win-x64/plugins/video_output/libdirect3d11_plugin.dll: https://en.wikipedia.org/wiki/Hybrid_Log-Gamma",
+      "artifact:libvlc/win-x86/plugins/video_output/libdirect3d11_plugin.dll: https://en.wikipedia.org/wiki/Hybrid_Log-Gamma"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d1d9f3604d9b",
+    "severity": "caution",
+    "title": "Endpoint: en.wikipedia.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:RoleplayingVoiceCore.dll: https://api.fish.audio/model"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ee07f1963081",
+    "severity": "caution",
+    "title": "Endpoint: api.fish.audio"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ECommons.xml: https://egorbo.com/llvm-range-checks.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f4c18a6e1831",
+    "severity": "caution",
+    "title": "Endpoint: egorbo.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: Socket.Connect",
+      "metadata:Downloader.dll: System.Net.Sockets",
+      "artifact:Downloader.dll: System.Net.Sockets",
+      "metadata:EmbedIO.dll: System.Net.Sockets",
+      "metadata:EmbedIO.dll: SocketAsyncEventArgs",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x2b: newobj System.Net.Sockets.Socket..ctor: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x51: callvirt System.Net.Sockets.Socket.SetSocketOption: System.Net.Sockets",
+      "il:EmbedIO.dll:EmbedIO.Net.Internal.EndPointListener..ctor+0x62: callvirt System.Net.Sockets.Socket.Bind: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: System.Diagnostics.Process",
+      "metadata:AQuestReborn.dll: ProcessStartInfo",
+      "metadata:AQuestReborn.dll: Process.Start",
+      "metadata:AQuestReborn.dll: ShellExecute",
+      "il:AQuestReborn.dll:Hypostasis.Util.StartProcess+0x1: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+      "il:AQuestReborn.dll:Hypostasis.Util.StartProcess+0x1: call System.Diagnostics.Process.Start: Process.Start",
+      "il:AQuestReborn.dll:Hypostasis.Util.StartProcess+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:AQuestReborn.dll:Hypostasis.Util.StartProcess+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "native-pe:libvlc/win-x64/libvlccore.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:libvlc/win-x64/libvlccore.dll: RegOpenKey",
+      "native-pe:libvlc/win-x64/plugins/access/libcdda_plugin.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:libvlc/win-x64/plugins/access/libcdda_plugin.dll: RegOpenKey",
+      "native-pe:libvlc/win-x64/plugins/access/libdcp_plugin.dll: import ADVAPI32.dll!RegOpenKeyExA: RegOpenKey",
+      "artifact:libvlc/win-x64/plugins/access/libdcp_plugin.dll: RegOpenKey",
+      "native-pe:libvlc/win-x64/plugins/access/liblibbluray_plugin.dll: import ADVAPI32.dll!RegOpenKeyExW: RegOpenKey",
+      "artifact:libvlc/win-x64/plugins/access/liblibbluray_plugin.dll: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: FileStream",
+      "metadata:AQuestReborn.dll: Directory.CreateDirectory",
+      "metadata:AQuestReborn.dll: File.Delete",
+      "il:AQuestReborn.dll:SamplePlugin.Configuration.set_QuestInstallFolder+0x60: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:AQuestReborn.dll:SamplePlugin.Configuration.set_QuestInstallFolder+0x6b: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:AQuestReborn.dll:SamplePlugin.Windows.MainWindow.DrawInstalledQuestInformation+0x313: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:AQuestReborn.dll:SamplePlugin.Windows.MainWindow.DrawInstalledQuestInformation+0x3cb: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:AQuestReborn.dll:SamplePlugin.Windows.MainWindow.<DrawInitialSetup>b__11_0+0x27: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal Discord community invite; this is not evidence of a network data transfer. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Brio.dll: https://discord.gg/KvGJCCnG8t"
+    ],
+    "rule_id": "network.endpoint.community-invite.e04e147da65b",
+    "severity": "informational",
+    "title": "Community invite: Discord"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:AQuestReborn.dll: WebRequest",
+      "metadata:AQuestReborn.dll: HttpWebRequest",
+      "metadata:AQuestReborn.dll: System.Net.Http.HttpClient",
+      "artifact:AQuestReborn.dll: WebRequest",
+      "artifact:AQuestReborn.dll: HttpWebRequest",
+      "il:Dependancies.API.dll:McdfLoader.API.Dto.Files.DownloadFileDto.ToString+0x20: callvirt McdfLoader.API.Dto.Files.DownloadFileDto.PrintMembers: DownloadFile",
+      "il:Dependancies.API.dll:McdfLoader.API.Dto.Files.DownloadFileDto.PrintMembers+0x13: call McdfLoader.API.Dto.Files.DownloadFileDto.get_FileExists: DownloadFile",
+      "il:Dependancies.API.dll:McdfLoader.API.Dto.Files.DownloadFileDto.PrintMembers+0x3a: call McdfLoader.API.Dto.Files.DownloadFileDto.get_Hash: DownloadFile"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "DirectXTexC.dll",
+      "libmp3lame.32.dll",
+      "libmp3lame.64.dll",
+      "libvlc/win-x64/libvlc.dll",
+      "libvlc/win-x64/libvlccore.dll",
+      "libvlc/win-x64/plugins/access/libaccess_concat_plugin.dll",
+      "libvlc/win-x64/plugins/access/libaccess_imem_plugin.dll",
+      "libvlc/win-x64/plugins/access/libaccess_mms_plugin.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

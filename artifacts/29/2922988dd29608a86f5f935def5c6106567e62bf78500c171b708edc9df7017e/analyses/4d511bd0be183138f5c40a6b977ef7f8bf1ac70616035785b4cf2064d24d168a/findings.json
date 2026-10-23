@@ -1,0 +1,70 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:LiteShade.dll: s://github.com/Zeffuro/LiteShade.git"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:LiteShade.dll: Dalamud.Hooking",
+      "metadata:LiteShade.dll: HookFromAddress",
+      "il:LiteShade.dll:LiteShade.Graphics.ColorFilter..ctor+0xbc: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:LiteShade.dll:LiteShade.Graphics.ColorFilter..ctor+0xda: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:LiteShade.dll:LiteShade.Graphics.ColorLut..ctor+0x41: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:LiteShade.dll:LiteShade.Graphics.DepthOfField..ctor+0x55: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:LiteShade.dll:LiteShade.Graphics.Vignette..ctor+0x32: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:LiteShade.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:LiteShade.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:LiteShade.dll: System.Diagnostics.Process",
+      "il:LiteShade.dll:LiteShade.Integrations.ReShadeDetector.IsLoaded+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:LiteShade.dll:LiteShade.Integrations.ReShadeDetector.IsLoaded+0x7: callvirt System.Diagnostics.Process.get_Modules: System.Diagnostics.Process",
+      "il:LiteShade.dll:LiteShade.Integrations.ReShadeDetector.IsLoaded+0x24: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "artifact:LiteShade.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:LiteShade.dll: FileStream",
+      "metadata:LiteShade.dll: File.Delete",
+      "metadata:LiteShade.dll: File.Move",
+      "metadata:LiteShade.dll: WriteAllText",
+      "il:LiteShade.dll:LiteShade.Configuration.Persistence.ConfigBackup.DoConfigBackup+0xf4: call System.IO.File.Delete: File.Delete",
+      "il:LiteShade.dll:LiteShade.Configuration.Persistence.ConfigBackup.DoConfigBackup+0x184: call System.IO.File.Move: File.Move",
+      "il:LiteShade.dll:LiteShade.Configuration.Persistence.ConfigBackup.DoConfigBackup+0x192: call System.IO.File.Move: File.Move",
+      "il:LiteShade.dll:<>c__DisplayClass15_0.<Export>b__0+0xc: call System.IO.File.WriteAllText: WriteAllText"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
