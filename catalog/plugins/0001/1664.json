@@ -1,0 +1,246 @@
+{
+  "plugin": {
+    "active": 1,
+    "canonical_name": "CruciblePilot",
+    "first_seen_utc": "2026-11-04T10:21:23Z",
+    "internal_name": "CruciblePilot",
+    "last_seen_utc": "2026-11-04T10:21:23Z",
+    "plugin_id": 1664
+  },
+  "presentation": {
+    "description": "AutoDuty-driven FFXIV Crucible of the Unbroken runs: degree selection and encounter-aware battlehorn assignment",
+    "image_urls_json": "[]",
+    "nsfw": 0,
+    "official": 0,
+    "plugin_id": 1664,
+    "preferred_variant_id": 51875,
+    "presentation_variant_id": 51875,
+    "rich_card": 0,
+    "richness_score": 961,
+    "summary": "AutoDuty-driven FFXIV Crucible of the Unbroken runs: degree selection and encounter-aware battlehorn assignment",
+    "web_enriched": 1
+  },
+  "schema": "omega.catalog-json.plugin.v1",
+  "search": {
+    "author": "dexcss",
+    "description": "AutoDuty-driven FFXIV Crucible of the Unbroken runs: degree selection and encounter-aware battlehorn assignment",
+    "internal_name": "CruciblePilot",
+    "name": "CruciblePilot",
+    "plugin_id": 1664,
+    "punchline": "AutoDuty-driven FFXIV Crucible of the Unbroken runs: degree selection and encounter-aware battlehorn assignment",
+    "tags": "autoduty automation Automation beastmaster crucible Utility",
+    "website_text": "AutoDuty-driven FFXIV Crucible of the Unbroken runs: degree selection and encounter-aware battlehorn assignment # CruciblePilot (dev plugin, v0.1)\n\nAutoDuty drives the board; this plugin does the two things AutoDuty can't:\n\n1. **Sets the degree** (AutoDuty can, Crucible SUX can't) and pushes the run settings for one board.\n2. **Puts the chosen trio on the battlehorns every fight** and presses \"start battle\"\n   (AD's `FightPicks` is turned off so the two don't fight over the UI).\n\n## Build & deploy\n\n```powershell\npwsh -File .\\build.ps1\n```\n\nCopies `CruciblePilot.dll` + `CruciblePilot.json` into\n`%APPDATA%\\XIVLauncher\\devPlugins\\CruciblePilot\\`.\n\nIn game: `/xlplugins` -> **Dev Plugins** -> enable **CruciblePilot**.\n\n## Commands\n\n`/cp` opens the settings window (same as `/cp ui`). Chat subcommands still work:\n\n| Command | Meaning |\n|---|---|\n| `/cp board 1-5` | 1=Novice I, 2=Novice II, 3=Novice III, 4=Advanced I, 5=Advanced II |\n| `/cp degree standard|first|second|third` | difficulty for the next `/cp start` |\n| `/cp trio <a> <b> <c>` | familiar numbers (`#` from the Bestiary) for the selected board |\n| `/cp auto on|off` | battlehorn autopilot |\n| `/cp start` | push settings to AutoDuty (team, degree, no FightPicks) and queue one run |\n| `/cp stop` | stop AutoDuty |\n| `/cp status` | board/degree/trio, AD IPC state, current horn rows |\n| `/cp team` | force AutoDuty's CustomTeam to the trio via reflection |\n| `/cp dump` | dump the open `XBMPetParty` rows (familiar number, HP, selection index) |\n\n## How the autopilot works\n\nEvery 350 ms, while in a board territory (1339-1343) with `XBMPetParty` + `XBMStageDetailList` open:\n\n- reads the roster rows from the addon's AtkValues (entry count at index 5, entries at `6 + i*77`,\n  familiar number at +76, selection index at +74),\n- toggles rows (`FireCallback(1, rowIndex)`) until the configured trio occupies selection indices 0-2,\n- presses start (`FireCallback(8)` on the stage detail) and answers the \"unfilled horns\" prompt with Yes.\n\n## Known limits (v0.1)\n\n- The trio is **static per board**; it does not read the current encounter yet (that's the next step:\n  encounter-aware picks using the enemies in the arena / board node).\n- `CustomTeam` is set by reflection into AutoDuty's loaded assembly because AD's config-override IPC\n  rejects list values. If that breaks after an AutoDuty update, set the team in AD's Crucible tab and\n  use `/cp auto on` only (roster must contain the trio).\n- If AutoDuty's own `FightPicks` is left on, both plugins will grab the horn UI - `/cp start` turns it off."
+  },
+  "variants": [
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "Automation",
+          "variant_id": 51379
+        },
+        {
+          "kind": "category",
+          "tag": "Utility",
+          "variant_id": 51379
+        },
+        {
+          "kind": "tag",
+          "tag": "autoduty",
+          "variant_id": 51379
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 51379
+        },
+        {
+          "kind": "tag",
+          "tag": "beastmaster",
+          "variant_id": 51379
+        },
+        {
+          "kind": "tag",
+          "tag": "crucible",
+          "variant_id": 51379
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.4.7.0",
+        "author": "dexcss",
+        "authors_json": "[\"dexcss\"]",
+        "category_tags_json": "[\"Utility\",\"Automation\"]",
+        "changelog": "v0.4.7.0: one-time config migration (Version 2) so existing installs switch to the retuned per-board rosters instead of keeping the old saved ones. v0.4.6.0: horn-order enforcement. v0.4.5.0: curated trios rebuilt from the game data. v0.4.4.0: packaged manifest version fix. v0.4.3.0: versioned download URLs. v0.4.2.0: food buff wait/retry. v0.4.1.x: ActionManager food.",
+        "dalamud_api_level": 15,
+        "description": "https://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.7.0/CruciblePilot.zip",
+        "download_link_testing": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.7.0/CruciblePilot.zip",
+        "download_link_update": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.7.0/CruciblePilot.zip",
+        "first_seen_utc": "2026-11-04T10:21:23Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-11-04T10:21:23Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "CruciblePilot",
+        "plugin_id": 1664,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"dexcss\",\"Name\":\"CruciblePilot\",\"AcceptsFeedback\":true,\"ApplicableVersion\":\"any\",\"AssemblyVersion\":\"0.4.7.0\",\"CategoryTags\":[\"Utility\",\"Automation\"],\"Changelog\":\"v0.4.7.0: one-time config migration (Version 2) so existing installs switch to the retuned per-board rosters instead of keeping the old saved ones. v0.4.6.0: horn-order enforcement. v0.4.5.0: curated trios rebuilt from the game data. v0.4.4.0: packaged manifest version fix. v0.4.3.0: versioned download URLs. v0.4.2.0: food buff wait/retry. v0.4.1.x: ActionManager food.\",\"DalamudApiLevel\":15,\"Description\":\"https://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json\",\"DownloadLinkInstall\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.7.0/CruciblePilot.zip\",\"DownloadLinkTesting\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.7.0/CruciblePilot.zip\",\"DownloadLinkUpdate\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.7.0/CruciblePilot.zip\",\"InternalName\":\"CruciblePilot\",\"RepoUrl\":\"https://github.com/dexcss/CruciblePilot\",\"Tags\":[\"beastmaster\",\"crucible\",\"autoduty\",\"automation\"],\"TestingAssemblyVersion\":\"0.4.7.0\",\"TestingDalamudApiLevel\":15}",
+        "repo_url": "https://github.com/dexcss/CruciblePilot",
+        "source_entry_key": "cruciblepilot|0.4.7.0|15|15|149",
+        "source_id": 594,
+        "tags_json": "[\"beastmaster\",\"crucible\",\"autoduty\",\"automation\"]",
+        "testing_assembly_version": "0.4.7.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 51379
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "Automation",
+          "variant_id": 51875
+        },
+        {
+          "kind": "category",
+          "tag": "Utility",
+          "variant_id": 51875
+        },
+        {
+          "kind": "tag",
+          "tag": "autoduty",
+          "variant_id": 51875
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 51875
+        },
+        {
+          "kind": "tag",
+          "tag": "beastmaster",
+          "variant_id": 51875
+        },
+        {
+          "kind": "tag",
+          "tag": "crucible",
+          "variant_id": 51875
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.4.9.0",
+        "author": "dexcss",
+        "authors_json": "[\"dexcss\"]",
+        "category_tags_json": "[\"Utility\",\"Automation\"]",
+        "changelog": "v0.4.9.0: board-1 trios keep the fragile Cu Sith out of the first three fights (reserved for the piercing boss) - Bone Knight 5,31,25 / Arch Demon 13,33,25 / Banemite 21,5,25. v0.4.8.0: KO substitution (dead familiars are replaced instead of toggled forever) and a toggle watchdog. v0.4.7.0: config migration to retuned rosters. v0.4.6.0: horn-order enforcement. v0.4.5.0: trios rebuilt from game data. v0.4.4.0: manifest version fix. v0.4.3.0: versioned download URLs.",
+        "dalamud_api_level": 15,
+        "description": "",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip",
+        "download_link_testing": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip",
+        "download_link_update": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip",
+        "first_seen_utc": "2026-11-04T10:21:23Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-11-04T10:21:23Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "CruciblePilot",
+        "plugin_id": 1664,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"dexcss\",\"Name\":\"CruciblePilot\",\"InternalName\":\"CruciblePilot\",\"AssemblyVersion\":\"0.4.9.0\",\"TestingAssemblyVersion\":\"0.4.9.0\",\"Description\":null,\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/dexcss/CruciblePilot\",\"Tags\":[\"beastmaster\",\"crucible\",\"autoduty\",\"automation\"],\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"DownloadLinkInstall\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip\",\"DownloadLinkTesting\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip\",\"DownloadLinkUpdate\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip\",\"CategoryTags\":[\"Utility\",\"Automation\"],\"AcceptsFeedback\":true,\"Changelog\":\"v0.4.9.0: board-1 trios keep the fragile Cu Sith out of the first three fights (reserved for the piercing boss) - Bone Knight 5,31,25 / Arch Demon 13,33,25 / Banemite 21,5,25. v0.4.8.0: KO substitution (dead familiars are replaced instead of toggled forever) and a toggle watchdog. v0.4.7.0: config migration to retuned rosters. v0.4.6.0: horn-order enforcement. v0.4.5.0: trios rebuilt from game data. v0.4.4.0: manifest version fix. v0.4.3.0: versioned download URLs.\",\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"dexcss-dalamudplugins\",\"_SourceName\":\"dexcss / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json\",\"_Category\":\"automation\"}",
+        "repo_url": "https://github.com/dexcss/CruciblePilot",
+        "source_entry_key": "cruciblepilot|0.4.9.0|15|15|49",
+        "source_id": 691,
+        "tags_json": "[\"beastmaster\",\"crucible\",\"autoduty\",\"automation\"]",
+        "testing_assembly_version": "0.4.9.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 51875
+      }
+    },
+    {
+      "images": [],
+      "tags": [
+        {
+          "kind": "category",
+          "tag": "Automation",
+          "variant_id": 51940
+        },
+        {
+          "kind": "category",
+          "tag": "Utility",
+          "variant_id": 51940
+        },
+        {
+          "kind": "tag",
+          "tag": "autoduty",
+          "variant_id": 51940
+        },
+        {
+          "kind": "tag",
+          "tag": "automation",
+          "variant_id": 51940
+        },
+        {
+          "kind": "tag",
+          "tag": "beastmaster",
+          "variant_id": 51940
+        },
+        {
+          "kind": "tag",
+          "tag": "crucible",
+          "variant_id": 51940
+        }
+      ],
+      "variant": {
+        "active": 1,
+        "applicable_version": "any",
+        "assembly_version": "0.4.9.0",
+        "author": "dexcss",
+        "authors_json": "[\"dexcss\"]",
+        "category_tags_json": "[\"Utility\",\"Automation\"]",
+        "changelog": "v0.4.9.0: board-1 trios keep the fragile Cu Sith out of the first three fights (reserved for the piercing boss) - Bone Knight 5,31,25 / Arch Demon 13,33,25 / Banemite 21,5,25. v0.4.8.0: KO substitution (dead familiars are replaced instead of toggled forever) and a toggle watchdog. v0.4.7.0: config migration to retuned rosters. v0.4.6.0: horn-order enforcement. v0.4.5.0: trios rebuilt from game data. v0.4.4.0: manifest version fix. v0.4.3.0: versioned download URLs.",
+        "dalamud_api_level": 15,
+        "description": "",
+        "dip17_channel": "",
+        "download_count": 0,
+        "download_link_install": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip",
+        "download_link_testing": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip",
+        "download_link_update": "https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip",
+        "first_seen_utc": "2026-11-04T10:21:23Z",
+        "icon_url": "",
+        "image_urls_json": "[]",
+        "is_hide": 0,
+        "is_testing_exclusive": 0,
+        "last_seen_utc": "2026-11-04T10:21:23Z",
+        "last_update": 0,
+        "minimum_dalamud_version": null,
+        "name": "CruciblePilot",
+        "plugin_id": 1664,
+        "punchline": "",
+        "raw_manifest_json": "{\"Author\":\"dexcss\",\"Name\":\"CruciblePilot\",\"InternalName\":\"CruciblePilot\",\"AssemblyVersion\":\"0.4.9.0\",\"TestingAssemblyVersion\":\"0.4.9.0\",\"Description\":null,\"ApplicableVersion\":\"any\",\"RepoUrl\":\"https://github.com/dexcss/CruciblePilot\",\"Tags\":[\"beastmaster\",\"crucible\",\"autoduty\",\"automation\"],\"DalamudApiLevel\":15,\"TestingDalamudApiLevel\":15,\"DownloadLinkInstall\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip\",\"DownloadLinkTesting\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip\",\"DownloadLinkUpdate\":\"https://github.com/dexcss/CruciblePilot/releases/download/v0.4.9.0/CruciblePilot.zip\",\"CategoryTags\":[\"Utility\",\"Automation\"],\"AcceptsFeedback\":true,\"Changelog\":\"v0.4.9.0: board-1 trios keep the fragile Cu Sith out of the first three fights (reserved for the piercing boss) - Bone Knight 5,31,25 / Arch Demon 13,33,25 / Banemite 21,5,25. v0.4.8.0: KO substitution (dead familiars are replaced instead of toggled forever) and a toggle watchdog. v0.4.7.0: config migration to retuned rosters. v0.4.6.0: horn-order enforcement. v0.4.5.0: trios rebuilt from game data. v0.4.4.0: manifest version fix. v0.4.3.0: versioned download URLs.\",\"IsHide\":false,\"IsTestingExclusive\":false,\"_SourceId\":\"dexcss-dalamudplugins\",\"_SourceName\":\"dexcss / DalamudPlugins\",\"_SourceUrl\":\"https://raw.githubusercontent.com/dexcss/DalamudPlugins/main/repo.json\"}",
+        "repo_url": "https://github.com/dexcss/CruciblePilot",
+        "source_entry_key": "cruciblepilot|0.4.9.0|15|15|9",
+        "source_id": 1086,
+        "tags_json": "[\"beastmaster\",\"crucible\",\"autoduty\",\"automation\"]",
+        "testing_assembly_version": "0.4.9.0",
+        "testing_dalamud_api_level": 15,
+        "variant_id": 51940
+      }
+    }
+  ]
+}
