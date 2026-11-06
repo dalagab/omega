@@ -1,0 +1,54 @@
+[
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:KeyboundBrawler.dll: ReadProcessMemory",
+      "metadata:KeyboundBrawler.dll: WriteProcessMemory",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.BytesMatch+0x4d: call KeyboundBrawler.KeyboundNative.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.ResetInactivityFields+0xf8: call KeyboundBrawler.KeyboundNative.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.Read+0x42: call KeyboundBrawler.KeyboundNative.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.String+0x4f: call KeyboundBrawler.KeyboundNative.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.CallbackMatches+0x24: call KeyboundBrawler.KeyboundNative.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "artifact:KeyboundBrawler.dll: ReadProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:KeyboundBrawler.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:KeyboundBrawler.dll: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.ValidateInputContract+0x7: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.ValidateInputContract+0xe: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.ValidateInputContract+0x18: callvirt System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.ValidateInputContract+0x35: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.TryExitResult+0x23: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.TryExitResult+0x2a: callvirt System.Diagnostics.Process.get_MainModule: System.Diagnostics.Process",
+      "il:KeyboundBrawler.dll:KeyboundBrawler.KeyboundNative.TryExitResult+0x34: callvirt System.Diagnostics.ProcessModule.get_FileName: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  }
+]

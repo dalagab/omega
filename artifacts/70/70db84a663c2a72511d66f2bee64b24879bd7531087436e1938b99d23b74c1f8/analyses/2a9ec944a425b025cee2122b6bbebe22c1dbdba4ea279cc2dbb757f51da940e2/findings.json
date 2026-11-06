@@ -1,0 +1,594 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:SharpGen.Runtime.dll: OpenProcess",
+      "il:SharpGen.Runtime.dll:SharpGen.Runtime.PlatformDetection.GetCurrentProcessToken+0xb: call SharpGen.Runtime.PlatformDetection.OpenProcessToken -> advapi32.dll!OpenProcessToken: OpenProcess",
+      "artifact:SharpGen.Runtime.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private or loopback endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:LooseTextureCompilerCore.dll: http://localhost:42069/api"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.790c5a3dc3d1",
+    "severity": "high",
+    "title": "Endpoint: localhost"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: cmd.exe",
+      "artifact:Magick.NET-Q8-x64.dll: cmd.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Newtonsoft.Json.dll: Reflection.Emit",
+      "metadata:Newtonsoft.Json.dll: Assembly.Load",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x12: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateDynamicMethod+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateParameterizedConstructor+0x2f: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.CreateMethodCall+0x3c: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x8: callvirt System.Reflection.Emit.ILGenerator.DefineLabel: Reflection.Emit",
+      "il:Newtonsoft.Json.dll:Newtonsoft.Json.Utilities.DynamicReflectionDelegateFactory.GenerateCreateMethodCallIL+0x15: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:ComputeSharp.dll: s://github.com/Sergio0694/ComputeSharp/",
+      "artifact:ComputeSharp.dll: E:/B",
+      "artifact:DragAndDropTexturing.dll: s://github.com/MeowZWR/DragAndDropTexturing",
+      "artifact:DragAndDropTexturing.dll: C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\xNormal\\3.19.3\\xNormal (x64).lnk",
+      "artifact:DragAndDropTexturing.dll: s://github.com/Sebane1/DragAndDropTexturing",
+      "artifact:DragAndDropTexturing.dll: p://ai.hubujubu.com:5681",
+      "artifact:DragAndDropTexturing.dll: p://",
+      "artifact:DragAndDropTexturing.dll: s://"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:DragAndDropTexturing.dll: Dalamud.Hooking",
+      "metadata:DragAndDropTexturing.dll: SigScanner",
+      "metadata:DragAndDropTexturing.dll: HookFromAddress",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.ActionReaderHooks..ctor+0x1a: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.AudioReaderHooks..ctor+0x1b: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.AudioReaderHooks..ctor+0x32: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.AudioReaderHooks..ctor+0x84: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.AudioReaderHooks..ctor+0x9b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ComputeSharp.dll: DllImportAttribute",
+      "metadata:DragAndDropTexturing.dll: DllImportAttribute",
+      "metadata:DragAndDropTexturing.dll: LoadLibrary",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.Input.TabletInput..ctor+0x21: call DragAndDropTexturing.Input.TabletInput.LoadLibrary -> kernel32.dll!LoadLibrary: LoadLibrary",
+      "artifact:DragAndDropTexturing.dll: LoadLibrary",
+      "metadata:LooseTextureCompilerCore.dll: DllImportAttribute",
+      "metadata:Magick.NET-Q8-x64.dll: DllImportAttribute",
+      "metadata:OtterTex.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.NET-Q8-x64.dll: http://www.efg2.com/Lab/Library/ImageProcessing/DHALF.TXT"
+    ],
+    "rule_id": "network.endpoint.insecure-http.004d1545c429",
+    "severity": "caution",
+    "title": "Endpoint: www.efg2.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.NET-Q8-x64.dll: http://www.fho-emden.de/~hoffmann/hilb010101.pdf"
+    ],
+    "rule_id": "network.endpoint.insecure-http.47205fa10500",
+    "severity": "caution",
+    "title": "Endpoint: www.fho-emden.de"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://purl.org/dc/elements/1.1/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.481f09356511",
+    "severity": "caution",
+    "title": "Endpoint: purl.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://james.newtonking.com/projects/json"
+    ],
+    "rule_id": "network.endpoint.insecure-http.49cce80f87f1",
+    "severity": "caution",
+    "title": "Endpoint: james.newtonking.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DragAndDropTexturing.dll: http://ai.hubujubu.com:5681/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.57543f4432be",
+    "severity": "caution",
+    "title": "Endpoint: ai.hubujubu.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://ns.adobe.com/xap/1.0/mm/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.5d1a28a44b4d",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.NET-Q8-x64.dll: http://oneocsp.microsoft.com/ocsp0f",
+      "artifact:Magick.NET.Core.dll: http://oneocsp.microsoft.com/ocsp0f"
+    ],
+    "rule_id": "network.endpoint.insecure-http.66299e594afa",
+    "severity": "caution",
+    "title": "Endpoint: oneocsp.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://www.iec.ch/",
+      "artifact:Magick.NET.Core.dll: http://www.iec.ch/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.69126546e9c9",
+    "severity": "caution",
+    "title": "Endpoint: www.iec.ch"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://www.aiim.org/pdfa/ns/id/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.6b2c1f0af999",
+    "severity": "caution",
+    "title": "Endpoint: www.aiim.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://www.libpng.org/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.784bd01b5823",
+    "severity": "caution",
+    "title": "Endpoint: www.libpng.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.NET-Q8-x64.dll: http://oneocsp.microsoft.com/ocsp0",
+      "artifact:Magick.NET.Core.dll: http://oneocsp.microsoft.com/ocsp0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8399ab1193f7",
+    "severity": "caution",
+    "title": "Endpoint: oneocsp.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://www.libpng.org/pub/mng/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9b7690985634",
+    "severity": "caution",
+    "title": "Endpoint: www.libpng.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://medical.nema.org/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.9b7b0b18f501",
+    "severity": "caution",
+    "title": "Endpoint: medical.nema.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://ns.adobe.com/xap/1.0/",
+      "artifact:SixLabors.ImageSharp.dll: http://ns.adobe.com/xap/1.0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b62b8586efc3",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: http://ns.adobe.com/pdf/1.3/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.bd44c55690bc",
+    "severity": "caution",
+    "title": "Endpoint: ns.adobe.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Magick.Native-Q8-x64.dll: https://imagemagick.org/",
+      "artifact:Magick.NET-Q8-x64.dll: https://imagemagick.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d87e38358a47",
+    "severity": "caution",
+    "title": "Endpoint: imagemagick.org"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:DragAndDropTexturing.dll: System.Diagnostics.Process",
+      "metadata:DragAndDropTexturing.dll: ProcessStartInfo",
+      "metadata:DragAndDropTexturing.dll: ShellExecute",
+      "metadata:DragAndDropTexturing.dll: Process.Start",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.ContextualLayerManager.ExportLayer+0x70: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.ContextualLayerManager.ExportLayer+0x70: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.ContextualLayerManager.ExportLayer+0x77: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.ContextualLayerManager.ExportLayer+0x77: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References APIs that can read or modify clipboard contents.",
+    "evidence_json": [
+      "metadata:DragAndDropTexturing.dll: System.Windows.Forms.Clipboard"
+    ],
+    "rule_id": "clipboard",
+    "severity": "informational",
+    "title": "Clipboard access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:ComputeSharp.dll: FileStream",
+      "il:ComputeSharp.dll:IStreamWrapper.Stat+0x4a: callvirt System.IO.FileStream.get_Name: FileStream",
+      "artifact:ComputeSharp.dll: FileStream",
+      "metadata:DragAndDropTexturing.dll: FileStream",
+      "metadata:DragAndDropTexturing.dll: Directory.Delete",
+      "metadata:DragAndDropTexturing.dll: Directory.CreateDirectory",
+      "metadata:DragAndDropTexturing.dll: WriteAllText",
+      "metadata:DragAndDropTexturing.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DragAndDropTexturing.dll: https://github.com/Sebane1/DragAndDropTexturing/releases/download/0.0.1.3/LooseTextureCompilerDLC.pmp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.03a30bf6794d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Vortice.Mathematics.dll: https://github.com/amerkoleci/Vortice.Mathematics"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.0eb79cf9a56e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DragAndDropTexturing.dll: https://github.com/Sebane1/<redacted>",
+      "artifact:LooseTextureCompilerCore.dll: https://github.com/Sebane1/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.17fb2f3890d8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SharpGen.Runtime.COM.dll: https://github.com/SharpGenTools/SharpGenTools",
+      "artifact:SharpGen.Runtime.dll: https://github.com/SharpGenTools/SharpGenTools"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.36ea9ab7e70a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.dll: https://github.com/SixLabors/ImageSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3e535a8cd8bd",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CoenM.ImageSharp.ImageHash.dll: https://github.com/coenm/ImageHash/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5fc9f87449ad",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DragAndDropTexturing.dll: https://github.com/MeowZWR/DragAndDropTexturing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6380aad1404a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:PsdSharp.dll: https://github.com/kaelon141/PsdSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7f4e8d767ca5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.ImageSharp.Drawing.dll: https://github.com/SixLabors/ImageSharp.Drawing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9234edb5ef5f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SixLabors.Fonts.dll: https://github.com/SixLabors/Fonts"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9263e244362c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Glamourer.Api.dll: https://github.com/Ottermandias/Glamourer"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9608d0f55262",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.ObjectPool.dll: https://github.com/dotnet/aspnetcore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ab7eadc8e64a",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Newtonsoft.Json.dll: https://github.com/JamesNK/Newtonsoft.Json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b68d17bbb7cf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:ComputeSharp.Core.dll: https://github.com/Sergio0694/ComputeSharp/",
+      "artifact:ComputeSharp.dll: https://github.com/Sergio0694/ComputeSharp/"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ba8495c2c3e3",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.String.dll: https://github.com/Ottermandias/Penumbra.String"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c7fdaef2726e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Lumina.dll: https://github.com/NotAdam/Lumina"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.db1a28ff8f7d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Vortice.D3DCompiler.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.Direct3D11.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.DirectX.dll: https://github.com/amerkoleci/Vortice.Windows",
+      "artifact:Vortice.DXGI.dll: https://github.com/amerkoleci/Vortice.Windows"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f3f194cb7761",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DragAndDropTexturing.dll: https://github.com/Sebane1/DragAndDropTexturing"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f6ea43819e58",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DragAndDropTexturing.dll: System.Net.Http.HttpClient",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.LanguageHelpers.Translator.CreateHttpClient+0x0: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.LanguageHelpers.Translator.CreateHttpClient+0xe: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:DragAndDropTexturing.dll:DragAndDropTexturing.LanguageHelpers.Translator.CreateHttpClient+0x14: callvirt System.Net.Http.HttpClient.get_DefaultRequestHeaders: System.Net.Http.HttpClient",
+      "metadata:LooseTextureCompilerCore.dll: System.Net.Http.HttpClient",
+      "il:LooseTextureCompilerCore.dll:<PostRequest>d__5.MoveNext+0x40: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:LooseTextureCompilerCore.dll:<PostRequest>d__5.MoveNext+0x65: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:LooseTextureCompilerCore.dll:<PostRequest>d__5.MoveNext+0xa7: callvirt System.Net.Http.HttpClient.PostAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "DirectXTexC.dll",
+      "Magick.Native-Q8-x64.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

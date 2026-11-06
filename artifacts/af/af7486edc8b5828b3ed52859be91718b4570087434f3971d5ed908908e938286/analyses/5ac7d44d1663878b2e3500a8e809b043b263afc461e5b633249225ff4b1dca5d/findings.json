@@ -1,0 +1,208 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:InstantEdit.dll: \\\\]|\\\\.)*",
+      "artifact:InstantEdit.dll: p://127.0.0.1:{port}{endpoint}",
+      "artifact:InstantEdit.dll: s://raw.githubusercontent.com/link-0402/XIV-Instant-Edit/main/Blender-Addon/blender_repo/index.json",
+      "artifact:InstantEdit.dll: s://link-0402.github.io/XIV-Instant-Edit/index.json",
+      "artifact:InstantEdit.dll: \\\\ / : * ? \\",
+      "artifact:InstantEdit.dll: s://github.com/link-0402/XIV-Instant-Edit",
+      "artifact:InstantEdit.dll: A:\\n\\n\\",
+      "artifact:InstantEdit.dll: D:\\XIV\\InstantEdit"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: SigScanner",
+      "artifact:InstantEdit.dll: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: TcpListener",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.Start+0x4f: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.Start+0x5f: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.StopListener+0x82: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "artifact:InstantEdit.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.dll: https://ko-fi.com/luci_xiv"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8ce3988e4a3f",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.dll: https://link-0402.github.io/XIV-Instant-Edit/index.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e3014d6546ac",
+    "severity": "caution",
+    "title": "Endpoint: link-0402.github.io"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: System.Net.Sockets",
+      "metadata:InstantEdit.dll: TcpClient",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.Start+0x4f: newobj System.Net.Sockets.TcpListener..ctor: System.Net.Sockets",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.Start+0x5f: callvirt System.Net.Sockets.TcpListener.Start: System.Net.Sockets",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.StopListener+0x82: call System.Net.Sockets.TcpListener.Stop: System.Net.Sockets",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.StopListener+0xa2: callvirt System.Net.Sockets.TcpClient.Close: System.Net.Sockets",
+      "il:InstantEdit.dll:InstantEdit.Services.ExportServer.StopListener+0xa2: callvirt System.Net.Sockets.TcpClient.Close: TcpClient",
+      "artifact:InstantEdit.dll: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: System.Diagnostics.Process",
+      "metadata:InstantEdit.dll: ProcessStartInfo",
+      "metadata:InstantEdit.dll: ShellExecute",
+      "metadata:InstantEdit.dll: Process.Start",
+      "il:InstantEdit.dll:InstantEdit.Ui.MainWindow.OpenFolder+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:InstantEdit.dll:InstantEdit.Ui.MainWindow.OpenFolder+0x1: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:InstantEdit.dll:InstantEdit.Ui.MainWindow.OpenFolder+0x8: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:InstantEdit.dll:InstantEdit.Ui.MainWindow.OpenFolder+0x8: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: Microsoft.Win32.Registry",
+      "metadata:InstantEdit.dll: RegistryKey",
+      "artifact:InstantEdit.dll: Microsoft.Win32.Registry",
+      "artifact:InstantEdit.dll: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: FileStream",
+      "metadata:InstantEdit.dll: Directory.Delete",
+      "metadata:InstantEdit.dll: Directory.CreateDirectory",
+      "metadata:InstantEdit.dll: WriteAllText",
+      "metadata:InstantEdit.dll: File.Move",
+      "metadata:InstantEdit.dll: File.Delete",
+      "metadata:InstantEdit.dll: WriteAllBytes",
+      "il:InstantEdit.dll:InstantEdit.Ui.MainWindow.TryDeleteOwnedHandoff+0x90: call System.IO.Directory.Delete: Directory.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.dll: https://github.com/link-0402/XIV-Instant-Edit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.360af27c76ce",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Penumbra.Api.dll: https://github.com/Ottermandias/Penumbra.Api"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3f89bd8dde4d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.json: https://github.com/link-0402/XIV-Instant-Edit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.86ed1b5c7f17",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.json: https://raw.githubusercontent.com/link-0402/XIV-Instant-Edit/main/Dalamud-Plugin/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c4ec11f0e00c",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:InstantEdit.dll: https://raw.githubusercontent.com/link-0402/XIV-Instant-Edit/main/Blender-Addon/blender_repo/index.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ece5793ca1b0",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:InstantEdit.dll: System.Net.Http.HttpClient",
+      "il:InstantEdit.dll:InstantEdit.Services.BlenderClient..ctor+0x3: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:InstantEdit.dll:InstantEdit.Services.BlenderClient..ctor+0x10: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
