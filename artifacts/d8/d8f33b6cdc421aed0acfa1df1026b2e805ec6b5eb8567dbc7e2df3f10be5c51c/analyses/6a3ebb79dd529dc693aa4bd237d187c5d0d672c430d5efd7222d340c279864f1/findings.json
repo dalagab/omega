@@ -1,0 +1,72 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:ReplayLibrary.dll: SigScanner",
+      "metadata:ReplayLibrary.dll: Dalamud.Hooking",
+      "metadata:ReplayLibrary.dll: HookFromAddress",
+      "il:ReplayLibrary.dll:ReplayLibrary.Services.PluginServices.Init+0x3d: call ReplayLibrary.Services.PluginServices.set_SigScanner: SigScanner",
+      "il:ReplayLibrary.dll:ReplayLibrary.Recording.RecordingService.BeginRecording+0x16: call ReplayLibrary.Services.PluginServices.get_SigScanner: SigScanner",
+      "il:ReplayLibrary.dll:ReplayLibrary.Recording.RecordingService.BeginRecording+0x20: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner",
+      "il:ReplayLibrary.dll:ReplayLibrary.Recording.RecordingService.Hook+0x0: call ReplayLibrary.Services.PluginServices.get_SigScanner: SigScanner",
+      "il:ReplayLibrary.dll:ReplayLibrary.Recording.RecordingService.Hook+0x6: callvirt Dalamud.Plugin.Services.ISigScanner.ScanText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:ReplayLibrary.dll: DllImportAttribute",
+      "metadata:MirageUI.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:ReplayLibrary.dll: System.Diagnostics.Process",
+      "metadata:ReplayLibrary.dll: ProcessStartInfo",
+      "metadata:ReplayLibrary.dll: ShellExecute",
+      "metadata:ReplayLibrary.dll: Process.Start",
+      "il:ReplayLibrary.dll:ReplayLibrary.UI.MainWindow.RevealInExplorer+0x4b: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:ReplayLibrary.dll:ReplayLibrary.UI.MainWindow.RevealInExplorer+0x4b: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:ReplayLibrary.dll:ReplayLibrary.UI.MainWindow.RevealInExplorer+0x52: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:ReplayLibrary.dll:ReplayLibrary.UI.MainWindow.RevealInExplorer+0x52: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:ReplayLibrary.dll: FileStream",
+      "metadata:ReplayLibrary.dll: Directory.CreateDirectory",
+      "metadata:ReplayLibrary.dll: File.Delete",
+      "metadata:ReplayLibrary.dll: File.Move",
+      "metadata:ReplayLibrary.dll: WriteAllText",
+      "metadata:ReplayLibrary.dll: Directory.Delete",
+      "metadata:ReplayLibrary.dll: WriteAllBytes",
+      "il:ReplayLibrary.dll:ReplayLibrary.UI.MainWindow.OpenLibraryFolder+0x7: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

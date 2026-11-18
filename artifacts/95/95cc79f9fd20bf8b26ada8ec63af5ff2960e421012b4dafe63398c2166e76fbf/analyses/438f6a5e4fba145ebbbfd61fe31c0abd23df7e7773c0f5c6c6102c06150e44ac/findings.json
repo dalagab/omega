@@ -1,0 +1,624 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.ProcessCraftMacroActions+0x29b: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.ProcessRemoteCraft+0x4d9: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.PrepareCraftConsumable+0x190: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character movement control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.Dispose+0x24: call XIVChatPlugin.Ipc.VnavmeshNavigation.Stop"
+    ],
+    "rule_id": "automation.game.character.move",
+    "severity": "high",
+    "title": "Character movement control"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: ProtectedData.Unprotect",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.LoadOrCreatePluginPresenceKey+0x30: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.ProtectOrUnprotect+0x8b: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x29: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: ReadProcessMemory",
+      "il:EorzeaPhone.dll:XIVChatPlugin.FriendListObserver.TryReadBytes+0x27: call XIVChatPlugin.FriendListObserver.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "artifact:EorzeaPhone.dll: ReadProcessMemory",
+      "artifact:StoneLogin/WebView2Loader.dll: OpenProcess",
+      "artifact:StoneLogin/runtimes/win-x64/native/WebView2Loader.dll: OpenProcess"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: powershell.exe",
+      "artifact:EorzeaPhone.dll: -EncodedCommand"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:EorzeaPhone.dll:XIVChatPlugin.PlayerInventoryActions.TryConfirmOwnedDiscard+0x3e1: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.AdvanceLoginJob+0xb65: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.ClickLoginButton+0x74: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.FireLoadedLoginCallback+0x4c: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for inventory ui/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:EorzeaPhone.dll:XIVChatPlugin.PlayerInventoryActions.TryDiscard+0x157: call FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventoryContext.DiscardItem"
+    ],
+    "rule_id": "automation.game.ui.inventory_control",
+    "severity": "caution",
+    "title": "Inventory UI/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:MessagePack.dll: Reflection.Emit",
+      "metadata:MessagePack.dll: AssemblyLoadContext",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x28: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.SkipVisibilityChecksFor+0x35: callvirt System.Reflection.Emit.AssemblyBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x16: callvirt System.Reflection.Emit.ModuleBuilder.DefineType: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x4d: newobj System.Reflection.Emit.CustomAttributeBuilder..ctor: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x55: callvirt System.Reflection.Emit.TypeBuilder.SetCustomAttribute: Reflection.Emit",
+      "il:MessagePack.dll:MessagePack.SkipClrVisibilityChecks.EmitMagicAttribute+0x74: callvirt System.Reflection.Emit.TypeBuilder.DefineConstructor: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: s://github.com/Nominom/BCnEncoder.NET",
+      "artifact:BCnEncoder.dll: C:\\Projects\\BCnEncoder.NET\\BCnEnc.Net\\obj\\Release\\netstandard2.1\\BCnEncoder.pdb",
+      "artifact:BCnEncoder.dll: p://ocsp.digicert.com0",
+      "artifact:BCnEncoder.dll: p://cacerts.digicert.com/DigiCertTrustedG4TimeStampingRSA4096SHA2562025CA1.crt0_",
+      "artifact:BCnEncoder.dll: p://crl3.digicert.com/DigiCertTrustedG4TimeStampingRSA4096SHA2562025CA1.crl0",
+      "artifact:BCnEncoder.dll: p://ocsp.digicert.com0A",
+      "artifact:BCnEncoder.dll: p://cacerts.digicert.com/DigiCertTrustedRootG4.crt0C",
+      "artifact:BCnEncoder.dll: p://crl3.digicert.com/DigiCertTrustedRootG4.crl0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: Dalamud.Hooking",
+      "metadata:EorzeaPhone.dll: SigScanner",
+      "metadata:EorzeaPhone.dll: HookFromAddress",
+      "il:EorzeaPhone.dll:XIVChatPlugin.GameFunctions.RequestFriendList+0x69: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.AttemptPurchase+0x1da: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:EorzeaPhone.dll: Dalamud.Hooking",
+      "artifact:EorzeaPhone.dll: SigScanner",
+      "artifact:EorzeaPhone.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: TcpListener",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.CheckPortConflict+0x1d: callvirt System.Net.NetworkInformation.IPGlobalProperties.GetActiveTcpListeners: TcpListener",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.FindFreePort+0xb: newobj System.Net.Sockets.TcpListener..ctor: TcpListener",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.FindFreePort+0x12: callvirt System.Net.Sockets.TcpListener.Start: TcpListener",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.FindFreePort+0x18: callvirt System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "il:EorzeaPhone.dll:XIVChatPlugin.Server.Dispose+0xdb: call System.Net.Sockets.TcpListener.Stop: TcpListener",
+      "artifact:EorzeaPhone.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: DllImportAttribute",
+      "metadata:MessagePack.Annotations.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:MessagePack.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Win32.SystemEvents.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Noise.dll: DllImportAttribute",
+      "metadata:Sodium.Core.dll: DllImportAttribute",
+      "metadata:System.Drawing.Common.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Drawing.Common.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://www.digicert.com/CPS0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.0bda789b1ee3",
+    "severity": "caution",
+    "title": "Endpoint: www.digicert.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0x/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.666b870d9ed1",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0x"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0o/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.b80d4039aa50",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0o"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: http://ocsp.digicert.com0c/",
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0c/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.c831a6f811e0",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0c"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: http://ocsp.digicert.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f7ff339eaae3",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: http://ocsp.digicert.com0a/",
+      "artifact:CommunityToolkit.HighPerformance.dll: http://ocsp.digicert.com0a/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.fd1e7f05c01c",
+    "severity": "caution",
+    "title": "Endpoint: ocsp.digicert.com0a"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://ff14risingstones.gcloud.com.cn/dynamic/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.09d3dc6be116",
+    "severity": "caution",
+    "title": "Endpoint: ff14risingstones.gcloud.com.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://static.web.sdo.com/jijiamobile/pic/ff14/2023ffstone/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.14bb6fbfbf63",
+    "severity": "caution",
+    "title": "Endpoint: static.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: https://developer.microsoft.com/en-us/windows/uwp-community-toolkit"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.18af43152701",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:StoneLogin/StoneLoginHost.exe: https://apiff14risingstones.web.sdo.com/api/home/GHome/isLogin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1e1bccbce69d",
+    "severity": "caution",
+    "title": "Endpoint: apiff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://eorzeaphone.meilinaier5988.ltd/session/v1/plugin-offline"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.29c21ff30171",
+    "severity": "caution",
+    "title": "Endpoint: eorzeaphone.meilinaier5988.ltd"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://eorzeaphone.meilinaier5988.ltd/session/v1/relay-"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.31d76e3866a9",
+    "severity": "caution",
+    "title": "Endpoint: eorzeaphone.meilinaier5988.ltd"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://eorzeaphone.meilinaier5988.ltd/session/v1/plugin-self-presence"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3a67b08cf985",
+    "severity": "caution",
+    "title": "Endpoint: eorzeaphone.meilinaier5988.ltd"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://apiff14risingstones.web.sdo.com/api/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5c9e89eb448d",
+    "severity": "caution",
+    "title": "Endpoint: apiff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://ff14risingstones.web.sdo.com/pc/index.html",
+      "artifact:StoneLogin/StoneLoginHost.exe: https://ff14risingstones.web.sdo.com/pc/index.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.66152a6151e0",
+    "severity": "caution",
+    "title": "Endpoint: ff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://ff14risingstones.web.sdo.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7a68a6d3b5d9",
+    "severity": "caution",
+    "title": "Endpoint: ff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://ff14risingstones.gcloud.com.cn/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.97821c6a85d0",
+    "severity": "caution",
+    "title": "Endpoint: ff14risingstones.gcloud.com.cn"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://static.web.sdo.com/jijiamobile/pic/ff14/2023ffstone/emo"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.97e370737ef6",
+    "severity": "caution",
+    "title": "Endpoint: static.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://apiff14risingstones.web.sdo.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.af6ea2ea242b",
+    "severity": "caution",
+    "title": "Endpoint: apiff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Peeping Tom.Ipc.dll: https://git.anna.lgbt/anna/PeepingTom"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e2e90e61032c",
+    "severity": "caution",
+    "title": "Endpoint: git.anna.lgbt"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://eorzeaphone.meilinaier5988.ltd/session/v1/plugin-presence"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e6581b717a03",
+    "severity": "caution",
+    "title": "Endpoint: eorzeaphone.meilinaier5988.ltd"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://apiff14risingstones.web.sdo.com/api/home/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fef20d08167f",
+    "severity": "caution",
+    "title": "Endpoint: apiff14risingstones.web.sdo.com"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: System.Net.Sockets",
+      "metadata:EorzeaPhone.dll: TcpClient",
+      "metadata:EorzeaPhone.dll: UdpClient",
+      "metadata:EorzeaPhone.dll: Socket.Connect",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected.get_Connected+0x10: callvirt System.Net.Sockets.TcpClient.get_Connected: System.Net.Sockets",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected.get_Connected+0x10: callvirt System.Net.Sockets.TcpClient.get_Connected: TcpClient",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected..ctor+0x18: callvirt System.Net.Sockets.TcpClient.set_ReceiveTimeout: System.Net.Sockets",
+      "il:EorzeaPhone.dll:XIVChatPlugin.TcpConnected..ctor+0x18: callvirt System.Net.Sockets.TcpClient.set_ReceiveTimeout: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "StoneLogin/StoneLoginHost.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: System.Diagnostics.Process",
+      "metadata:EorzeaPhone.dll: ProcessStartInfo",
+      "metadata:EorzeaPhone.dll: ShellExecute",
+      "metadata:EorzeaPhone.dll: Process.Start",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.StartElevatedFirewallFix+0x2e: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.StartElevatedFirewallFix+0x2e: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.StartElevatedFirewallFix+0x35: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: System.Diagnostics.Process",
+      "il:EorzeaPhone.dll:XIVChatPlugin.ConnectivityDiagnostics.StartElevatedFirewallFix+0x35: callvirt System.Diagnostics.ProcessStartInfo.set_UseShellExecute: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "artifact:StoneLogin/WebView2Loader.dll: RegOpenKey",
+      "artifact:StoneLogin/runtimes/win-x64/native/WebView2Loader.dll: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:BCnEncoder.dll: FileStream",
+      "artifact:BCnEncoder.dll: FileStream",
+      "metadata:EorzeaPhone.dll: FileStream",
+      "metadata:EorzeaPhone.dll: Directory.CreateDirectory",
+      "metadata:EorzeaPhone.dll: File.Move",
+      "metadata:EorzeaPhone.dll: File.Delete",
+      "metadata:EorzeaPhone.dll: WriteAllText",
+      "metadata:EorzeaPhone.dll: WriteAllBytes"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.json: https://github.com/QuserH/zh-repo"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2de0c9eed7ce",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.NET.StringTools.dll: https://github.com/dotnet/msbuild"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.3b676f6154bf",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:System.Drawing.Common.dll: https://github.com/dotnet/winforms",
+      "artifact:System.Private.Windows.Core.dll: https://github.com/dotnet/winforms"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.568f0076d102",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CommunityToolkit.HighPerformance.dll: https://github.com/CommunityToolkit/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.5e2c4ed80499",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.dll: https://github.com/QuserH/Xivchat.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.85a9793a45f7",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Sodium.Core.dll: https://github.com/ektrah/libsodium-core.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.89d00ad54d56",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: https://github.com/MidoriKami/KamiToolKit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8a29a1007d74",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: https://github.com/dotnet/runtime",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: https://github.com/dotnet/runtime",
+      "artifact:runtimes/win/lib/net9.0/Microsoft.Win32.SystemEvents.dll: https://github.com/dotnet/runtime",
+      "artifact:StoneLogin/Microsoft.Bcl.AsyncInterfaces.dll: https://github.com/dotnet/runtime"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.9f15c9767ba8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:EorzeaPhone.json: https://raw.githubusercontent.com/QuserH/zh-repo/main/EorzeaPhone-icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c5cd0ec7f067",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:BCnEncoder.dll: https://github.com/Nominom/BCnEncoder.NET"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e85fd72d0e75",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MessagePack.Annotations.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp",
+      "artifact:MessagePack.dll: https://github.com/MessagePack-CSharp/MessagePack-CSharp"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f2dfd1030921",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:EorzeaPhone.dll: System.Net.Http.HttpClient",
+      "artifact:StoneLogin/System.Text.Json.dll: WebRequest",
+      "artifact:StoneLogin/System.Text.Json.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "libsodium.dll",
+      "runtimes/win-arm64/native/libsodium.dll",
+      "runtimes/win-x64/native/libsodium.dll",
+      "runtimes/win-x86/native/libsodium.dll",
+      "StoneLogin/WebView2Loader.dll",
+      "StoneLogin/runtimes/win-x64/native/WebView2Loader.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

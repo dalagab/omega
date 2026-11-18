@@ -1,0 +1,409 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character action execution. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.ExecuteAction+0x204: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.UseGeneralAction+0x18: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.General+0x44: call FFXIVClientStructs.FFXIV.Client.Game.ActionManager.UseAction"
+    ],
+    "rule_id": "automation.game.character.execute_action",
+    "severity": "high",
+    "title": "Character action execution"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "memory",
+    "description": "References APIs used to open another process or read/write its memory.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: ReadProcessMemory",
+      "metadata:DalamudMCP.dll: WriteProcessMemory",
+      "il:DalamudMCP.dll:DalamudMCP.MemoryProbe.TryReadBytes+0x174: call DalamudMCP.MemoryProbe.ReadProcessMemory -> kernel32.dll!ReadProcessMemory: ReadProcessMemory",
+      "il:DalamudMCP.dll:DalamudMCP.Runtime.NativeAccess.Write+0x87: call DalamudMCP.Runtime.NativeAccess.WriteProcessMemory -> kernel32.dll!WriteProcessMemory: WriteProcessMemory",
+      "artifact:DalamudMCP.dll: ReadProcessMemory",
+      "artifact:DalamudMCP.dll: WriteProcessMemory"
+    ],
+    "rule_id": "memory.process",
+    "severity": "high",
+    "title": "Cross-process memory access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: http://127.0.0.1:18777/mcp"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.367d4cd3cd9d",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal private, loopback, or link-local IP endpoint. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: http://127.0.0.1/"
+    ],
+    "rule_id": "network.endpoint.private-or-loopback.6d426df3ca31",
+    "severity": "high",
+    "title": "Endpoint: 127.0.0.1"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.InteractWithTarget+0x4f: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+    ],
+    "rule_id": "automation.game.character.interact",
+    "severity": "caution",
+    "title": "World/NPC interaction control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.SetTarget+0xd7: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.SetTarget+0x11c: callvirt Dalamud.Plugin.Services.ITargetManager.set_FocusTarget",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ControlTools.SetTarget+0x12a: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+    ],
+    "rule_id": "automation.game.character.target",
+    "severity": "caution",
+    "title": "Character target control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:DalamudMCP.dll:DalamudMCP.Tools.TeleportTools.Teleport+0x39f: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport"
+    ],
+    "rule_id": "automation.game.character.teleport",
+    "severity": "caution",
+    "title": "Teleport/travel control"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:DalamudMCP.dll:DalamudMCP.Tools.CallbackProbe.FireCallbackDetour+0xe: callvirt FireCallbackDelegate.Invoke",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.CallbackTools.FireAddonCallback+0x4ef: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.CallbackTools.SelectDutyListGroup+0x1d7: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.CheckboxTools.Set+0x3e5: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: Reflection.Emit",
+      "artifact:DalamudMCP.dll: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: s://github.com/thewakingsands/elpis",
+      "artifact:DalamudMCP.dll: s://registry.npmjs.org/@ffcafe/elpis-network/-/elpis-network-0.1.0.tgz",
+      "artifact:DalamudMCP.dll: s://registry.npmjs.org/@ffcafe/elpis-struct/-/elpis-struct-0.1.0.tgz",
+      "artifact:DalamudMCP.dll: s://fsf.org/>",
+      "artifact:DalamudMCP.dll: s://www.gnu.org/licenses/>.",
+      "artifact:DalamudMCP.dll: s://www.gnu.org/licenses/why-not-lgpl.html>.",
+      "artifact:DalamudMCP.dll: p://127.0.0.1:18777/mcp",
+      "artifact:DalamudMCP.dll: b:\\."
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: SigScanner",
+      "metadata:DalamudMCP.dll: Dalamud.Hooking",
+      "metadata:DalamudMCP.dll: HookFromAddress",
+      "il:DalamudMCP.dll:DalamudMCP.Plugin..ctor+0x150: callvirt DalamudMCP.GameServices.set_SigScanner: SigScanner",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.CallbackProbe.Enable+0xa1: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.MemoryTools.ModuleInfo+0x1: callvirt DalamudMCP.GameServices.get_SigScanner: SigScanner",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.MemoryTools.ModuleInfo+0x8: callvirt Dalamud.Plugin.Services.ISigScanner.get_Module: SigScanner",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.MemoryTools.ModuleInfo+0x8a: callvirt Dalamud.Plugin.Services.ISigScanner.get_IsCopy: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: TcpListener",
+      "artifact:DalamudMCP.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "native-pe:dalamud-mcp-capture.exe: import api-ms-win-core-libraryloader-l1-2-0.dll!GetProcAddress: GetProcAddress",
+      "native-pe:dalamud-mcp-capture.exe: import api-ms-win-core-libraryloader-l1-2-0.dll!LoadLibraryExW: LoadLibrary",
+      "artifact:dalamud-mcp-capture.exe: LoadLibrary",
+      "artifact:dalamud-mcp-capture.exe: GetProcAddress",
+      "metadata:DalamudMCP.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://registry.npmjs.org/@ffcafe%2felpis-network/latest"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6e7f84ac3984",
+    "severity": "caution",
+    "title": "Endpoint: registry.npmjs.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://www.gnu.org/licenses/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8e92f4a90705",
+    "severity": "caution",
+    "title": "Endpoint: www.gnu.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://www.gnu.org/licenses/why-not-lgpl.html"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9047c1757be4",
+    "severity": "caution",
+    "title": "Endpoint: www.gnu.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://cdn.jsdelivr.net/gh/karashiiro/FFXIVOpcodes@latest/opcodes.min.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a102773df191",
+    "severity": "caution",
+    "title": "Endpoint: cdn.jsdelivr.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://fsf.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ab7eba3f2bf0",
+    "severity": "caution",
+    "title": "Endpoint: fsf.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://registry.npmjs.org/@ffcafe%2felpis-struct/latest"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bf8663217cc1",
+    "severity": "caution",
+    "title": "Endpoint: registry.npmjs.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://registry.npmjs.org/@ffcafe/elpis-struct/-/elpis-struct-0.1.0.tgz"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d345867e6894",
+    "severity": "caution",
+    "title": "Endpoint: registry.npmjs.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://codeload.github.com/thewakingsands/elpis/zip/refs/heads/main"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f2a49f7e49c0",
+    "severity": "caution",
+    "title": "Endpoint: codeload.github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://registry.npmjs.org/@ffcafe/elpis-network/-/elpis-network-0.1.0.tgz"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f44fe292089f",
+    "severity": "caution",
+    "title": "Endpoint: registry.npmjs.org"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: System.Net.Sockets",
+      "metadata:DalamudMCP.dll: TcpClient",
+      "artifact:DalamudMCP.dll: System.Net.Sockets",
+      "artifact:DalamudMCP.dll: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "dalamud-mcp-capture.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: System.Diagnostics.Process",
+      "metadata:DalamudMCP.dll: ProcessStartInfo",
+      "metadata:DalamudMCP.dll: ShellExecute",
+      "metadata:DalamudMCP.dll: Process.Start",
+      "il:DalamudMCP.dll:DalamudMCP.Windows.ConfigWindow.Draw+0x66e: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:DalamudMCP.dll:DalamudMCP.Windows.ConfigWindow.Draw+0x66e: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:DalamudMCP.dll:DalamudMCP.Windows.ConfigWindow.Draw+0x689: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:DalamudMCP.dll:DalamudMCP.Windows.ConfigWindow.Draw+0x689: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: FileStream",
+      "metadata:DalamudMCP.dll: Directory.CreateDirectory",
+      "metadata:DalamudMCP.dll: WriteAllBytes",
+      "metadata:DalamudMCP.dll: File.Delete",
+      "metadata:DalamudMCP.dll: File.Move",
+      "metadata:DalamudMCP.dll: WriteAllText",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.DevBuildIdentity.Read+0x4: newobj System.IO.FileStream..ctor: FileStream",
+      "il:DalamudMCP.dll:DalamudMCP.Tools.ScreenshotTools.SaveCapture+0x7: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://github.com/NiGuangOwO/DalamudMCP"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.1929044d9e24",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://raw.githubusercontent.com/zhyupe/ffxiv-opcode-worker/master/packets.yaml"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2a143372d25d",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.json: https://raw.githubusercontent.com/NiGuangOwO/DalamudMCP/main/src/DalamudMCP/images/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.548ef80bf6f7",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://github.com/aers/FFXIVClientStructs"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6474b65903ae",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://github.com/thewakingsands/elpis"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.7de30c948483",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.json: https://github.com/NiGuangOwO/DalamudMCP"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.929d9d827ffa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://raw.githubusercontent.com/zhyupe/ffxiv-opcode-worker/<redacted>/packets.yaml"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.985149d902c3",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:DalamudMCP.dll: https://github.com/NiGuangOwO/DalamudMCP/releases/download/v"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e6122242688f",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:DalamudMCP.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

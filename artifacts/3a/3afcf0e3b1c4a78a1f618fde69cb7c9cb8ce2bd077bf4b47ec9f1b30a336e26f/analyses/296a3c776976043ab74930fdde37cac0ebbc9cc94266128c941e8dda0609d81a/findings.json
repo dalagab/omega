@@ -1,0 +1,87 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:DotRecast.Core.dll: s://github.com/ikpil/DotRecast",
+      "artifact:DotRecast.Core.dll: /home/runner/work/DotRecast/DotRecast/src/DotRecast.Core/obj/Release/net10.0/DotRecast.Core.pdb",
+      "artifact:Silk.NET.Core.dll: s://github.com/dotnet/Silk.NET",
+      "artifact:Silk.NET.Core.dll: p://ocsp.digicert.com0A",
+      "artifact:Silk.NET.Core.dll: p://cacerts.digicert.com/DigiCertTrustedRootG4.crt0C",
+      "artifact:Silk.NET.Core.dll: p://crl3.digicert.com/DigiCertTrustedRootG4.crl0",
+      "artifact:Silk.NET.Core.dll: p://crl3.digicert.com/DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl0S",
+      "artifact:Silk.NET.Core.dll: p://crl4.digicert.com/DigiCertTrustedG4CodeSigningRSA4096SHA3842021CA1.crl0="
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:CombatSimulator.dll: SigScanner",
+      "metadata:CombatSimulator.dll: Dalamud.Hooking",
+      "metadata:CombatSimulator.dll: HookFromAddress",
+      "il:CombatSimulator.dll:CombatSimulator.CombatSimulatorPlugin..ctor+0x59e: callvirt CombatSimulator.Composition.SafetyDevModule.CreateHookSafetyChecker: CreateHook",
+      "il:CombatSimulator.dll:CombatSimulator.Safety.HardTargetGuard..ctor+0x21: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:CombatSimulator.dll:CombatSimulator.Safety.MovementBlockHook..ctor+0x3e: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:CombatSimulator.dll:CombatSimulator.Safety.MovementBlockHook..ctor+0x5c: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:CombatSimulator.dll:CombatSimulator.Safety.UseActionHook..ctor+0x30: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Silk.NET.DXGI.dll: GetProcAddress",
+      "artifact:Silk.NET.DXGI.dll: GetProcAddress",
+      "metadata:Microsoft.DotNet.PlatformAbstractions.dll: DllImportAttribute",
+      "artifact:Silk.NET.Direct3D11.dll: GetProcAddress",
+      "metadata:Silk.NET.Core.dll: DllImportAttribute",
+      "metadata:Silk.NET.Core.dll: LoadLibrary",
+      "metadata:Silk.NET.Core.dll: GetProcAddress",
+      "il:Silk.NET.Core.dll:Silk.NET.Core.Contexts.LamdaNativeContext.GetProcAddress+0x10: call Silk.NET.Core.Contexts.LamdaNativeContext.<GetProcAddress>g__Throw|4_0: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:Silk.NET.Direct3D11.dll: CreateProcess",
+      "metadata:DotRecast.Core.dll: System.Diagnostics.Process",
+      "metadata:DotRecast.Core.dll: ProcessStartInfo",
+      "metadata:DotRecast.Core.dll: Process.Start",
+      "il:DotRecast.Core.dll:DotRecast.Core.RcProcess.OpenUrl+0x1c: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:DotRecast.Core.dll:DotRecast.Core.RcProcess.OpenUrl+0x1c: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:DotRecast.Core.dll:DotRecast.Core.RcProcess.OpenUrl+0x23: callvirt System.Diagnostics.ProcessStartInfo.set_CreateNoWindow: System.Diagnostics.Process",
+      "il:DotRecast.Core.dll:DotRecast.Core.RcProcess.OpenUrl+0x23: callvirt System.Diagnostics.ProcessStartInfo.set_CreateNoWindow: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:DotRecast.Core.dll: FileStream",
+      "il:DotRecast.Core.dll:DotRecast.Core.RcIO.ReadFileIfFound+0x4f: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:DotRecast.Core.dll: FileStream",
+      "metadata:Silk.NET.Core.dll: FileStream",
+      "artifact:Silk.NET.Core.dll: FileStream",
+      "metadata:Microsoft.Extensions.DependencyModel.dll: FileStream",
+      "il:Microsoft.Extensions.DependencyModel.dll:Microsoft.Extensions.DependencyModel.FileWrapper.OpenFile+0x9: newobj System.IO.FileStream..ctor: FileStream",
+      "artifact:Microsoft.Extensions.DependencyModel.dll: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]

@@ -1,0 +1,766 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for character movement control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:SentinelCore.dll:SentinelCore.Navigation.NavigationCoordinator.StopOwned+0x10: callvirt SentinelCore.Navigation.INavigationAdapter.Stop"
+    ],
+    "rule_id": "automation.game.character.move",
+    "severity": "high",
+    "title": "Character movement control"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:SentinelHub.dll:SentinelHub.Utilities.Quest.QuestConvenienceService.TryClickButton+0x42: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: s://github.com/MarshalTitan/SentinelHub",
+      "artifact:SentinelHub.dll: s://na.finalfantasyxiv.com/lodestone/playguide/db/item/41cb3c6b931/",
+      "artifact:SentinelHub.dll: s://eu.finalfantasyxiv.com/lodestone/playguide/db/shop/7fa3c777312/",
+      "artifact:SentinelHub.dll: s://eu.finalfantasyxiv.com/lodestone/topics/detail/5d677f92bbe71478ffaccd9972735b3d4280abe6",
+      "artifact:SentinelHub.dll: s://jp.finalfantasyxiv.com/lodestone/topics/detail/17a38621ab0637f4ec5fbb329a8fb18b38ee09c3",
+      "artifact:SentinelHub.dll: s://eu.finalfantasyxiv.com/lodestone/topics/detail/97afed7c0efbbe8260755f948d0cf2b912d71121",
+      "artifact:SentinelHub.dll: s://eu.finalfantasyxiv.com/lodestone/topics/detail/1cc2ab61c569bf2d07deeb95d7fb407013d3d9df/",
+      "artifact:SentinelHub.dll: s://jp.finalfantasyxiv.com/lodestone/topics/detail/e17ce5b98068f6972379cef5adbc6c4b664f9780"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:SentinelHub.dll: SigScanner",
+      "metadata:SentinelHub.dll: Dalamud.Hooking",
+      "metadata:SentinelHub.dll: HookFromAddress",
+      "il:SentinelHub.dll:SentinelHub.Plugin..ctor+0x358: call SentinelHub.Plugin.get_SigScanner: SigScanner",
+      "il:SentinelHub.dll:SentinelHub.Plugin..ctor+0x46c: call SentinelHub.Plugin.get_SigScanner: SigScanner",
+      "il:SentinelHub.dll:SentinelHub.Utilities.Latency.NativeLatencyRuntime..ctor+0xb6: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:SentinelHub.dll:SentinelHub.Utilities.Latency.NativeLatencyRuntime..ctor+0xd9: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:SentinelHub.dll:SentinelHub.TreasureMaps.TreasureDetection.SetEnabled+0x66: callvirt Dalamud.Plugin.Services.ISigScanner.ScanAllText: SigScanner"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:SentinelHub.dll: DllImportAttribute",
+      "metadata:SentinelHub.dll: GetProcAddress",
+      "il:SentinelHub.dll:SentinelHub.Utilities.Latency.LatencyConflictProbe.Read+0x1c8: call SentinelHub.Utilities.Latency.LatencyConflictProbe.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "il:SentinelHub.dll:SentinelHub.Utilities.Latency.LatencyConflictProbe.Read+0x1d8: call SentinelHub.Utilities.Latency.LatencyConflictProbe.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "il:SentinelHub.dll:SentinelHub.Utilities.Latency.LatencyConflictProbe.Read+0x1e8: call SentinelHub.Utilities.Latency.LatencyConflictProbe.GetProcAddress -> kernel32.dll!GetProcAddress: GetProcAddress",
+      "artifact:SentinelHub.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/965"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.00b432a6706f",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/789"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1007c22fc0cb",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/468"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1052a609b28c",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/529"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1365b20955f7",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1139"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.13def193317f",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/976"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.15cb0eab6dd6",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/425"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.21524d0dc965",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/674"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.250ad9275d8d",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/508"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2671c4290c7a",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/140"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2b4636ec45bf",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/933"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2f5cf85f9269",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/fashions/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.317425eceba2",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/507"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3289c61f0602",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/api/fashions"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.35f7d3d4c317",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/910"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.399e9af3e2d0",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.41fa997b1ab7",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/1089"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4bdc941abca9",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/1098"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.520a92c80f2f",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/877"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.53e5a3174df0",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/869"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.589f8fa52d65",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/410"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5bcc397e4dfe",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/category/11"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.60bfc33fcc8f",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/779"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.69d1864ef149",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/mounts/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6b740a99e124",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/1100"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6f7f449e39ca",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/227"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7fcdfc808ff6",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/432"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8567997b3e2c",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/662"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.89388173fa60",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/647"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8a09a252c48b",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/926"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.90282e9d8052",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/512"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.94c83b44091e",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/643"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.97b80fdfaead",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/api/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9d38c69df5ce",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/523"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.9feb56b2edbd",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/1046"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a07b602f46a8",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/404"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a09e9fbd9835",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/api/mounts"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a255542be535",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/480"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a549dabfaca7",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/848"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a994e9996565",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/882"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b4cb844b9e9c",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/874"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b618a8b132cf",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1086"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b8e95be2ce0d",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/403"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ba75592e489d",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/30"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be6cb7c9e7bd",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/245"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.befb804b1118",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/141"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.ca881bfb6f5b",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-gb/product/491"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cd122e61cf0f",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/635"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cf6c666c804b",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/938"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d72d8d601d32",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/885"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.dbae592bd85e",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/925"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.df8465125384",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://ffxivcollect.com/api/emotes"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f6e6319b4f2d",
+    "severity": "caution",
+    "title": "Endpoint: ffxivcollect.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/1190"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fdb21f97d380",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://store.finalfantasyxiv.com/ffxivstore/en-us/product/483"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fe6e4c8a3f17",
+    "severity": "caution",
+    "title": "Endpoint: store.finalfantasyxiv.com"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:SentinelHub.dll: System.Diagnostics.Process",
+      "il:SentinelHub.dll:SentinelHub.TreasureMaps.TreasureDetection.SetEnabled+0x85: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "il:SentinelHub.dll:SentinelHub.DeathRecaps.IncomingActionCapture.SetEnabled+0xa5: callvirt System.Diagnostics.ProcessModule.get_BaseAddress: System.Diagnostics.Process",
+      "artifact:SentinelHub.dll: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:SentinelHub.dll: FileStream",
+      "metadata:SentinelHub.dll: Directory.CreateDirectory",
+      "metadata:SentinelHub.dll: File.Move",
+      "metadata:SentinelHub.dll: File.Delete",
+      "il:SentinelHub.dll:SentinelHub.Storage.AtomicFile.Write+0xc: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:SentinelHub.dll:SentinelHub.Storage.AtomicFile.Write+0x81: newobj System.IO.FileStream..ctor: FileStream",
+      "il:SentinelHub.dll:SentinelHub.Storage.AtomicFile.Write+0x95: callvirt System.IO.FileStream.Flush: FileStream",
+      "il:SentinelHub.dll:SentinelHub.Storage.AtomicFile.Write+0xc7: call System.IO.File.Move: File.Move"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://na.finalfantasyxiv.com/lodestone/playguide/db/item/41cb3c6b931/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.28915d8c64eb",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://fr.finalfantasyxiv.com/lodestone/topics/detail/<redacted>"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.3c0c52a28c04",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://eu.finalfantasyxiv.com/lodestone/topics/detail/<redacted>"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.76639bda2a7b",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://jp.finalfantasyxiv.com/lodestone/topics/detail/<redacted>"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.f4104780647f",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal link to an official FFXIV Lodestone page. It does not prove the plugin reads profile or account data. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://eu.finalfantasyxiv.com/lodestone/playguide/db/shop/7fa3c777312/"
+    ],
+    "rule_id": "network.endpoint.ffxiv-lodestone-link.f71babd0f0c4",
+    "severity": "informational",
+    "title": "Official FFXIV Lodestone page link"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.json: https://raw.githubusercontent.com/MarshalTitan/SentinelHub/main/assets/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.115aca250d60",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelCore.dll: https://github.com/MarshalTitan/SentinelCore",
+      "artifact:SentinelCore.UI.dll: https://github.com/MarshalTitan/SentinelCore"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.4337488ddff4",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://raw.githubusercontent.com/MarshalTitan/Sentinel/main/repo.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.76a4e3ae04f6",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.dll: https://github.com/MarshalTitan/SentinelHub"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.816c490f3228",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:SentinelHub.json: https://github.com/MarshalTitan/SentinelHub"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8d0d673b4e49",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:SentinelHub.dll: System.Net.Http.HttpClient",
+      "il:SentinelHub.dll:SentinelHub.Health.PublicCatalog..ctor+0x2d: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:SentinelHub.dll:SentinelHub.Health.PublicCatalog..ctor+0x34: callvirt System.Net.Http.HttpClientHandler.set_AllowAutoRedirect: System.Net.Http.HttpClient",
+      "il:SentinelHub.dll:SentinelHub.Health.PublicCatalog..ctor+0x3b: callvirt System.Net.Http.HttpClientHandler.set_UseCookies: System.Net.Http.HttpClient",
+      "il:SentinelHub.dll:SentinelHub.Health.PublicCatalog..ctor+0x40: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:SentinelHub.dll:SentinelHub.Health.PublicCatalog..ctor+0x4e: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:SentinelHub.dll:<Read>d__17.MoveNext+0x31: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

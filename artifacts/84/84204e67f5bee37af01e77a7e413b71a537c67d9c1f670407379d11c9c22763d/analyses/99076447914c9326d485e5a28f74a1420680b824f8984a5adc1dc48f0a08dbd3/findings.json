@@ -1,0 +1,268 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: ProtectedData.Unprotect",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.PluginDiscordAuth.Read+0x9a: call System.Security.Cryptography.ProtectedData.Unprotect: ProtectedData.Unprotect",
+      "metadata:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:System.Security.Cryptography.ProtectedData.TryProtectOrUnprotect+0x95: call Crypt32.CryptUnprotectData: CryptUnprotectData",
+      "il:System.Security.Cryptography.ProtectedData.dll:Crypt32.CryptUnprotectData+0x29: call Crypt32.<CryptUnprotectData>g____PInvoke|1_0 -> crypt32.dll!CryptUnprotectData: CryptUnprotectData",
+      "artifact:System.Security.Cryptography.ProtectedData.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AutoMoveGameAdapter.CancelBlockingDialogue+0xa7: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.DisconnectReloginService.TryClickButton+0x67: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.DisconnectReloginService.FireCallback+0xb8: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:System.Private.Windows.Core.dll: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Assemblies.get_MscorlibAssembly+0xe: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x6f: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.TryBindToType+0x88: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "il:System.Private.Windows.Core.dll:System.Private.Windows.BinaryFormat.DefaultTypeResolver.<GetSimplyNamedTypeFromAssembly>g__ResolveSimpleAssemblyName|7_0+0x13: call System.Reflection.Assembly.Load: Assembly.Load"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.dll: s://github.com/konvarec/HuntVoidWatcher.git",
+      "artifact:HuntVoidWatcher.dll: s://hunt-api.huntapi.workers.dev",
+      "artifact:HuntVoidWatcher.dll: s://huntvoidwatcher.huntapi.workers.dev",
+      "artifact:HuntVoidWatcher.dll: s://faloop.app/",
+      "artifact:HuntVoidWatcher.dll: e:\\{(?<name>[^{}]*)\\},rank:",
+      "artifact:HuntVoidWatcher.dll: \\\\.|[^\"\\\\])*",
+      "artifact:HuntVoidWatcher.dll: E:\\s*(?<body>.+?)\\s+\\((?<x>\\d+(?:\\.\\d+)?),\\s*(?<y>\\d+(?:\\.\\d+)?)\\)\\s*(?<instance>[\\uE0B1-\\uE0B9])?\\s*<(?<world>[^>]+)>\\s+\\((?<progress>\\d+)%\\s+with\\s+(?<remaining>\\d+:\\d{2})\\s+remaining\\)\\s*$",
+      "artifact:HuntVoidWatcher.dll: t://"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: Dalamud.Hooking",
+      "metadata:HuntVoidWatcher.dll: SigScanner",
+      "metadata:HuntVoidWatcher.dll: HookFromAddress",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AreaSearchNativeLifecycle.Ensure+0x10d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AreaSearchNativeLifecycle.Ensure+0x131: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.LowRenderingController.Initialize+0x36: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.LowRenderingController.Initialize+0x4a: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.LowRenderingController.Initialize+0x203: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: DllImportAttribute",
+      "metadata:Microsoft.Win32.SystemEvents.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Drawing.Common.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Drawing.Common.dll: DllImportAttribute",
+      "metadata:System.Private.Windows.Core.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.Core.dll: DllImportAttribute",
+      "metadata:System.Private.Windows.GdiPlus.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:System.Private.Windows.GdiPlus.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: http://www.microsoft.com0/",
+      "artifact:System.Drawing.Common.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.Core.dll: http://www.microsoft.com0/",
+      "artifact:System.Private.Windows.GdiPlus.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.dll: https://faloop.app/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2abd57bf2756",
+    "severity": "caution",
+    "title": "Endpoint: faloop.app"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.dll: https://huntvoidwatcher.huntapi.workers.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4aa378fa8e1b",
+    "severity": "caution",
+    "title": "Endpoint: huntvoidwatcher.huntapi.workers.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.dll: https://hunt-api.huntapi.workers.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c9c812dcbba3",
+    "severity": "caution",
+    "title": "Endpoint: hunt-api.huntapi.workers.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.dll: https://huntvoidwatcher.huntapi.workers.dev/v1/plugin-auth/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e998f8166296",
+    "severity": "caution",
+    "title": "Endpoint: huntvoidwatcher.huntapi.workers.dev"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: Socket.Connect"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: System.Diagnostics.Process",
+      "metadata:HuntVoidWatcher.dll: ProcessStartInfo",
+      "metadata:HuntVoidWatcher.dll: ShellExecute",
+      "metadata:HuntVoidWatcher.dll: Process.Start",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AutoMovePcRelay..ctor+0x13e: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AutoMovePcRelay..ctor+0x146: callvirt System.Diagnostics.Process.get_StartTime: System.Diagnostics.Process",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AutoMovePcRelay.Alive+0x6: call System.Diagnostics.Process.GetProcessById: System.Diagnostics.Process",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AutoMovePcRelay.Alive+0xd: callvirt System.Diagnostics.Process.get_HasExited: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: FileStream",
+      "metadata:HuntVoidWatcher.dll: WriteAllText",
+      "metadata:HuntVoidWatcher.dll: File.Move",
+      "metadata:HuntVoidWatcher.dll: Directory.CreateDirectory",
+      "metadata:HuntVoidWatcher.dll: File.Delete",
+      "metadata:HuntVoidWatcher.dll: WriteAllBytes",
+      "metadata:HuntVoidWatcher.dll: Directory.Delete",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.AutoMoveDiagnosticLog.Prune+0xe: newobj System.IO.FileStream..ctor: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.dll: https://github.com/konvarec/HuntVoidWatcher.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.576215203654",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.json: https://github.com/konvarec/<redacted>"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.837555a170aa",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Win32.SystemEvents.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Drawing.Common.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.Core.dll: https://github.com/dotnet/dotnet",
+      "artifact:System.Private.Windows.GdiPlus.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:HuntVoidWatcher.json: https://raw.githubusercontent.com/konvarec/<redacted>/main/HuntVoidWatcher/images/icon_64.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.f5ab655b2110",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:HuntVoidWatcher.dll: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.Plugin..ctor+0x2bf: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.Plugin..ctor+0x2cd: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.Plugin..ctor+0x2d8: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.Plugin..ctor+0x2df: callvirt System.Net.Http.HttpClientHandler.set_AllowAutoRedirect: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.Plugin..ctor+0x2e4: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.Plugin..ctor+0x2f2: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:HuntVoidWatcher.dll:HuntVoidWatcher.PluginAuthorizationHandler..ctor+0xd: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]
