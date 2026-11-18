@@ -1,0 +1,3661 @@
+{
+  "analysis": {
+    "analysisId": "1580cf06e93ffea929d8984d8c2d0cff708edce2c782f5b3454f2da0a4bc8585",
+    "artifactSha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+    "path": "artifacts/a2/a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63/analyses/1580cf06e93ffea929d8984d8c2d0cff708edce2c782f5b3454f2da0a4bc8585",
+    "recordCount": 24593
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+    "artifact_url": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+    "assembly_version": "7.5.1.0",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "high",
+        "evidence": [
+          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": false,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.teleport",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleportInternal+0xba: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport",
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.TeleportToQueuedAetheryte+0x3e: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport",
+          "il:AetheryteLinkInChat.dll:<TeleportToAetheryte>d__14.MoveNext+0x76: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport"
+        ],
+        "indirect": false,
+        "label": "Teleport/travel control",
+        "reachable": true,
+        "reason": "Invokes teleport or travel-control functionality."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxCreateDetour+0x4d: callvirt StaticVfxCreateCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxRunDetour+0x21: callvirt StaticVfxRunCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.StaticVfx.StaticVfxDtorDetour+0x1f: callvirt StaticVfxDtorCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Automation.Callback.AtkUnitBase_FireCallbackDetour+0x1d: callvirt FireCallback.Invoke"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Endpoint: subscribe.nightmarexiv.org",
+      "Endpoint: www.patreon.com",
+      "Endpoint: xivapi.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Teleport/travel control"
+    ],
+    "caution_count": 14,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "memory",
+        "description": "References APIs used to open another process or read/write its memory.",
+        "evidence": [
+          "metadata:ECommons.dll: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.InitializePointer+0x23: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x47: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "il:ECommons.dll:ECommons.EzHookManager.EzPatchWithPointer`1.Dispose+0x147: call TerraFX.Interop.Windows.Windows.VirtualProtectEx: VirtualProtectEx",
+          "artifact:ECommons.dll: VirtualProtectEx"
+        ],
+        "ruleId": "memory.process",
+        "severity": "high",
+        "title": "Cross-process memory access"
+      },
+      {
+        "category": "compound",
+        "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+        "evidence": [],
+        "ruleId": "compound.network-execute",
+        "severity": "high",
+        "title": "Network plus process execution"
+      },
+      {
+        "category": "process",
+        "description": "References APIs that can launch external programs or shell commands.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: System.Diagnostics.Process",
+          "metadata:Dalamud.Divination.Common.dll: Process.Start",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Input.Win32Api.GetGameWindowHandle+0x0: call System.Diagnostics.Process.GetCurrentProcess: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Input.Win32Api.GetGameWindowHandle+0x1a: callvirt System.Diagnostics.Process.get_Id: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnAppDataCommand+0x5: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnAppDataCommand+0x5: call System.Diagnostics.Process.Start: Process.Start",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnXivLauncherAppDataCommand+0x5: call System.Diagnostics.Process.Start: System.Diagnostics.Process",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Command.DirectoryCommands.OnXivLauncherAppDataCommand+0x5: call System.Diagnostics.Process.Start: Process.Start"
+        ],
+        "ruleId": "process.launch",
+        "severity": "caution",
+        "title": "Process execution"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://discord.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.cc91d234fb3b",
+        "severity": "caution",
+        "title": "Endpoint: discord.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://donate.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.b5dad10c192a",
+        "severity": "caution",
+        "title": "Endpoint: donate.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://subscribe.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.ac38247bd18a",
+        "severity": "caution",
+        "title": "Endpoint: subscribe.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://explore.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.9d3ce8792d14",
+        "severity": "caution",
+        "title": "Endpoint: explore.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://crypto.nightmarexiv.org/"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.8785017a999f",
+        "severity": "caution",
+        "title": "Endpoint: crypto.nightmarexiv.org"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://www.patreon.com/NightmareXIV"
+        ],
+        "ruleId": "network.endpoint.unrecognised-host.3641efc8bfda",
+        "severity": "caution",
+        "title": "Endpoint: www.patreon.com"
+      },
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: DllImportAttribute",
+          "metadata:ECommons.dll: DllImportAttribute"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: SigScanner",
+          "artifact:Dalamud.Divination.Common.dll: SigScanner",
+          "metadata:ECommons.dll: Dalamud.Hooking",
+          "metadata:ECommons.dll: SigScanner",
+          "metadata:ECommons.dll: HookFromAddress",
+          "il:ECommons.dll:ECommons.ECommonsMain.Init+0x169: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner",
+          "il:ECommons.dll:ECommons.ECommonsMain.Init+0x174: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.Hook+0x7: call ECommons.DalamudServices.Svc.get_SigScanner: SigScanner"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: s://xivapi.com/i/",
+          "artifact:Dalamud.Divination.Common.dll: p://",
+          "artifact:Dalamud.Divination.Common.dll: s://xivapi.com/",
+          "artifact:Dalamud.Divination.Common.dll: s://xivapi.com/character/search?name=",
+          "artifact:ECommons.dll: s://github.com/NightmareXIV/ECommons",
+          "artifact:ECommons.dll: s://www.patreon.com/NightmareXIV",
+          "artifact:ECommons.dll: s://subscribe.nightmarexiv.org",
+          "artifact:ECommons.dll: s://donate.nightmarexiv.org"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "dynamic-code",
+        "description": "References APIs that can load code dynamically at runtime.",
+        "evidence": [
+          "metadata:ECommons.dll: AssemblyLoadContext",
+          "metadata:ECommons.dll: Assembly.Load",
+          "il:ECommons.dll:ECommons.Reflection.ReflectionHelper.GetTypeFromRuntimeAssembly+0x1: call System.Reflection.Assembly.Load: Assembly.Load",
+          "artifact:ECommons.dll: AssemblyLoadContext"
+        ],
+        "ruleId": "dynamic.assembly",
+        "severity": "caution",
+        "title": "Dynamic assembly loading"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ECommons.dll:ECommons.Hooks.ActionEffect.ProcessActionEffectDetour+0xdc: callvirt ActionEffectCallback.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxCreateDetour+0x45: callvirt ActorVfxCreateCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.ActorVfx.ActorVfxDtorDetour+0x1f: callvirt ActorVfxDtorCallbackDelegate.Invoke",
+          "il:ECommons.dll:ECommons.Hooks.SendAction.SendActionDetour+0x13: callvirt SendActionCallbackDelegate.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for teleport/travel control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleportInternal+0xba: call FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Teleport",
+          "il:AetheryteLinkInChat.dll:Divination.AetheryteLinkInChat.Teleporter.TeleportToQueuedAetheryte+0x3e: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport",
+          "il:AetheryteLinkInChat.dll:<TeleportToAetheryte>d__14.MoveNext+0x76: call Divination.AetheryteLinkInChat.Teleporter.ExecuteTeleport"
+        ],
+        "ruleId": "automation.game.character.teleport",
+        "severity": "caution",
+        "title": "Teleport/travel control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:ECommons.dll:ECommons.DalamudServices.Legacy.LegacyHelpers.SetTarget+0x2: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.XivApi.XivApiClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Voiceroid2Proxy.Voiceroid2ProxyClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Ui.TextureManager..ctor+0x17: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Discord.DiscordWebhookClient..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Definition.RemoteDefinitionProvider`1..ctor+0x1: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:<GetAsync>d__3.MoveNext+0x73: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient",
+          "il:Dalamud.Divination.Common.dll:<GetCharacterAsync>d__4.MoveNext+0x71: callvirt System.Net.Http.HttpClient.GetAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: XIVAPI (FFXIV game data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://xivapi.com/character/search"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.ee25f9c890c8",
+        "severity": "informational",
+        "title": "Endpoint: xivapi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:ECommons.dll: https://github.com/NightmareXIV/ECommons"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.e6cb42e4f3a8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: XIVAPI (FFXIV game data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://xivapi.com/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.aea70ba1177d",
+        "severity": "informational",
+        "title": "Endpoint: xivapi.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://github.com/horoscope-dev/Dalamud.Divination.Common"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.90ea5b664162",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:AetheryteLinkInChat.dll: https://github.com/SlashNephy/Divination"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.49940f8b0531",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: XIVAPI (FFXIV game data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:Dalamud.Divination.Common.dll: https://xivapi.com/i/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.39f5b1456df4",
+        "severity": "informational",
+        "title": "Endpoint: xivapi.com"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:Dalamud.Divination.Common.dll: FileStream",
+          "metadata:Dalamud.Divination.Common.dll: Directory.CreateDirectory",
+          "il:Dalamud.Divination.Common.dll:Dalamud.Divination.Common.Api.Definition.LocalDefinitionProvider`1..ctor+0x25: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+          "il:Dalamud.Divination.Common.dll:<LoadIconTextureFromXivApi>d__10.MoveNext+0x119: newobj System.IO.FileStream..ctor: FileStream",
+          "artifact:Dalamud.Divination.Common.dll: FileStream",
+          "metadata:ECommons.dll: FileStream",
+          "metadata:ECommons.dll: WriteAllText",
+          "metadata:ECommons.dll: File.Move"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      },
+      {
+        "category": "privacy",
+        "description": "References APIs that can read or modify clipboard contents.",
+        "evidence": [
+          "artifact:ECommons.dll: System.Windows.Forms.Clipboard"
+        ],
+        "ruleId": "clipboard",
+        "severity": "informational",
+        "title": "Clipboard access"
+      }
+    ],
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 9,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+      "artifactBytes": 457964,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "7.5.1.0",
+        "artifactBytes": 457964,
+        "artifactSha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+        "catalogAssemblyVersion": "7.5.1.0",
+        "manifestInternalName": "AetheryteLinkInChat",
+        "manifestPath": "AetheryteLinkInChat.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Teleport/travel control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 16,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 16,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Endpoint: subscribe.nightmarexiv.org",
+        "Endpoint: www.patreon.com",
+        "Endpoint: xivapi.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Teleport/travel control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.target",
+        "game.character.teleport",
+        "game.memory.read",
+        "game.ui.callback",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 14,
+        "critical": 0,
+        "high": 2,
+        "informational": 9
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 81,
+          "exactVersionObservedCount": 78,
+          "families": {
+            "managed-assembly": 77,
+            "native": 3,
+            "nuget": 1
+          },
+          "fingerprint": "664008086027d67c25bb3a0fe7b68e84d2644f0e75ea43fb8c2b5f3ecb769d37",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 7,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igClosePopupToLevel",
+              "library": "cimgui",
+              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetSaveFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetSaveFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindowEx",
+              "library": "user32.dll",
+              "managedName": "FindWindowEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SendMessage",
+              "library": "user32.dll",
+              "managedName": "SendMessage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ToUnicode",
+              "library": "user32.dll",
+              "managedName": "ToUnicode",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 76,
+            "required": 1
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 80,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 1,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 76,
+            "optional": 0,
+            "required": 1,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 81
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 12,
+          "destinationsUndetermined": false,
+          "hostCount": 8,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 12,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 2893
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crypto.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crypto.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "discord.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://discord.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "donate.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://donate.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "explore.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://explore.nightmarexiv.org/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NightmareXIV/ECommons"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/SlashNephy/Divination"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/horoscope-dev/Dalamud.Divination.Common"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "subscribe.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://subscribe.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.patreon.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.patreon.com/NightmareXIV"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/character/search"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/i/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+        "internalName": "AetheryteLinkInChat",
+        "manifestVersion": "7.5.1.0",
+        "observationId": 83060,
+        "observationKey": "manifest-acbccb3ac22b23b44bb8ad0a3894",
+        "repositoryUrl": "https://github.com/SlashNephy/Divination",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 50683
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 1048620
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+        "attemptId": "attempt-v2-75e5d80035e119f7",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ff2fcd99919d6ccc",
+        "definitionsRevision": "defs-v1-5729adf9708bf480",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-50683",
+        "queueSeedRevision": "queue-seed-v2-729a1a466114ba79957e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-dee5448f3e91657f",
+        "targetFingerprint": "artifact-target-v2-7c9718df46d6325cf39f",
+        "variantId": 50683,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-11-18T04:28:01Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/SlashNephy/Divination"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/SlashNephy/Divination",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 11,
+    "scanned_at_utc": "2026-11-18T04:28:01Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/SlashNephy/Divination",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 50683
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+      "current_assembly_version": "7.5.1.0",
+      "current_scan_id": 11,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-11-18T04:28:05Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 50683
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 49,
+      "artifact_only_count": 49,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:aetherytelinkinchat",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "AetheryteLinkInChat",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "7.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:aetherytelinkinchat.ipcmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "AetheryteLinkInChat.IpcModel",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.0",
+            "15.0.3.9"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Common",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.divination.common",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Divination.Common",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "7.5.1.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ecommons",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "3.2.1.17"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.51.0.8681",
+            "7.57.0.9424"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.csharp",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.CSharp",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.visualbasic.core",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Microsoft.VisualBasic.Core",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:newtonsoft.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Newtonsoft.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "13.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.immutable",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Immutable",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.typeconverter",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.TypeConverter",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.console",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Console",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.process",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.Process",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.diagnostics.stacktrace",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Diagnostics.StackTrace",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.filesystem.watcher",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.FileSystem.Watcher",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.io.pipes",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.IO.Pipes",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.mail",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Mail",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.webproxy",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.WebProxy",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices.javascript",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices.JavaScript",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.intrinsics",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Intrinsics",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.loader",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.Loader",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:terrafx.interop.windows",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "TerraFX.Interop.Windows",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.26100.5"
+          ]
+        },
+        {
+          "componentKey": "native:cimgui",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "cimgui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:comdlg32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "Comdlg32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:user32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "user32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "nuget:ecommons",
+          "componentKind": "nuget",
+          "kinds": [
+            "nuget-resolved"
+          ],
+          "name": "ECommons",
+          "requirements": [
+            "required"
+          ],
+          "versions": [
+            "3.2.1.17"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-11-18T04:28:05Z",
+      "comparison_id": 10,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 11,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 50683,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0050/50683/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0050/50683/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 78033,
+          "encoding": "json",
+          "path": "derived/variants/0050/50683/dependency-resolutions.json",
+          "recordDigest": "a1f04b8473377b5197848f70e366ab2987e96c3860566b7533de62188d6f433d",
+          "records": 81,
+          "sha256": "dfaec25d658e9443683f83254912b07765d09593b0cceed3df4ac1e7e1d21c06"
+        }
+      ],
+      "recordDigest": "a1f04b8473377b5197848f70e366ab2987e96c3860566b7533de62188d6f433d",
+      "records": 81
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0050/50683/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-141130414e69075e",
+    "identityFingerprint": "70f9cb7579c52d3fc9a50754ccd8c00a4ee7cca8c1bdbe227e7f415f44627bb0",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "90453df07d759f04b6b5e4154f2e733b55de55d1460a295ed46aaf3b797ecc20",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "3e100ee0561baf57bdefb51542e4b91c76091bd191cae8842ca61f67914eae76",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "695e3ef76ef756bd852f4abe1e64e8ce7b3d94838512f99c7362e70fbb0d9ede",
+        "records": 81,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "3f0161f51ddf17594bf90ecb52d91473aedacd9c347494e5c534aa15abbd6a98",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "c49ec2b828ee21d6bd4d0aae5db7f79b5abfae5728fd638fc80816781281ef00",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "8018275a7a86812bd7d80c65e8e95e77ae12e48a4dce2674d99f6e268f44fbd5",
+        "records": 288,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "7a9940b51a4c186886ec7594931ea6e225a832d63b195fc45678a8a50c7f05ee",
+        "records": 3941,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "1aa70d34293da80e9488514fba46497a3761fe71357a1678464a1b957bbac0b2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "0d3382e470d7502d55bb6884c58086ce823914a46cc9acd8bba9ba4f3fa1df9e",
+        "records": 11,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "c9ad76fb9410c77521ec49fefea918a6617a201b928215125c46a892526c6ef8",
+        "records": 12,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "756f76149039bf19c5d2f91c04f1c09bc8cfcca783970ea3dd5efa78c015fdf2",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "67a5aae5e35a56188212745c5ce18263865d5f5bc65cb3929d73d1b7de874f26",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "b4975da671fc2cdde3b37547c99005f96adb492ee6e692471c5d4eb99ee52bb3",
+        "records": 173,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-88e23a385fa740d1785a179dce3dc5fe7cb2ec4fceaaf1cb303938caf772eff0",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Divination.AetheryteLinkInChat",
+    "first_seen_utc": "2026-08-19T22:49:06Z",
+    "internal_name": "AetheryteLinkInChat",
+    "last_seen_utc": "2026-11-17T20:07:08Z",
+    "plugin_id": 673
+  },
+  "pluginId": 673,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "当聊天栏出现地图坐标时,在末尾添加传送到最近的以太之光,可以联动Lifestream插件实现自动跨服传送.",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1042,
+      "summary": "更便捷的暴民狩猎传送插件.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/SlashNephy/Divination",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "FINAL FANTASY XIV toolkits",
+      "homepage": "https://xiv.starry.blue/plugins/master.json",
+      "images": [],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/SlashNephy/Divination"
+        },
+        {
+          "kind": "website",
+          "label": "Website",
+          "url": "https://xiv.starry.blue/plugins/master.json"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# Divination\n\n## Disclaimer\n\n⚠️ All our plugins must be used at your own risk.\n\n## Installation\n\nAdd `https://xiv.starry.blue/plugins/master.json` to your custom plugin repositories.\n\nAfter the Dalamud API level is updated, plugins in the Stable channel will not be updated immediately. If you need updates promptly, configure your Dalamud to receive updates from the Testing channel.",
+      "title": "Divination",
+      "url": "https://github.com/SlashNephy/Divination"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "5f00e3c685daf5a3f29bef06ad52aa02ff31bc887c1ee95e5cac1858ac2a0ee0",
+        "records": 3
+      },
+      "behaviorConsistency": {
+        "recordDigest": "d548064b9f6a8c335cb23a8ae17363cae08328e6fce01570903a54abd2689930",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "e0db7365ae38b6ad42318a29930862823c4338070f5a533f37898fcb481022d4",
+        "records": 16
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "d36111bb6e3174613beb3817abcda9a129081523640006bfdfdbe6cd58024c04",
+        "records": 25
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+    "artifact_url": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+    "assembly_version": "7.5.1.0",
+    "capabilities_json": [
+      "Character target control",
+      "Clipboard access",
+      "Download/execute potential",
+      "Dynamic code loading",
+      "Endpoint: crypto.nightmarexiv.org",
+      "Endpoint: discord.nightmarexiv.org",
+      "Endpoint: donate.nightmarexiv.org",
+      "Endpoint: explore.nightmarexiv.org",
+      "Endpoint: github.com",
+      "Endpoint: subscribe.nightmarexiv.org",
+      "Endpoint: www.patreon.com",
+      "Endpoint: xivapi.com",
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke",
+      "Network access",
+      "Process execution",
+      "Process memory access",
+      "Teleport/travel control"
+    ],
+    "caution_count": 14,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 2,
+    "highest_severity": "high",
+    "informational_count": 9,
+    "plugin_id": 673,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+      "artifactBytes": 457964,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "7.5.1.0",
+        "artifactBytes": 457964,
+        "artifactSha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+        "catalogAssemblyVersion": "7.5.1.0",
+        "manifestInternalName": "AetheryteLinkInChat",
+        "manifestPath": "AetheryteLinkInChat.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": false
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.teleport",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Teleport/travel control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "behavior.download-execute",
+            "label": "Download/execute potential",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.teleport",
+            "label": "Teleport/travel control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "memory.process",
+            "label": "Cross-process memory access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "privacy",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "privacy.clipboard",
+            "label": "Clipboard access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.execute",
+            "label": "External process execution",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "process",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "process.inspect",
+            "label": "Process inspection",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 16,
+          "observedConcreteDestinationCount": 8,
+          "observedDestinationWithoutProfileCount": 8,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 16,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Clipboard access",
+        "Download/execute potential",
+        "Dynamic code loading",
+        "Endpoint: crypto.nightmarexiv.org",
+        "Endpoint: discord.nightmarexiv.org",
+        "Endpoint: donate.nightmarexiv.org",
+        "Endpoint: explore.nightmarexiv.org",
+        "Endpoint: github.com",
+        "Endpoint: subscribe.nightmarexiv.org",
+        "Endpoint: www.patreon.com",
+        "Endpoint: xivapi.com",
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke",
+        "Network access",
+        "Process execution",
+        "Process memory access",
+        "Teleport/travel control"
+      ],
+      "capabilityIds": [
+        "behavior.download-execute",
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.character.target",
+        "game.character.teleport",
+        "game.memory.read",
+        "game.ui.callback",
+        "memory.process",
+        "native.interop",
+        "network.http",
+        "network.outbound",
+        "privacy.clipboard",
+        "process.execute",
+        "process.inspect"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 14,
+        "critical": 0,
+        "high": 2,
+        "informational": 9
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "high",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 81,
+          "exactVersionObservedCount": 78,
+          "families": {
+            "managed-assembly": 77,
+            "native": 3,
+            "nuget": 1
+          },
+          "fingerprint": "664008086027d67c25bb3a0fe7b68e84d2644f0e75ea43fb8c2b5f3ecb769d37",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 7,
+            "platformLibrary": 4
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayBack",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayBack",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igBringWindowToDisplayFront",
+              "library": "cimgui",
+              "managedName": "igBringWindowToDisplayFront",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igClosePopupToLevel",
+              "library": "cimgui",
+              "managedName": "<igClosePopupToLevel>g____PInvoke|4_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igFindWindowDisplayIndex",
+              "library": "cimgui",
+              "managedName": "igFindWindowDisplayIndex",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "igGetCurrentWindow",
+              "library": "cimgui",
+              "managedName": "igGetCurrentWindow",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetOpenFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetOpenFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "ECommons.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "GetSaveFileName",
+              "library": "Comdlg32.dll",
+              "managedName": "GetSaveFileName",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "FindWindowEx",
+              "library": "user32.dll",
+              "managedName": "FindWindowEx",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "GetWindowThreadProcessId",
+              "library": "user32.dll",
+              "managedName": "GetWindowThreadProcessId",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 2,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "SendMessage",
+              "library": "user32.dll",
+              "managedName": "SendMessage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "Dalamud.Divination.Common.dll",
+              "directManagedCallCount": 1,
+              "directManagedCallObserved": true,
+              "disposition": "platform-library",
+              "entryPoint": "ToUnicode",
+              "library": "user32.dll",
+              "managedName": "ToUnicode",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 76,
+            "required": 1
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 80,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 1,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 4,
+            "observed": 76,
+            "optional": 0,
+            "required": 1,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 81
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 12,
+          "destinationsUndetermined": false,
+          "hostCount": 8,
+          "hosts": [
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "crypto.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "discord.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "donate.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "explore.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "subscribe.nightmarexiv.org",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "unrecognised-host"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.patreon.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 3,
+              "confidence": "Low",
+              "host": "xivapi.com",
+              "literalCount": 3,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 12,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 2893
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "crypto.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://crypto.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "discord.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://discord.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "donate.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://donate.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "explore.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://explore.nightmarexiv.org/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/NightmareXIV/ECommons"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/SlashNephy/Divination"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/horoscope-dev/Dalamud.Divination.Common"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "subscribe.nightmarexiv.org",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://subscribe.nightmarexiv.org/"
+          },
+          {
+            "classification": "unrecognised-host",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.patreon.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unrecognised public host",
+            "url": "https://www.patreon.com/NightmareXIV"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/character/search"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "xivapi.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV game data",
+            "url": "https://xivapi.com/i/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+        "internalName": "AetheryteLinkInChat",
+        "manifestVersion": "7.5.1.0",
+        "observationId": 83060,
+        "observationKey": "manifest-acbccb3ac22b23b44bb8ad0a3894",
+        "repositoryUrl": "https://github.com/SlashNephy/Divination",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 50683
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 1048620
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+        "attemptId": "attempt-v2-75e5d80035e119f7",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ff2fcd99919d6ccc",
+        "definitionsRevision": "defs-v1-5729adf9708bf480",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-50683",
+        "queueSeedRevision": "queue-seed-v2-729a1a466114ba79957e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-dee5448f3e91657f",
+        "targetFingerprint": "artifact-target-v2-7c9718df46d6325cf39f",
+        "variantId": 50683,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-11-18T04:28:01Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "a2ac4dad89a5e93b9287c213510d65a62b675c9f56eb8658dc8627c1583b7a63",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/SlashNephy/Divination"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/SlashNephy/Divination",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 11,
+    "scanned_at_utc": "2026-11-18T04:28:01Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 947,
+    "source_repository": "https://github.com/SlashNephy/Divination",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 50683
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "b841872af95fbcce2e5430479f9bd53b246d17dee22772d66dc54e4f94332d0a",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"51f8c338b91303f5d96a391f1a72b1e6e8e426dddbc145808f05a2ddfcaaade2\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-11-17T20:07:08Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-11-17T20:07:08Z",
+    "name": "yourShika/AetheryteRepo",
+    "plugin_count": 216,
+    "provider": "yourShika/AetheryteRepo",
+    "source_id": 947,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/yourShika/AetheryteRepo/main/cache/williamw1979-ffxiv.json"
+  },
+  "sourceId": 947,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "7.5.1.0",
+    "author": "Asteria Nocturna",
+    "authors_json": [
+      "Asteria Nocturna"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "e8f691d: Merge pull request #816 from SlashNephy/feat/alic-hunt-journeys\n\nfeat(AetheryteLinkInChat): prefer Faloop's starting points for hunt spawn points\n74b4951: feat(AetheryteLinkInChat): add exits missing from the game's map markers\n\nThe game's map markers do not describe the exit from Yanxia to the\nDoman Enclave (The One River): the marker in Yanxia points to the\nobsolete map 437, and the current map 463 has no marker back to Yanxia.\nSo routes through the Doman Enclave were never considered, which is the\nYanxia example in #656.\n\n- Add MapConnections for such exits, starting with Yanxia <-> the Doman\n  Enclave. Comparing Faloop's boundary starting points with the game's\n  map markers found no other missing exit\n- Consider them in the route calculation as ConnectionTeleportPath,\n  without counting the distance inside the connected map, as where the\n  exit leads to is not known\n- Show them like zone boundaries, and stop the Lifestream teleport there\n\nRefs #656\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\na3c0a1f: feat(AetheryteLinkInChat): prefer Faloop's starting points for hunt spawn points\n\nStraight-line distance on the map ignores terrain, height and walls, so\nthe nearest aetheryte is often not the best one to start from.\n\nFaloop's zone data has the spawn points of hunt marks, each with a\njourneyPoiId that points to the aetheryte or zone boundary to start\nfrom. Embed them (generated by Scripts/generate_hunt_journeys.py) and,\nwhen a map link is at a known spawn point, only consider the routes that\nenter the map at its starting point. Otherwise, fall back to the\nstraight-line distance as before.\n\nRefs #656\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n97ddbb9: Merge pull request #815 from SlashNephy/fix/alic-detect-world\n\nfix(AetheryteLinkInChat): prefer the world name after the cross world icon\ne5d9e91: fix(AetheryteLinkInChat): prefer the world name after the cross world icon\n\nDetectWorld picked the first public world in World sheet order whose\nname appeared anywhere in the message. Mob names such as Odin and\nBehemoth are also world names, so \"Odin <map link> <CrossWorld>Cerberus\"\nresolved to Odin (row 66) instead of Cerberus (row 80), while\n\"Odin ... Omega\" happened to work because Omega is row 39. The map link\ntrimming only removes text from the link marker (U+E0BB), so the mob\nname before the link was kept.\n\n- Prefer the world name right after the cross world icon, or the cross\n  world character typed as text\n- Otherwise use the world name that appears last in the message\n\nClose #661\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n6ae42a0: Merge pull request #814 from SlashNephy/fix/faloop-login-failure\n\nfix(FaloopIntegration): report rejected logins instead of retrying\n7900863: fix(FaloopIntegration): report rejected logins instead of retrying\n\nFaloop responds to a login with wrong credentials with 400 and\n{\"success\":false,\"msg\":\"Incorrect username or password.\"}. The client\nthrew on it, so nothing was shown in chat, and the connection loop\ntreated it as a transient error and kept retrying.\n\n- Read the 400 response as a rejected login instead of throwing\n- Print the reason to chat and stop retrying\n\nClose #742\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n229b134: Merge pull request #801 from SlashNephy/renovate/actions-download-artifact-8.x\n\nUpdate actions/download-artifact action to v8.0.2\n28f79de: Merge pull request #802 from SlashNephy/renovate/actions-upload-artifact-7.x\n\nUpdate actions/upload-artifact action to v7.0.2\nc2a211c: Merge pull request #803 from SlashNephy/renovate/actions-create-github-app-token-3.x\n\nUpdate actions/create-github-app-token action to v3.3.0\naa78586: Update actions/create-github-app-token action to v3.3.0\n4fb78c8: Update actions/upload-artifact action to v7.0.2\n4a5ea84: Update actions/download-artifact action to v8.0.2\nbdadbad: Merge pull request #813 from SlashNephy/feat/faloop-release-report\n\nfeat(FaloopIntegration): notify when a scheduled spawn is released\n33272b7: feat(FaloopIntegration): notify when a scheduled spawn is released\n\nScheduled spawns are visible only to early access reporters at first,\nand released to everyone later. The spawn_release handler was removed in\nac3fe87, so the release was no longer notified.\n\n- Mark the spawn report of a scheduled spawn with \"(scheduled)\"\n- Add a per-rank \"Enable Mob Release Report\" option (disabled by\n  default) to notify \"has been released!\" on spawn_release\n- Keep the stored spawn up to date on spawn_release even when the\n  option is disabled\n- Accept ISO 8601 strings as well as epoch milliseconds for the release\n  timestamp, as Faloop's web client does\n\nClose #685\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n2fee79f: Merge pull request #812 from SlashNephy/fix/alic-queued-teleport-notification\n\nfix(AetheryteLinkInChat): notify queued teleports only when they start\nbc00f9c: fix(AetheryteLinkInChat): notify queued teleports only when they start\n\nTeleportToQueuedAetheryte printed \"Teleporting to ... (queued)\" without\nchecking the result of ExecuteTeleport, so a queued teleport that\nfailed to start still showed the notification.\n\nRefs #659\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\ned4a33d: Merge pull request #811 from SlashNephy/feat/faloop-spawn-sound\n\nfeat(FaloopIntegration): play a sound effect on spawn reports\n223d58b: feat(FaloopIntegration): play a sound effect on spawn reports\n\nAdd a per-rank \"Sound on Spawn Report\" option:\n\n- None (default)\n- <se.1> to <se.16>, the same sounds as chat sound effects\n- A custom UI sound effect ID, for sounds such as \"Feature Unlocked\"\n\nThe sound is played whenever a spawn report is printed to chat, and can\nbe previewed from the settings.\n\nClose #464\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n6f7ea10: Merge pull request #810 from SlashNephy/feat/alic-print-conditions\n\nfeat(AetheryteLinkInChat): add options to skip own messages and local Lifestream links\n5b47730: feat(AetheryteLinkInChat): add options to skip own messages and local Lifestream links\n\n- \"Hide the Lifestream link for messages about the current world\":\n  skip the Lifestream link when the world detected from the message is\n  the current world\n- \"Do not add teleport links to your own messages\": skip messages sent\n  by the local player\n\nBoth are disabled by default, so the current behaviour is unchanged.\n\nClose #677\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n05acc63: Merge pull request #809 from SlashNephy/fix/faloop-reconnect\n\nfix(FaloopIntegration): reconnect with a new client after disconnection\n47500d7: fix(FaloopIntegration): log the whole spawn_location payload\n\nPassing the nullable ZonePoiId alone as the params argument of the log\ncall made it a null array when the value was null (CS8604). Log the\nwhole payload instead, as the spawn case does.\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n3cf9a9e: fix(FaloopIntegration): reconnect with a new client after disconnection\n\nAfter \"transport close\", SocketIOClient's own reconnection kept the\nengine.io session alive (pings continued) but the plugin never received\nmob reports again until it was disabled and enabled.\n\nHandle reconnection in the plugin instead, mirroring what re-enabling\nthe plugin does:\n\n- Disable SocketIOClient's reconnection\n- Run a connection loop that logs in again and connects with a new\n  Socket.IO client on every disconnection, with exponential backoff\n  from 5 seconds up to 5 minutes\n- Time out a connection attempt that the server never accepts, since\n  ConnectAsync only times out at the transport level\n- Stop retrying when the credentials are rejected\n- Ignore events from clients that have already been replaced\n\nRefs #687\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n3e3cbf9: Merge pull request #808 from SlashNephy/docs/api13-repository\n\ndocs: describe the Dalamud API 13 repository\nd2aee34: docs: describe the Dalamud API 13 repository\n\nPoint clients that are still on Dalamud API 13, such as the Traditional\nChinese client, to plugins/api13.json, which serves the frozen\nAetheryteLinkInChat 7.3.1.14 build.\n\nRefs #727\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n0f2ec49: Merge pull request #807 from SlashNephy/fix/faloop-pending-spawn-location\n\nfix(FaloopIntegration): announce spawns whose location is reported later\n6daa4d0: fix(FaloopIntegration): announce spawns whose location is reported later\n\nWhen \"Ignore Pending Report\" is enabled, a spawn reported without\ncoordinates was dropped before being stored, so the following\nspawn_location could not find it and was ignored as well.\n\n- Hold location-less spawns as pending and announce them once\n  spawn_location arrives\n- Accept a null zonePoiId in spawn_location and a singular zonePoiId in spawn\n- Replace the stored report on location change instead of appending\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n8b422a6: Merge pull request #805 from SlashNephy/fix/faloop-messaging-socket\n\nfix(FaloopIntegration): connect to Faloop's new Socket.IO endpoint\n01daabc: fix(FaloopIntegration): connect to Faloop's new Socket.IO endpoint\n\nFaloop's frontend update (2026-10-30) moved the Socket.IO endpoint from\n/comms/socket.io to the /legacy namespace on /messaging/socket.io/.\nThe old endpoint still accepts connections but no longer delivers mob\nreports, so follow the new endpoint.\n\nClose #804\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>",
+    "dalamud_api_level": 15,
+    "description": "Display a teleport link to the nearest aetherite for the map link from the in-game chat. Type /alic to configure the plugin.",
+    "dip17_channel": "",
+    "download_count": 32754,
+    "download_link_install": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+    "download_link_testing": "https://xiv.starry.blue/plugins/testing/AetheryteLinkInChat/download",
+    "download_link_update": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+    "first_seen_utc": "2026-11-01T10:18:14Z",
+    "icon_url": "",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-11-17T11:29:49Z",
+    "last_update": 1794579250,
+    "minimum_dalamud_version": null,
+    "name": "Divination.AetheryteLinkInChat",
+    "plugin_id": 673,
+    "punchline": "Quick teleport for mob hunts and treasure hunts!",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "7.5.1.0",
+      "Author": "Asteria Nocturna",
+      "CategoryTags": [
+        "utility"
+      ],
+      "Changelog": "e8f691d: Merge pull request #816 from SlashNephy/feat/alic-hunt-journeys\n\nfeat(AetheryteLinkInChat): prefer Faloop's starting points for hunt spawn points\n74b4951: feat(AetheryteLinkInChat): add exits missing from the game's map markers\n\nThe game's map markers do not describe the exit from Yanxia to the\nDoman Enclave (The One River): the marker in Yanxia points to the\nobsolete map 437, and the current map 463 has no marker back to Yanxia.\nSo routes through the Doman Enclave were never considered, which is the\nYanxia example in #656.\n\n- Add MapConnections for such exits, starting with Yanxia <-> the Doman\n  Enclave. Comparing Faloop's boundary starting points with the game's\n  map markers found no other missing exit\n- Consider them in the route calculation as ConnectionTeleportPath,\n  without counting the distance inside the connected map, as where the\n  exit leads to is not known\n- Show them like zone boundaries, and stop the Lifestream teleport there\n\nRefs #656\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\na3c0a1f: feat(AetheryteLinkInChat): prefer Faloop's starting points for hunt spawn points\n\nStraight-line distance on the map ignores terrain, height and walls, so\nthe nearest aetheryte is often not the best one to start from.\n\nFaloop's zone data has the spawn points of hunt marks, each with a\njourneyPoiId that points to the aetheryte or zone boundary to start\nfrom. Embed them (generated by Scripts/generate_hunt_journeys.py) and,\nwhen a map link is at a known spawn point, only consider the routes that\nenter the map at its starting point. Otherwise, fall back to the\nstraight-line distance as before.\n\nRefs #656\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n97ddbb9: Merge pull request #815 from SlashNephy/fix/alic-detect-world\n\nfix(AetheryteLinkInChat): prefer the world name after the cross world icon\ne5d9e91: fix(AetheryteLinkInChat): prefer the world name after the cross world icon\n\nDetectWorld picked the first public world in World sheet order whose\nname appeared anywhere in the message. Mob names such as Odin and\nBehemoth are also world names, so \"Odin <map link> <CrossWorld>Cerberus\"\nresolved to Odin (row 66) instead of Cerberus (row 80), while\n\"Odin ... Omega\" happened to work because Omega is row 39. The map link\ntrimming only removes text from the link marker (U+E0BB), so the mob\nname before the link was kept.\n\n- Prefer the world name right after the cross world icon, or the cross\n  world character typed as text\n- Otherwise use the world name that appears last in the message\n\nClose #661\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n6ae42a0: Merge pull request #814 from SlashNephy/fix/faloop-login-failure\n\nfix(FaloopIntegration): report rejected logins instead of retrying\n7900863: fix(FaloopIntegration): report rejected logins instead of retrying\n\nFaloop responds to a login with wrong credentials with 400 and\n{\"success\":false,\"msg\":\"Incorrect username or password.\"}. The client\nthrew on it, so nothing was shown in chat, and the connection loop\ntreated it as a transient error and kept retrying.\n\n- Read the 400 response as a rejected login instead of throwing\n- Print the reason to chat and stop retrying\n\nClose #742\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n229b134: Merge pull request #801 from SlashNephy/renovate/actions-download-artifact-8.x\n\nUpdate actions/download-artifact action to v8.0.2\n28f79de: Merge pull request #802 from SlashNephy/renovate/actions-upload-artifact-7.x\n\nUpdate actions/upload-artifact action to v7.0.2\nc2a211c: Merge pull request #803 from SlashNephy/renovate/actions-create-github-app-token-3.x\n\nUpdate actions/create-github-app-token action to v3.3.0\naa78586: Update actions/create-github-app-token action to v3.3.0\n4fb78c8: Update actions/upload-artifact action to v7.0.2\n4a5ea84: Update actions/download-artifact action to v8.0.2\nbdadbad: Merge pull request #813 from SlashNephy/feat/faloop-release-report\n\nfeat(FaloopIntegration): notify when a scheduled spawn is released\n33272b7: feat(FaloopIntegration): notify when a scheduled spawn is released\n\nScheduled spawns are visible only to early access reporters at first,\nand released to everyone later. The spawn_release handler was removed in\nac3fe87, so the release was no longer notified.\n\n- Mark the spawn report of a scheduled spawn with \"(scheduled)\"\n- Add a per-rank \"Enable Mob Release Report\" option (disabled by\n  default) to notify \"has been released!\" on spawn_release\n- Keep the stored spawn up to date on spawn_release even when the\n  option is disabled\n- Accept ISO 8601 strings as well as epoch milliseconds for the release\n  timestamp, as Faloop's web client does\n\nClose #685\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n2fee79f: Merge pull request #812 from SlashNephy/fix/alic-queued-teleport-notification\n\nfix(AetheryteLinkInChat): notify queued teleports only when they start\nbc00f9c: fix(AetheryteLinkInChat): notify queued teleports only when they start\n\nTeleportToQueuedAetheryte printed \"Teleporting to ... (queued)\" without\nchecking the result of ExecuteTeleport, so a queued teleport that\nfailed to start still showed the notification.\n\nRefs #659\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\ned4a33d: Merge pull request #811 from SlashNephy/feat/faloop-spawn-sound\n\nfeat(FaloopIntegration): play a sound effect on spawn reports\n223d58b: feat(FaloopIntegration): play a sound effect on spawn reports\n\nAdd a per-rank \"Sound on Spawn Report\" option:\n\n- None (default)\n- <se.1> to <se.16>, the same sounds as chat sound effects\n- A custom UI sound effect ID, for sounds such as \"Feature Unlocked\"\n\nThe sound is played whenever a spawn report is printed to chat, and can\nbe previewed from the settings.\n\nClose #464\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n6f7ea10: Merge pull request #810 from SlashNephy/feat/alic-print-conditions\n\nfeat(AetheryteLinkInChat): add options to skip own messages and local Lifestream links\n5b47730: feat(AetheryteLinkInChat): add options to skip own messages and local Lifestream links\n\n- \"Hide the Lifestream link for messages about the current world\":\n  skip the Lifestream link when the world detected from the message is\n  the current world\n- \"Do not add teleport links to your own messages\": skip messages sent\n  by the local player\n\nBoth are disabled by default, so the current behaviour is unchanged.\n\nClose #677\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n05acc63: Merge pull request #809 from SlashNephy/fix/faloop-reconnect\n\nfix(FaloopIntegration): reconnect with a new client after disconnection\n47500d7: fix(FaloopIntegration): log the whole spawn_location payload\n\nPassing the nullable ZonePoiId alone as the params argument of the log\ncall made it a null array when the value was null (CS8604). Log the\nwhole payload instead, as the spawn case does.\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n3cf9a9e: fix(FaloopIntegration): reconnect with a new client after disconnection\n\nAfter \"transport close\", SocketIOClient's own reconnection kept the\nengine.io session alive (pings continued) but the plugin never received\nmob reports again until it was disabled and enabled.\n\nHandle reconnection in the plugin instead, mirroring what re-enabling\nthe plugin does:\n\n- Disable SocketIOClient's reconnection\n- Run a connection loop that logs in again and connects with a new\n  Socket.IO client on every disconnection, with exponential backoff\n  from 5 seconds up to 5 minutes\n- Time out a connection attempt that the server never accepts, since\n  ConnectAsync only times out at the transport level\n- Stop retrying when the credentials are rejected\n- Ignore events from clients that have already been replaced\n\nRefs #687\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n3e3cbf9: Merge pull request #808 from SlashNephy/docs/api13-repository\n\ndocs: describe the Dalamud API 13 repository\nd2aee34: docs: describe the Dalamud API 13 repository\n\nPoint clients that are still on Dalamud API 13, such as the Traditional\nChinese client, to plugins/api13.json, which serves the frozen\nAetheryteLinkInChat 7.3.1.14 build.\n\nRefs #727\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n0f2ec49: Merge pull request #807 from SlashNephy/fix/faloop-pending-spawn-location\n\nfix(FaloopIntegration): announce spawns whose location is reported later\n6daa4d0: fix(FaloopIntegration): announce spawns whose location is reported later\n\nWhen \"Ignore Pending Report\" is enabled, a spawn reported without\ncoordinates was dropped before being stored, so the following\nspawn_location could not find it and was ignored as well.\n\n- Hold location-less spawns as pending and announce them once\n  spawn_location arrives\n- Accept a null zonePoiId in spawn_location and a singular zonePoiId in spawn\n- Replace the stored report on location change instead of appending\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>\n8b422a6: Merge pull request #805 from SlashNephy/fix/faloop-messaging-socket\n\nfix(FaloopIntegration): connect to Faloop's new Socket.IO endpoint\n01daabc: fix(FaloopIntegration): connect to Faloop's new Socket.IO endpoint\n\nFaloop's frontend update (2026-10-30) moved the Socket.IO endpoint from\n/comms/socket.io to the /legacy namespace on /messaging/socket.io/.\nThe old endpoint still accepts connections but no longer delivers mob\nreports, so follow the new endpoint.\n\nClose #804\n\nCo-Authored-By: Claude Mythos 5.5 <noreply@anthropic.com>",
+      "DalamudApiLevel": 15,
+      "Description": "Display a teleport link to the nearest aetherite for the map link from the in-game chat. Type /alic to configure the plugin.",
+      "DownloadCount": 32754,
+      "DownloadLinkInstall": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+      "DownloadLinkTesting": "https://xiv.starry.blue/plugins/testing/AetheryteLinkInChat/download",
+      "DownloadLinkUpdate": "https://xiv.starry.blue/plugins/stable/AetheryteLinkInChat/download",
+      "InternalName": "AetheryteLinkInChat",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": 1794579250,
+      "Name": "Divination.AetheryteLinkInChat",
+      "Punchline": "Quick teleport for mob hunts and treasure hunts!",
+      "RepoUrl": "https://github.com/SlashNephy/Divination",
+      "SourceRepo": "https://xiv.starry.blue/plugins/master.json",
+      "Tags": [
+        "teleporter"
+      ],
+      "TestingAssemblyVersion": "7.5.1.28",
+      "TestingDalamudApiLevel": 15,
+      "_SourceId": "williamw1979-ffxiv",
+      "_SourceName": "MEGA Repository",
+      "_SourceUrl": "https://raw.githubusercontent.com/WilliamW1979/FFXIV/main/repository.json"
+    },
+    "repo_url": "https://github.com/SlashNephy/Divination",
+    "source_entry_key": "aetherytelinkinchat|7.5.1.0|15|15|108",
+    "source_id": 947,
+    "tags_json": [
+      "teleporter"
+    ],
+    "testing_assembly_version": "7.5.1.28",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 50683
+  },
+  "variantId": 50683
+}
