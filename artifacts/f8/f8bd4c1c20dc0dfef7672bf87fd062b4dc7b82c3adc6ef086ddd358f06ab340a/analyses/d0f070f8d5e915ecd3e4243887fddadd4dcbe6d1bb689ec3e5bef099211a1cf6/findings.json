@@ -1,0 +1,242 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "process",
+    "description": "Contains indicators for invoking command shells or PowerShell.",
+    "evidence_json": [
+      "artifact:Files/oggenc2.exe: cmd.exe"
+    ],
+    "rule_id": "shell.powershell",
+    "severity": "high",
+    "title": "Shell or PowerShell invocation"
+  },
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+    "evidence_json": [
+      "il:SharpGLTF.Core.dll:SharpGLTF.Schema2.ModelRoot._ResolveSatelliteDependencies+0x5b: callvirt SharpGLTF.Schema2.ImageDecodeCallback.Invoke",
+      "il:SharpGLTF.Core.dll:SharpGLTF.Schema2.ModelRoot._WriteJSON+0x62: callvirt SharpGLTF.Schema2.JsonFilterCallback.Invoke",
+      "il:SharpGLTF.Core.dll:SharpGLTF.Schema2.ReadContext.ReadAllBytesToEnd+0x23: callvirt SharpGLTF.Schema2.FileReaderCallback.Invoke",
+      "il:SharpGLTF.Core.dll:SharpGLTF.Schema2.ReadContext._Preprocess+0x23: callvirt SharpGLTF.Schema2.JsonFilterCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:fastCSV.dll: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x1d: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x23: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x39: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:fastCSV.dll:fastCSV.FastCreateInstance+0x43: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "artifact:fastCSV.dll: Reflection.Emit",
+      "metadata:Microsoft.CodeAnalysis.dll: Reflection.Emit",
+      "metadata:Microsoft.CodeAnalysis.dll: AssemblyLoadContext"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:SharpGLTF.Core.dll: s://github.com/vpenades/SharpGLTF",
+      "artifact:SharpGLTF.Core.dll: X:/sources/obj/Release/net10.0/SharpGLTF.Core.pdb",
+      "artifact:SharpGLTF.Core.dll: s://github.khronos.org/glTF-Validator/",
+      "artifact:Microsoft.IdentityModel.Logging.dll: s://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet",
+      "artifact:Microsoft.IdentityModel.Logging.dll: p://www.microsoft.com/pkiops/crl/Microsoft%20Code%20Signing%20PCA%202024.crl0m",
+      "artifact:Microsoft.IdentityModel.Logging.dll: p://www.microsoft.com/pkiops/certs/Microsoft%20Code%20Signing%20PCA%202024.crt0",
+      "artifact:Microsoft.IdentityModel.Logging.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.IdentityModel.Logging.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:MareSempiterne.dll: Dalamud.Hooking",
+      "metadata:MareSempiterne.dll: SigScanner",
+      "il:MareSempiterne.dll:PlayerSync.Interop.SkeletonMappingFix..ctor+0x28: callvirt Dalamud.Plugin.Services.ISigScanner.GetStaticAddressFromSig: SigScanner",
+      "artifact:MareSempiterne.dll: Dalamud.Hooking",
+      "artifact:MareSempiterne.dll: SigScanner",
+      "metadata:VFXEditor.dll: SigScanner",
+      "metadata:VFXEditor.dll: Dalamud.Hooking",
+      "metadata:VFXEditor.dll: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:DereTore.Interop.OS.dll: DllImportAttribute",
+      "metadata:DereTore.Interop.OS.dll: LoadLibrary",
+      "metadata:DereTore.Interop.OS.dll: GetProcAddress",
+      "artifact:DereTore.Interop.OS.dll: LoadLibrary",
+      "artifact:DereTore.Interop.OS.dll: GetProcAddress",
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:SharpDX.dll: DllImportAttribute"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: http://crl.usertrust.com/USERTrustRSACertificationAuthority.crl0v"
+    ],
+    "rule_id": "network.endpoint.insecure-http.8a267402d93a",
+    "severity": "caution",
+    "title": "Endpoint: crl.usertrust.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Cyotek.Drawing.BitmapFont.dll: http://crt.sectigo.com/SectigoPublicCodeSigningRootR46.p7c0"
+    ],
+    "rule_id": "network.endpoint.insecure-http.f9f8662c9e9e",
+    "severity": "caution",
+    "title": "Endpoint: crt.sectigo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:MareSempiterne.dll: https://auth-dev.playersync.io/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.555759b9e587",
+    "severity": "caution",
+    "title": "Endpoint: auth-dev.playersync.io"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x562: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:<DefaultWebSocketFactory>d__23.MoveNext+0x5dd: callvirt System.Net.WebSockets.ClientWebSocket.ConnectAsync: Socket.Connect",
+      "metadata:Downloader.dll: System.Net.Sockets",
+      "artifact:Downloader.dll: System.Net.Sockets",
+      "metadata:DnsClient.dll: System.Net.Sockets",
+      "metadata:DnsClient.dll: TcpClient",
+      "il:DnsClient.dll:DnsClient.DnsMessageHandler.IsTransientException+0x26: callvirt System.Net.Sockets.SocketException.get_SocketErrorCode: System.Net.Sockets"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains one or more executable files.",
+    "evidence_json": [
+      "Files/adpcmencode3.exe",
+      "Files/VGAudioCli.exe",
+      "Files/oggenc2.exe",
+      "Files/d3d/fxc.exe"
+    ],
+    "rule_id": "package.executable",
+    "severity": "caution",
+    "title": "Bundled executable"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "artifact:SharpDX.dll: CreateProcess",
+      "native-pe:nvtt.dll: import KERNEL32.dll!CreateProcessA: CreateProcess",
+      "artifact:nvtt.dll: CreateProcess",
+      "metadata:MareSempiterne.dll: System.Diagnostics.Process",
+      "metadata:MareSempiterne.dll: ProcessStartInfo",
+      "metadata:MareSempiterne.dll: ShellExecute",
+      "metadata:MareSempiterne.dll: Process.Start",
+      "il:MareSempiterne.dll:MareSynchronos.UI.EventViewerUI.DrawInternal+0xf8: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:NAudio.WinMM.dll: Microsoft.Win32.Registry",
+      "metadata:NAudio.WinMM.dll: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0xc: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x1f: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: Microsoft.Win32.Registry",
+      "il:NAudio.WinMM.dll:NAudio.Wave.WaveCapabilitiesHelpers.GetNameFromGuid+0x2e: callvirt Microsoft.Win32.RegistryKey.GetValue: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllBytes+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFile.ReadAllText+0x8: newobj SharpDX.IO.NativeFileStream..ctor: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream..ctor+0x34: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Flush+0x12: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Seek+0x16: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.SetLength+0x16: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.SetLength+0x33: call SharpDX.IO.NativeFileStream.MarshalGetLastWin32Error: FileStream",
+      "il:SharpDX.dll:SharpDX.IO.NativeFileStream.Read+0x2f: call SharpDX.IO.NativeFileStream.Read: FileStream"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:Microsoft.AspNetCore.Http.Connections.Client.dll: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x0: newobj System.Net.Http.HttpClientHandler..ctor: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x3a: callvirt System.Net.Http.HttpClientHandler.set_Proxy: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x4c: callvirt System.Net.Http.HttpClientHandler.set_CookieContainer: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xa6: callvirt System.Net.Http.HttpClientHandler.get_ClientCertificates: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0xdd: callvirt System.Net.Http.HttpClientHandler.set_UseDefaultCredentials: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x113: callvirt System.Net.Http.HttpClientHandler.set_Credentials: System.Net.Http.HttpClient",
+      "il:Microsoft.AspNetCore.Http.Connections.Client.dll:Microsoft.AspNetCore.Http.Connections.Client.HttpConnection.CreateHttpClient+0x169: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "nvtt.dll",
+      "DirectXTexC.dll",
+      "FreeImage.dll",
+      "e_sqlite3.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]

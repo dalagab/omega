@@ -1,0 +1,1992 @@
+{
+  "analysis": {
+    "analysisId": "71a3480ef13b475a41d5cc5a1c4d192813ca02c7ae2518c05a0544d8864e4764",
+    "artifactSha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+    "path": "artifacts/0e/0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54/analyses/71a3480ef13b475a41d5cc5a1c4d192813ca02c7ae2518c05a0544d8864e4764",
+    "recordCount": 13899
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+    "artifact_url": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+    "assembly_version": "0.1.0.104",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.interact",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AutoList.dll:AutoList.Services.RetainerBellInteractionService.TryInteractWithNearbyBell+0xac: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "indirect": false,
+        "label": "World/NPC interaction control",
+        "reachable": true,
+        "reason": "Invokes an interaction mechanism capable of activating an NPC, object, or other world target."
+      },
+      {
+        "automationLevel": "character-automation",
+        "capabilityId": "game.character.target",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AutoList.dll:AutoList.Services.RetainerBellInteractionService.TryInteractWithNearbyBell+0x9b: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "indirect": false,
+        "label": "Character target control",
+        "reachable": true,
+        "reason": "References a target-setting API rather than only reading the current target."
+      },
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "very-high",
+        "evidence": [
+          "il:AutoList.dll:AutoList.Services.InventoryMarketListingService.SelectEntry+0x80: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:AutoList.dll:AutoList.Services.RetainerDialogueService.TryAdvanceTalk+0x59: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:AutoList.dll:AutoList.Services.RetainerDialogueService.TryAdvanceTalk+0x64: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:AutoList.dll:AutoList.Services.RetainerDialogueService.TryAdvanceTalk+0x6e: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:AutoList.dll:AutoList.Services.RetainerMarketListingService.SelectEntry+0x80: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:AutoList.dll:AutoList.Services.RetainerMenuService.SelectEntry+0x33: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:AutoList.dll:AutoList.Services.RetainerSelectionService.TrySelectRetainer+0x183: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:AutoList.dll:AutoList.Services.RetainerSellListTraceService.FireCallbackDetour+0x10: callvirt FireCallback.Invoke"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": true,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "character-automation",
+    "capabilities_json": [
+      "Character target control",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: universalis.app",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:AutoList.dll: SigScanner",
+          "metadata:AutoList.dll: Dalamud.Hooking",
+          "metadata:AutoList.dll: HookFromAddress",
+          "il:AutoList.dll:AutoList.Plugin..ctor+0x159: call AutoList.Plugin.get_SigScanner: SigScanner",
+          "il:AutoList.dll:AutoList.Services.RetainerItemCommandService..ctor+0x15: callvirt Dalamud.Plugin.Services.ISigScanner.TryScanText: SigScanner",
+          "il:AutoList.dll:AutoList.Services.RetainerSellListTraceService..ctor+0x3b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:AutoList.dll:AutoList.Services.RetainerSellTraceService..ctor+0x46: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:AutoList.dll: Dalamud.Hooking"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AutoList.dll:AutoList.Services.InventoryMarketListingService.SelectEntry+0x80: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.FireCallback",
+          "il:AutoList.dll:AutoList.Services.RetainerDialogueService.TryAdvanceTalk+0x59: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:AutoList.dll:AutoList.Services.RetainerDialogueService.TryAdvanceTalk+0x64: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent",
+          "il:AutoList.dll:AutoList.Services.RetainerDialogueService.TryAdvanceTalk+0x6e: call FFXIVClientStructs.FFXIV.Component.GUI.AtkUnitBase.ReceiveEvent"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for character target control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AutoList.dll:AutoList.Services.RetainerBellInteractionService.TryInteractWithNearbyBell+0x9b: callvirt Dalamud.Plugin.Services.ITargetManager.set_Target"
+        ],
+        "ruleId": "automation.game.character.target",
+        "severity": "caution",
+        "title": "Character target control"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for world/npc interaction control. This does not prove that the behavior executes during normal use. A call path from a plugin lifecycle/callback root was found.",
+        "evidence": [
+          "il:AutoList.dll:AutoList.Services.RetainerBellInteractionService.TryInteractWithNearbyBell+0xac: call FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.InteractWithObject"
+        ],
+        "ruleId": "automation.game.character.interact",
+        "severity": "caution",
+        "title": "World/NPC interaction control"
+      },
+      {
+        "category": "network",
+        "description": "References HTTP/network client APIs.",
+        "evidence": [
+          "metadata:AutoList.dll: System.Net.Http.HttpClient",
+          "il:AutoList.dll:AutoList.Services.UniversalisPriceService..ctor+0x2c: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+          "il:AutoList.dll:<ReadScopeAsync>d__17.MoveNext+0xdc: callvirt System.Net.Http.HttpClient.SendAsync: System.Net.Http.HttpClient"
+        ],
+        "ruleId": "network.http",
+        "severity": "informational",
+        "title": "Network access"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:AutoList.dll: https://github.com/Ninethirty77/AutoList.git"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.f915dc874aa8",
+        "severity": "informational",
+        "title": "Endpoint: github.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "VeryHigh",
+        "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-config",
+        "evidence": [
+          "artifact:AutoList.json: https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/icon.jpg"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.b367560606fb",
+        "severity": "informational",
+        "title": "Endpoint: raw.githubusercontent.com"
+      },
+      {
+        "category": "network-endpoint",
+        "confidence": "Low",
+        "description": "Recognised public service: Universalis (FFXIV market data). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+        "endpointOrigin": "artifact-binary-string",
+        "evidence": [
+          "artifact:AutoList.dll: https://universalis.app/api/v2/history/"
+        ],
+        "ruleId": "network.endpoint.recognised-platform.34c6b976838a",
+        "severity": "informational",
+        "title": "Endpoint: universalis.app"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 4,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+      "artifactBytes": 693333,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.1.0.104",
+        "artifactBytes": 693333,
+        "artifactSha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+        "catalogAssemblyVersion": "0.1.0.104",
+        "manifestInternalName": "AutoList",
+        "manifestPath": "AutoList.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "universalis.app",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "universalis.app",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: universalis.app",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "network.outbound"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 17,
+          "exactVersionObservedCount": 17,
+          "families": {
+            "managed-assembly": 17
+          },
+          "fingerprint": "8ad806c15fdda1d55c11324397565773e3fc7b145789f6322869664d1dfa5682",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 16
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 17,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 16,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 17
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "universalis.app",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ninethirty77/AutoList.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/icon.jpg"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "universalis.app",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV market data",
+            "url": "https://universalis.app/api/v2/history/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+        "internalName": "AutoList",
+        "manifestVersion": "0.1.0.104",
+        "observationId": 95290,
+        "observationKey": "manifest-1aea039751c3a8033e008fee1b7c",
+        "repositoryUrl": "https://github.com/Ninethirty77/autolist-repo",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 58378
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 891682
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+        "attemptId": "attempt-v2-e82f435bd5053b57",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ff2fcd99919d6ccc",
+        "definitionsRevision": "defs-v1-5729adf9708bf480",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-58378",
+        "queueSeedRevision": "queue-seed-v2-729a1a466114ba79957e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-dee5448f3e91657f",
+        "targetFingerprint": "artifact-target-v2-41a346508f106837b3a3",
+        "variantId": 58378,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-11-18T02:08:24Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Ninethirty77/autolist-repo"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Ninethirty77/autolist-repo",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 15,
+    "scanned_at_utc": "2026-11-18T02:08:24Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/Ninethirty77/autolist-repo",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 58378
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+      "current_assembly_version": "0.1.0.104",
+      "current_scan_id": 15,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-11-18T02:08:25Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 58378
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 17,
+      "artifact_only_count": 17,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:autolist",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "AutoList",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "0.1.0.104"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.3.9"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.57.0.9414"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.http",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Http",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.net.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Net.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-11-18T02:08:25Z",
+      "comparison_id": 8,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 15,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 58378,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0058/58378/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0058/58378/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 15952,
+          "encoding": "json",
+          "path": "derived/variants/0058/58378/dependency-resolutions.json",
+          "recordDigest": "f30849c8bc705f85d95096292bc82d6682776180af61e6d00de361ac21280a63",
+          "records": 17,
+          "sha256": "17c64bd46a817e3fe9b273a377d73d7b187add9dea1b4d51f3f831b569453339"
+        }
+      ],
+      "recordDigest": "f30849c8bc705f85d95096292bc82d6682776180af61e6d00de361ac21280a63",
+      "records": 17
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0058/58378/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "",
+    "identityFingerprint": "97c58dbb277e54898c63c1e6fb249cf50036f3cda82957a4a6d7a47c4b47357d",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "033562c898ebbf4c701f6d54bdabd8897aa3491412ba22af5dbd140a239fe45e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "d808337d364e984d076a562df616b433af2e28d3ecacc263ae1c009357c8a17a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "2fc06d3dfde9e10149b835573599999ccc31864bdc91ffd77a57f4c31800e4df",
+        "records": 17,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "61c8c4a708ab8609ce5848d28e2257d4aedc43506b7d86679b399a65ddf67c1e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "1cf24d8691b07d80afce99264fe438fa01d20cd1992da76895f297cb68b7ec66",
+        "records": 9033,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "d566a77ecf5ae6b2fe3ee90a5108844d6c25519c8bd585689e51bd291e3a89fe",
+        "records": 3928,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "c7edc5ff04dd08919cfe38c63265ba0361fc2d4fcba15bedb61816b480c4a673",
+        "records": 875,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "0ef92ec9edb98d7a08ea568a9c86de276359a2b0ed572e843b81aded8d0d31c8",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "7d8fbdbc0e1fd98aa1a0a10f97d6d02b64d57efe05a8ed9ef9217c282b122543",
+        "records": 3,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "2a5b8929280d6bb4a99cc2f3c0834419c8b92c935778fddd04408a2e3a62209a",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "e4ec8a72228fb850fa680b98dca3bd65c60399df0657eadb4a731172d145359a",
+        "records": 2,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "4a6c673a4e7ff1d013ed62441131f4205bef284bfe0c5ba5039ea553d5a6a93d",
+        "records": 13,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "nativeImports",
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-57732badd96df2581a7e66e43e84507fa87a13a168432e15519d774037f5300f",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "AutoList",
+    "first_seen_utc": "2026-09-17T19:26:53Z",
+    "internal_name": "AutoList",
+    "last_seen_utc": "2026-11-17T20:07:08Z",
+    "plugin_id": 1429
+  },
+  "pluginId": 1429,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "AutoList turns retainer Market Board chores into supervised AutoList, AutoRefresh, and AutoTidy workflows with a small in-game tray that lights up when your character is ready to start.\nhttps://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/repo.json",
+      "images": [],
+      "nsfw": false,
+      "official": false,
+      "richCard": false,
+      "richnessScore": 1323,
+      "summary": "Turn retainer listing from market-board chore into one-click momentum.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/Ninethirty77/autolist-repo",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "AutoList Dalamud custom plugin repository.",
+      "homepage": "",
+      "images": [],
+      "links": [],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "",
+      "title": "autolist-repo",
+      "url": "https://github.com/Ninethirty77/autolist-repo"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "0afb642d4d731a4454ee7ea8f1bb6e5178ba59dd85df58aa50ec9df24288446a",
+        "records": 3
+      },
+      "behaviorConsistency": {
+        "recordDigest": "ca2c35d2cc3e710072a78e9c9a12ecde988c40f586805177d6ed1ea71afaa413",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "4f27475aa6d158ca45ee3041e60abf996b4524e37b4ebe72133a54b6e236ca78",
+        "records": 9
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "2d930e99bf1295de35ea157fbdc6e32ca8006726f5e3385c6b2f688341b424f9",
+        "records": 9
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+    "artifact_url": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+    "assembly_version": "0.1.0.104",
+    "capabilities_json": [
+      "Character target control",
+      "Endpoint: github.com",
+      "Endpoint: raw.githubusercontent.com",
+      "Endpoint: universalis.app",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Network access",
+      "World/NPC interaction control"
+    ],
+    "caution_count": 5,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 4,
+    "plugin_id": 1429,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+      "artifactBytes": 693333,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "0.1.0.104",
+        "artifactBytes": 693333,
+        "artifactSha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+        "catalogAssemblyVersion": "0.1.0.104",
+        "manifestInternalName": "AutoList",
+        "manifestPath": "AutoList.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.interact",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "World/NPC interaction control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "character-automation",
+            "capabilityId": "game.character.target",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Character target control",
+            "reachable": true
+          },
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "very-high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": true
+          }
+        ],
+        "level": "character-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.interact",
+            "label": "World/NPC interaction control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.character.target",
+            "label": "Character target control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.http",
+            "label": "HTTP/network client access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "network",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "network.outbound",
+            "label": "Outbound network access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "universalis.app",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "universalis.app",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 9,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 9,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Character target control",
+        "Endpoint: github.com",
+        "Endpoint: raw.githubusercontent.com",
+        "Endpoint: universalis.app",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Network access",
+        "World/NPC interaction control"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "game.character.interact",
+        "game.character.target",
+        "game.memory.read",
+        "game.ui.callback",
+        "network.http",
+        "network.outbound"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 5,
+        "critical": 0,
+        "high": 0,
+        "informational": 4
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 17,
+          "exactVersionObservedCount": 17,
+          "families": {
+            "managed-assembly": 17
+          },
+          "fingerprint": "8ad806c15fdda1d55c11324397565773e3fc7b145789f6322869664d1dfa5682",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 0,
+            "platformLibrary": 0
+          },
+          "nativeRelationships": [],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 1,
+            "observed": 16
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 0
+        },
+        "coverage": {
+          "analyzed": 17,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 0,
+          "requirements": {
+            "bundled": 1,
+            "observed": 16,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 17
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 3,
+          "hosts": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "universalis.app",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 3,
+          "networkCapabilityObserved": true,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {},
+          "truncated": false
+        },
+        "networkEndpoints": [
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/Ninethirty77/AutoList.git"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/icon.jpg"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "universalis.app",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "FFXIV market data",
+            "url": "https://universalis.app/api/v2/history/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+        "internalName": "AutoList",
+        "manifestVersion": "0.1.0.104",
+        "observationId": 95290,
+        "observationKey": "manifest-1aea039751c3a8033e008fee1b7c",
+        "repositoryUrl": "https://github.com/Ninethirty77/autolist-repo",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 58378
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 1,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 7,
+        "uncompressedBytes": 891682
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-b60ff3b396d382b5",
+        "attemptId": "attempt-v2-e82f435bd5053b57",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-ff2fcd99919d6ccc",
+        "definitionsRevision": "defs-v1-5729adf9708bf480",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-58378",
+        "queueSeedRevision": "queue-seed-v2-729a1a466114ba79957e",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-dee5448f3e91657f",
+        "targetFingerprint": "artifact-target-v2-41a346508f106837b3a3",
+        "variantId": 58378,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-11-18T02:08:24Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "0ea47e2775b736ff7850110c7241114af02b63f726c3025c2affaa0b177cba54",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/Ninethirty77/autolist-repo"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/Ninethirty77/autolist-repo",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 15,
+    "scanned_at_utc": "2026-11-18T02:08:24Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 594,
+    "source_repository": "https://github.com/Ninethirty77/autolist-repo",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 58378
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "4750f7bcf9be9d6fec21d6366e637eba62832d6850dda37cfe283dc0e9b0c7e4",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"36d303473f6341077e0643deecc8c7e2fcd8ca40ac2bd13ff5e30c7953823f15\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-11-17T20:07:08Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-11-17T20:07:08Z",
+    "name": "NexusFFXIV/DalamudRepo",
+    "plugin_count": 675,
+    "provider": "NexusFFXIV/DalamudRepo",
+    "source_id": 594,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/NexusFFXIV/DalamudRepo/main/gen-repo.json"
+  },
+  "sourceId": 594,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "0.1.0.104",
+    "author": "BlueWaveXIV",
+    "authors_json": [
+      "BlueWaveXIV"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "Removed fixed Free Market Price. Only after confirming no eligible live competitors, AutoList uses a reliable Materia completed-sale average, then Japan if Materia data is unavailable or unreliable; otherwise it leaves the item unlisted.\nRequires recent uploads and at least three matching-quality sales in four days after outlier filtering. Minimum prices, HQ/NQ rules and own-retainer protection remain; historical averages are not undercut.\nAsynchronous bounded requests, cancellation and short-lived historical caching keep lookups responsive. Old fixed-price settings are dropped on save without losing approvals or other rules. AutoRefresh remains competitor-only.\nAll 276 automated checks pass. Native workflow timing, price suitability and settlement remain for in-game testing.",
+    "dalamud_api_level": 15,
+    "description": "AutoList turns retainer Market Board chores into supervised AutoList, AutoRefresh, and AutoTidy workflows with a small in-game tray that lights up when your character is ready to start.\nhttps://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/repo.json",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+    "download_link_testing": "",
+    "download_link_update": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+    "first_seen_utc": "2026-11-17T11:29:49Z",
+    "icon_url": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/icon.jpg",
+    "image_urls_json": [],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-11-17T11:29:49Z",
+    "last_update": 1793574536,
+    "minimum_dalamud_version": null,
+    "name": "AutoList",
+    "plugin_id": 1429,
+    "punchline": "Turn retainer listing from market-board chore into one-click momentum.",
+    "raw_manifest_json": {
+      "AcceptsFeedback": true,
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "0.1.0.104",
+      "Author": "BlueWaveXIV",
+      "CanUnloadAsync": false,
+      "CategoryTags": [
+        "utility"
+      ],
+      "Changelog": "Removed fixed Free Market Price. Only after confirming no eligible live competitors, AutoList uses a reliable Materia completed-sale average, then Japan if Materia data is unavailable or unreliable; otherwise it leaves the item unlisted.\nRequires recent uploads and at least three matching-quality sales in four days after outlier filtering. Minimum prices, HQ/NQ rules and own-retainer protection remain; historical averages are not undercut.\nAsynchronous bounded requests, cancellation and short-lived historical caching keep lookups responsive. Old fixed-price settings are dropped on save without losing approvals or other rules. AutoRefresh remains competitor-only.\nAll 276 automated checks pass. Native workflow timing, price suitability and settlement remain for in-game testing.",
+      "DalamudApiLevel": 15,
+      "Description": "AutoList turns retainer Market Board chores into supervised AutoList, AutoRefresh, and AutoTidy workflows with a small in-game tray that lights up when your character is ready to start.\nhttps://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/repo.json",
+      "DownloadLinkInstall": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+      "DownloadLinkUpdate": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/latest.zip",
+      "IconUrl": "https://raw.githubusercontent.com/Ninethirty77/autolist-repo/main/icon.jpg",
+      "InternalName": "AutoList",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": "1793574536",
+      "LoadPriority": 0,
+      "LoadRequiredState": 0,
+      "LoadSync": false,
+      "Name": "AutoList",
+      "Punchline": "Turn retainer listing from market-board chore into one-click momentum.",
+      "RepoUrl": "https://github.com/Ninethirty77/autolist-repo",
+      "Tags": [
+        "marketboard",
+        "retainer",
+        "inventory"
+      ]
+    },
+    "repo_url": "https://github.com/Ninethirty77/autolist-repo",
+    "source_entry_key": "autolist|0.1.0.104|15|0|58",
+    "source_id": 594,
+    "tags_json": [
+      "marketboard",
+      "retainer",
+      "inventory"
+    ],
+    "testing_assembly_version": null,
+    "testing_dalamud_api_level": null,
+    "variant_id": 58378
+  },
+  "variantId": 58378
+}

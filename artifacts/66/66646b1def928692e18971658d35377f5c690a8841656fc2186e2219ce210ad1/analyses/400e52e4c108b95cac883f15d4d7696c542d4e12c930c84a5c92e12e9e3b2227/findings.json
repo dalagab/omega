@@ -1,0 +1,357 @@
+[
+  {
+    "category": "automation",
+    "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+    "evidence_json": [
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.OnFireCallback+0x9a: callvirt FireCallback.Invoke"
+    ],
+    "rule_id": "automation.game.ui.callback",
+    "severity": "caution",
+    "title": "Game UI callback/control"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Hosting.dll: Assembly.Load",
+      "il:Microsoft.Extensions.Hosting.dll:Microsoft.Extensions.Hosting.HostingHostBuilderExtensions.ApplyDefaultAppConfiguration+0xc1: call System.Reflection.Assembly.Load: Assembly.Load",
+      "metadata:Microsoft.Extensions.DependencyInjection.dll: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x39: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x45: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.BuildTypeNoCache+0x6b: callvirt System.Reflection.Emit.ILGenerator.get_ILOffset: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x36: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Extensions.DependencyInjection.dll:Microsoft.Extensions.DependencyInjection.ServiceLookup.ILEmitResolverBuilder.VisitConstructor+0x56: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: s://github.com/MidoriKami/KamiToolKit.git",
+      "artifact:KamiToolKit.dll: W:\\V",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: s://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0",
+      "artifact:Microsoft.Extensions.Configuration.Json.dll: p://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:KamiToolKit.dll: Dalamud.Hooking",
+      "artifact:KamiToolKit.dll: HookFromAddress",
+      "artifact:KamiToolKit.xml: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:Microsoft.Extensions.Configuration.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Primitives.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Options.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.EventLog.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Logging.EventSource.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Diagnostics.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:Microsoft.Extensions.Configuration.Json.dll: System.Runtime.InteropServices.DllImport"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal endpoint uses unencrypted HTTP. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Primitives.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Logging.dll: http://www.microsoft.com0/",
+      "artifact:Microsoft.Extensions.Options.dll: http://www.microsoft.com0/"
+    ],
+    "rule_id": "network.endpoint.insecure-http.7b602439ebe0",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com0"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://legendsofthegame.github.io/pandora-lunar/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1567fc4da61e",
+    "severity": "caution",
+    "title": "Endpoint: legendsofthegame.github.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://ffxiv.consolegameswiki.com/wiki/Main_Scenario_Quests"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.39756eb620fc",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.consolegameswiki.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://garlandtools.org/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.4f191d4fb000",
+    "severity": "caution",
+    "title": "Endpoint: garlandtools.org"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://lodestonenews.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8b45fd8fb331",
+    "severity": "caution",
+    "title": "Endpoint: lodestonenews.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://ffxiv.consolegameswiki.com/mediawiki/index.php"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.964ab77789a5",
+    "severity": "caution",
+    "title": "Endpoint: ffxiv.consolegameswiki.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://ko-fi.com/legendsofthegame"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.be5a493198c7",
+    "severity": "caution",
+    "title": "Endpoint: ko-fi.com"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll: Microsoft.Win32.Registry",
+      "metadata:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x132: call Microsoft.Win32.RegistryKey.OpenRemoteBaseKey: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x141: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: Microsoft.Win32.Registry",
+      "il:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll:System.Diagnostics.EventLog.CreateEventSource+0x19e: callvirt Microsoft.Win32.RegistryKey.OpenSubKey: RegistryKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:KamiToolKit.dll: FileStream",
+      "metadata:KamiToolKit.dll: WriteAllText",
+      "il:KamiToolKit.dll:<SaveAsync>d__2.MoveNext+0x48: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+      "artifact:KamiToolKit.dll: WriteAllText",
+      "artifact:KamiToolKit.dll: FileStream",
+      "metadata:TimeMemoriaV3.dll: Directory.CreateDirectory",
+      "metadata:TimeMemoriaV3.dll: WriteAllText",
+      "metadata:TimeMemoriaV3.dll: File.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/mono/linker/issues/1416"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.02c17b1985f5",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/maxiin/QuestTracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.496ea7902c2d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/aers/FFXIVClientStructs"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.6474b65903ae",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/Critical-Impact/LuminaSupplemental"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8107d126a6f8",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/MidoriKami/KamiToolKit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8a29a1007d74",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/goatcorp/Dalamud"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ae93888cf708",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://raw.githubusercontent.com/LegendsOfTheGame/ffxiv-latest-news/main/LatestNews.json"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.af77861a88fa",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.Components.dll: https://github.com/MidoriKami/KamiToolKit.Components"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.b38c295a905d",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/LegendsOfTheGame/TimeMemoriaV3"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bd8b7b7d1125",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: https://github.com/MidoriKami/KamiToolKit.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.bed307b2844c",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Extensions.Configuration.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Primitives.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Logging.dll: https://github.com/dotnet/dotnet",
+      "artifact:Microsoft.Extensions.Options.dll: https://github.com/dotnet/dotnet"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.c2aa6da77912",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.json: https://github.com/LegendsOfTheGame/TimeMemoriaV3"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.ccba7e84306b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/LegendsOfTheGame/TimeMemoriaV3/issues"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cd4771669706",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/isaiahcat/QuestTracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.e7d0a1b3361e",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:TimeMemoriaV3.dll: https://github.com/keifufu/QuestTracker"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.fcd311b56c60",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:TimeMemoriaV3.dll: System.Net.Http.HttpClient",
+      "il:TimeMemoriaV3.dll:TimeMemoria.Services.NewsService..ctor+0x8: newobj System.Net.Http.HttpClient..ctor: System.Net.Http.HttpClient",
+      "il:TimeMemoriaV3.dll:TimeMemoria.Services.NewsService..ctor+0x16: callvirt System.Net.Http.HttpClient.set_Timeout: System.Net.Http.HttpClient",
+      "il:TimeMemoriaV3.dll:<RefreshAsync>d__26.MoveNext+0x71: callvirt System.Net.Http.HttpClient.GetStringAsync: System.Net.Http.HttpClient",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: WebRequest",
+      "artifact:Microsoft.Extensions.Hosting.Abstractions.dll: HttpWebRequest",
+      "artifact:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll: WebRequest",
+      "artifact:runtimes/win/lib/net10.0/System.Diagnostics.EventLog.dll: HttpWebRequest"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  }
+]

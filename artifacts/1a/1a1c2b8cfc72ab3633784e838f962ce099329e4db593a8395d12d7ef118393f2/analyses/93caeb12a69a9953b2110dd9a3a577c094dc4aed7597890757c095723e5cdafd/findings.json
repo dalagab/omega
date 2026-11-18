@@ -1,0 +1,70 @@
+[
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:BazookaLens.dll: Dalamud.Hooking",
+      "artifact:BazookaLens.dll: Dalamud.Hooking"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:BazookaLens.dll: DllImportAttribute",
+      "metadata:BazookaLens.dll: GetProcAddress",
+      "il:BazookaLens.dll:BazookaLens.Interop.NativeMethods.GetProcAddress+0x3e: call BazookaLens.Interop.NativeMethods.<GetProcAddress>g____PInvoke|9_0 -> kernel32!GetProcAddress: GetProcAddress",
+      "il:BazookaLens.dll:BazookaLens.Diagnostics.ReShadeEventBridge.GetRequiredExport+0x2: call BazookaLens.Interop.NativeMethods.GetProcAddress: GetProcAddress",
+      "il:BazookaLens.dll:BazookaLens.Diagnostics.ReShadeExportProbe.Probe+0x74: ldftn BazookaLens.Interop.NativeMethods.GetProcAddress: GetProcAddress",
+      "artifact:BazookaLens.dll: GetProcAddress"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:BazookaLens.dll: System.Diagnostics.Process",
+      "metadata:BazookaLens.dll: ProcessStartInfo",
+      "metadata:BazookaLens.dll: ShellExecute",
+      "metadata:BazookaLens.dll: Process.Start",
+      "il:BazookaLens.dll:BazookaLens.Windows.BazookaLensWindow.OpenScreenshotFolder+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: System.Diagnostics.Process",
+      "il:BazookaLens.dll:BazookaLens.Windows.BazookaLensWindow.OpenScreenshotFolder+0x0: newobj System.Diagnostics.ProcessStartInfo..ctor: ProcessStartInfo",
+      "il:BazookaLens.dll:BazookaLens.Windows.BazookaLensWindow.OpenScreenshotFolder+0x11: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: System.Diagnostics.Process",
+      "il:BazookaLens.dll:BazookaLens.Windows.BazookaLensWindow.OpenScreenshotFolder+0x11: callvirt System.Diagnostics.ProcessStartInfo.set_FileName: ProcessStartInfo"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:BazookaLens.dll: Directory.CreateDirectory",
+      "metadata:BazookaLens.dll: WriteAllBytes",
+      "metadata:BazookaLens.dll: File.Delete",
+      "il:BazookaLens.dll:BazookaLens.Windows.BazookaLensWindow.CommitSavePathDraft+0x32: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:BazookaLens.dll:BazookaLens.Capture.CapturePathService.GetScreenshotDirectory+0x2a: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory",
+      "il:BazookaLens.dll:BazookaLens.Capture.PngAlphaPostProcessor.TryForceOpaqueAlphaInPlace+0x68: call System.IO.File.WriteAllBytes: WriteAllBytes",
+      "il:BazookaLens.dll:BazookaLens.Capture.PngAlphaPostProcessor.TryDelete+0x9: call System.IO.File.Delete: File.Delete",
+      "artifact:BazookaLens.dll: WriteAllBytes"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  }
+]
