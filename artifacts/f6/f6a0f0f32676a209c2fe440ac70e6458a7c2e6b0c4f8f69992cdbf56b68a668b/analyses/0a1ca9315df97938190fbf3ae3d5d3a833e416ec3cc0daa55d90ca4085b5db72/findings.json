@@ -1,0 +1,719 @@
+[
+  {
+    "category": "compound",
+    "description": "The artifact references credential/protected-data APIs and network APIs. This is not proof of credential collection, but it warrants manual review.",
+    "evidence_json": [],
+    "rule_id": "compound.credential-network",
+    "severity": "high",
+    "title": "Credential APIs plus network access"
+  },
+  {
+    "category": "compound",
+    "description": "The artifact references both network access and process/shell execution. This combination can download and execute external content; manual review is recommended.",
+    "evidence_json": [],
+    "rule_id": "compound.network-execute",
+    "severity": "high",
+    "title": "Network plus process execution"
+  },
+  {
+    "category": "privacy",
+    "description": "References credential-manager, protected-data, or password-vault APIs. This is capability evidence, not proof of credential collection.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: CryptUnprotectData",
+      "artifact:CrystalCast.dll: CryptUnprotectData"
+    ],
+    "rule_id": "credential.api",
+    "severity": "high",
+    "title": "Credential or protected-data access"
+  },
+  {
+    "category": "dynamic-code",
+    "description": "References APIs that can load code dynamically at runtime.",
+    "evidence_json": [
+      "metadata:Microsoft.Web.WebView2.Core.dll: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xad: newobj System.Reflection.Emit.DynamicMethod..ctor: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xb4: callvirt System.Reflection.Emit.DynamicMethod.GetILGenerator: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xcc: callvirt System.Reflection.Emit.ILGenerator.DeclareLocal: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xdc: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xf2: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0xfe: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit",
+      "il:Microsoft.Web.WebView2.Core.dll:Microsoft.Web.WebView2.Core.JSHandlerWrapper.CreateDelegate+0x10f: callvirt System.Reflection.Emit.ILGenerator.Emit: Reflection.Emit"
+    ],
+    "rule_id": "dynamic.assembly",
+    "severity": "caution",
+    "title": "Dynamic assembly loading"
+  },
+  {
+    "category": "filesystem",
+    "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: s://github.com/Wrepsk/crystal-cast.git",
+      "artifact:CrystalCast.dll: E:/<",
+      "artifact:CrystalCast.dll: s://aka.ms/cswinrt/interop#windows-sdk",
+      "artifact:CrystalCast.dll: s://www.youtube.com/watch?v=",
+      "artifact:CrystalCast.dll: s://i.ytimg.com/vi/",
+      "artifact:CrystalCast.dll: s://www.youtube.com/",
+      "artifact:CrystalCast.dll: s://www.youtube.com/results?search_query=",
+      "artifact:CrystalCast.dll: s://crystalcast-relay.crystalcast.workers.dev"
+    ],
+    "rule_id": "filesystem.external-path",
+    "severity": "caution",
+    "title": "Hard-coded external file path"
+  },
+  {
+    "category": "game-memory",
+    "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+    "evidence_json": [
+      "metadata:CrystalRenderer.dll: Dalamud.Hooking",
+      "metadata:CrystalRenderer.dll: HookFromAddress",
+      "il:CrystalRenderer.dll:CrystalRenderer.D3D11.UIMaskCapture..ctor+0x147: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+      "artifact:CrystalRenderer.dll: Dalamud.Hooking",
+      "artifact:CrystalRenderer.dll: HookFromAddress",
+      "metadata:KamiToolKit.dll: Dalamud.Hooking",
+      "metadata:KamiToolKit.dll: HookFromAddress",
+      "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress"
+    ],
+    "rule_id": "game.hooking",
+    "severity": "caution",
+    "title": "Game memory/signature hooking"
+  },
+  {
+    "category": "network",
+    "description": "References APIs that can listen for inbound local/network connections.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: TcpListener",
+      "artifact:CrystalCast.dll: TcpListener"
+    ],
+    "rule_id": "local.listener",
+    "severity": "caution",
+    "title": "Local server/listener"
+  },
+  {
+    "category": "native",
+    "description": "References P/Invoke or dynamic native library loading.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: System.Runtime.InteropServices.DllImport",
+      "metadata:CrystalCast.dll: DllImportAttribute",
+      "metadata:CrystalCast.dll: GetProcAddress",
+      "metadata:CrystalCast.dll: LoadLibrary",
+      "il:CrystalCast.dll:WinRT.DllModule.TryCreate+0x17: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary",
+      "il:CrystalCast.dll:WinRT.DllModule.TryCreate+0x66: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+      "il:CrystalCast.dll:WinRT.DllModule..ctor+0x33: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+      "il:CrystalCast.dll:WinRT.ExceptionHelpers.Initialize+0xf: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary"
+    ],
+    "rule_id": "native.pinvoke",
+    "severity": "caution",
+    "title": "Unmanaged/native API access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.frankerfacez.com/v1/set/global"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.0073796f4e27",
+    "severity": "caution",
+    "title": "Endpoint: api.frankerfacez.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://vimeo.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.025052472d28",
+    "severity": "caution",
+    "title": "Endpoint: vimeo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/chat/badges/global"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.038db188ead3",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.frankerfacez.com/v1/room/id/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.07d7a0cbcb3d",
+    "severity": "caution",
+    "title": "Endpoint: api.frankerfacez.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://id.twitch.tv/oauth2/token"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.11f48dadbc8d",
+    "severity": "caution",
+    "title": "Endpoint: id.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.dailymotion.com/playlist/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1300a3e7c8e2",
+    "severity": "caution",
+    "title": "Endpoint: www.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://7tv.io/v3/emote-sets/global"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.184204b78bc3",
+    "severity": "caution",
+    "title": "Endpoint: 7tv.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.twitch.tv/videos/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1912e4a79232",
+    "severity": "caution",
+    "title": "Endpoint: www.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/chat/badges"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.1ba61064c2f6",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.2c4e1a745c9a",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://static-cdn.jtvnw.net/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.312872db8b5a",
+    "severity": "caution",
+    "title": "Endpoint: static-cdn.jtvnw.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/iframe_api"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.36c9f4084a7e",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.dailymotion.com/services/oembed"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.37dba801d172",
+    "severity": "caution",
+    "title": "Endpoint: www.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://static-cdn.jtvnw.net/emoticons/v2/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3871b62afb72",
+    "severity": "caution",
+    "title": "Endpoint: static-cdn.jtvnw.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.twitch.tv/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.3e7dbbde1f1d",
+    "severity": "caution",
+    "title": "Endpoint: www.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://player.vimeo.com/api/player.js"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.46e5a26e6cfe",
+    "severity": "caution",
+    "title": "Endpoint: player.vimeo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/results"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.535e3f9e3b17",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://crystalcast.local/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5cd6e4572911",
+    "severity": "caution",
+    "title": "Endpoint: crystalcast.local"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/oembed"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.5fc99a251df6",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/<redacted>/Microsoft.WebView2.FixedVersionRuntime.157.0.4341.42.x64.cab"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.6230c9101c27",
+    "severity": "caution",
+    "title": "Endpoint: msedge.sf.dl.delivery.mp.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/watch"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.792d7cec19be",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/chat/messages"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.7f447fc8409e",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://static-cdn.jtvnw.net/badges/v1/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.830183f43d72",
+    "severity": "caution",
+    "title": "Endpoint: static-cdn.jtvnw.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://7tv.io/v3/users/twitch/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.8b3c75e87136",
+    "severity": "caution",
+    "title": "Endpoint: 7tv.io"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://i.ytimg.com/vi/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.914ae634ac06",
+    "severity": "caution",
+    "title": "Endpoint: i.ytimg.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/users"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.979a677e21fd",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://vimeo.com/api/oembed.json"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.a7c62251dc3b",
+    "severity": "caution",
+    "title": "Endpoint: vimeo.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://accounts.google.com/ServiceLogin"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.abf75d9b904b",
+    "severity": "caution",
+    "title": "Endpoint: accounts.google.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://id.twitch.tv/oauth2"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b3b7e2f458e3",
+    "severity": "caution",
+    "title": "Endpoint: id.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://cdn.betterttv.net/emote/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.b454c1abae32",
+    "severity": "caution",
+    "title": "Endpoint: cdn.betterttv.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/chat/emotes/user"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bed70f8167bd",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.betterttv.net/3/cached/emotes/global"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.bfcbba82294c",
+    "severity": "caution",
+    "title": "Endpoint: api.betterttv.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:Microsoft.Web.WebView2.Core.dll: https://www.microsoft.com/",
+      "artifact:WebView2Loader.dll: https://www.microsoft.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c2bae08609fa",
+    "severity": "caution",
+    "title": "Endpoint: www.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://id.twitch.tv/oauth2/validate"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c4fc967ce42f",
+    "severity": "caution",
+    "title": "Endpoint: id.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.dailymotion.com/video/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c73a29728448",
+    "severity": "caution",
+    "title": "Endpoint: api.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/playlist"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.c87f6ea6b295",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.dailymotion.com/video/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cc5ec2c99ac1",
+    "severity": "caution",
+    "title": "Endpoint: www.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.betterttv.net/3/cached/users/twitch/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cd4b590c5a51",
+    "severity": "caution",
+    "title": "Endpoint: api.betterttv.net"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://player.twitch.tv/js/embed/v1.js"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.cdf8fcd8d5ad",
+    "severity": "caution",
+    "title": "Endpoint: player.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://id.twitch.tv/oauth2/revoke"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d1b0a69cc4f6",
+    "severity": "caution",
+    "title": "Endpoint: id.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://developer.microsoft.com/en-us/microsoft-edge/webview2/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.d4d6cf1e888c",
+    "severity": "caution",
+    "title": "Endpoint: developer.microsoft.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://crystalcast-relay.crystalcast.workers.dev/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.da0a986acd94",
+    "severity": "caution",
+    "title": "Endpoint: crystalcast-relay.crystalcast.workers.dev"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://geo.dailymotion.com/libs/player.js"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.de6816892a24",
+    "severity": "caution",
+    "title": "Endpoint: geo.dailymotion.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/chat/emotes/global"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.e6e3acb15891",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://id.twitch.tv/oauth2/device"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f762f1576bb1",
+    "severity": "caution",
+    "title": "Endpoint: id.twitch.tv"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.f98c903e8640",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://www.youtube.com/embed/live_stream"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fc133b563f5f",
+    "severity": "caution",
+    "title": "Endpoint: www.youtube.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Literal public endpoint is not in Omega's recognised platform list. Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://api.twitch.tv/helix/streams/followed"
+    ],
+    "rule_id": "network.endpoint.unrecognised-host.fe1266aac6dc",
+    "severity": "caution",
+    "title": "Endpoint: api.twitch.tv"
+  },
+  {
+    "category": "network",
+    "description": "References TCP/UDP/socket APIs that can open arbitrary network connections.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: System.Net.Sockets",
+      "metadata:CrystalCast.dll: TcpClient",
+      "metadata:CrystalCast.dll: Socket.Connect",
+      "artifact:CrystalCast.dll: System.Net.Sockets",
+      "artifact:CrystalCast.dll: TcpClient"
+    ],
+    "rule_id": "network.socket",
+    "severity": "caution",
+    "title": "Raw socket access"
+  },
+  {
+    "category": "process",
+    "description": "References APIs that can launch external programs or shell commands.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: System.Diagnostics.Process",
+      "metadata:CrystalCast.dll: CreateProcess",
+      "artifact:CrystalCast.dll: System.Diagnostics.Process",
+      "artifact:CrystalCast.dll: CreateProcess",
+      "artifact:SharpDX.Direct3D11.dll: CreateProcess",
+      "artifact:SharpDX.dll: CreateProcess"
+    ],
+    "rule_id": "process.launch",
+    "severity": "caution",
+    "title": "Process execution"
+  },
+  {
+    "category": "system",
+    "description": "References Windows Registry APIs.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: Microsoft.Win32.Registry",
+      "metadata:CrystalCast.dll: RegistryKey",
+      "artifact:CrystalCast.dll: Microsoft.Win32.Registry",
+      "artifact:CrystalCast.dll: RegistryKey",
+      "artifact:WebView2Loader.dll: RegOpenKey"
+    ],
+    "rule_id": "registry.access",
+    "severity": "caution",
+    "title": "Windows Registry access"
+  },
+  {
+    "category": "filesystem",
+    "description": "References APIs commonly used to create, modify, move, or delete files.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: FileStream",
+      "metadata:CrystalCast.dll: Directory.Delete",
+      "metadata:CrystalCast.dll: Directory.CreateDirectory",
+      "metadata:CrystalCast.dll: WriteAllBytes",
+      "metadata:CrystalCast.dll: File.Move",
+      "metadata:CrystalCast.dll: File.Delete",
+      "metadata:CrystalCast.dll: WriteAllText",
+      "il:CrystalCast.dll:CrystalCast.Windows.Panels.TwitchPanel.SignOut+0x5c: call System.IO.Directory.Delete: Directory.Delete"
+    ],
+    "rule_id": "filesystem.write",
+    "severity": "informational",
+    "title": "Filesystem write access"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.dll: https://github.com/Wrepsk/crystal-cast.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.17ef266a7ab1",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.json: https://raw.githubusercontent.com/Wrepsk/crystal-cast/repo/Icon/icon.png"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.2bf9fd2135f9",
+    "severity": "informational",
+    "title": "Endpoint: raw.githubusercontent.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-config; evidence confidence: VeryHigh. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalCast.json: https://github.com/Wrepsk/crystal-cast"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.48bb32fd270b",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:KamiToolKit.dll: https://github.com/MidoriKami/KamiToolKit"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.8a29a1007d74",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network-endpoint",
+    "description": "Recognised public service: GitHub (source hosting). Origin: artifact-binary-string; evidence confidence: Low. This is a static literal, not proof of a runtime connection or payload.",
+    "evidence_json": [
+      "artifact:CrystalRenderer.dll: https://github.com/Wrepsk/crystal-renderer.git"
+    ],
+    "rule_id": "network.endpoint.recognised-platform.cbd5120f5d35",
+    "severity": "informational",
+    "title": "Endpoint: github.com"
+  },
+  {
+    "category": "network",
+    "description": "References HTTP/network client APIs.",
+    "evidence_json": [
+      "metadata:CrystalCast.dll: System.Net.Http.HttpClient"
+    ],
+    "rule_id": "network.http",
+    "severity": "informational",
+    "title": "Network access"
+  },
+  {
+    "category": "package",
+    "description": "The plugin package contains native-library payloads in addition to managed plugin files.",
+    "evidence_json": [
+      "WebView2Loader.dll"
+    ],
+    "rule_id": "package.native-library",
+    "severity": "informational",
+    "title": "Bundled native libraries"
+  }
+]
