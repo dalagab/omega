@@ -1,0 +1,2907 @@
+{
+  "analysis": {
+    "analysisId": "25279cec494ba21b83a400f4b2b3bfe1ce6d884683013f9b15b45ac4359161b1",
+    "artifactSha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+    "path": "artifacts/2d/2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55/analyses/25279cec494ba21b83a400f4b2b3bfe1ce6d884683013f9b15b45ac4359161b1",
+    "recordCount": 24387
+  },
+  "current": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+    "artifact_url": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+    "assembly_version": "3.2.3.8",
+    "automation_capabilities_json": [
+      {
+        "automationLevel": "ui-automation",
+        "capabilityId": "game.ui.callback",
+        "confidence": "high",
+        "evidence": [
+          "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.OnFireCallback+0xc2: callvirt FireCallback.Invoke"
+        ],
+        "indirect": false,
+        "label": "Game UI callback/control",
+        "reachable": false,
+        "reason": "Invokes game-addon callback or event mechanisms that can drive game UI state."
+      }
+    ],
+    "automation_level": "ui-automation",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "findings_json": [
+      {
+        "category": "native",
+        "description": "References P/Invoke or dynamic native library loading.",
+        "evidence": [
+          "metadata:WinRT.Runtime.dll: System.Runtime.InteropServices.DllImport",
+          "metadata:WinRT.Runtime.dll: DllImportAttribute",
+          "metadata:WinRT.Runtime.dll: GetProcAddress",
+          "metadata:WinRT.Runtime.dll: LoadLibrary",
+          "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x17: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary",
+          "il:WinRT.Runtime.dll:WinRT.DllModule.TryCreate+0x66: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+          "il:WinRT.Runtime.dll:WinRT.DllModule..ctor+0x33: call WinRT.Interop.Platform.TryGetProcAddress: GetProcAddress",
+          "il:WinRT.Runtime.dll:WinRT.ExceptionHelpers.Initialize+0xf: call WinRT.Interop.Platform.LoadLibraryExW: LoadLibrary"
+        ],
+        "ruleId": "native.pinvoke",
+        "severity": "caution",
+        "title": "Unmanaged/native API access"
+      },
+      {
+        "category": "game-memory",
+        "description": "References Dalamud/game hooking or signature-scanning facilities that can alter behavior inside the game process.",
+        "evidence": [
+          "metadata:KamiToolKit.dll: Dalamud.Hooking",
+          "metadata:KamiToolKit.dll: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x3d: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.Controllers.NativeListController`2.LoadPopulators+0x83: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.InitializeCloseCallback+0x2b: callvirt Dalamud.Plugin.Services.IGameInteropProvider.HookFromAddress: HookFromAddress",
+          "artifact:KamiToolKit.dll: Dalamud.Hooking",
+          "artifact:KamiToolKit.dll: HookFromAddress"
+        ],
+        "ruleId": "game.hooking",
+        "severity": "caution",
+        "title": "Game memory/signature hooking"
+      },
+      {
+        "category": "filesystem",
+        "description": "References filesystem APIs together with an absolute path outside known FFXIV and Dalamud locations. Static analysis cannot prove the path is opened at runtime.",
+        "evidence": [
+          "artifact:KamiToolKit.dll: s://github.com/dajoey/lalalazy.git",
+          "artifact:LazyWTMath.dll: s://github.com/dajoey/lalalazy.git",
+          "artifact:LazyWTMath.dll: s://github.com/dajoey/lalalazy/blob/main/"
+        ],
+        "ruleId": "filesystem.external-path",
+        "severity": "caution",
+        "title": "Hard-coded external file path"
+      },
+      {
+        "category": "automation",
+        "description": "Static analysis found capability evidence for game ui callback/control. This does not prove that the behavior executes during normal use.",
+        "evidence": [
+          "il:KamiToolKit.dll:KamiToolKit.BaseTypes.NativeAddon.OnFireCallback+0xc2: callvirt FireCallback.Invoke"
+        ],
+        "ruleId": "automation.game.ui.callback",
+        "severity": "caution",
+        "title": "Game UI callback/control"
+      },
+      {
+        "category": "filesystem",
+        "description": "References APIs commonly used to create, modify, move, or delete files.",
+        "evidence": [
+          "metadata:KamiToolKit.dll: FileStream",
+          "metadata:KamiToolKit.dll: WriteAllText",
+          "il:KamiToolKit.dll:<SaveAsync>d__2.MoveNext+0x48: callvirt Dalamud.Plugin.Services.IReliableFileStorage.WriteAllTextAsync: WriteAllText",
+          "artifact:KamiToolKit.dll: WriteAllText",
+          "artifact:KamiToolKit.dll: FileStream",
+          "metadata:LazyWTMath.dll: Directory.CreateDirectory",
+          "metadata:LazyWTMath.dll: WriteAllText",
+          "il:LazyWTMath.dll:Lalalazy.Changelog.SidecarSeenStore.Set+0xb: call System.IO.Directory.CreateDirectory: Directory.CreateDirectory"
+        ],
+        "ruleId": "filesystem.write",
+        "severity": "informational",
+        "title": "Filesystem write access"
+      }
+    ],
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-461bc75a86a8ee48",
+      "artifactBytes": 7003746,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.2.3.8",
+        "artifactBytes": 7003746,
+        "artifactSha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+        "catalogAssemblyVersion": "3.2.3.8",
+        "manifestInternalName": "LazyWTMath",
+        "manifestPath": "LazyWTMath.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1233528483/1a6d4c36-05f7-4781-931e-ee08c7ad1bbd?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-11-19T10%3A19%3A35Z&rscd=attachment%3B+filename%3DLazyWTMath.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-11-19T09%3A19%3A31Z&ske=2026-11-19T10%3A19%3A35Z&sks=b&skv=2018-11-09&sig=QRHkIE%2BBkpPHLHWh3Zgg6tPy%2F6FngrVn%2BgGznRy%2F5XI%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5NTA4MDU0MCwibmJmIjoxNzk1MDgwMjQwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.VL5EOKC6zfXQLyZwU2Mf8Sr946Km6fJC-8EPa2k5PXQ&response-content-disposition=attachment%3B%20filename%3DLazyWTMath.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "ui-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 7,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 7,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 56,
+          "exactVersionObservedCount": 48,
+          "families": {
+            "managed-assembly": 49,
+            "native": 7
+          },
+          "fingerprint": "167015ffdbf6133f2608f29a4abbf25d1628e23c8349dffe0f1391e4ad0149b4",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 6,
+            "platformLibrary": 16
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoCreateFreeThreadedMarshaler",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoCreateFreeThreadedMarshaler",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoCreateInstance",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoCreateInstance",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoDecrementMTAUsage",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoDecrementMTAUsage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoGetContextToken",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoGetContextToken",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoGetObjectContext",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoGetObjectContext",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoIncrementMTAUsage",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoIncrementMTAUsage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "RoGetAgileReference",
+              "library": "api-ms-win-core-com-l1-1-1.dll",
+              "managedName": "RoGetAgileReference",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "RoGetActivationFactory",
+              "library": "api-ms-win-core-winrt-l1-1-0.dll",
+              "managedName": "RoGetActivationFactory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsCreateString",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsCreateString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsCreateStringReference",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsCreateStringReference",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsDeleteString",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsDeleteString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsGetStringRawBuffer",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsGetStringRawBuffer",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "<FreeLibrary>g__PInvoke|0_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "<GetProcAddress>g__PInvoke|1_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibraryExW",
+              "library": "kernel32.dll",
+              "managedName": "<LoadLibraryExW>g__PInvoke|2_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_domain_get",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_domain_get",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_thread_current",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_thread_current",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_thread_is_foreign",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_thread_is_foreign",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_thread_pop_appdomain_ref",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_thread_pop_appdomain_ref",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_unity_thread_fast_attach",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_unity_thread_fast_attach",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_unity_thread_fast_detach",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_unity_thread_fast_detach",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SetErrorInfo",
+              "library": "oleaut32.dll",
+              "managedName": "SetErrorInfo",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 52
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 1
+        },
+        "coverage": {
+          "analyzed": 55,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 1,
+          "requirements": {
+            "bundled": 4,
+            "observed": 52,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 56
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "aka.ms",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 15,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 10450
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/cswinrt/interop"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dajoey/lalalazy.git"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/dajoey/lalalazy/blob/main/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazywtmath-icon.png"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+        "internalName": "LazyWTMath",
+        "manifestVersion": "3.2.3.8",
+        "observationId": 95067,
+        "observationKey": "manifest-3190a44f541edaec43f36ac6ad6a",
+        "repositoryUrl": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 58249
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 13,
+        "uncompressedBytes": 27551563
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-461bc75a86a8ee48",
+        "attemptId": "attempt-v2-213e035361e4c4b8",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7d6c0ae74b82c010",
+        "definitionsRevision": "defs-v1-efb3d44f4be2da84",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-58249",
+        "queueSeedRevision": "queue-seed-v2-61d233318e2564996dbb",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-0e7ef61c9a01435e",
+        "targetFingerprint": "artifact-target-v2-e398e19e16b65b9b1ff5",
+        "variantId": 58249,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-11-19T09:23:59Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/dajoey/lalalazy"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 4,
+    "scanned_at_utc": "2026-11-19T09:23:59Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_repository": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 58249
+  },
+  "derived": {
+    "dependencyDrift": [],
+    "scanLineage": {
+      "artifact_changed": 0,
+      "assembly_version_changed": 0,
+      "change_basis": "baseline",
+      "current_artifact_sha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+      "current_assembly_version": "3.2.3.8",
+      "current_scan_id": 4,
+      "current_scanner_version": "2.15.0",
+      "current_source_commit": "",
+      "detected_at_utc": "2026-11-19T09:24:03Z",
+      "previous_artifact_sha256": "",
+      "previous_assembly_version": "",
+      "previous_scan_id": null,
+      "previous_scanner_version": "",
+      "previous_source_commit": "",
+      "scanner_changed": 0,
+      "source_changed": 0,
+      "variant_id": 58249
+    },
+    "sourceArtifactComparison": {
+      "artifact_dependency_count": 35,
+      "artifact_only_count": 35,
+      "artifact_only_json": [
+        {
+          "componentKey": "assembly:dalamud",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "15.0.4.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:dalamud.bindings.imgui",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Dalamud.Bindings.ImGui",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:ffxivclientstructs",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "FFXIVClientStructs",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.57.0.9480"
+          ]
+        },
+        {
+          "componentKey": "assembly:interopgenerator.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "InteropGenerator.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:kamitoolkit",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly",
+            "managed-assembly-reference"
+          ],
+          "name": "KamiToolKit",
+          "requirements": [
+            "bundled",
+            "observed"
+          ],
+          "versions": [
+            "1.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lazywtmath",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "LazyWTMath",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "3.2.3.8"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:lumina.excel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Lumina.Excel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "7.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:microsoft.windows.sdk.net",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "Microsoft.Windows.SDK.NET.dll",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "assembly:serilog",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "Serilog",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "4.3.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.collections.concurrent",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Collections.Concurrent",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.componentmodel.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ComponentModel.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.drawing.primitives",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Drawing.Primitives",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.linq.expressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Linq.Expressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.memory",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Memory",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.numerics.vectors",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Numerics.Vectors",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.objectmodel",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.ObjectModel",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.runtime.interopservices",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Runtime.InteropServices",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.security.cryptography",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Security.Cryptography",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.json",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.Json",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.text.regularexpressions",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Text.RegularExpressions",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0",
+            "8.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:system.threading.thread",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly-reference"
+          ],
+          "name": "System.Threading.Thread",
+          "requirements": [
+            "observed"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ]
+        },
+        {
+          "componentKey": "assembly:winrt.runtime",
+          "componentKind": "assembly",
+          "kinds": [
+            "managed-assembly"
+          ],
+          "name": "WinRT.Runtime",
+          "requirements": [
+            "bundled"
+          ],
+          "versions": [
+            "2.2.0.0"
+          ]
+        },
+        {
+          "componentKey": "native:api-ms-win-core-com-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-com-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-com-l1-1-1",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-com-l1-1-1.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-winrt-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-winrt-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:api-ms-win-core-winrt-string-l1-1-0",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "api-ms-win-core-winrt-string-l1-1-0.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:kernel32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "kernel32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:mono-2.0-bdwgc",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "mono-2.0-bdwgc.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        },
+        {
+          "componentKey": "native:oleaut32",
+          "componentKind": "native",
+          "kinds": [
+            "native-import"
+          ],
+          "name": "oleaut32.dll",
+          "requirements": [
+            "observed"
+          ],
+          "versions": []
+        }
+      ],
+      "artifact_project_sha256": "",
+      "compared_at_utc": "2026-11-19T09:24:03Z",
+      "comparison_id": 3,
+      "comparison_status": "source-unavailable",
+      "matched_component_count": 0,
+      "requirement_mismatch_count": 0,
+      "requirement_mismatches_json": [],
+      "scan_id": 4,
+      "source_available": 0,
+      "source_dependency_count": 0,
+      "source_only_count": 0,
+      "source_only_json": [],
+      "source_project_sha256": "",
+      "variant_id": 58249,
+      "version_mismatch_count": 0,
+      "version_mismatches_json": []
+    }
+  },
+  "derivedEvidence": {
+    "advisoryMatches": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0058/58249/advisory-matches.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyIssues": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0058/58249/dependency-issues.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    },
+    "dependencyResolutions": {
+      "files": [
+        {
+          "bytes": 54533,
+          "encoding": "json",
+          "path": "derived/variants/0058/58249/dependency-resolutions.json",
+          "recordDigest": "d1725352714dd2ecde690d9c58260675e39fde34543032d84ef600d61ef7d5aa",
+          "records": 56,
+          "sha256": "7a2baba1735e6ad005f011dc10a2ba919506f25fb93144c0f8d236c38e3cae45"
+        }
+      ],
+      "recordDigest": "d1725352714dd2ecde690d9c58260675e39fde34543032d84ef600d61ef7d5aa",
+      "records": 56
+    },
+    "sourceAnalysisCache": {
+      "files": [
+        {
+          "bytes": 3,
+          "encoding": "json",
+          "path": "derived/variants/0058/58249/source-analysis-cache.json",
+          "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "records": 0,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        }
+      ],
+      "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "records": 0
+    }
+  },
+  "formatVersion": 2,
+  "lifecycle": {
+    "catalogRevision": "cat-v1-2f682332b9228f9b",
+    "identityFingerprint": "902ef1d0e2cd4207507a128cadbab8d865096fd6dceb3ed1d34a3cd1874a5017",
+    "schema": "omega.security-evidence.variant-lifecycle.v1",
+    "state": "active"
+  },
+  "observations": {
+    "collections": {
+      "artifactIdentity": {
+        "backingDataset": "artifactIdentity",
+        "collectionSchema": "omega.sigmascope.observation.artifact-identity.v1",
+        "completeness": "retained",
+        "recordDigest": "18cbc9e02854f75268864598c97e80fa5b6d664b7d9591c21f1fb32cecec5625",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "binaryClassifications": {
+        "backingDataset": "binaryClassifications",
+        "collectionSchema": "omega.sigmascope.observation.binary-classifications.v1",
+        "completeness": "retained",
+        "recordDigest": "df096d5e1e739e7ff3eefae9892b9d61dbece9f34ff8ea585e4dd1f4aebf487d",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "dependencies": {
+        "backingDataset": "dependencies",
+        "collectionSchema": "omega.sigmascope.observation.dependencies.v1",
+        "completeness": "retained",
+        "recordDigest": "6214a0721b4988e26cf217d9ab31a292bcb1ba5539529e7765be1f19601ee48d",
+        "records": 56,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "developerProfile": {
+        "backingDataset": "compact-report",
+        "collectionSchema": "omega.sigmascope.input.developer-profile.v1",
+        "completeness": "retained-summary",
+        "recordDigest": "a2662eabea248e62f1e60f536f005467592a1336d237fcf21b36074f72b904ca",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "developer-claim",
+        "srlEligible": true
+      },
+      "ipcIntegrations": {
+        "backingDataset": "ipc",
+        "collectionSchema": "omega.sigmascope.observation.ipc.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedAssemblies": {
+        "backingDataset": "assemblies",
+        "collectionSchema": "omega.sigmascope.observation.managed-assemblies.v1",
+        "completeness": "retained",
+        "recordDigest": "78737bf0822219056197ea935bb0488af6fee7a3ba3eba0f442cc2cea26f0f89",
+        "records": 4,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedCallSites": {
+        "backingDataset": "calls",
+        "collectionSchema": "omega.sigmascope.observation.managed-calls.v1",
+        "completeness": "retained",
+        "recordDigest": "adcd882bc37de286498afab3a70ab8ec63e0a8275b3b662b43f721f65b974154",
+        "records": 20000,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedReachability": {
+        "backingDataset": "reachability",
+        "collectionSchema": "omega.sigmascope.observation.managed-reachability.v1",
+        "completeness": "retained",
+        "recordDigest": "d1268d9aab6e6b64e7fb3c8da110218da6642ff6bba3919f50928c962fd8c23d",
+        "records": 725,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "managedSymbols": {
+        "backingDataset": "symbols",
+        "collectionSchema": "omega.sigmascope.observation.managed-symbols.v1",
+        "completeness": "retained",
+        "recordDigest": "b5b6533a67575c0b12754c925bea6c7d39e93506881d941e3c15553ee8fcbef7",
+        "records": 3496,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "manifestObservation": {
+        "backingDataset": "manifestObservation",
+        "collectionSchema": "omega.sigmascope.observation.manifest.v1",
+        "completeness": "retained",
+        "recordDigest": "3c0c884c537cfe8638fe100cc3f8eb138f3026e9444184792ad3d1667078d0ad",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "namespaceImports": {
+        "backingDataset": "imports",
+        "collectionSchema": "omega.sigmascope.observation.namespace-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "records": 0,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "nativeImports": {
+        "backingDataset": "nativeImports",
+        "collectionSchema": "omega.sigmascope.observation.native-imports.v1",
+        "completeness": "retained",
+        "recordDigest": "9ba21e93ef1f0f1c45168b95ede64da397fc6e1765c2fb36b653a82a1282c155",
+        "records": 22,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "networkEndpoints": {
+        "backingDataset": "networkEndpoints",
+        "collectionSchema": "omega.sigmascope.observation.network-endpoints.v1",
+        "completeness": "retained",
+        "recordDigest": "4f08220eb8d9da4680c6fd1341daa68052e0457871d1abd5dceb027d4b183cc5",
+        "records": 15,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "secondarySecurity": {
+        "backingDataset": "secondarySecurity",
+        "collectionSchema": "omega.sigmascope.observation.secondary-security.v1",
+        "completeness": "retained",
+        "recordDigest": "fc52e4628dbc7c0acafd084a8d779ef1aebfcc748e9841fd9ed31d5abce2b672",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "hygiene-evidence",
+        "srlEligible": true
+      },
+      "sourceAttribution": {
+        "backingDataset": "sourceAttribution",
+        "collectionSchema": "omega.sigmascope.observation.source-attribution.v1",
+        "completeness": "retained",
+        "recordDigest": "4252219282bee08342084bcb7def2972baa4b4d0df2afd2932c1b4c81c58cdba",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "provenance",
+        "srlEligible": true
+      },
+      "sourceFiles": {
+        "backingDataset": "sourceFiles",
+        "collectionSchema": "omega.sigmascope.observation.source-files.v1",
+        "completeness": "retained",
+        "recordDigest": "9699ac89e37b862fed3e76864ee8dfc41cb655adbcedb89d531da66e4112943e",
+        "records": 1,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      },
+      "staticPatternMatches": {
+        "backingDataset": "staticPatternMatches",
+        "collectionSchema": "omega.sigmascope.observation.static-pattern-matches.v1",
+        "completeness": "retained",
+        "recordDigest": "99f4bc8a6ab411b6534899e7157f2a460ef438bd68f1540ecf6c46cae25c9c75",
+        "records": 38,
+        "schema": "omega.sigmascope.observation-collection.v1",
+        "semanticClass": "observation",
+        "srlEligible": true
+      }
+    },
+    "contractRevision": "observations-v1-1e78d17eb03ed5c4",
+    "legacyCompatibility": false,
+    "missingCollections": [
+      "sourceBuildEdges",
+      "sourceBuildEnvironment",
+      "sourceBuildInputs",
+      "sourceBuildProjects",
+      "sourceConditions",
+      "sourceDataFlow",
+      "sourceDependencyDeclarations",
+      "sourceFlowEdges",
+      "sourceOperations",
+      "sourceProvenance",
+      "sourceReleaseWorkflows",
+      "sourceTriggers"
+    ],
+    "observationDigest": "obs-e410f0c496f8c150cecb2a6f0b4c96ad6a40ecfceed80280f527280036de7a5d",
+    "providerRevisions": {
+      "artifactAnalysisRevision": "artifact-analysis-v3-461bc75a86a8ee48",
+      "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f"
+    },
+    "schema": "omega.sigmascope.observation-contract.v1"
+  },
+  "plugin": {
+    "active": 1,
+    "canonical_name": "Lazy WT Math",
+    "first_seen_utc": "2026-08-20T06:02:54Z",
+    "internal_name": "LazyWTMath",
+    "last_seen_utc": "2026-11-19T01:49:13Z",
+    "plugin_id": 818
+  },
+  "pluginId": 818,
+  "presentation": {
+    "images": [],
+    "plugin": {
+      "description": "Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Upgraded for modern FFXIV.\nhttps://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json",
+      "images": [
+        "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/repo-icon.png"
+      ],
+      "nsfw": false,
+      "official": false,
+      "richCard": true,
+      "richnessScore": 11250,
+      "summary": "FFXIV Wondrous Tails probability calculator.",
+      "webEnriched": true
+    },
+    "projectRepository": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+    "schema": "omega.evidence.presentation.v1",
+    "website": {
+      "description": "FFXIV Dalamud plugin repository",
+      "homepage": "",
+      "images": [
+        "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/repo-icon.png"
+      ],
+      "links": [
+        {
+          "kind": "source",
+          "label": "Source",
+          "url": "https://github.com/dajoey/lalalazy"
+        }
+      ],
+      "omegaBannerUrl": "",
+      "readmeExcerpt": "# ![](https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/repo-icon.png)\n\n# lalalazy — FFXIV Dalamud Plugins\n\nA collection of Dalamud plugins for Final Fantasy XIV, maintained by [dajoey](https://github.com/dajoey).\n\n## Plugins\n\n| Plugin | Description | Status |\n|--------|-------------|--------|\n| **Gluttony Combo** | XIVCombo for very lazy players. Condenses combos and mutually exclusive abilities onto a single button — and then some. Fork of Wrath Combo. | Active |\n| **PvP Solver** | Auto-rotation for PvP combat. All jobs. Activates automatically in PvP zones. Designed to run alongside Gluttony Combo. | Active |\n| **Lazy Market Companion** | Auto-lists your always-sell items through your retainers (bags + retainer inventory, configurable stack size / reserve), matches board prices, optional AutoRetainer hook. Successor to Dagobert Price Matcher. | Testing |\n| **AutoPotion** | Auto-uses HP potions and deep dungeon regen potions at configurable HP thresholds. | Active |\n| **Armoire Auto-Fill** | Per-dungeon view of armoire-eligible gear pieces you're still missing. Detects in-armoire, in-inventory, and equipped state. | Active |\n| **Lazy WT Math** | Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Fork of EzWondrousTails. | Active |\n| **Lazy Currency Spender** | Finds the best way to spend your tomestones, scrips, and Poetics — backed by live Universalis market prices. Surfaces tomestone gear and missing collectibles you can buy. Fork of CurrencySpender. | Active |\n| **Lazy Fate Automation** | Fully automated FATE grinding utilizing vnavmesh, lifestream, and Gluttony Combo. | Active |\n| **Lazy Skyward Tracker** | Track your Skybuilders' (Skyward) points for all jobs toward the Pteranodon mount. | Active |\n| **LazyFoodBuff** | Auto-eats food in combat duties incl. deep dungeons. Per-job food selection, auto-select based on best stats, and a low-food (running-out) warning. | Active |\n| **LazyRetainerLive** | Serves the logged-in character's live retainer/venture table to the ffxiv dashboard over loopback HTTP, so venture countdowns stay current. Read-only AutoRetainer companion. | Testing |\n| **LazyFashionReport** | Gold Saucer Fashion Report assistant: weekly hints, exact +2 dyes and +1 shades, owned-item candidates, and a live score predictor. | Testing |\n| **LazyCrafter** | Catalogs every recipe you can craft, prices it with Universalis, and hands the missing materials to Artisan / GatherBuddyReborn / AutoRetainer / Lifestream. | Active |\n| **Lazy Fish Sitter** | Sits you down while you fish. Checks every few seconds while fishing and runs /sit if you are standing. Never re-sits once you are seated (ground, chair, or pose). | Testing |\n\n## Installation\n\n\nAdd this custom plugin repository URL in Dalamud:\n\n```\nhttps://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json\n```\n\n1. In-game, type `/xlsettings` and go to the **Experimental** tab\n2. Scroll to **Custom Plugin Repositories**\n3. Paste the URL above into the text field and click **+**\n4. Click the **Save** icon (bottom-right)\n5. Plugins will appear in the **Available Plugins** tab in `/xlplugins`\n\n> **Note:** Gluttony Combo replaces Wrath Combo. Disable Wrath Combo before installing Gluttony Combo — they cannot be loaded at the same time.\n\n## Credits & Origins\n\n### Gluttony Combo\nFork of [WrathCombo](https://github.com/PunishXIV/WrathCombo) by Team Wrath / PunishXIV. Licensed under GPLv3. Lalalazy-branded fork with custom improvements including healer raidwide mitigation overlap protection and ground-targeted heal auto-placement on tanks.\n\n### PvP Solver\nFork of [RotationSolverReborn](https://github.com/FFXIV-CombatReborn/RotationSolverReborn) by ArchiDog1998 / FFXIV-CombatReborn. Licensed under GPLv3. Rewired for PvP-only operation — PvE rotations stripped, action IDs remapped to PvP equivalents. Designed to run alongside Gluttony Combo for PvE coverage.\n\n### Lazy Market Companion\nOriginal plugin, successor to Dagobert Price Matcher (the Dagobert fork was retired from this repo on 2026-09-05). Carries Dagobert's price-matching engine (AGPLv3, credit SHOEGAZEssb) and adds the Auto-Market list, listing from bags and retainer inventory via InventoryManager.MoveToRetainerMarket, and the AutoRetainer postprocess hook. Planner is Dalamud-free and unit-tested in \tests/LazyMarketCompanion.Harness.\n\n### AutoPotion\nOriginal plugin by dajoey. Built from scratch using the Dalamud plugin SDK.\n\n### Armoire Auto-Fill\nOriginal plugin by dajoey. Reads the in-game Cabinet sheet for the canonical armoire-eligible item list, joined with [LuminaSupplemental.Excel](https://github.com/Critical-Impact/LuminaSupplemental) (GPL-3.0, by Critical-Impact) for dungeon drop attribution. Cabinet observation technique inspired by [seventhxiv/Collections](https://github.com/seventhxiv/Collections).\n\n## Build\n\nEach plugin builds with the Dalamud SDK (.NET 10 SDK required). See individual plugin READMEs in `src/` for details.\n\n```bash\ncd src/GluttonyCombo && dotnet build --configuration Release\ncd src/PvPSolver && dotnet build --configuration Release\ncd src/LazyMarketCompanion && dotnet build --configuration Release\ncd src/AutoPotion && dotnet build --configuration Release\ncd src/ArmoireAutoFill && dotnet build --configuration Release\ncd src/LazyWTMath && dotnet build --configuration Release\ncd src/LazyCurrencySpender && dotnet build --configuration Release\ncd src/LazyFateAutomation && dotnet build --configuration Release\ncd src/LazySkywardTracker && dotnet build --configuration Release\ncd src/LazyGearCollector && dotnet build --configuration Release\ncd src/LazyFoodBuff/LazyFoodBuff && dotnet build --configuration Release\ncd src/LazyCrafter && dotnet build --configuration Release\ncd src/LazyFishSitter && dotnet build --configuration Release\n\n```\n\n### LazyCrafter\nOriginal plugin by dajoey. Catalogs every craftable recipe, prices it with Universalis, and dispatches the missing-material work to [Artisan](https://github.com/PunishXIV/Artisan), GatherBuddyReborn, [AutoRetainer](https://github.com/FFXIV-CombatReborn/ARControl) and Lifestream via their IPC / reflected interfaces.\n\n## License\n\nIndividual plugins retain the licenses of their origin projects. See `COPYING` / `LICENSE` files in each `src/` subdirectory.",
+      "title": "lalalazy",
+      "url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath"
+    }
+  },
+  "projection": {
+    "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+    "contractRevision": "projection-contract-v1-f507480528a1e6af",
+    "outputs": {
+      "automation": {
+        "recordDigest": "1eaf3fc5d008b34249ce139e1754ce7ac12f6bd953001f3a9d6c5d15466f179c",
+        "records": 1
+      },
+      "behaviorConsistency": {
+        "recordDigest": "5a0771efaf301cd6621cb17a65d43579b71c25e505d7e5a9b4ce257bf9768461",
+        "records": 1
+      },
+      "capabilityIds": {
+        "recordDigest": "7209d61555f16bc03120e3cf1f65000497afb131a4f2adb114a0db44585a5e51",
+        "records": 7
+      },
+      "findings": {
+        "backingDataset": "findings",
+        "recordDigest": "d545045443033b07c58d421abc222e428b5f71f185768106fd5c2b90b482fbc5",
+        "records": 5
+      }
+    },
+    "projectionRevision": "projection-v1-4a2803be4a38d234",
+    "recursiveInputsForbidden": [
+      "findings",
+      "permissionCandidates",
+      "automationCapabilities",
+      "behaviorConsistency"
+    ],
+    "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+    "schema": "omega.sigmascope.projection-contract.v1"
+  },
+  "scan": {
+    "artifact_channel": "stable",
+    "artifact_sha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+    "artifact_url": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+    "assembly_version": "3.2.3.8",
+    "capabilities_json": [
+      "Filesystem write",
+      "Game memory/hooks",
+      "Game UI callback/control",
+      "Hard-coded external file access",
+      "Native/PInvoke"
+    ],
+    "caution_count": 4,
+    "critical_count": 0,
+    "error": "",
+    "high_count": 0,
+    "highest_severity": "caution",
+    "informational_count": 1,
+    "plugin_id": 818,
+    "report_json": {
+      "artifactAnalysisRepresentativeScanId": 0,
+      "artifactAnalysisReused": false,
+      "artifactAnalysisRevision": "artifact-analysis-v3-461bc75a86a8ee48",
+      "artifactBytes": 7003746,
+      "artifactIdentity": {
+        "artifactAssemblyVersion": "3.2.3.8",
+        "artifactBytes": 7003746,
+        "artifactSha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+        "catalogAssemblyVersion": "3.2.3.8",
+        "manifestInternalName": "LazyWTMath",
+        "manifestPath": "LazyWTMath.json",
+        "manifestRepositoryUrl": "",
+        "resolvedArtifactUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/1233528483/1a6d4c36-05f7-4781-931e-ee08c7ad1bbd?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-11-19T10%3A19%3A35Z&rscd=attachment%3B+filename%3DLazyWTMath.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-11-19T09%3A19%3A31Z&ske=2026-11-19T10%3A19%3A35Z&sks=b&skv=2018-11-09&sig=QRHkIE%2BBkpPHLHWh3Zgg6tPy%2F6FngrVn%2BgGznRy%2F5XI%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5NTA4MDU0MCwibmJmIjoxNzk1MDgwMjQwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.VL5EOKC6zfXQLyZwU2Mf8Sr946Km6fJC-8EPa2k5PXQ&response-content-disposition=attachment%3B%20filename%3DLazyWTMath.zip&response-content-type=application%2Foctet-stream",
+        "schema": "omega.sigmascope.artifact-identity.v1",
+        "versionMatchesCatalog": true
+      },
+      "artifactIdentityContractVersion": 1,
+      "automation": {
+        "capabilities": [
+          {
+            "automationLevel": "ui-automation",
+            "capabilityId": "game.ui.callback",
+            "confidence": "high",
+            "indirect": false,
+            "label": "Game UI callback/control",
+            "reachable": false
+          }
+        ],
+        "level": "ui-automation"
+      },
+      "behaviorConsistency": {
+        "capabilities": [
+          {
+            "category": "dynamic-code",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "dynamic.code",
+            "label": "Dynamic code or assembly loading",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.external-path",
+            "label": "Hard-coded external path access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.read",
+            "label": "Filesystem read access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "filesystem",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "filesystem.write",
+            "label": "Filesystem write access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-memory",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.memory.read",
+            "label": "Game memory/signature access",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "game-automation",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "game.ui.callback",
+            "label": "Game UI callback/control",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          },
+          {
+            "category": "native",
+            "declared": false,
+            "declaredDestinations": [],
+            "developerReason": "",
+            "expected": null,
+            "id": "native.interop",
+            "label": "Native interoperability",
+            "observed": true,
+            "required": false,
+            "state": "observed-no-profile"
+          }
+        ],
+        "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+        "destinations": {
+          "declared": [],
+          "declaredNotObserved": [],
+          "explained": [],
+          "observed": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "observedWithoutProfile": [
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "Low",
+              "host": "github.com",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "unexplained": []
+        },
+        "developerProfileSha256": "",
+        "profileAvailable": false,
+        "profileStatus": "absent",
+        "schema": "omega.sigmascope.behavior-consistency.v1",
+        "semantics": "Comparison only: developer claims never suppress, downgrade, or prove independent SigmaScope observations.",
+        "summary": {
+          "declaredCapabilityCount": 0,
+          "declaredDestinationCount": 0,
+          "declaredDestinationNotObservedCount": 0,
+          "destinationsUndetermined": false,
+          "expectedNotObservedCount": 0,
+          "expectedObservedCount": 0,
+          "explainedDestinationCount": 0,
+          "notExpectedNotObservedCount": 0,
+          "notExpectedObservedCount": 0,
+          "observedCapabilityCount": 7,
+          "observedConcreteDestinationCount": 3,
+          "observedDestinationWithoutProfileCount": 3,
+          "observedUndeclaredCount": 0,
+          "observedWithoutProfileCount": 7,
+          "unexplainedDestinationCount": 0
+        }
+      },
+      "capabilities": [
+        "Filesystem write",
+        "Game memory/hooks",
+        "Game UI callback/control",
+        "Hard-coded external file access",
+        "Native/PInvoke"
+      ],
+      "capabilityIds": [
+        "dynamic.code",
+        "filesystem.external-path",
+        "filesystem.read",
+        "filesystem.write",
+        "game.memory.read",
+        "game.ui.callback",
+        "native.interop"
+      ],
+      "capabilityRegistryRevision": "capabilities-v1-899b65fc67d7848b",
+      "counts": {
+        "caution": 4,
+        "critical": 0,
+        "high": 0,
+        "informational": 1
+      },
+      "engineVersion": "2.15.0",
+      "error": "",
+      "highestSeverity": "caution",
+      "intelligence": {
+        "componentSummary": {
+          "dependencyCount": 56,
+          "exactVersionObservedCount": 48,
+          "families": {
+            "managed-assembly": 49,
+            "native": 7
+          },
+          "fingerprint": "167015ffdbf6133f2608f29a4abbf25d1628e23c8349dffe0f1391e4ad0149b4",
+          "nativeRelationshipCounts": {
+            "bundledComponent": 0,
+            "externalOrRuntimeResolved": 6,
+            "platformLibrary": 16
+          },
+          "nativeRelationships": [
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoCreateFreeThreadedMarshaler",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoCreateFreeThreadedMarshaler",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoCreateInstance",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoCreateInstance",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoDecrementMTAUsage",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoDecrementMTAUsage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoGetContextToken",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoGetContextToken",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoGetObjectContext",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoGetObjectContext",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "CoIncrementMTAUsage",
+              "library": "api-ms-win-core-com-l1-1-0.dll",
+              "managedName": "CoIncrementMTAUsage",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "RoGetAgileReference",
+              "library": "api-ms-win-core-com-l1-1-1.dll",
+              "managedName": "RoGetAgileReference",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "RoGetActivationFactory",
+              "library": "api-ms-win-core-winrt-l1-1-0.dll",
+              "managedName": "RoGetActivationFactory",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsCreateString",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsCreateString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsCreateStringReference",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsCreateStringReference",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsDeleteString",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsDeleteString",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "WindowsGetStringRawBuffer",
+              "library": "api-ms-win-core-winrt-string-l1-1-0.dll",
+              "managedName": "WindowsGetStringRawBuffer",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "FreeLibrary",
+              "library": "kernel32.dll",
+              "managedName": "<FreeLibrary>g__PInvoke|0_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "GetProcAddress",
+              "library": "kernel32.dll",
+              "managedName": "<GetProcAddress>g__PInvoke|1_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "LoadLibraryExW",
+              "library": "kernel32.dll",
+              "managedName": "<LoadLibraryExW>g__PInvoke|2_0",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_domain_get",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_domain_get",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_thread_current",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_thread_current",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_thread_is_foreign",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_thread_is_foreign",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_thread_pop_appdomain_ref",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_thread_pop_appdomain_ref",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_unity_thread_fast_attach",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_unity_thread_fast_attach",
+              "targetPath": ""
+            },
+            {
+              "confidence": "Medium",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "external-or-runtime-resolved",
+              "entryPoint": "mono_unity_thread_fast_detach",
+              "library": "mono-2.0-bdwgc.dll",
+              "managedName": "mono_unity_thread_fast_detach",
+              "targetPath": ""
+            },
+            {
+              "confidence": "VeryHigh",
+              "consumerPath": "WinRT.Runtime.dll",
+              "directManagedCallCount": 0,
+              "directManagedCallObserved": false,
+              "disposition": "platform-library",
+              "entryPoint": "SetErrorInfo",
+              "library": "oleaut32.dll",
+              "managedName": "SetErrorInfo",
+              "targetPath": ""
+            }
+          ],
+          "pluginRelationships": [],
+          "requirements": {
+            "bundled": 4,
+            "observed": 52
+          },
+          "schema": "omega.sigmascope.component-summary.v1",
+          "versionUnknownCount": 1
+        },
+        "coverage": {
+          "analyzed": 55,
+          "binaryOnly": 0,
+          "dynamicallyDownloaded": 0,
+          "externalPlugin": 0,
+          "known": 0,
+          "notAnalyzed": 1,
+          "requirements": {
+            "bundled": 4,
+            "observed": 52,
+            "optional": 0,
+            "required": 0,
+            "soft": 0,
+            "unknown": 0
+          },
+          "total": 56
+        },
+        "endpointSummary": {
+          "concreteDestinationCount": 3,
+          "destinationsUndetermined": false,
+          "hostCount": 6,
+          "hosts": [
+            {
+              "classifications": [
+                "documentation-reference"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "aka.ms",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "crl.microsoft.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform",
+                "source-reference"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "github.com",
+              "literalCount": 2,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "recognised-platform"
+              ],
+              "concreteCount": 1,
+              "confidence": "VeryHigh",
+              "host": "raw.githubusercontent.com",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-config"
+              ]
+            },
+            {
+              "classifications": [
+                "certificate-infrastructure"
+              ],
+              "concreteCount": 0,
+              "confidence": "Low",
+              "host": "www.microsoft.com",
+              "literalCount": 8,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            },
+            {
+              "classifications": [
+                "insecure-http"
+              ],
+              "concreteCount": 1,
+              "confidence": "Low",
+              "host": "www.microsoft.com0",
+              "literalCount": 1,
+              "originTypes": [
+                "artifact-binary-string"
+              ]
+            }
+          ],
+          "literalCount": 15,
+          "networkCapabilityObserved": false,
+          "schema": "omega.sigmascope.endpoint-summary.v1"
+        },
+        "limits": {
+          "droppedByCollection": {
+            "managedCallSites": 10450
+          },
+          "truncated": true
+        },
+        "networkEndpoints": [
+          {
+            "classification": "documentation-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "aka.ms",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "documentation/reference link",
+            "url": "https://aka.ms/cswinrt/interop"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut2011_2011_03_22.crl0^"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "crl.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://crl.microsoft.com/pki/crl/products/MicRooCerAut_2010-06-23.crl0Z"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source hosting",
+            "url": "https://github.com/dajoey/lalalazy.git"
+          },
+          {
+            "classification": "source-reference",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "github.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "source-code reference",
+            "url": "https://github.com/dajoey/lalalazy/blob/main/"
+          },
+          {
+            "classification": "recognised-platform",
+            "concreteDestinationEvidence": true,
+            "confidence": "VeryHigh",
+            "host": "raw.githubusercontent.com",
+            "origin": "artifact",
+            "originType": "artifact-config",
+            "purpose": "source hosting",
+            "url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazywtmath-icon.png"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut2011_2011_03_22.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pki/certs/MicRooCerAut_2010-06-23.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/Docs/Repository.htm0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/MicCodSigPCA2011_2011-07-08.crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/certs/Microsoft%20Time-Stamp%20PCA%202010(1).crt0"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/MicCodSigPCA2011_2011-07-08.crl0a"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/crl/Microsoft%20Time-Stamp%20PCA%202010(1).crl0l"
+          },
+          {
+            "classification": "certificate-infrastructure",
+            "concreteDestinationEvidence": false,
+            "confidence": "Low",
+            "host": "www.microsoft.com",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "certificate/revocation infrastructure",
+            "url": "http://www.microsoft.com/pkiops/docs/primarycps.htm0@"
+          },
+          {
+            "classification": "insecure-http",
+            "concreteDestinationEvidence": true,
+            "confidence": "Low",
+            "host": "www.microsoft.com0",
+            "origin": "artifact",
+            "originType": "artifact-binary-string",
+            "purpose": "unencrypted web traffic",
+            "url": "http://www.microsoft.com0/"
+          }
+        ]
+      },
+      "manifestObservation": {
+        "channel": "stable",
+        "downloadUrl": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+        "internalName": "LazyWTMath",
+        "manifestVersion": "3.2.3.8",
+        "observationId": 95067,
+        "observationKey": "manifest-3190a44f541edaec43f36ac6ad6a",
+        "repositoryUrl": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+        "schema": "omega.manifest-observation.v1",
+        "variantId": 58249
+      },
+      "manifestObservationContractVersion": 1,
+      "package": {
+        "archive": "True",
+        "bundledExecutableCount": 0,
+        "bundledManagedAssemblyCount": 4,
+        "bundledNativeLibraryCount": 0,
+        "fileCount": 13,
+        "uncompressedBytes": 27551563
+      },
+      "scanProvenance": {
+        "artifactAnalysisRevision": "artifact-analysis-v3-461bc75a86a8ee48",
+        "attemptId": "attempt-v2-213e035361e4c4b8",
+        "attemptNumber": 1,
+        "baselineSecurityRebuild": false,
+        "catalogIdentityEpoch": "omega-catalog-identity-v1",
+        "catalogRevision": "cat-json-v1-7d6c0ae74b82c010",
+        "definitionsRevision": "defs-v1-efb3d44f4be2da84",
+        "observedSourceCommit": "",
+        "observedSourceRef": "",
+        "observedSourceRepository": "",
+        "primaryReason": "new_variant",
+        "queueKey": "variant-58249",
+        "queueSeedRevision": "queue-seed-v2-61d233318e2564996dbb",
+        "reasons": [
+          "new_variant"
+        ],
+        "ruleSetRevision": "rules-v1-f32b14c85f7eea4d",
+        "scannerBundleSha256": "d629c6fda593c451ffec6218230827c20c3b5e9982c2c6a9698efbe5a7619446",
+        "scannerRevision": "scanner-v1-95ded325b6247964",
+        "schema": "omega.sigmascope.scan-provenance.v1",
+        "sourceAnalysisRevision": "source-analysis-v1-98384383edb58c8f",
+        "sourceObservationRevision": "source-observations-v1-0e7ef61c9a01435e",
+        "targetFingerprint": "artifact-target-v2-e398e19e16b65b9b1ff5",
+        "variantId": 58249,
+        "workType": "artifact"
+      },
+      "scannedAtUtc": "2026-11-19T09:23:59Z",
+      "scannerVersion": "2.15.0",
+      "schema": "omega.security-evidence.scan-summary.v2",
+      "secondarySecurity": {
+        "artifactSha256": "2d1af23b0159a8c05740daa62d34392c6cb949364d8d196e4df091c89938ae55",
+        "engines": [
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "yara",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          },
+          {
+            "available": true,
+            "enabled": false,
+            "engine": "clamav",
+            "error": "",
+            "executableIdentity": {},
+            "matches": [],
+            "policyRevision": "",
+            "revision": "",
+            "scanScope": {},
+            "schema": "omega.sigmascope.secondary-engine-result.v1",
+            "status": "disabled",
+            "version": ""
+          }
+        ],
+        "matchCount": 0,
+        "schema": "omega.sigmascope.secondary-security.v1",
+        "semantics": "supplemental-evidence-only"
+      },
+      "secondarySecurityContractVersion": 3,
+      "source": {
+        "attribution": {
+          "basis": [],
+          "confidence": 0,
+          "coverageLabel": "Unresolved",
+          "schema": "omega.artifact-source-attribution.v1"
+        },
+        "available": false,
+        "branch": "",
+        "candidates": [
+          "https://github.com/dajoey/lalalazy"
+        ],
+        "commit": "",
+        "dependencyIntelligence": {
+          "fingerprints": {
+            "relevantSourceSha256": ""
+          }
+        },
+        "developerProfile": {
+          "bytes": 0,
+          "diagnostics": [],
+          "path": "",
+          "profile": {},
+          "schema": "",
+          "sha256": "",
+          "status": "",
+          "valid": false
+        },
+        "error": "",
+        "provenance": {},
+        "repository": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+        "treeSha256": ""
+      },
+      "sourceAnalysisRepresentativeScanId": 0,
+      "sourceAnalysisReused": false,
+      "sourceAnalysisRevision": "",
+      "sourceAttributionContractVersion": 1,
+      "status": "complete",
+      "workType": "artifact"
+    },
+    "scan_id": 4,
+    "scanned_at_utc": "2026-11-19T09:23:59Z",
+    "scanner_version": "2.15.0",
+    "source_available": 0,
+    "source_commit": "",
+    "source_id": 1006,
+    "source_repository": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+    "source_to_binary_verified": 0,
+    "status": "complete",
+    "variant_id": 58249
+  },
+  "schema": "omega.security-evidence.variant.v2",
+  "source": {
+    "content_sha256": "30cf63ac661a9152370a38ad680b8b4577baf5b7e142aeb69166291d0e4bbd66",
+    "curated_id": "",
+    "description": "",
+    "discovered_by": "catalog-data/sources/index.json",
+    "enabled_by_default": 1,
+    "etag": "\"dd2de06cda70a26f266829e791fc80ea87642e565b480ee06a6309b46f1a17fa\"",
+    "highest_api": 15,
+    "integrate_with_dalamud": 0,
+    "is_official": 0,
+    "kind": "canonical",
+    "last_checked_utc": "2026-11-19T01:49:13Z",
+    "last_error": "",
+    "last_modified": "",
+    "last_success_utc": "2026-11-19T01:49:13Z",
+    "name": "dajoey/lalalazy",
+    "plugin_count": 17,
+    "provider": "dajoey/lalalazy",
+    "source_id": 1006,
+    "source_repo_url": "",
+    "url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/pluginmaster.json"
+  },
+  "sourceId": 1006,
+  "variant": {
+    "active": 1,
+    "applicable_version": "any",
+    "assembly_version": "3.2.3.8",
+    "author": "daemitus, MidoriKami, dajoey",
+    "authors_json": [
+      "daemitus",
+      "MidoriKami",
+      "dajoey"
+    ],
+    "category_tags_json": [
+      "utility"
+    ],
+    "changelog": "v3.2.3.9 (2026-11-16) [testing]\n- Fixed a crash risk while logging in or out with the Wondrous Tails journal open.\n- The probability overlay no longer recomputes every frame.\n\nv3.2.3.8 (2026-11-15) [testing]\n- The window was polished for the real in-game font and scale: text no longer clips or sits against card borders.\n- Cards keep their content height, so the sticker map, Shuffle average, About and Journal overlay no longer stretch into empty space at large sizes.\n- At the default size the whole sticker map is visible in the Idle, Empty and Failed states too, and the three line-chance cards stay in one row down to the narrowest width.\n- The header has a bordered name chip, a neutral status pill showing only the state word and a What's new button.\n- The Close button shows an accent cross and outline on hover, with its tooltip directly beneath it.\n\nv3.2.3.7 (2026-11-15) [testing]\n- The Dalamud Open actions now show a responsive probability window with a custom header without the native title bar, a close control, a live sticker count and sticker map, line chances and the solver-supplied shuffle averages. What's new in the header reopens this changelog. The probability text beside the journal uses higher-contrast colours. Solver results, configuration and commands are unchanged.\n\nv3.2.3.6 (2026-11-14) [testing]\n- The bundled interface toolkit no longer carries an unused image-processing library, so the plugin installs fewer files and no longer ships a package with known security advisories. No behavior changes.\n\nv3.2.3.5 (2026-11-10) [testing]\n- Rebuilt against the Dalamud 15.0.4.0 payload for game patch 7.58. No functional changes.\n\nv3.2.3.4 (2026-11-07) [testing]\n\n- No plugin-code changes: the plugin now builds against a fixed Dalamud library set (the pinned staging 15.0.3.9 payload) instead of whichever libraries the build machine happens to have installed, so packaging this plugin works reliably again. The Wondrous Tails probability readout is unchanged.\n- Testing channel only; the production channel is unchanged.",
+    "dalamud_api_level": 15,
+    "description": "Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Upgraded for modern FFXIV.",
+    "dip17_channel": "",
+    "download_count": 0,
+    "download_link_install": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+    "download_link_testing": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.9/LazyWTMath-testing.zip",
+    "download_link_update": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+    "first_seen_utc": "2026-11-16T10:31:57Z",
+    "icon_url": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazywtmath-icon.png",
+    "image_urls_json": [
+      ""
+    ],
+    "is_hide": 0,
+    "is_testing_exclusive": 0,
+    "last_seen_utc": "2026-11-18T10:59:01Z",
+    "last_update": 0,
+    "minimum_dalamud_version": null,
+    "name": "Lazy WT Math",
+    "plugin_id": 818,
+    "punchline": "FFXIV Wondrous Tails probability calculator.",
+    "raw_manifest_json": {
+      "ApplicableVersion": "any",
+      "AssemblyVersion": "3.2.3.8",
+      "Author": "daemitus, MidoriKami, dajoey",
+      "CategoryTags": [
+        "utility"
+      ],
+      "Changelog": "v3.2.3.9 (2026-11-16) [testing]\n- Fixed a crash risk while logging in or out with the Wondrous Tails journal open.\n- The probability overlay no longer recomputes every frame.\n\nv3.2.3.8 (2026-11-15) [testing]\n- The window was polished for the real in-game font and scale: text no longer clips or sits against card borders.\n- Cards keep their content height, so the sticker map, Shuffle average, About and Journal overlay no longer stretch into empty space at large sizes.\n- At the default size the whole sticker map is visible in the Idle, Empty and Failed states too, and the three line-chance cards stay in one row down to the narrowest width.\n- The header has a bordered name chip, a neutral status pill showing only the state word and a What's new button.\n- The Close button shows an accent cross and outline on hover, with its tooltip directly beneath it.\n\nv3.2.3.7 (2026-11-15) [testing]\n- The Dalamud Open actions now show a responsive probability window with a custom header without the native title bar, a close control, a live sticker count and sticker map, line chances and the solver-supplied shuffle averages. What's new in the header reopens this changelog. The probability text beside the journal uses higher-contrast colours. Solver results, configuration and commands are unchanged.\n\nv3.2.3.6 (2026-11-14) [testing]\n- The bundled interface toolkit no longer carries an unused image-processing library, so the plugin installs fewer files and no longer ships a package with known security advisories. No behavior changes.\n\nv3.2.3.5 (2026-11-10) [testing]\n- Rebuilt against the Dalamud 15.0.4.0 payload for game patch 7.58. No functional changes.\n\nv3.2.3.4 (2026-11-07) [testing]\n\n- No plugin-code changes: the plugin now builds against a fixed Dalamud library set (the pinned staging 15.0.3.9 payload) instead of whichever libraries the build machine happens to have installed, so packaging this plugin works reliably again. The Wondrous Tails probability readout is unchanged.\n- Testing channel only; the production channel is unchanged.",
+      "DalamudApiLevel": 15,
+      "Description": "Adds row probabilities to the Wondrous Tails display along with the average probability of what would happen if you shuffled. Upgraded for modern FFXIV.",
+      "DownloadCount": 0,
+      "DownloadLinkInstall": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+      "DownloadLinkTesting": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.9/LazyWTMath-testing.zip",
+      "DownloadLinkUpdate": "https://github.com/dajoey/lalalazy/releases/download/LazyWTMath-v3.2.3.8/LazyWTMath.zip",
+      "IconUrl": "https://raw.githubusercontent.com/dajoey/lalalazy/main/LalaImages/lazywtmath-icon.png",
+      "ImageUrls": [
+        ""
+      ],
+      "InternalName": "LazyWTMath",
+      "IsHide": false,
+      "IsTestingExclusive": false,
+      "LastUpdate": "0",
+      "Name": "Lazy WT Math",
+      "Punchline": "FFXIV Wondrous Tails probability calculator.",
+      "RepoUrl": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+      "Tags": [
+        "wondrous tails",
+        "math",
+        "calculator",
+        "probability"
+      ],
+      "TestingAssemblyVersion": "3.2.3.9",
+      "TestingDalamudApiLevel": 15
+    },
+    "repo_url": "https://github.com/dajoey/lalalazy/tree/main/src/LazyWTMath",
+    "source_entry_key": "lazywtmath|3.2.3.8|15|15|4",
+    "source_id": 1006,
+    "tags_json": [
+      "wondrous tails",
+      "math",
+      "calculator",
+      "probability"
+    ],
+    "testing_assembly_version": "3.2.3.9",
+    "testing_dalamud_api_level": 15,
+    "variant_id": 58249
+  },
+  "variantId": 58249
+}
